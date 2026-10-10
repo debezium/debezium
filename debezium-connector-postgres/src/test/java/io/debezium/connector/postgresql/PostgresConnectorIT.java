@@ -843,12 +843,12 @@ public class PostgresConnectorIT extends AbstractAsyncEngineConnectorTest {
 
     @Test
     @FixFor("debezium/dbz#2742")
-    void shouldStreamChangesWithoutSchemaRefreshOnStartup() throws Exception {
+    void shouldStreamChangesWithoutSchemaRefreshOnStreamingStart() throws Exception {
         TestHelper.execute(CREATE_TABLES_STMT);
         final LogInterceptor logInterceptor = new LogInterceptor(PostgresStreamingChangeEventSource.class);
         Configuration.Builder configBuilder = TestHelper.defaultConfig()
                 .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NO_DATA.getValue())
-                .with(PostgresConnectorConfig.SCHEMA_REFRESH_ON_STARTUP, Boolean.FALSE)
+                .with(PostgresConnectorConfig.SCHEMA_REFRESH_ON_STREAMING_START, Boolean.FALSE)
                 .with(PostgresConnectorConfig.DROP_SLOT_ON_STOP, Boolean.FALSE);
         start(PostgresConnector.class, configBuilder.build());
         assertConnectorIsRunning();

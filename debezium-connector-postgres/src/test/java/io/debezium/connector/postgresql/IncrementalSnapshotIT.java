@@ -640,9 +640,9 @@ public class IncrementalSnapshotIT extends AbstractIncrementalSnapshotTest<Postg
 
     @Test
     @FixFor("debezium/dbz#2742")
-    public void snapshotOnlyWithoutSchemaRefreshOnStartup() throws Exception {
+    public void snapshotOnlyWithoutSchemaRefreshOnStreamingStart() throws Exception {
         populateTable();
-        startConnector(x -> x.with(PostgresConnectorConfig.SCHEMA_REFRESH_ON_STARTUP, false));
+        startConnector(x -> x.with(PostgresConnectorConfig.SCHEMA_REFRESH_ON_STREAMING_START, false));
 
         sendAdHocSnapshotSignal();
 
@@ -654,9 +654,9 @@ public class IncrementalSnapshotIT extends AbstractIncrementalSnapshotTest<Postg
 
     @Test
     @FixFor("debezium/dbz#2742")
-    public void snapshotWithRegexDataCollectionsWithoutSchemaRefreshOnStartup() throws Exception {
+    public void snapshotWithRegexDataCollectionsWithoutSchemaRefreshOnStreamingStart() throws Exception {
         populateTable();
-        startConnector(x -> x.with(PostgresConnectorConfig.SCHEMA_REFRESH_ON_STARTUP, false));
+        startConnector(x -> x.with(PostgresConnectorConfig.SCHEMA_REFRESH_ON_STREAMING_START, false));
 
         sendAdHocSnapshotSignal(".*");
 
@@ -668,9 +668,9 @@ public class IncrementalSnapshotIT extends AbstractIncrementalSnapshotTest<Postg
 
     @Test
     @FixFor("debezium/dbz#2742")
-    public void snapshotWithQuotedTableNameWithoutSchemaRefreshOnStartup() throws Exception {
+    public void snapshotWithQuotedTableNameWithoutSchemaRefreshOnStreamingStart() throws Exception {
         populateTable();
-        startConnector(x -> x.with(PostgresConnectorConfig.SCHEMA_REFRESH_ON_STARTUP, false));
+        startConnector(x -> x.with(PostgresConnectorConfig.SCHEMA_REFRESH_ON_STREAMING_START, false));
 
         sendAdHocSnapshotSignal("\\\"s1\\\".\\\"a\\\"");
 
@@ -682,12 +682,12 @@ public class IncrementalSnapshotIT extends AbstractIncrementalSnapshotTest<Postg
 
     @Test
     @FixFor("debezium/dbz#2742")
-    public void snapshotWithRestartWithoutSchemaRefreshOnStartup() throws Exception {
+    public void snapshotWithRestartWithoutSchemaRefreshOnStreamingStart() throws Exception {
         final int rowCount = ROW_COUNT * 10;
         populateTable(rowCount);
 
         final Configuration config = config()
-                .with(PostgresConnectorConfig.SCHEMA_REFRESH_ON_STARTUP, false)
+                .with(PostgresConnectorConfig.SCHEMA_REFRESH_ON_STREAMING_START, false)
                 .with(Heartbeat.HEARTBEAT_INTERVAL_PROPERTY_NAME, 5000)
                 .build();
         startAndConsumeTillEnd(connectorClass(), config);

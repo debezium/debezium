@@ -4369,7 +4369,7 @@ This setting can significantly improve connector performance if there are freque
 However, it is possible for the in-memory schema to
 become outdated if TOASTable columns are dropped from the table.
 
-|[[postgresql-property-schema-refresh-on-startup]]<<postgresql-property-schema-refresh-on-startup, `+schema.refresh.on.startup+`>>
+|[[postgresql-property-schema-refresh-on-streaming-start]]<<postgresql-property-schema-refresh-on-streaming-start, `+schema.refresh.on.streaming.start+`>>
 |`true`
 |Specifies whether the connector loads the schema of all captured tables from the database when streaming starts.
 
@@ -4389,8 +4389,9 @@ When this property is set to `false`, the following behavior changes:
 
 * The `CapturedTables` streaming metric lists only tables whose schema the connector has already loaded.
 * The connector does not log the `REPLICA IDENTITY` of the captured tables when it starts, unless an incremental snapshot is in progress.
-* With the `decoderbufs` plug-in, if a table is dropped, or its primary key is removed, before the connector processes the first change for that table, the connector cannot read the original definition of the table from the database.
-The connector then skips the changes of a dropped table, and emits the changes of a table whose primary key was removed without that key.
+
+With both the `pgoutput` and `decoderbufs` plug-ins, schema loading relies on current database metadata.
+If a table is altered or dropped before its schema is loaded, earlier changes might be emitted with different schema or key information, or skipped, depending on the plug-in.
 
 |[[postgresql-property-snapshot-delay-ms]]<<postgresql-property-snapshot-delay-ms, `+snapshot.delay.ms+`>>
 |No default

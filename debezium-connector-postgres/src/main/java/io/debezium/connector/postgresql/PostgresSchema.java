@@ -175,14 +175,14 @@ public class PostgresSchema extends RelationalDatabaseSchema {
     /**
      * Loads the schema of the captured tables that match the data collections of an incremental snapshot
      * and that are not loaded yet, which can be the case when the initial schema load is skipped
-     * (see {@link PostgresConnectorConfig#SCHEMA_REFRESH_ON_STARTUP}).
+     * (see {@link PostgresConnectorConfig#SCHEMA_REFRESH_ON_STREAMING_START}).
      *
      * @param connection a {@link JdbcConnection} instance, never {@code null}
      * @param dataCollections the data collections of the incremental snapshot, table identifiers or regular expressions
      * @throws SQLException if there is a problem reading the schema from the database server
      */
     protected void loadTablesForIncrementalSnapshot(PostgresConnection connection, List<String> dataCollections) throws SQLException {
-        if (connectorConfig.refreshSchemaOnStartup()) {
+        if (connectorConfig.refreshSchemaOnStreamingStart()) {
             // all captured tables were loaded when streaming started
             return;
         }
