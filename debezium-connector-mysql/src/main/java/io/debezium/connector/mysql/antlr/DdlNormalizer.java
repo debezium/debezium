@@ -8,6 +8,8 @@ package io.debezium.connector.mysql.antlr;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import io.debezium.connector.binlog.util.StringLiteralParser;
+
 /**
  * Converts double-quoted string literals to single-quoted strings in MySQL DDL.
  * The Oracle MySQL grammar uses ANSI_QUOTES mode (double quotes = identifiers),
@@ -28,7 +30,6 @@ public class DdlNormalizer {
     // Regex group indices for clarity
     private static final int COMMENT_GROUP = 1;
     private static final int SINGLE_QUOTED_STRING_GROUP = 2;
-    private static final int DOUBLE_QUOTED_STRING_GROUP = 3;
     private static final int BACKTICK_IDENTIFIER_GROUP = 4;
 
     /**
@@ -43,6 +44,13 @@ public class DdlNormalizer {
             (--[^\\n]*|#[^\\n]*|/\\*(?!!).*?\\*/)\
             |('(?:''|[^'\\\\]|\\\\.)*')\
             |"((?:[^"\\\\]|\\\\.|"")*)"\
+            |(`(?:``|[^`])*`)""",
+            Pattern.DOTALL);
+
+    private static final Pattern QUOTED_LITERAL_NO_BACKSLASH_ESCAPES_PATTERN = Pattern.compile("""
+            (--[^\\n]*|#[^\\n]*|/\\*(?!!).*?\\*/)\
+            |('(?:''|[^'])*')\
+            |"((?:[^"]|"")*)"\
             |(`(?:``|[^`])*`)""",
             Pattern.DOTALL);
 
@@ -170,11 +178,19 @@ public class DdlNormalizer {
      * @return Normalized DDL, or the original input if null or empty
      */
     public static String normalize(String ddlContent, boolean ansiQuotesMode) {
+        return normalize(ddlContent, ansiQuotesMode, false);
+    }
+
+    /**
+     * Normalizes DDL using the server's quote and backslash escape modes.
+     */
+    public static String normalize(String ddlContent, boolean ansiQuotesMode, boolean noBackslashEscapes) {
         if (ddlContent == null || ddlContent.isEmpty()) {
             return ddlContent;
         }
 
-        Matcher matcher = QUOTED_LITERAL_PATTERN.matcher(ddlContent);
+        final var pattern = noBackslashEscapes ? QUOTED_LITERAL_NO_BACKSLASH_ESCAPES_PATTERN : QUOTED_LITERAL_PATTERN;
+        Matcher matcher = pattern.matcher(ddlContent);
         StringBuilder normalized = new StringBuilder(ddlContent.length());
         int lastEnd = 0;
 
@@ -187,7 +203,7 @@ public class DdlNormalizer {
                 preserveOriginal(matcher, normalized);
             }
             else {
-                convertToSingleQuoted(matcher, normalized);
+                convertToSingleQuoted(matcher, normalized, noBackslashEscapes);
             }
             lastEnd = matcher.end();
         }
@@ -215,9 +231,8 @@ public class DdlNormalizer {
     /**
      * Converts a double-quoted string to single-quoted, escaping apostrophes.
      */
-    private static void convertToSingleQuoted(Matcher matcher, StringBuilder result) {
-        String escapedContent = matcher.group(DOUBLE_QUOTED_STRING_GROUP).replace("'", "''");
-        result.append("'").append(escapedContent).append("'");
+    private static void convertToSingleQuoted(Matcher matcher, StringBuilder result, boolean noBackslashEscapes) {
+        result.append(StringLiteralParser.normalizeQuotes(matcher.group(), noBackslashEscapes));
     }
 
     /**

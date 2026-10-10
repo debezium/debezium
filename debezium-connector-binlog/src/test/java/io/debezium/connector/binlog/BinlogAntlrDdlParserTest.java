@@ -1569,10 +1569,18 @@ public abstract class BinlogAntlrDdlParserTest<V extends BinlogValueConverters, 
         assertParseEnumAndSetOptions("ENUM('a''','b','c')", "a'", "b", "c");
         assertParseEnumAndSetOptions("ENUM('a\\'','b','c')", "a'", "b", "c");
         assertParseEnumAndSetOptions("ENUM(\"a\\\"\",'b','c')", "a\\\"", "b", "c");
-        assertParseEnumAndSetOptions("ENUM(\"a\"\"\",'b','c')", "a\"\"", "b", "c");
         assertParseEnumAndSetOptions(
                 "ENUM('a,b','back\\\\slash','back\\\\,comma','ends\\\\')",
                 "a,b", "back\\\\slash", "back\\\\,comma", "ends\\\\");
+    }
+
+    @Test
+    @FixFor("DBZ-1226")
+    public void shouldParseDoubledDoubleQuotesInEnumOptions() {
+        assertParseEnumAndSetOptions("ENUM(\"a\"\"\",'b','c')", "a\"", "b", "c");
+        assertParseEnumAndSetOptions("SET(\"a\"\"\",'b','c')", "a\"", "b", "c");
+        assertParseEnumAndSetOptions("ENUM(\"a''b\",'a\"\"b')", "a''b", "a\"\"b");
+        assertParseEnumAndSetOptions("SET(\"a''b\",'a\"\"b')", "a''b", "a\"\"b");
     }
 
     @Test
@@ -3581,7 +3589,7 @@ public abstract class BinlogAntlrDdlParserTest<V extends BinlogValueConverters, 
      * @param typeExpression The {@code ENUM} or {@code SET} expression to be parsed
      * @param expectedValues An array of options expected to have been parsed from the expression.
      */
-    private void assertParseEnumAndSetOptions(String typeExpression, String... expectedValues) {
+    protected void assertParseEnumAndSetOptions(String typeExpression, String... expectedValues) {
         String ddl = "DROP TABLE IF EXISTS enum_set_option_test_table;" +
                 "CREATE TABLE `enum_set_option_test_table` (`id` int not null auto_increment, `options` " +
                 typeExpression + ", primary key(`id`));";
@@ -3589,7 +3597,7 @@ public abstract class BinlogAntlrDdlParserTest<V extends BinlogValueConverters, 
         parser.parse(ddl, tables);
 
         final Column column = tables.forTable(null, null, "enum_set_option_test_table").columnWithName("options");
-        assertThat(extractEnumAndSetOptions(column.enumValues())).contains(expectedValues);
+        assertThat(extractEnumAndSetOptions(column.enumValues())).containsExactly(expectedValues);
     }
 
     protected abstract List<String> extractEnumAndSetOptions(List<String> enumValues);

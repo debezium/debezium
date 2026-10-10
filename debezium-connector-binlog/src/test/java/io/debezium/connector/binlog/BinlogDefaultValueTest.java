@@ -19,6 +19,7 @@ import java.util.List;
 import java.util.Properties;
 import java.util.stream.Stream;
 
+import org.apache.kafka.connect.data.Field;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
 import org.junit.jupiter.api.BeforeEach;
@@ -32,6 +33,7 @@ import io.debezium.config.CommonConnectorConfig.BinaryHandlingMode;
 import io.debezium.config.CommonConnectorConfig.EventConvertingFailureHandlingMode;
 import io.debezium.connector.binlog.jdbc.BinlogDefaultValueConverter;
 import io.debezium.connector.binlog.jdbc.BinlogValueConverters;
+import io.debezium.data.EnumeratedValues;
 import io.debezium.doc.FixFor;
 import io.debezium.jdbc.JdbcValueConverters;
 import io.debezium.jdbc.TemporalPrecisionMode;
@@ -42,6 +44,8 @@ import io.debezium.relational.TableSchema;
 import io.debezium.relational.TableSchemaBuilder;
 import io.debezium.relational.Tables;
 import io.debezium.relational.ddl.DdlParser;
+import io.debezium.relational.history.JsonTableChangeSerializer;
+import io.debezium.relational.history.TableChanges;
 import io.debezium.schema.DefaultTopicNamingStrategy;
 import io.debezium.schema.FieldNameSelector;
 import io.debezium.schema.SchemaNameAdjuster;
@@ -72,6 +76,99 @@ public abstract class BinlogDefaultValueTest<V extends BinlogValueConverters, P 
                 FieldNameSelector.defaultSelector(SchemaNameAdjuster.NO_OP), false,
                 EventConvertingFailureHandlingMode.WARN);
 
+    }
+
+    @ParameterizedTest
+    @MethodSource("enumAndSetQuotes")
+    @FixFor("debezium/dbz#2764")
+    void shouldPreserveEnumAndSetQuotes(String literal, String expected, String sqlMode, String type, boolean alter) {
+        parser.parse("SET sql_mode = '" + sqlMode + "'", tables);
+        if (alter) {
+            parser.parse("CREATE TABLE enum_options (v " + type + "('old'))", tables);
+        }
+        parser.parse((alter ? "ALTER TABLE enum_options MODIFY COLUMN v " : "CREATE TABLE enum_options (v ")
+                + type + "(" + literal + ",'other')" + (alter ? "" : ")"), tables);
+
+        final var table = tables.forTable(new TableId(null, null, "enum_options"));
+        final var serializer = new JsonTableChangeSerializer();
+        final var restored = serializer.deserialize(serializer.serialize(new TableChanges().create(table)), true)
+                .iterator().next().getTable();
+        parser.parse("SET sql_mode = ''", tables);
+        for (final var candidate : List.of(table, restored)) {
+            final var column = candidate.columnWithName("v");
+            final var schema = getColumnSchema(candidate, "v");
+            assertThat(schema.parameters().get("allowed")).isEqualTo(EnumeratedValues.toCommaSeparatedString(List.of(expected, "other")));
+            final Object binlogValue = type.equals("ENUM") ? (Object) Integer.valueOf(1) : Long.valueOf(1);
+            assertThat(converters.converter(column, new Field("v", 0, schema)).convert(binlogValue)).isEqualTo(expected);
+        }
+    }
+
+    private static Stream<Arguments> enumAndSetQuotes() {
+        return Stream.of(
+                Arguments.of("\"a\"\"\"", "a\"", ""),
+                Arguments.of("'a''b'", "a'b", ""),
+                Arguments.of("\"a''b\"", "a''b", ""),
+                Arguments.of("'a\"\"b'", "a\"\"b", ""),
+                Arguments.of("'a''b'", "a'b", "ANSI_QUOTES"),
+                Arguments.of("\"a\"\"b\"", "a\"b", "NO_BACKSLASH_ESCAPES"))
+                .flatMap(arguments -> Stream.of("ENUM", "SET")
+                        .flatMap(type -> Stream.of(false, true)
+                                .map(alter -> Arguments.of(arguments.get()[0], arguments.get()[1], arguments.get()[2], type, alter))));
+    }
+
+    @ParameterizedTest
+    @MethodSource("stringDefaults")
+    @FixFor("debezium/dbz#2764")
+    void shouldDecodeStringDefaults(String literal, String expected, String sqlMode, String statement) {
+        parser.parse("SET sql_mode = '" + sqlMode + "'", tables);
+        if (statement.startsWith("ALTER")) {
+            parser.parse("CREATE TABLE string_defaults (v VARCHAR(64) DEFAULT 'old')", tables);
+        }
+        parser.parse(statement.formatted(literal), tables);
+
+        final var table = tables.forTable(new TableId(null, null, "string_defaults"));
+        assertThat(table.columnWithName("v").defaultValueExpression()).contains(expected);
+        assertThat(getColumnSchema(table, "v").defaultValue()).isEqualTo(expected);
+    }
+
+    private static Stream<Arguments> stringDefaults() {
+        return Stream.of(
+                Arguments.of("'a''b'", "a'b", ""),
+                Arguments.of("'a\\nb'", "a\nb", ""),
+                Arguments.of("N'abc'", "abc", ""),
+                Arguments.of("'a' 'b'", "ab", ""),
+                Arguments.of("n'a''b' 'c'", "a'bc", ""),
+                Arguments.of("_utf8mb4'a''b' 'c'", "a'bc", ""),
+                Arguments.of("'a' /* gap */ 'b'", "ab", ""),
+                Arguments.of("''", "", ""),
+                Arguments.of("'null'", "null", ""),
+                Arguments.of("'a\\'b'", "a'b", ""),
+                Arguments.of("'a\\'''b'", "a''b", ""),
+                Arguments.of("'a\\\"b'", "a\"b", ""),
+                Arguments.of("'a\\\\nb'", "a\\nb", ""),
+                Arguments.of("'\\0\\b\\n\\r\\t\\Z'", "\0\b\n\r\t\u001a", ""),
+                Arguments.of("'\\x\\%\\_'", "x\\%\\_", ""),
+                Arguments.of("\"a\"\"b\"", "a\"b", ""),
+                Arguments.of("\"a'b\"", "a'b", ""),
+                Arguments.of("\"a\\'b\"", "a'b", ""),
+                Arguments.of("\"a\\\\'b\"", "a\\'b", ""),
+                Arguments.of("\"a\\\"b\"", "a\"b", ""),
+                Arguments.of("'a''b'", "a'b", "ANSI_QUOTES"),
+                Arguments.of("'a\\nb'", "a\nb", "ANSI_QUOTES"),
+                Arguments.of("'a''b'", "a'b", "NO_BACKSLASH_ESCAPES"),
+                Arguments.of("'a\\nb'", "a\\nb", "NO_BACKSLASH_ESCAPES"),
+                Arguments.of("'a\\'", "a\\", "NO_BACKSLASH_ESCAPES"),
+                Arguments.of("N'a\\'", "a\\", "NO_BACKSLASH_ESCAPES"),
+                Arguments.of("_utf8mb4'a\\'", "a\\", "NO_BACKSLASH_ESCAPES"),
+                Arguments.of("'a\\' 'b'", "a\\b", "NO_BACKSLASH_ESCAPES"),
+                Arguments.of("\"a\\\"", "a\\", "NO_BACKSLASH_ESCAPES"),
+                Arguments.of("\"a\\'b\"", "a\\'b", "NO_BACKSLASH_ESCAPES"),
+                Arguments.of("'a\\'", "a\\", "ANSI_QUOTES,NO_BACKSLASH_ESCAPES"))
+                .flatMap(arguments -> Stream.of(
+                        "CREATE TABLE string_defaults (v VARCHAR(64) DEFAULT %s)",
+                        "ALTER TABLE string_defaults MODIFY COLUMN v VARCHAR(64) DEFAULT %s",
+                        "ALTER TABLE string_defaults ALTER COLUMN v SET DEFAULT %s")
+                        .map(statement -> Arguments.of(arguments.get()[0], arguments.get()[1], arguments.get()[2], statement)));
     }
 
     @Test

@@ -2058,12 +2058,14 @@ Contains the string representation of a `JSON` document, array, or scalar.
 a|`io.debezium.data.Enum`
 
 The `allowed` schema parameter contains the comma-separated list of allowed values.
+Repeated quotation marks that escape a quote in a SQL option are represented as one literal quotation mark in the `allowed` parameter and event values.
 
 |`SET`
 |`STRING`
 a|`io.debezium.data.EnumSet`
 
 The `allowed` schema parameter contains the comma-separated list of allowed values.
+Repeated quotation marks that escape a quote in a SQL option are represented as one literal quotation mark in the `allowed` parameter and event values.
 
 |`YEAR[(4)]`
 |`INT32`

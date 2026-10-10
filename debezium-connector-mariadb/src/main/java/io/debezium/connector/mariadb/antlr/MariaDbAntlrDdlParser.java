@@ -24,6 +24,7 @@ import io.debezium.antlr.AntlrDdlParserListener;
 import io.debezium.antlr.DataTypeResolver;
 import io.debezium.connector.binlog.charset.BinlogCharsetRegistry;
 import io.debezium.connector.binlog.jdbc.BinlogSystemVariables;
+import io.debezium.connector.binlog.util.StringLiteralParser;
 import io.debezium.connector.mariadb.antlr.listener.MariaDbAntlrDdlParserListener;
 import io.debezium.ddl.parser.mariadb.generated.MariaDBLexer;
 import io.debezium.ddl.parser.mariadb.generated.MariaDBParser;
@@ -80,7 +81,31 @@ public class MariaDbAntlrDdlParser extends AntlrDdlParser<MariaDBLexer, MariaDBP
 
     @Override
     protected MariaDBLexer createNewLexerInstance(CharStream charStreams) {
-        return new MariaDBLexer(charStreams);
+        final var lexer = new MariaDBLexer(charStreams);
+        lexer.setNoBackslashEscapes(isNoBackslashEscapesMode());
+        return lexer;
+    }
+
+    private boolean isNoBackslashEscapesMode() {
+        final var sqlMode = systemVariables.getVariable("sql_mode");
+        return sqlMode != null && Arrays.stream(sqlMode.split(","))
+                .map(String::trim)
+                .anyMatch("NO_BACKSLASH_ESCAPES"::equalsIgnoreCase);
+    }
+
+    /**
+     * Decodes and concatenates text literal tokens, excluding charset introducers and collations.
+     */
+    public String parseStringLiteral(MariaDBParser.StringLiteralContext context) {
+        final var value = new StringBuilder();
+        final boolean noBackslashEscapes = isNoBackslashEscapesMode();
+        if (context.START_NATIONAL_STRING_LITERAL() != null) {
+            value.append(StringLiteralParser.parse(context.START_NATIONAL_STRING_LITERAL().getText().substring(1), noBackslashEscapes));
+        }
+        for (final var literal : context.STRING_LITERAL()) {
+            value.append(StringLiteralParser.parse(literal.getText(), noBackslashEscapes));
+        }
+        return value.toString();
     }
 
     @Override
@@ -435,6 +460,10 @@ public class MariaDbAntlrDdlParser extends AntlrDdlParser<MariaDBLexer, MariaDBP
         function.run();
     }
 
+    public String normalizeStringLiteral(String literal) {
+        return StringLiteralParser.normalizeQuotes(literal, isNoBackslashEscapesMode());
+    }
+
     /**
      * Extracts the enumeration values properly parsed and unescaped.
      *
@@ -443,6 +472,7 @@ public class MariaDbAntlrDdlParser extends AntlrDdlParser<MariaDBLexer, MariaDBP
      */
     public static List<String> extractEnumAndSetOptions(List<String> enumValues) {
         return enumValues.stream()
+                .map(literal -> StringLiteralParser.normalizeQuotes(literal, false))
                 .map(MariaDbAntlrDdlParser::withoutQuotes)
                 .map(MariaDbAntlrDdlParser::unescapeOption)
                 .collect(Collectors.toList());

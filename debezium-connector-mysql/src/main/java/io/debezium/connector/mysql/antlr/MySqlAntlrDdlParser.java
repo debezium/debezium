@@ -30,6 +30,7 @@ import io.debezium.antlr.mysql.SqlMode;
 import io.debezium.antlr.mysql.SqlModes;
 import io.debezium.connector.binlog.charset.BinlogCharsetRegistry;
 import io.debezium.connector.binlog.jdbc.BinlogSystemVariables;
+import io.debezium.connector.binlog.util.StringLiteralParser;
 import io.debezium.connector.mysql.antlr.listener.MySqlAntlrDdlParserListener;
 import io.debezium.ddl.parser.mysql.generated.MySqlLexer;
 import io.debezium.ddl.parser.mysql.generated.MySqlParser;
@@ -118,6 +119,9 @@ public class MySqlAntlrDdlParser extends AntlrDdlParser<MySqlLexer, MySqlParser>
         // to distinguish charset introducers (e.g., _utf8mb3'text') from regular identifiers.
         // Oracle grammar requires runtime initialization (PT grammar hard-coded these in lexer).
         lexer.charSets.addAll(MYSQL_CHARSET_INTRODUCERS);
+        if (isSqlModeActive(SqlMode.NoBackslashEscapes)) {
+            lexer.sqlModes.add(SqlMode.NoBackslashEscapes);
+        }
 
         return lexer;
     }
@@ -129,17 +133,17 @@ public class MySqlAntlrDdlParser extends AntlrDdlParser<MySqlLexer, MySqlParser>
 
     @Override
     public DdlChanges parse(String ddlContent, Tables databaseTables) {
-        String normalizedDdl = DdlNormalizer.normalize(ddlContent, isAnsiQuotesMode());
+        String normalizedDdl = DdlNormalizer.normalize(ddlContent, isSqlModeActive(SqlMode.AnsiQuotes), isSqlModeActive(SqlMode.NoBackslashEscapes));
         return super.parse(normalizedDdl, databaseTables);
     }
 
-    private boolean isAnsiQuotesMode() {
+    private boolean isSqlModeActive(SqlMode mode) {
         String sqlMode = systemVariables.getVariable("sql_mode");
         if (sqlMode == null || sqlMode.isEmpty()) {
             return false;
         }
         Set<SqlMode> modes = SqlModes.sqlModeFromString(sqlMode);
-        return modes.contains(SqlMode.AnsiQuotes);
+        return modes.contains(mode);
     }
 
     @Override
@@ -274,6 +278,21 @@ public class MySqlAntlrDdlParser extends AntlrDdlParser<MySqlLexer, MySqlParser>
      */
     public String parseName(MySqlParser.IdentifierContext identifierContext) {
         return withoutQuotes(identifierContext);
+    }
+
+    /**
+     * Decodes and concatenates text literal tokens, excluding charset introducers.
+     */
+    public String parseTextLiteral(MySqlParser.TextLiteralContext context) {
+        final var value = new StringBuilder();
+        final boolean noBackslashEscapes = isSqlModeActive(SqlMode.NoBackslashEscapes);
+        if (context.NCHAR_TEXT() != null) {
+            value.append(StringLiteralParser.parse(context.NCHAR_TEXT().getText().substring(1), noBackslashEscapes));
+        }
+        for (final var literal : context.textStringLiteral()) {
+            value.append(StringLiteralParser.parse(literal.getText(), noBackslashEscapes));
+        }
+        return value.toString();
     }
 
     /**
@@ -492,6 +511,7 @@ public class MySqlAntlrDdlParser extends AntlrDdlParser<MySqlLexer, MySqlParser>
      */
     public static List<String> extractEnumAndSetOptions(List<String> enumValues) {
         return enumValues.stream()
+                .map(literal -> StringLiteralParser.normalizeQuotes(literal, false))
                 .map(MySqlAntlrDdlParser::withoutQuotes)
                 .map(MySqlAntlrDdlParser::unescapeOption)
                 .collect(Collectors.toList());

@@ -75,7 +75,7 @@ public class ColumnDefinitionParserListener extends MariaDBParserBaseListener {
         optionalColumn = new AtomicReference<>();
         resolveColumnDataType(ctx.dataType());
         parser.runIfNotNull(() -> {
-            defaultValueListener = new DefaultValueParserListener(columnEditor, optionalColumn);
+            defaultValueListener = new DefaultValueParserListener(columnEditor, optionalColumn, parser);
             listeners.add(defaultValueListener);
         }, tableEditor);
         super.enterColumnDefinition(ctx);
@@ -251,6 +251,7 @@ public class ColumnDefinitionParserListener extends MariaDBParserBaseListener {
 
             List<String> collectionOptions = collectionDataTypeContext.collectionOptions().collectionOption().stream()
                     .map(AntlrDdlParser::getText)
+                    .map(parser::normalizeStringLiteral)
                     .collect(Collectors.toList());
 
             columnEditor.type(dataTypeName);
