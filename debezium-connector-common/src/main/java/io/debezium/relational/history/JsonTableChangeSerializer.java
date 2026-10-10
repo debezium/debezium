@@ -105,6 +105,7 @@ public class JsonTableChangeSerializer implements TableChanges.TableChangesSeria
         document.setBoolean("optional", column.isOptional());
         document.setBoolean("autoIncremented", column.isAutoIncremented());
         document.setBoolean("generated", column.isGenerated());
+        document.setBoolean("invisible", column.isInvisible());
         document.setString("comment", column.comment());
         document.setBoolean("hasDefaultValue", column.hasDefaultValue());
 
@@ -205,6 +206,12 @@ public class JsonTableChangeSerializer implements TableChanges.TableChangesSeria
                             .optional(v.getBoolean("optional"))
                             .autoIncremented(v.getBoolean("autoIncremented"))
                             .generated(v.getBoolean("generated"));
+
+                    // 'invisible' was added later; default to false when reading older schema history records.
+                    Boolean invisible = v.getBoolean("invisible");
+                    if (Boolean.TRUE.equals(invisible)) {
+                        columnEditor.invisible(true);
+                    }
 
                     return columnEditor.create();
                 })

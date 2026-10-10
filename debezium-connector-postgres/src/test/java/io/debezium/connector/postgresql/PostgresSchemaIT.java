@@ -331,6 +331,36 @@ public class PostgresSchemaIT {
     }
 
     @Test
+    @FixFor("DBZ-2020")
+    @SkipWhenDatabaseVersion(check = LESS_THAN, major = 12, reason = "Generated columns are supported from Postgres 12+")
+    void shouldKeepGeneratedPrimaryKeyMarkedAsGeneratedForPgoutput() throws Exception {
+        String statements = "CREATE SCHEMA IF NOT EXISTS public;" +
+                "DROP TABLE IF EXISTS generated_pk_table;" +
+                "CREATE TABLE generated_pk_table (" +
+                "id int not null, " +
+                "pk int GENERATED ALWAYS AS (id) STORED PRIMARY KEY, " +
+                "payload text);";
+        TestHelper.execute(statements);
+
+        PostgresConnectorConfig config = new PostgresConnectorConfig(
+                TestHelper.defaultConfig()
+                        .with(PostgresConnectorConfig.PLUGIN_NAME, PostgresConnectorConfig.LogicalDecoder.PGOUTPUT.getValue())
+                        .build());
+        schema = TestHelper.getSchema(config);
+        final TableId tableId = TableId.parse("public.generated_pk_table", false);
+
+        try (PostgresConnection connection = TestHelper.createWithTypeRegistry()) {
+            schema.refresh(connection, false);
+
+            final Table table = schema.tableFor(tableId);
+            assertThat(table).isNotNull();
+            assertThat(table.columnWithName("pk")).isNotNull();
+            assertThat(table.columnWithName("pk").isGenerated()).isTrue();
+            assertThat(schema.getGeneratedColumnsForTableId(tableId)).doesNotContain("pk");
+        }
+    }
+
+    @Test
     void shouldProperlyGetDefaultColumnValues() throws Exception {
         String ddl = "DROP TABLE IF EXISTS default_column_test; CREATE EXTENSION IF NOT EXISTS \"uuid-ossp\"; CREATE TABLE default_column_test (" +
                 "pk SERIAL, " +
