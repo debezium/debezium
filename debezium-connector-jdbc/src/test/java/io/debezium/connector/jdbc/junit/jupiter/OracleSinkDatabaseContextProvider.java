@@ -19,7 +19,7 @@ import io.debezium.testing.testcontainers.ImageNames;
  */
 public class OracleSinkDatabaseContextProvider extends AbstractSinkDatabaseContextProvider {
 
-    private static final DockerImageName IMAGE_NAME = ImageNames.ORACLE_DBZ_19_3_0_IMAGE_NAME
+    private static final DockerImageName IMAGE_NAME = ImageNames.ORACLE_19_3_0_IMAGE_NAME
             .asCompatibleSubstituteFor("gvenzl/oracle-xe");
 
     @SuppressWarnings("resource")
