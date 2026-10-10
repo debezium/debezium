@@ -323,8 +323,7 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<P extends Par
 
                 try {
                     if (createDataEventsForTable(partition)) {
-                        schemaMismatchRetryPending = false;
-                        schemaMismatchRetries = 0;
+                        resetSchemaMismatchRetry();
 
                         if (!context.snapshotRunning()) { // A stop signal has been processed and window cleared.
                             return;
@@ -600,9 +599,13 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<P extends Par
         }
     }
 
-    private void nextDataCollection(P partition, OffsetContext offsetContext) {
+    private void resetSchemaMismatchRetry() {
         schemaMismatchRetryPending = false;
         schemaMismatchRetries = 0;
+    }
+
+    private void nextDataCollection(P partition, OffsetContext offsetContext) {
+        resetSchemaMismatchRetry();
         context.nextDataCollection();
         if (!context.snapshotRunning()) {
             progressListener.snapshotCompleted(partition);
@@ -637,8 +640,7 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<P extends Par
         validateSignalTableConfiguration(newDataCollectionIds);
 
         if (shouldReadChunk) {
-            schemaMismatchRetryPending = false;
-            schemaMismatchRetries = 0;
+            resetSchemaMismatchRetry();
 
             List<T> monitoredDataCollections = newDataCollectionIds.stream()
                     .map(DataCollection::getId).collect(Collectors.toList());
@@ -750,6 +752,8 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<P extends Par
             LOGGER.info("Removed current collection '{}' from incremental snapshot collection list.", stopCurrentTableId);
             tableScanCompleted(partition);
             stopped.add(stopCurrentTableId.identifier());
+            // Retries count per table, so the next table must not inherit the stopped table's attempts.
+            resetSchemaMismatchRetry();
             context.nextDataCollection();
             // If snapshot has no more collections, abort; otherwise advance to the next collection.
             if (!context.snapshotRunning()) {
