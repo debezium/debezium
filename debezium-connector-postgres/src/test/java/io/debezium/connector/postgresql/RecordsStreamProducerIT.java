@@ -39,6 +39,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.TimeZone;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -109,6 +110,7 @@ import io.debezium.relational.Tables;
 import io.debezium.relational.Tables.TableFilter;
 import io.debezium.spatial.WkbWriter;
 import io.debezium.time.Date;
+import io.debezium.time.IsoTime;
 import io.debezium.time.MicroTime;
 import io.debezium.time.MicroTimestamp;
 import io.debezium.time.ZonedTime;
@@ -3640,6 +3642,50 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
         VerifyRecord.isValidDelete(deleteRec, PK_FIELD, 1);
         assertSourceInfo(deleteRec, "postgres", "public", "time_array_table");
         assertThat(consumer.isEmpty()).isTrue();
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2559")
+    @SkipWhenDecoderPluginNameIsNot(value = SkipWhenDecoderPluginNameIsNot.DecoderPluginName.PGOUTPUT, reason = "pgoutput builds time arrays from their text form")
+    public void shouldStreamFractionalTimeArrayIndependentOfJvmZone() throws Exception {
+        TimeZone original = TimeZone.getDefault();
+        TimeZone.setDefault(TimeZone.getTimeZone("GMT+3"));
+        try {
+            TestHelper.execute("CREATE TABLE time_precision_array_table (pk SERIAL, timea time(6)[] NOT NULL, primary key(pk));");
+            startConnector(config -> config
+                    .with(PostgresConnectorConfig.INCLUDE_UNKNOWN_DATATYPES, false)
+                    .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NO_DATA)
+                    .with(PostgresConnectorConfig.TIME_PRECISION_MODE, TemporalPrecisionMode.ISOSTRING)
+                    .with(PostgresConnectorConfig.TABLE_INCLUDE_LIST, "public.time_precision_array_table"), false);
+
+            waitForStreamingToStart();
+
+            consumer = testConsumer(3);
+            executeAndWait("INSERT INTO time_precision_array_table (timea) VALUES "
+                    + "('{\"02:59:59.999999\", \"02:59:59.999999\"}'), "
+                    + "('{\"03:00:00.000000\", \"03:00:00.000000\"}'), "
+                    + "('{\"03:00:00.123456\", \"03:00:00.123456\"}')");
+
+            SourceRecord early = assertRecordInserted("public.time_precision_array_table", PK_FIELD, 1);
+            assertRecordSchemaAndValues(List.of(fractionalTimeArrayField(
+                    "02:59:59.999999Z", "02:59:59.999999Z")), early, Envelope.FieldName.AFTER);
+            assertRecordSchemaAndValues(List.of(fractionalTimeArrayField(
+                    "03:00:00Z", "03:00:00Z")), consumer.remove(), Envelope.FieldName.AFTER);
+            assertRecordSchemaAndValues(List.of(fractionalTimeArrayField(
+                    "03:00:00.123456Z", "03:00:00.123456Z")), consumer.remove(), Envelope.FieldName.AFTER);
+            assertThat(consumer.isEmpty()).isTrue();
+        }
+        finally {
+            TimeZone.setDefault(original);
+        }
+    }
+
+    private static SchemaAndValueField fractionalTimeArrayField(String... values) {
+        return new SchemaAndValueField("timea",
+                SchemaBuilder.array(IsoTime.builder().optional().build()).build(),
+                Arrays.asList(values)).assertWithCondition((fieldName, expectedValue, actualValue) -> {
+                    assertThat(actualValue).isEqualTo(expectedValue);
+                });
     }
 
     @Test

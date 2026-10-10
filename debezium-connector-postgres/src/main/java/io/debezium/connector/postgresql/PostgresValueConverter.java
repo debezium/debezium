@@ -1639,13 +1639,16 @@ public class PostgresValueConverter extends JdbcValueConverters {
      * elements, which drop the era and apply a Julian-Gregorian conversion below 1582-10-15 -- the same
      * defect scalar {@code timestamp} and {@code timestamptz} were given a text read to avoid. Scalars
      * return before {@code getColumnValue} reaches the array branch, so arrays never benefited from it.
-     * {@code TIMETZ} is here for an unrelated reason: microsecond precision is lost otherwise.
+     * {@code TIMETZ} is here for an unrelated reason: microsecond precision is lost otherwise. {@code TIME}
+     * elements come back as {@code java.sql.Time}, which keeps only milliseconds and is interpreted in the
+     * JVM zone, so it can also throw for values earlier than the zone offset.
      * <p>
      * The decoders consult this too: an element of one of these types has to reach the converter as text,
      * so a decoder that would otherwise materialize the elements itself must hand over the array instead.
      */
     public static boolean isReadAsTextElementType(int elementTypeOid) {
         switch (elementTypeOid) {
+            case PgOid.TIME:
             case PgOid.TIMETZ:
             case PgOid.TIMESTAMP:
             case PgOid.TIMESTAMPTZ:
