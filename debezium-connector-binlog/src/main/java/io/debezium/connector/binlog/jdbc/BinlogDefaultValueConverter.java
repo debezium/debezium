@@ -53,6 +53,7 @@ public abstract class BinlogDefaultValueConverter implements DefaultValueConvert
     private static final String EPOCH_DATE = "1970-01-01";
     private static final Pattern TIMESTAMP_PATTERN = Pattern.compile("([0-9]*-[0-9]*-[0-9]*) ([0-9]*:[0-9]*:[0-9]*(\\.([0-9]*))?)");
     private static final Pattern CHARSET_INTRODUCER_PATTERN = Pattern.compile("^_[A-Za-z0-9]+'(.*)'$");
+    private static final Pattern NUMERIC_ZERO_PATTERN = Pattern.compile("[+-]?(?:0+(?:\\.0*)?|\\.0+)(?:[eE][+-]?\\d+)?");
 
     // Default values of these data types and number data types need to be trimmed.
     @Immutable
@@ -76,6 +77,23 @@ public abstract class BinlogDefaultValueConverter implements DefaultValueConvert
 
     public BinlogDefaultValueConverter(BinlogValueConverters converters) {
         this.converters = converters;
+    }
+
+    /**
+     * Normalizes numeric YEAR zero when a parser stores a default as an unquoted string.
+     * The four-digit form preserves the zero year, while the two-digit form represents 2000.
+     * Other numeric defaults are returned unchanged.
+     *
+     * @param typeName the column's database type name
+     * @param columnLength the column's declared length
+     * @param value the numeric literal, including its sign
+     * @return the default expression to store in the column and schema history
+     */
+    public static String normalizeNumericDefaultValue(String typeName, int columnLength, String value) {
+        if ("YEAR".equalsIgnoreCase(typeName) && NUMERIC_ZERO_PATTERN.matcher(value).matches()) {
+            return columnLength == 2 ? "00" : "0000";
+        }
+        return value;
     }
 
     /**

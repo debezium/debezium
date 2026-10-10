@@ -7,6 +7,7 @@
 package io.debezium.connector.mysql.antlr.listener;
 
 import static io.debezium.antlr.AntlrDdlParser.getText;
+import static io.debezium.connector.binlog.jdbc.BinlogDefaultValueConverter.normalizeNumericDefaultValue;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -444,13 +445,17 @@ public class AlterTableParserListener extends TableCommonParserListener {
 
         // Handle signed number
         if (signed.ulong_number() != null) {
-            return sign + signed.ulong_number().getText();
+            return normalizeNumericDefaultValue(defaultValueColumnEditor.typeName(), defaultValueColumnEditor.length(), sign + signed.ulong_number().getText());
         }
 
         // Handle literal (text, numeric, temporal, etc.)
         if (signed.literal() != null) {
             if (signed.literal().nullLiteral() != null) {
                 return null;
+            }
+            if (signed.literal().numLiteral() != null) {
+                return normalizeNumericDefaultValue(defaultValueColumnEditor.typeName(), defaultValueColumnEditor.length(),
+                        sign + signed.literal().numLiteral().getText());
             }
             return sign + extractLiteralValue(signed.literal());
         }
