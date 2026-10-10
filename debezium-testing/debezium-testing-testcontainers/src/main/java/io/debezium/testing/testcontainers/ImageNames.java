@@ -17,8 +17,6 @@ public final class ImageNames {
 
     private static final String MONGO_IMAGE_STEM = "quay.io/debezium/official-mongo";
 
-    public static final String MONGO_8_0_OFFICIAL_IMAGE = MONGO_IMAGE_STEM + ":8.0";
-
     public static final String MONGO_OFFICIAL_IMAGE = MONGO_IMAGE_STEM;
 
     private static final String SQLSERVER_IMAGE_STEM = "mcr.microsoft.com/mssql/server";
@@ -35,7 +33,7 @@ public final class ImageNames {
 
     private static final String ORACLE_IMAGE_STEM = "quay.io/rh_integration/dbz-oracle";
 
-    public static final String ORACLE_DBZ_19_3_0_IMAGE = ORACLE_IMAGE_STEM + ":19.3.0";
+    public static final String ORACLE_19_3_0_IMAGE = ORACLE_IMAGE_STEM + ":19.3.0";
 
     public static final String ORACLE_DBZ_IMAGE = ORACLE_IMAGE_STEM;
 
@@ -58,13 +56,13 @@ public final class ImageNames {
 
     public static final String MONGO_EXAMPLE_IMAGE = "quay.io/debezium/example-mongodb:2.6";
 
-    public static final String DB2_IMAGE = "quay.io/debezium/db2-cdc:latest";
+    public static final String DB2_CDC_IMAGE = "quay.io/rh_integration/dbz-db2-cdc:latest";
 
     public static final String INFORMIX_IMAGE = "quay.io/rh_integration/dbz-informix:14";
 
     public static final String DEBEZIUM_CONNECT_IMAGE = "quay.io/debezium/connect";
 
-    public static final String CONFLUENT_REGISTRY_IMAGE = "quay.io/debezium/confluentinc-cp-schema-registry:6.0.2";
+    public static final String CONFLUENT_SCHEMA_REGISTRY_6_0_2_IMAGE = "quay.io/debezium/confluentinc-cp-schema-registry:6.0.2";
 
     public static final String APICURIO_REGISTRY_IMAGE = "quay.io/apicurio/apicurio-registry";
 
@@ -76,9 +74,9 @@ public final class ImageNames {
 
     public static final String AZURITE_IMAGE = "mcr.microsoft.com/azure-storage/azurite";
 
-    public static final String MARIADB_IMAGE = "quay.io/debezium/example-mariadb";
+    public static final String MARIADB_EXAMPLE_IMAGE = "quay.io/debezium/example-mariadb";
 
-    public static final String CONFLUENT_KAFKA_IMAGE = "quay.io/debezium/confluentinc-cp-kafka:7.2.10";
+    public static final String CONFLUENT_KAFKA_7_2_10_IMAGE = "quay.io/debezium/confluentinc-cp-kafka:7.2.10";
 
     public static final DockerImageName POSTGRES_15_IMAGE_NAME = DockerImageName.parse(POSTGRES_15_IMAGE)
             .asCompatibleSubstituteFor("postgres");
@@ -93,45 +91,15 @@ public final class ImageNames {
 
     public static final DockerImageName STARROCKS_DOCKER_IMAGE_NAME = DockerImageName.parse(STARROCKS_IMAGE);
 
-    public static final DockerImageName MONGO_8_0_OFFICIAL_IMAGE_NAME = DockerImageName.parse(MONGO_8_0_OFFICIAL_IMAGE)
-            .asCompatibleSubstituteFor("mongodb");
-
     public static final DockerImageName MYSQL_EXAMPLE_IMAGE_NAME = DockerImageName.parse(MYSQL_EXAMPLE_IMAGE);
 
     public static final DockerImageName SQLSERVER_22_IMAGE_NAME = DockerImageName.parse(SQLSERVER_22_IMAGE);
 
     public static final DockerImageName MYSQL_9_IMAGE_NAME = DockerImageName.parse(MYSQL_9_IMAGE);
 
-    public static final DockerImageName POSTGRES_EXAMPLE_IMAGE_NAME = DockerImageName.parse(POSTGRES_EXAMPLE_IMAGE);
-
-    public static final DockerImageName MYSQL_EXAMPLE_PRIMARY_IMAGE_NAME = DockerImageName.parse(MYSQL_EXAMPLE_PRIMARY_IMAGE);
-
-    public static final DockerImageName MYSQL_EXAMPLE_REPLICA_IMAGE_NAME = DockerImageName.parse(MYSQL_EXAMPLE_REPLICA_IMAGE);
-
-    public static final DockerImageName MONGO_EXAMPLE_IMAGE_NAME = DockerImageName.parse(MONGO_EXAMPLE_IMAGE);
-
     public static final DockerImageName SQLSERVER_2019_IMAGE_NAME = DockerImageName.parse(SQLSERVER_2019_IMAGE);
 
-    public static final DockerImageName DB2_IMAGE_NAME = DockerImageName.parse(DB2_IMAGE)
-            .asCompatibleSubstituteFor("ibmcom/db2");
-
-    public static final DockerImageName ORACLE_DBZ_19_3_0_IMAGE_NAME = DockerImageName.parse(ORACLE_DBZ_19_3_0_IMAGE);
-
-    public static final DockerImageName INFORMIX_IMAGE_NAME = DockerImageName.parse(INFORMIX_IMAGE);
-
-    public static final DockerImageName APICURIO_REGISTRY_IMAGE_NAME = DockerImageName.parse(APICURIO_REGISTRY_IMAGE);
-
-    public static final DockerImageName REDIS_ALPINE_IMAGE_NAME = DockerImageName.parse(REDIS_ALPINE_IMAGE);
-
-    public static final DockerImageName MYSQL_9_7_IMAGE_NAME = DockerImageName.parse(MYSQL_9_7_IMAGE);
-
-    public static final DockerImageName DOCLING_1_15_IMAGE_NAME = DockerImageName.parse(DOCLING_1_15_IMAGE);
-
-    public static final DockerImageName OLLAMA_0_6_2_IMAGE_NAME = DockerImageName.parse(OLLAMA_0_6_2_IMAGE);
-
-    public static final DockerImageName DEBEZIUM_CONNECT_IMAGE_NAME = DockerImageName.parse(DEBEZIUM_CONNECT_IMAGE);
-
-    public static final DockerImageName CONFLUENT_REGISTRY_IMAGE_NAME = DockerImageName.parse(CONFLUENT_REGISTRY_IMAGE);
+    public static final DockerImageName ORACLE_19_3_0_IMAGE_NAME = DockerImageName.parse(ORACLE_19_3_0_IMAGE);
 
     public static final DockerImageName DB2_11_5_9_IMAGE_NAME = DockerImageName.parse("icr.io/db2_community/db2:11.5.9.0");
 
@@ -141,13 +109,5 @@ public final class ImageNames {
     public static final DockerImageName POSTGRES_17_IMAGE_NAME = DockerImageName.parse(POSTGRES_17_IMAGE)
             .asCompatibleSubstituteFor("postgres");
 
-    public static final DockerImageName AZURITE_IMAGE_NAME = DockerImageName.parse(AZURITE_IMAGE);
-
-    public static final DockerImageName MONGO_OFFICIAL_IMAGE_NAME = DockerImageName.parse(MONGO_OFFICIAL_IMAGE);
-
     public static final DockerImageName ORACLE_DBZ_IMAGE_NAME = DockerImageName.parse(ORACLE_DBZ_IMAGE);
-
-    public static final DockerImageName MARIADB_IMAGE_NAME = DockerImageName.parse(MARIADB_IMAGE);
-
-    public static final DockerImageName CONFLUENT_KAFKA_IMAGE_NAME = DockerImageName.parse(CONFLUENT_KAFKA_IMAGE);
 }

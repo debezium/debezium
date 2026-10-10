@@ -85,7 +85,7 @@ public class SourcePipelineInvocationContextProvider implements BeforeAllCallbac
     private static final String SQLSERVER_IMAGE_NAME = ImageNames.SQLSERVER_22_IMAGE;
     private static final String SQLSERVER_PASSWORD = "Debezium1!";
 
-    private static final String ORACLE_IMAGE_NAME = ImageNames.ORACLE_DBZ_19_3_0_IMAGE;
+    private static final String ORACLE_IMAGE_NAME = ImageNames.ORACLE_19_3_0_IMAGE;
     private static final String ORACLE_USERNAME = "debezium";
     private static final String ORACLE_PASSWORD = "dbz";
 

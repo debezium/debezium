@@ -38,8 +38,8 @@ public final class ConfigProperties {
     public static final String DOCKER_IMAGE_MONGO = System.getProperty("test.docker.image.mongo", ImageNames.MONGO_EXAMPLE_IMAGE);
     public static final String DOCKER_IMAGE_MONGO_SHARDED = System.getProperty("test.docker.image.mongo.sharded", ImageNames.MONGO_EXAMPLE_IMAGE);
     public static final String DOCKER_IMAGE_SQLSERVER = System.getProperty("test.docker.image.sqlserver", ImageNames.SQLSERVER_2019_IMAGE);
-    public static final String DOCKER_IMAGE_DB2 = System.getProperty("test.docker.image.db2", ImageNames.DB2_IMAGE);
-    public static final String DOCKER_IMAGE_ORACLE = System.getProperty("test.docker.image.oracle", ImageNames.ORACLE_DBZ_19_3_0_IMAGE);
+    public static final String DOCKER_IMAGE_DB2 = System.getProperty("test.docker.image.db2", ImageNames.DB2_CDC_IMAGE);
+    public static final String DOCKER_IMAGE_ORACLE = System.getProperty("test.docker.image.oracle", ImageNames.ORACLE_19_3_0_IMAGE);
     public static final String DOCKER_IMAGE_INFORMIX = System.getProperty("test.docker.image.informix", ImageNames.INFORMIX_IMAGE);
 
     // OpenShift configuration
