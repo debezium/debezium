@@ -20,7 +20,7 @@ import io.debezium.testing.testcontainers.ImageNames;
 public class CockroachDbSinkDatabaseContextProvider extends AbstractSinkDatabaseContextProvider {
 
     // Registry-qualified so the image name is not rewritten by the configured image name substitutor.
-    private static final DockerImageName IMAGE_NAME = ImageNames.COCKROACHDB_25_4_12_IMAGE_NAME;
+    private static final DockerImageName IMAGE_NAME = ImageNames.COCKROACHDB_IMAGE_NAME;
 
     @SuppressWarnings("resource")
     public CockroachDbSinkDatabaseContextProvider() {

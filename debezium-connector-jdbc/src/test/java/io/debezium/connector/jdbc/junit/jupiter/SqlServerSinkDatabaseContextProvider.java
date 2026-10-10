@@ -19,7 +19,7 @@ import io.debezium.testing.testcontainers.ImageNames;
  */
 public class SqlServerSinkDatabaseContextProvider extends AbstractSinkDatabaseContextProvider {
 
-    private static final DockerImageName IMAGE_NAME = ImageNames.SQLSERVER_22_IMAGE_NAME;
+    private static final DockerImageName IMAGE_NAME = ImageNames.SQLSERVER_2022_IMAGE_NAME;
 
     @SuppressWarnings("resource")
     public SqlServerSinkDatabaseContextProvider() {

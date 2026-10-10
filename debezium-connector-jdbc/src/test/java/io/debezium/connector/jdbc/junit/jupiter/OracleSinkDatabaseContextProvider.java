@@ -8,7 +8,6 @@ package io.debezium.connector.jdbc.junit.jupiter;
 import org.testcontainers.containers.Network;
 
 import io.debezium.connector.jdbc.junit.TestHelper;
-import io.debezium.testing.testcontainers.ImageNames;
 
 /**
  * An implementation of {@link AbstractSinkDatabaseContextProvider} for Oracle.
@@ -16,9 +15,6 @@ import io.debezium.testing.testcontainers.ImageNames;
  * @author Chris Cranford
  */
 public class OracleSinkDatabaseContextProvider extends AbstractSinkDatabaseContextProvider {
-
-    private static final DockerImageName IMAGE_NAME = ImageNames.ORACLE_DBZ_19_3_0_IMAGE_NAME
-            .asCompatibleSubstituteFor("gvenzl/oracle-xe");
 
     @SuppressWarnings("resource")
     public OracleSinkDatabaseContextProvider() {

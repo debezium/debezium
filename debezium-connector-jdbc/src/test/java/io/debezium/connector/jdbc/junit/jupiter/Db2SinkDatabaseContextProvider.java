@@ -19,7 +19,7 @@ import io.debezium.testing.testcontainers.ImageNames;
  */
 public class Db2SinkDatabaseContextProvider extends AbstractSinkDatabaseContextProvider {
 
-    private static final DockerImageName IMAGE_NAME = ImageNames.DB2_11_5_9_IMAGE_NAME;
+    private static final DockerImageName IMAGE_NAME = ImageNames.DB2_IMAGE_NAME;
 
     @SuppressWarnings("resource")
     public Db2SinkDatabaseContextProvider() {

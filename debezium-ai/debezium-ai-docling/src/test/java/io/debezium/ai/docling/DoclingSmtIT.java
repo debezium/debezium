@@ -33,7 +33,7 @@ import ai.docling.testcontainers.serve.config.DoclingServeContainerConfig;
  */
 @SkipLongRunning("Downloading Docling container takes too long")
 public class DoclingSmtIT {
-    private static final String DOCLING_IMAGE_NAME = ImageNames.DOCLING_1_15_IMAGE;
+    private static final String DOCLING_IMAGE_NAME = ImageNames.DOCLING_IMAGE;
 
     public static final Schema VALUE_SCHEMA = SchemaBuilder.struct()
             .name("mysql.inventory.products.Value")

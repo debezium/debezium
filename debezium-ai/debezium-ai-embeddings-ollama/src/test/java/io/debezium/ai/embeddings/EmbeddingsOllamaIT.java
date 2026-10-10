@@ -30,7 +30,7 @@ import io.debezium.testing.testcontainers.ImageNames;
  * @author vjuranek
  */
 public class EmbeddingsOllamaIT {
-    private static final String OLLAMA_IMAGE_NAME = ImageNames.OLLAMA_0_6_2_IMAGE;
+    private static final String OLLAMA_IMAGE_NAME = ImageNames.OLLAMA_IMAGE;
     private static final String OLLAMA_TEST_MODEL = "all-minilm";
 
     private static final OllamaContainer ollama = new OllamaContainer(
