@@ -106,6 +106,11 @@ public class IncrementalSnapshotWithRecompileIT extends AbstractIncrementalSnaps
     }
 
     @Override
+    protected String signalExcludingColumnIncludeList() {
+        return "dbo.a.pk,dbo.a.aa";
+    }
+
+    @Override
     protected Builder config() {
         return TestHelper.defaultConfig()
                 .with(SqlServerConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NO_DATA)
