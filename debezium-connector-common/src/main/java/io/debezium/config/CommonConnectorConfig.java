@@ -807,6 +807,16 @@ public abstract class CommonConnectorConfig {
                     "This doesn't affect the snapshot events' values, but the schema of snapshot events may have outdated defaults.")
             .withDefault(Boolean.FALSE);
 
+    public static final Field INCREMENTAL_SNAPSHOT_PRESERVE_STATE = Field.create("incremental.snapshot.preserve.state")
+            .withDisplayName("Preserve a pending incremental snapshot across a startup snapshot.")
+            .withType(Type.BOOLEAN)
+            .withWidth(Width.SHORT)
+            .withImportance(Importance.LOW)
+            .withDescription("Preserve a pending incremental snapshot restored from the offsets when a snapshot runs at connector startup, instead of discarding it. "
+                    + "Honored only when 'snapshot.mode' is 'configuration_based' or 'custom'; the named snapshot modes always reset the incremental snapshot state. "
+                    + "Use with care: the preserved state is only consistent if the startup snapshot does not copy the data ranges the incremental snapshot is reading.")
+            .withDefault(Boolean.FALSE);
+
     public static final Field SNAPSHOT_MODE_TABLES = Field.create("snapshot.include.collection.list")
             .withDisplayName("Snapshot mode include data collection")
             .withType(Type.LIST)
@@ -1573,7 +1583,7 @@ public abstract class CommonConnectorConfig {
                     FIELD_NAME_ADJUSTMENT_MODE,
                     EVENT_CONVERTING_FAILURE_HANDLING_MODE)
             .group(Field.Group.CONNECTOR_ADVANCED, PROVIDE_TRANSACTION_METADATA, CUSTOM_CONVERTERS, CUSTOM_POST_PROCESSORS,
-                    INCREMENTAL_SNAPSHOT_CHUNK_SIZE, INCREMENTAL_SNAPSHOT_ALLOW_SCHEMA_CHANGES,
+                    INCREMENTAL_SNAPSHOT_CHUNK_SIZE, INCREMENTAL_SNAPSHOT_ALLOW_SCHEMA_CHANGES, INCREMENTAL_SNAPSHOT_PRESERVE_STATE,
                     SIGNAL_DATA_COLLECTION, SIGNAL_ENABLED_CHANNELS, NOTIFICATION_ENABLED_CHANNELS, SinkNotificationChannel.NOTIFICATION_TOPIC,
                     HttpNotificationChannel.NOTIFICATION_URL, HttpNotificationChannel.NOTIFICATION_TIMEOUT_MS,
                     HttpNotificationChannel.NOTIFICATION_RETRIES, HttpNotificationChannel.NOTIFICATION_ALLOW_PRIVATE_NETWORKS, TRANSACTION_METADATA_FACTORY)
@@ -1610,6 +1620,7 @@ public abstract class CommonConnectorConfig {
     private final int snapshotFetchSize;
     private final int incrementalSnapshotChunkSize;
     private final boolean incrementalSnapshotAllowSchemaChanges;
+    private final boolean incrementalSnapshotPreserveState;
     private final int snapshotMaxThreads;
     private final int snapshotMaxThreadsMultiplier;
     private final boolean legacySnapshotMaxThreads;
@@ -1676,6 +1687,7 @@ public abstract class CommonConnectorConfig {
         this.queryFetchSize = config.getInteger(QUERY_FETCH_SIZE);
         this.incrementalSnapshotChunkSize = config.getInteger(INCREMENTAL_SNAPSHOT_CHUNK_SIZE);
         this.incrementalSnapshotAllowSchemaChanges = config.getBoolean(INCREMENTAL_SNAPSHOT_ALLOW_SCHEMA_CHANGES);
+        this.incrementalSnapshotPreserveState = config.getBoolean(INCREMENTAL_SNAPSHOT_PRESERVE_STATE);
         this.schemaNameAdjustmentMode = SchemaNameAdjustmentMode.parse(config.getString(SCHEMA_NAME_ADJUSTMENT_MODE));
         this.fieldNameAdjustmentMode = FieldNameAdjustmentMode.parse(config.getString(FIELD_NAME_ADJUSTMENT_MODE));
         this.eventConvertingFailureHandlingMode = EventConvertingFailureHandlingMode.parse(config.getString(EVENT_CONVERTING_FAILURE_HANDLING_MODE));
@@ -2007,6 +2019,10 @@ public abstract class CommonConnectorConfig {
 
     public boolean isIncrementalSnapshotSchemaChangesEnabled() {
         return supportsSchemaChangesDuringIncrementalSnapshot() && incrementalSnapshotAllowSchemaChanges;
+    }
+
+    public boolean isIncrementalSnapshotPreserveStateEnabled() {
+        return incrementalSnapshotPreserveState;
     }
 
     @SuppressWarnings("unchecked")

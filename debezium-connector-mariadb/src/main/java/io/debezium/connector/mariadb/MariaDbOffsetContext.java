@@ -32,13 +32,19 @@ public class MariaDbOffsetContext extends BinlogOffsetContext<SourceInfo> {
     }
 
     public static MariaDbOffsetContext initial(MariaDbConnectorConfig config) {
+        return initial(config, null);
+    }
+
+    public static MariaDbOffsetContext initial(MariaDbConnectorConfig config, IncrementalSnapshotContext<TableId> incrementalSnapshotContext) {
         final MariaDbOffsetContext offset = new MariaDbOffsetContext(
                 null,
                 false,
                 new TransactionContext(),
-                config.isReadOnlyConnection()
-                        ? new MariaDbReadOnlyIncrementalSnapshotContext<>()
-                        : new SignalBasedIncrementalSnapshotContext<>(),
+                incrementalSnapshotContext != null
+                        ? incrementalSnapshotContext
+                        : (config.isReadOnlyConnection()
+                                ? new MariaDbReadOnlyIncrementalSnapshotContext<>()
+                                : new SignalBasedIncrementalSnapshotContext<>()),
                 new SourceInfo(config));
         offset.setBinlogStartPoint("", 0L);
         return offset;

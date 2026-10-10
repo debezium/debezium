@@ -13,6 +13,7 @@ import io.debezium.connector.oracle.jdbc.OracleConnectionFactory;
 import io.debezium.pipeline.ErrorHandler;
 import io.debezium.pipeline.EventDispatcher;
 import io.debezium.pipeline.metrics.CapturedTablesSupplier;
+import io.debezium.pipeline.source.snapshot.incremental.IncrementalSnapshotContext;
 import io.debezium.pipeline.source.spi.EventMetadataProvider;
 import io.debezium.pipeline.source.spi.StreamingChangeEventSource;
 import io.debezium.pipeline.spi.OffsetContext;
@@ -95,7 +96,8 @@ public interface StreamingAdapter<T extends AbstractOracleStreamingChangeEventSo
      * @throws SQLException if a database error occurred
      */
     OracleOffsetContext determineSnapshotOffset(RelationalSnapshotContext<OraclePartition, OracleOffsetContext> ctx,
-                                                OracleConnectorConfig connectorConfig, OracleConnection connection)
+                                                OracleConnectorConfig connectorConfig, OracleConnection connection,
+                                                IncrementalSnapshotContext<TableId> carriedIncrementalSnapshotContext)
             throws SQLException;
 
     /**
