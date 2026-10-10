@@ -1967,6 +1967,22 @@ public abstract class BinlogAntlrDdlParserTest<V extends BinlogValueConverters, 
     }
 
     @Test
+    void shouldParseAlterDatabaseWithoutDatabaseName() {
+        parser.parse("CREATE DATABASE db1 CHARACTER SET latin1;", tables);
+        parser.parse("USE db1;", tables);
+        assertVariable("character_set_database", "latin1");
+
+        // Without a database name, ALTER DATABASE applies to the current database
+        parser.parse("ALTER DATABASE CHARACTER SET utf8mb4;", tables);
+        parser.parse("USE db1;", tables);
+        assertVariable("character_set_database", "utf8mb4");
+
+        parser.parse("ALTER SCHEMA CHARSET latin2;", tables);
+        parser.parse("USE db1;", tables);
+        assertVariable("character_set_database", "latin2");
+    }
+
+    @Test
     void shouldParseSetCharacterSetStatement() {
         parser.parse("SET character_set_server=utf8;", tables);
         assertVariable("character_set_server", "utf8");
