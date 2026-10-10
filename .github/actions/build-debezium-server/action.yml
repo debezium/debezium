@@ -5,6 +5,9 @@ inputs:
   path-core:
     description: "Debezium core repository checkout path"
     required: true
+  path-quarkus:
+    description: "Debezium Quarkus repository checkout path"
+    required: true
   path-server:
     description: "Debezium Server repository checkout path"
     required: true
@@ -32,6 +35,20 @@ runs:
         -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn
         -Dmaven.wagon.http.pool=false
         -Dmaven.wagon.httpconnectionManager.ttlSeconds=120
+
+    # This is needed for the debezium-quarkus-bridge
+    - name: Build Quarkus
+      shell: ${{ inputs.shell }}
+      run: >
+        ./${{ inputs.path-quarkus }}/mvnw -B -ntp clean install -f ${{ inputs.path-quarkus }}/pom.xml
+        -Passembly
+        -Dformat.skip=true
+        -Dcheckstyle.skip=true
+        -Dorg.slf4j.simpleLogger.showDateTime=true
+        -Dorg.slf4j.simpleLogger.dateTimeFormat="YYYY-MM-dd HH:mm:ss,SSS"
+        -DskipTests=true
+        -DskipITs=true
+        -DskipNonCore
 
     - name: Build Server
       shell: ${{ inputs.shell }}

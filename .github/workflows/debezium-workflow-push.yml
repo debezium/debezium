@@ -38,6 +38,12 @@ jobs:
         with:
           path: core
 
+      - name: Checkout Action (Debezium Quarkus)
+        uses: actions/checkout@v7
+        with:
+          repository: debezium/debezium-quarkus
+          path: quarkus
+
       - name: Checkout Action (Debezium Server)
         uses: actions/checkout@v7
         with:
@@ -83,8 +89,19 @@ jobs:
           -DskipTests=true
           -DskipITs=true
 
+      - name: Download dependencies (Debezium Quarkus)
+        run: >
+          ./quarkus/mvnw -B -ntp clean install -f quarkus/pom.xml
+          -Passembly
+          -Dformat.skip=true
+          -Dcheckstyle.skip=true
+          -Dorg.slf4j.simpleLogger.showDateTime=true
+          -Dorg.slf4j.simpleLogger.dateTimeFormat="YYYY-MM-dd HH:mm:ss,SSS"
+          -DskipTests=true
+          -DskipITs=true
+          -DskipNonCore
+
       - name: Download dependencies (Debezium Server)
-        if: steps.maven-cache-check.outputs.cache-hit != 'true'
         run: >
           ./server/mvnw -B -ntp clean install -f server/pom.xml
           -Dformat.skip=true
@@ -467,6 +484,13 @@ jobs:
           path: server
           ref: ${{ github.ref_name }}
 
+      - name: Checkout Action (Debezium Quarkus)
+        uses: actions/checkout@v7
+        with:
+          repository: debezium/debezium-quarkus
+          path: quarkus
+          ref: ${{ github.ref_name }}
+
       - uses: ./core/.github/actions/setup-java
 
       - uses: ./core/.github/actions/maven-cache
@@ -477,6 +501,7 @@ jobs:
       - uses: ./core/.github/actions/build-debezium-server
         with:
           path-core: core
+          path-quarkus: quarkus
           path-server: server
 
   build_ai:
