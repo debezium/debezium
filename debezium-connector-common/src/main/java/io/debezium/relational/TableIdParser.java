@@ -38,7 +38,8 @@ class TableIdParser {
 
         while (stream.hasNext()) {
             int tokenStart = stream.nextPosition().index();
-            parts.add(unescape(stream.consume(), quotingCharOf(identifier, tokenStart, predicates)));
+            String part = stream.consume();
+            parts.add(unescape(part, quotingCharOf(identifier, tokenStart, part.length(), predicates)));
         }
 
         return parts;
@@ -57,13 +58,25 @@ class TableIdParser {
         return part.replace(quote + quote, quote);
     }
 
-    private static char quotingCharOf(String identifier, int tokenStart, TableIdPredicates predicates) {
+    private static char quotingCharOf(String identifier, int tokenStart, int tokenLength, TableIdPredicates predicates) {
         if (tokenStart == 0) {
             return NOT_QUOTED;
         }
 
         char previous = identifier.charAt(tokenStart - 1);
-        return predicates.isQuotingChar(previous) ? previous : NOT_QUOTED;
+        if (predicates.isQuotingChar(previous)) {
+            return previous;
+        }
+        if (predicates.isStartDelimiter(previous)) {
+            int tokenEnd = tokenStart + tokenLength;
+            if (tokenEnd < identifier.length()) {
+                char following = identifier.charAt(tokenEnd);
+                if (predicates.isEndDelimiter(following)) {
+                    return following;
+                }
+            }
+        }
+        return NOT_QUOTED;
     }
 
     private static class TableIdTokenizer implements Tokenizer {
@@ -239,8 +252,18 @@ class TableIdParser {
             @Override
             ParsingState handleCharacter(char c, ParsingContext context) {
                 if (context.predicates.isEndDelimiter(c)) {
-                    context.lastIdentifierEnd = context.input.index();
-                    return BEFORE_SEPARATOR;
+                    if (context.escaped) {
+                        context.escaped = false;
+                        return IN_DELIMITED_IDENTIFIER;
+                    }
+                    else if (context.input.isNext(c)) {
+                        context.escaped = true;
+                        return IN_DELIMITED_IDENTIFIER;
+                    }
+                    else {
+                        context.lastIdentifierEnd = context.input.index();
+                        return BEFORE_SEPARATOR;
+                    }
                 }
 
                 return IN_DELIMITED_IDENTIFIER;
@@ -249,10 +272,12 @@ class TableIdParser {
             @Override
             void doOnEntry(ParsingContext context) {
                 context.startOfLastToken = context.input.index();
+                context.escaped = false;
             }
 
             @Override
             void doOnExit(ParsingContext context) {
+                context.escaped = false;
                 context.tokens.addToken(
                         context.input.position(context.startOfLastToken + 1),
                         context.startOfLastToken + 1,

@@ -91,6 +91,28 @@ class TableIdParserTest {
         assertThat(TableIdParser.parse("[test''dd]", new TestTableIdPredicates())).containsExactly("test''dd");
     }
 
+    @Test
+    @FixFor("debezium/dbz#2841")
+    public void shouldParseDelimitedIdentifierWithEscapedEndDelimiter() {
+        assertThat(TableIdParser.parse("[tab]]le]", new TestTableIdPredicates())).containsExactly("tab]le");
+        assertThat(TableIdParser.parse("[table]]]", new TestTableIdPredicates())).containsExactly("table]");
+        assertThat(TableIdParser.parse("[[table]", new TestTableIdPredicates())).containsExactly("[table");
+        assertThat(TableIdParser.parse("[[table]]]", new TestTableIdPredicates())).containsExactly("[table]");
+        assertThat(TableIdParser.parse("[table]]]]]", new TestTableIdPredicates())).containsExactly("table]]");
+        assertThat(TableIdParser.parse("[db].[schema].[table]]]", new TestTableIdPredicates())).containsExactly("db", "schema", "table]");
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2841")
+    void escapedDelimiterDoesntCloseDelimitedIdentifier() {
+        assertThrows(IllegalArgumentException.class, () -> {
+            TableIdParser.parse("[table]]", new TestTableIdPredicates());
+        });
+        assertThrows(IllegalArgumentException.class, () -> {
+            TableIdParser.parse("[table", new TestTableIdPredicates());
+        });
+    }
+
     private static class TestTableIdPredicates implements TableIdPredicates {
         @Override
         public boolean isStartDelimiter(char c) {
