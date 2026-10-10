@@ -12,6 +12,7 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.fail;
 
 import java.lang.reflect.Field;
 import java.sql.Connection;
@@ -289,6 +290,28 @@ public class PostgresConnectionIT {
                 }, map);
             }
         };
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2452")
+    void shouldClassifyUndefinedColumnError() throws Exception {
+        try (PostgresConnection connection = TestHelper.create()) {
+            connection.connect();
+            try {
+                connection.execute("SELECT no_such_column FROM pg_class");
+                fail("the query on a non-existing column should have failed");
+            }
+            catch (SQLException e) {
+                assertThat(connection.isUndefinedColumnError(e)).isTrue();
+            }
+            try {
+                connection.execute("SELECT 1 FROM no_such_table_2452");
+                fail("the query on a non-existing table should have failed");
+            }
+            catch (SQLException e) {
+                assertThat(connection.isUndefinedColumnError(e)).isFalse();
+            }
+        }
     }
 
     private PostgresConnection buildConnectionWithEmptyConfirmedFlushLSN(String name) {
