@@ -842,6 +842,53 @@ public class PostgresConnectorIT extends AbstractAsyncEngineConnectorTest {
     }
 
     @Test
+    @FixFor("debezium/dbz#2742")
+    void shouldStreamChangesWithoutSchemaRefreshOnStreamingStart() throws Exception {
+        TestHelper.execute(CREATE_TABLES_STMT);
+        final LogInterceptor logInterceptor = new LogInterceptor(PostgresStreamingChangeEventSource.class);
+        Configuration.Builder configBuilder = TestHelper.defaultConfig()
+                .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NO_DATA.getValue())
+                .with(PostgresConnectorConfig.SCHEMA_REFRESH_ON_STREAMING_START, Boolean.FALSE)
+                .with(PostgresConnectorConfig.DROP_SLOT_ON_STOP, Boolean.FALSE);
+        start(PostgresConnector.class, configBuilder.build());
+        assertConnectorIsRunning();
+        waitForStreamingRunning();
+        Awaitility.await().atMost(TestHelper.waitTimeForRecords(), TimeUnit.SECONDS)
+                .until(() -> logInterceptor.containsMessage("Skipping the initial schema load"));
+
+        // tables are loaded when their first change is received
+        TestHelper.execute(INSERT_STMT);
+        SourceRecords actualRecords = consumeRecordsByTopic(2);
+        final List<SourceRecord> recordsS1 = actualRecords.recordsForTopic(topicName("s1.a"));
+        assertThat(recordsS1).hasSize(1);
+        assertThat(((Struct) recordsS1.get(0).value()).getStruct("after").getInt32("aa")).isEqualTo(1);
+        final List<SourceRecord> recordsS2 = actualRecords.recordsForTopic(topicName("s2.a"));
+        assertThat(recordsS2).hasSize(1);
+        assertThat(((Struct) recordsS2.get(0).value()).getStruct("after").getInt32("aa")).isEqualTo(1);
+
+        // restart from the stored offset, then change the schema of a table and add a new table
+        stopConnector();
+        TestHelper.execute("ALTER TABLE s1.a ADD COLUMN bb varchar(20);" +
+                "INSERT INTO s1.a (aa, bb) VALUES (2, 'b');" +
+                "CREATE TABLE s1.b (pk SERIAL, aa integer, PRIMARY KEY(pk));" +
+                "INSERT INTO s1.b (aa) VALUES (3);");
+        start(PostgresConnector.class, configBuilder.with(PostgresConnectorConfig.DROP_SLOT_ON_STOP, Boolean.TRUE).build());
+        assertConnectorIsRunning();
+        waitForStreamingRunning();
+
+        actualRecords = consumeRecordsByTopic(2);
+        final List<SourceRecord> recordsA = actualRecords.recordsForTopic(topicName("s1.a"));
+        assertThat(recordsA).hasSize(1);
+        final Struct afterA = ((Struct) recordsA.get(0).value()).getStruct("after");
+        assertThat(afterA.getInt32("aa")).isEqualTo(2);
+        assertThat(afterA.getString("bb")).isEqualTo("b");
+
+        final List<SourceRecord> recordsB = actualRecords.recordsForTopic(topicName("s1.b"));
+        assertThat(recordsB).hasSize(1);
+        assertThat(((Struct) recordsB.get(0).value()).getStruct("after").getInt32("aa")).isEqualTo(3);
+    }
+
+    @Test
     void shouldIgnoreViews() throws Exception {
         TestHelper.execute(
                 SETUP_TABLES_STMT +

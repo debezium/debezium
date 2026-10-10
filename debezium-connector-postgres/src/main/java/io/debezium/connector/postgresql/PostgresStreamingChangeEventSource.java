@@ -133,7 +133,17 @@ public class PostgresStreamingChangeEventSource implements StreamingChangeEventS
 
         this.effectiveOffset = offsetContext == null ? PostgresOffsetContext.initialContext(connectorConfig, connection, clock) : offsetContext;
         // refresh the schema so we have a latest view of the DB tables
-        initSchema();
+        if (connectorConfig.refreshSchemaOnStreamingStart()) {
+            initSchema();
+        }
+        else if (effectiveOffset.getIncrementalSnapshotContext().snapshotRunning()) {
+            // the incremental snapshot resumes on start and needs the schema of its tables
+            LOGGER.info("Loading the schema of all captured tables because an incremental snapshot is in progress");
+            initSchema();
+        }
+        else {
+            LOGGER.info("Skipping the initial schema load, tables are loaded when their first change is received");
+        }
     }
 
     private void initSchema() {

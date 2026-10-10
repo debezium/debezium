@@ -16,6 +16,8 @@ import io.debezium.connector.postgresql.connection.PostgresConnection;
 import io.debezium.jdbc.JdbcConnection;
 import io.debezium.pipeline.EventDispatcher;
 import io.debezium.pipeline.notification.NotificationService;
+import io.debezium.pipeline.signal.SignalPayload;
+import io.debezium.pipeline.signal.actions.snapshotting.SnapshotConfiguration;
 import io.debezium.pipeline.source.snapshot.incremental.AbstractIncrementalSnapshotChangeEventSource;
 import io.debezium.pipeline.source.spi.DataChangeEventListener;
 import io.debezium.pipeline.source.spi.SnapshotProgressListener;
@@ -159,6 +161,18 @@ public class PostgresReadOnlyIncrementalSnapshotChangeEventSource<P extends Post
         LOGGER.trace("Processing heartbeat event");
         readUntilNewTransactionChange(partition, offsetContext);
         LOGGER.trace("Finished processing heartbeat event");
+    }
+
+    @Override
+    public void addDataCollectionNamesToSnapshot(SignalPayload<P> signalPayload, SnapshotConfiguration snapshotConfiguration)
+            throws InterruptedException {
+        try {
+            schema.loadTablesForIncrementalSnapshot(jdbcConnection, snapshotConfiguration.getDataCollections());
+        }
+        catch (SQLException e) {
+            throw new DebeziumException("Error while loading the schema of the tables to snapshot", e);
+        }
+        super.addDataCollectionNamesToSnapshot(signalPayload, snapshotConfiguration);
     }
 
     @Override
