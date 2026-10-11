@@ -472,13 +472,7 @@ public class MariaDbAntlrDdlParser extends AntlrDdlParser<MariaDBLexer, MariaDBP
             // System.out.println("[charSetNode]: charSetName => " + charsetName + " (" + charsetNode.getText() + ")");
         }
         else if (collationNode != null && collationNode.getText() != null) {
-            final String collationName = withoutQuotes(collationNode.getText()).toLowerCase();
-            for (int index = 0; index < charsetRegistry.getCharsetMapSize(); index++) {
-                if (collationName.equals(charsetRegistry.getCollationNameForCollationIndex(index))) {
-                    charsetName = charsetRegistry.getCharsetNameForCollationIndex(index);
-                    break;
-                }
-            }
+            charsetName = charsetRegistry.getCharsetNameForCollation(withoutQuotes(collationNode.getText()));
             // System.out.println("[collationNode]: charSetName => " + charsetName + " (" + collationNode.getText() + ")");
         }
 

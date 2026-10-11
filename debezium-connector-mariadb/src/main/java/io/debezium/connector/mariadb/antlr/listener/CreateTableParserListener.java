@@ -77,16 +77,6 @@ public class CreateTableParserListener extends TableCommonParserListener {
     }
 
     @Override
-    public void enterTableOptionCharset(MariaDBParser.TableOptionCharsetContext ctx) {
-        parser.runIfNotNull(() -> {
-            if (ctx.charsetName() != null) {
-                tableEditor.setDefaultCharsetName(parser.withoutQuotes(ctx.charsetName()));
-            }
-        }, tableEditor);
-        super.enterTableOptionCharset(ctx);
-    }
-
-    @Override
     public void enterTableOptionComment(MariaDBParser.TableOptionCommentContext ctx) {
         if (!parser.skipComments()) {
             parser.runIfNotNull(() -> {
