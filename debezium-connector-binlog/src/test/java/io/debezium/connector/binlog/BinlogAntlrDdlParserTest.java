@@ -1967,6 +1967,7 @@ public abstract class BinlogAntlrDdlParserTest<V extends BinlogValueConverters, 
     }
 
     @Test
+    @FixFor("debezium/dbz#2829")
     void shouldParseAlterDatabaseWithoutDatabaseName() {
         parser.parse("CREATE DATABASE db1 CHARACTER SET latin1;", tables);
         parser.parse("USE db1;", tables);
