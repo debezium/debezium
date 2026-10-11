@@ -638,7 +638,7 @@ public abstract class AbstractRecordsProducerTest extends AbstractAsyncEngineCon
                 new SchemaAndValueField("bol2", Schema.OPTIONAL_BOOLEAN_SCHEMA, true),
                 new SchemaAndValueField("bs", Bits.builder(2).optional().build(), new byte[]{ 3 }),
                 new SchemaAndValueField("bs7", Bits.builder(7).optional().build(), new byte[]{ 64 }),
-                new SchemaAndValueField("bv1", Schema.OPTIONAL_BOOLEAN_SCHEMA, true),
+                new SchemaAndValueField("bv1", Bits.builder(1).optional().build(), new byte[]{ 1 }),
                 new SchemaAndValueField("bv", Bits.builder(2).optional().build(), new byte[]{}),
                 new SchemaAndValueField("bv2", Bits.builder(24).optional().build(), new byte[]{ 1, 2, 3 }),
                 new SchemaAndValueField("bvl", Bits.builder(64).optional().build(), new byte[]{ 0, 0, 0, 0, 0, 0, 0, -128 }), // Long.MAX_VALUE + 1
