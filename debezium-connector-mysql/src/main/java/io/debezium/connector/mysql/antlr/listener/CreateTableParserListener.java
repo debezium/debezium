@@ -93,20 +93,6 @@ public class CreateTableParserListener extends TableCommonParserListener {
     }
 
     @Override
-    public void enterDefaultCharset(MySqlParser.DefaultCharsetContext ctx) {
-        parser.runIfNotNull(() -> {
-            if (ctx.charsetName() != null) {
-                String charsetName = parser.withoutQuotes(ctx.charsetName());
-                if ("default".equalsIgnoreCase(charsetName)) {
-                    charsetName = parser.charsetForTable(tableEditor.tableId());
-                }
-                tableEditor.setDefaultCharsetName(charsetName);
-            }
-        }, tableEditor);
-        super.enterDefaultCharset(ctx);
-    }
-
-    @Override
     public void enterCreateTableOption(MySqlParser.CreateTableOptionContext ctx) {
         if (!parser.skipComments()) {
             parser.runIfNotNull(() -> {

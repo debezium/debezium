@@ -3523,6 +3523,117 @@ public abstract class BinlogAntlrDdlParserTest<V extends BinlogValueConverters, 
     }
 
     @Test
+    @FixFor("debezium/dbz#373")
+    public void shouldApplyAlterTableDefaultCharsetToColumnsAddedLater() {
+        parser.parse("create table my_table (id int primary key, string1 varchar(20)) default charset = latin1;", tables);
+
+        parser.parse("alter table my_table default character set utf8mb4;", tables);
+        Table table = tables.forTable(new TableId(null, null, "my_table"));
+        assertThat(table.defaultCharsetName()).isEqualTo("utf8mb4");
+        assertThat(table.columnWithName("string1").charsetName()).isEqualTo("latin1");
+
+        parser.parse("alter table my_table add column string2 varchar(20);", tables);
+        table = tables.forTable(new TableId(null, null, "my_table"));
+        assertThat(table.columnWithName("string1").charsetName()).isEqualTo("latin1");
+        assertThat(table.columnWithName("string2").charsetName()).isEqualTo("utf8mb4");
+    }
+
+    @Test
+    @FixFor("debezium/dbz#373")
+    public void shouldDeriveAlterTableDefaultCharsetFromCollation() {
+        parser.parse("create table my_table (id int primary key, string1 varchar(20)) default charset = latin1;", tables);
+
+        parser.parse("alter table my_table collate utf8mb4_bin;", tables);
+        parser.parse("alter table my_table add column string2 varchar(20);", tables);
+
+        Table table = tables.forTable(new TableId(null, null, "my_table"));
+        assertThat(table.defaultCharsetName()).isEqualTo("utf8mb4");
+        assertThat(table.columnWithName("string1").charsetName()).isEqualTo("latin1");
+        assertThat(table.columnWithName("string2").charsetName()).isEqualTo("utf8mb4");
+    }
+
+    @Test
+    @FixFor("debezium/dbz#373")
+    public void shouldApplyAlterTableDefaultCharsetToColumnsAddedInSameStatement() {
+        parser.parse("create table t1 (id int primary key, string1 varchar(20)) default charset = latin1;", tables);
+        parser.parse("create table t2 (id int primary key, string1 varchar(20)) default charset = latin1;", tables);
+
+        parser.parse("alter table t1 add column string2 varchar(20), default charset utf8mb4;", tables);
+        parser.parse("alter table t2 default charset utf8mb4, add column string2 varchar(20);", tables);
+
+        for (String tableName : List.of("t1", "t2")) {
+            Table table = tables.forTable(new TableId(null, null, tableName));
+            assertThat(table.defaultCharsetName()).isEqualTo("utf8mb4");
+            assertThat(table.columnWithName("string1").charsetName()).isEqualTo("latin1");
+            assertThat(table.columnWithName("string2").charsetName()).isEqualTo("utf8mb4");
+        }
+    }
+
+    @Test
+    @FixFor("debezium/dbz#373")
+    public void shouldDeriveCreateTableDefaultCharsetFromCollation() {
+        parser.parse("create table my_table (id int primary key, string1 varchar(20)) collate utf8mb4_bin;", tables);
+
+        Table table = tables.forTable(new TableId(null, null, "my_table"));
+        assertThat(table.defaultCharsetName()).isEqualTo("utf8mb4");
+        assertThat(table.columnWithName("string1").charsetName()).isEqualTo("utf8mb4");
+    }
+
+    @Test
+    @FixFor("debezium/dbz#373")
+    public void shouldUseNewTableDefaultCharsetForRedefinedAndAddedColumns() {
+        parser.parse("create table m (id int primary key, a varchar(10), b varchar(10), c varchar(10), d varchar(10) default 'x', "
+                + "e enum('x','y'), f text, g nchar(5), h varbinary(10)) default charset = latin1;", tables);
+        parser.parse("alter table m default character set utf8mb4;", tables);
+        parser.parse("alter table m modify a varchar(20);", tables);
+        parser.parse("alter table m change b b2 varchar(20);", tables);
+        parser.parse("alter table m modify c varchar(20) character set latin1;", tables);
+        parser.parse("alter table m alter column d set default 'y';", tables);
+        parser.parse("alter table m add column e2 enum('x','y'), add column f2 text, add column g2 nchar(5), add column h2 varbinary(10), "
+                + "add column j varchar(10) collate euckr_korean_ci;", tables);
+
+        Table table = tables.forTable(new TableId(null, null, "m"));
+        assertThat(table.columnWithName("id").charsetName()).isNull();
+        assertThat(table.columnWithName("a").charsetName()).isEqualTo("utf8mb4");
+        assertThat(table.columnWithName("b2").charsetName()).isEqualTo("utf8mb4");
+        assertThat(table.columnWithName("c").charsetName()).isEqualTo("latin1");
+        assertThat(table.columnWithName("d").charsetName()).isEqualTo("latin1");
+        assertThat(table.columnWithName("e").charsetName()).isEqualTo("latin1");
+        assertThat(table.columnWithName("f").charsetName()).isEqualTo("latin1");
+        assertThat(table.columnWithName("e2").charsetName()).isEqualTo("utf8mb4");
+        assertThat(table.columnWithName("f2").charsetName()).isEqualTo("utf8mb4");
+        assertThat(table.columnWithName("g2").charsetName()).isEqualTo(table.columnWithName("g").charsetName());
+        assertThat(table.columnWithName("h2").charsetName()).isEqualTo(table.columnWithName("h").charsetName());
+        assertThat(table.columnWithName("j").charsetName()).isEqualTo("euckr");
+    }
+
+    @Test
+    @FixFor("debezium/dbz#373")
+    public void shouldDeriveCharsetFromUtf8CollationAlias() {
+        // 'utf8_*' collations are aliases of the 'utf8mb3_*' collations and are logged as written
+        parser.parse("create table t1 (id int primary key, string1 varchar(20)) collate utf8_general_ci;", tables);
+        parser.parse("create table t2 (id int primary key, string1 varchar(20)) default charset = latin1;", tables);
+        parser.parse("alter table t2 collate utf8_unicode_ci;", tables);
+        parser.parse("alter table t2 add column string2 varchar(20);", tables);
+
+        assertThat(tables.forTable(new TableId(null, null, "t1")).columnWithName("string1").charsetName()).isIn("utf8", "utf8mb3");
+        assertThat(tables.forTable(new TableId(null, null, "t2")).columnWithName("string1").charsetName()).isEqualTo("latin1");
+        assertThat(tables.forTable(new TableId(null, null, "t2")).columnWithName("string2").charsetName()).isIn("utf8", "utf8mb3");
+    }
+
+    @Test
+    @FixFor("debezium/dbz#373")
+    public void shouldDeriveAlterDatabaseDefaultCharsetFromCollation() {
+        parser.parse("create database db1 character set latin1;", tables);
+        parser.parse("alter database db1 collate utf8mb4_bin;", tables);
+        parser.parse("create table db1.my_table (id int primary key, string1 varchar(20));", tables);
+
+        Table table = tables.forTable(new TableId("db1", null, "my_table"));
+        assertThat(table.defaultCharsetName()).isEqualTo("utf8mb4");
+        assertThat(table.columnWithName("string1").charsetName()).isEqualTo("utf8mb4");
+    }
+
+    @Test
     @FixFor("DBZ-1568")
     public void shouldHandleImplicitNullabilityInAlterTableChange() {
         // Create table with NOT NULL column

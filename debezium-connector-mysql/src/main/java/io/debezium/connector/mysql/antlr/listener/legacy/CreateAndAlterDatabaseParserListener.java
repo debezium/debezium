@@ -21,6 +21,7 @@ public class CreateAndAlterDatabaseParserListener extends MySqlParserBaseListene
 
     private final MySqlPtAntlrDdlParser parser;
     private String databaseName;
+    private boolean charsetSpecified;
 
     public CreateAndAlterDatabaseParserListener(MySqlPtAntlrDdlParser parser) {
         this.parser = parser;
@@ -29,6 +30,7 @@ public class CreateAndAlterDatabaseParserListener extends MySqlParserBaseListene
     @Override
     public void enterCreateDatabase(MySqlParser.CreateDatabaseContext ctx) {
         databaseName = parser.parseName(ctx.uid());
+        charsetSpecified = false;
         super.enterCreateDatabase(ctx);
     }
 
@@ -41,6 +43,7 @@ public class CreateAndAlterDatabaseParserListener extends MySqlParserBaseListene
     @Override
     public void enterAlterSimpleDatabase(MySqlParser.AlterSimpleDatabaseContext ctx) {
         databaseName = ctx.uid() == null ? parser.currentSchema() : parser.parseName(ctx.uid());
+        charsetSpecified = false;
         super.enterAlterSimpleDatabase(ctx);
     }
 
@@ -52,9 +55,10 @@ public class CreateAndAlterDatabaseParserListener extends MySqlParserBaseListene
                 charsetName = parser.systemVariables().getVariable(BinlogSystemVariables.CHARSET_NAME_SERVER);
             }
             parser.charsetNameForDatabase().put(databaseName, charsetName);
+            charsetSpecified = true;
         }
-        // Collation is used only if the database charset was not set by charset setting
-        else if (ctx.charsetName() != null && !parser.charsetNameForDatabase().containsKey(charsetName)) {
+        // Collation is used only if the statement does not set the charset explicitly
+        else if (ctx.collationName() != null && charsetName != null && !charsetSpecified) {
             parser.charsetNameForDatabase().put(databaseName, charsetName);
         }
         super.enterCreateDatabaseOption(ctx);
