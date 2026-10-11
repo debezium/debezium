@@ -118,6 +118,24 @@ public class MariaDbOnlyAntlrDdlParserTest {
     }
 
     @Test
+    @FixFor("debezium/dbz#373")
+    public void shouldKeepCharsetForCollationWithoutCharsetPrefix() {
+        // MariaDB collations without a charset prefix select the variant of the current charset
+        parser.parse("create database db1 character set utf8mb3;", tables);
+        parser.parse("create table db1.a (id int primary key, v varchar(10)) collate uca1400_ai_ci;", tables);
+        parser.parse("create table db1.c (id int primary key, v varchar(10)) character set utf8mb4;", tables);
+        parser.parse("alter table db1.c collate uca1400_ai_ci;", tables);
+        parser.parse("alter table db1.c add column w varchar(10);", tables);
+        parser.parse("create table db1.d (id int primary key, v varchar(10)) character set utf8mb4;", tables);
+        parser.parse("alter table db1.d collate utf8mb4_uca1400_ai_ci, add column w varchar(10) collate latin1_general_nopad_ci;", tables);
+
+        assertThat(tables.forTable(new TableId("db1", null, "a")).columnWithName("v").charsetName()).isEqualTo("utf8mb3");
+        assertThat(tables.forTable(new TableId("db1", null, "c")).columnWithName("w").charsetName()).isEqualTo("utf8mb4");
+        assertThat(tables.forTable(new TableId("db1", null, "d")).defaultCharsetName()).isEqualTo("utf8mb4");
+        assertThat(tables.forTable(new TableId("db1", null, "d")).columnWithName("w").charsetName()).isEqualTo("latin1");
+    }
+
+    @Test
     @FixFor("DBZ-4661")
     public void shouldSupportCreateTableWithEncryption() {
         parser.parse(
