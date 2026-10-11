@@ -1060,7 +1060,6 @@ An _update_ event value does not contain an `after` field if the capture mode is
 
 `payload.updateDescription.updatedFields`::
 Contains the JSON string representation of the updated field values of the document.
-The connector serializes this field using the mode specified by the xref:mongodb-property-json-serialization-mode[`json.serialization.mode`] connector property.
 In this example, the update changed the `first_name` field to a new value.
 
 `payload.source`::
