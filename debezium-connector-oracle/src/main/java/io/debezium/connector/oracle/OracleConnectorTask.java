@@ -29,6 +29,7 @@ import io.debezium.connector.common.CdcSourceTaskContext;
 import io.debezium.connector.common.DebeziumHeaderProducer;
 import io.debezium.connector.oracle.OracleConnectorConfig.ConnectorAdapter;
 import io.debezium.connector.oracle.StreamingAdapter.TableNameCaseSensitivity;
+import io.debezium.connector.oracle.jdbc.CaptureMode;
 import io.debezium.connector.oracle.jdbc.OracleConnectionFactory;
 import io.debezium.connector.oracle.jdbc.OracleConnectionFactoryProvider;
 import io.debezium.document.DocumentReader;
@@ -118,9 +119,16 @@ public class OracleConnectorTask extends BaseSourceTask<OraclePartition, OracleO
 
         Offsets<OraclePartition, OracleOffsetContext> previousOffsets = getSinglePartitionPreviousOffsets(partitionProvider, offsetContextLoader);
 
+        // make use of the Secondary DB when capture mode is PHYSICAL_STANDBY
+        if (connectorConfig.getCaptureMode() == CaptureMode.PHYSICAL_STANDBY) {
+            beanRegistryJdbcConnection = connectionFactory.streamingConnectionFactory().newConnection();
+        }
+        else {
+            beanRegistryJdbcConnection = connectionFactory.newConnection();
+        }
+
         // The bean registry JDBC connection should always be pinned to the PDB
         // when the connector is configured to use a pluggable database
-        beanRegistryJdbcConnection = connectionFactory.newConnection();
         if (!Strings.isNullOrEmpty(connectorConfig.getPdbName())) {
             beanRegistryJdbcConnection.setSessionToPdb(connectorConfig.getPdbName());
         }
