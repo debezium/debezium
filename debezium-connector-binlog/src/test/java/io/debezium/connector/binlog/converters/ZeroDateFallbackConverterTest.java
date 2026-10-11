@@ -294,7 +294,7 @@ class ZeroDateFallbackConverterTest {
 
     @Test
     void firstCall_columnWithDdlDefault_returnsFallback_underNullPolicy() {
-        final Registration reg = registerOn(newConfigured(new Properties()), dateColumn("d", true));
+        final Registration reg = registerOn(newConfigured(new Properties()), dateColumn("d", true, LocalDate.parse("1970-01-01")));
 
         // Schema must be optional under NULL policy
         assertThat(reg.schema.isOptional()).isTrue();
@@ -308,13 +308,13 @@ class ZeroDateFallbackConverterTest {
     @Test
     void firstCall_columnWithDdlDefault_returnsFallback_underUserValuePolicy() {
         final Registration reg = registerOn(newConfigured(propsWith("fallback.datetime", "2000-01-01 00:00:00")),
-                datetimeColumn("dt", true));
+                datetimeColumn("dt", true, LocalDateTime.parse("1970-01-01T00:00:00")));
         final long expected = LocalDateTime.parse("2000-01-01T00:00:00").toInstant(ZoneOffset.UTC).toEpochMilli();
 
         // Schema retains NOT NULL semantics (no .optional())
         assertThat(reg.schema.isOptional()).isFalse();
         // First call returns the user-configured fallback regardless of the DDL default's resolved value
-        assertThat(reg.converter.convert(LocalDate.parse("1970-01-01"))).isEqualTo(expected);
+        assertThat(reg.converter.convert(LocalDateTime.parse("1970-01-01T00:00:00"))).isEqualTo(expected);
         // Row-level: real-1970 still emits 0L because it's a genuine LocalDateTime (non-null)
         assertThat(reg.converter.convert(LocalDateTime.parse("1970-01-01T00:00:00"))).isEqualTo(0L);
     }
@@ -325,6 +325,48 @@ class ZeroDateFallbackConverterTest {
         // No first-call guard fires because hasDefaultValue=false; row-level dispatch from the very first call
         assertThat(reg.converter.convert(LocalDate.parse("2024-06-15")))
                 .isEqualTo((int) LocalDate.parse("2024-06-15").toEpochDay());
+    }
+
+    @Test
+    void firstCall_dateColumnWithNullParsedDefault_dispatchesNormally() {
+        final Registration reg = registerOn(newConfigured(new Properties()), dateColumn("d", true, null));
+
+        // hasDefaultValue() is true, but the parsed default is null
+        // No schema-build call happens for a null parsed default, so the first call is a real row
+        assertThat(reg.converter.convert(LocalDate.parse("2024-06-15")))
+                .isEqualTo((int) LocalDate.parse("2024-06-15").toEpochDay());
+    }
+
+    @Test
+    void firstCall_datetimeColumnNoPrecisionWithNullParsedDefault_dispatchesNormally() {
+        final Registration reg = registerOn(newConfigured(new Properties()), datetimeColumn("dt", true, null));
+        final LocalDateTime ldt = LocalDateTime.parse("2024-06-15T12:34:56");
+
+        // hasDefaultValue() is true, but the parsed default is null
+        // No schema-build call happens for a null parsed default, so the first call is a real row
+        assertThat(reg.converter.convert(ldt))
+                .isEqualTo(ldt.toInstant(ZoneOffset.UTC).toEpochMilli());
+    }
+
+    @Test
+    void firstCall_datetimeColumnWithPrecisionWithNullParsedDefault_dispatchesNormally() {
+        final Registration reg = registerOn(newConfigured(new Properties()), datetimeColumn("dt", true, null, 4));
+        final LocalDateTime ldt = LocalDateTime.parse("2024-06-15T12:34:56.1234");
+        final long expected = io.debezium.time.Conversions.toEpochMicros(ldt.toInstant(ZoneOffset.UTC));
+
+        // hasDefaultValue() is true, but the parsed default is null
+        // No schema-build call happens for a null parsed default, so the first call is a real row
+        assertThat(reg.converter.convert(ldt)).isEqualTo(expected);
+    }
+
+    @Test
+    void firstCall_timestampColumnWithNullParsedDefault_dispatchesNormally() {
+        final Registration reg = registerOn(newConfigured(new Properties()), timestampColumn("ts", true, null));
+        final OffsetDateTime odt = OffsetDateTime.parse("2024-06-15T12:34:56Z");
+
+        // hasDefaultValue() is true, but the parsed default is null
+        // No schema-build call happens for a null parsed default, so the first call is a real row
+        assertThat(reg.converter.convert(odt)).isEqualTo("2024-06-15T12:34:56Z");
     }
 
     // -- Column-level override ----------------------------------------------------------------
@@ -416,28 +458,45 @@ class ZeroDateFallbackConverterTest {
     }
 
     private static RelationalColumn dateColumn(String name, boolean hasDefault) {
-        return mockColumn(name, Types.DATE, "DATE", hasDefault, OptionalInt.empty());
+        return mockColumn(name, Types.DATE, "DATE", hasDefault, null, OptionalInt.empty());
+    }
+
+    private static RelationalColumn dateColumn(String name, boolean hasDefault, Object defaultValue) {
+        return mockColumn(name, Types.DATE, "DATE", hasDefault, defaultValue, OptionalInt.empty());
     }
 
     private static RelationalColumn datetimeColumn(String name, boolean hasDefault) {
-        return mockColumn(name, Types.TIMESTAMP, "DATETIME", hasDefault, OptionalInt.empty());
+        return mockColumn(name, Types.TIMESTAMP, "DATETIME", hasDefault, null, OptionalInt.empty());
+    }
+
+    private static RelationalColumn datetimeColumn(String name, boolean hasDefault, Object defaultValue) {
+        return mockColumn(name, Types.TIMESTAMP, "DATETIME", hasDefault, defaultValue, OptionalInt.empty());
     }
 
     private static RelationalColumn datetimeColumn(String name, boolean hasDefault, int precision) {
-        return mockColumn(name, Types.TIMESTAMP, "DATETIME", hasDefault, OptionalInt.of(precision));
+        return mockColumn(name, Types.TIMESTAMP, "DATETIME", hasDefault, null, OptionalInt.of(precision));
+    }
+
+    private static RelationalColumn datetimeColumn(String name, boolean hasDefault, Object defaultValue, int precision) {
+        return mockColumn(name, Types.TIMESTAMP, "DATETIME", hasDefault, defaultValue, OptionalInt.of(precision));
     }
 
     private static RelationalColumn timestampColumn(String name, boolean hasDefault) {
-        return mockColumn(name, Types.TIMESTAMP_WITH_TIMEZONE, "TIMESTAMP", hasDefault, OptionalInt.empty());
+        return mockColumn(name, Types.TIMESTAMP_WITH_TIMEZONE, "TIMESTAMP", hasDefault, null, OptionalInt.empty());
     }
 
-    private static RelationalColumn mockColumn(String name, int jdbcType, String typeName, boolean hasDefault, OptionalInt length) {
+    private static RelationalColumn timestampColumn(String name, boolean hasDefault, Object defaultValue) {
+        return mockColumn(name, Types.TIMESTAMP_WITH_TIMEZONE, "TIMESTAMP", hasDefault, defaultValue, OptionalInt.empty());
+    }
+
+    private static RelationalColumn mockColumn(String name, int jdbcType, String typeName, boolean hasDefault, Object defaultValue, OptionalInt length) {
         final RelationalColumn col = Mockito.mock(RelationalColumn.class);
         Mockito.when(col.name()).thenReturn(name);
         Mockito.when(col.dataCollection()).thenReturn(DATA_COLLECTION);
         Mockito.when(col.jdbcType()).thenReturn(jdbcType);
         Mockito.when(col.typeName()).thenReturn(typeName);
         Mockito.when(col.hasDefaultValue()).thenReturn(hasDefault);
+        Mockito.when(col.defaultValue()).thenReturn(defaultValue);
         Mockito.when(col.length()).thenReturn(length);
         return col;
     }

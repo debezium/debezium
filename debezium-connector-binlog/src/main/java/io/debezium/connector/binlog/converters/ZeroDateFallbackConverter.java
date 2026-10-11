@@ -76,7 +76,8 @@ import io.debezium.util.Strings;
  * <h2>How it interacts with DDL defaults</h2>
  * The implementation relies on {@code TableSchemaBuilder} invoking the registered conversion
  * lambda exactly once at schema-build time (for resolving the column's {@code defaultValue}
- * slot). A per-column {@link AtomicBoolean} guards that first call:
+ * slot, but only when the column has a default and its parsed value is non-null). A per-column
+ * {@link AtomicBoolean} guards that first call:
  * <ul>
  *   <li>Under the NULL policy, the lambda returns {@code null} on the first call, which leaves
  *       the schema's {@code defaultValue} slot empty so AvroConverter does not back-fill null rows
@@ -191,7 +192,7 @@ public class ZeroDateFallbackConverter
         final String columnRaw = lookupColumnFallback(field);
         final LocalDate effective = (columnRaw != null) ? parseDateFallback(columnRaw) : fallbackDate;
         final Integer fallback = effective == null ? null : (int) effective.toEpochDay();
-        final boolean hasDefault = field.hasDefaultValue();
+        final boolean hasDefault = field.hasDefaultValue() && field.defaultValue() != null;
 
         SchemaBuilder schema = SchemaBuilder.int32().name(io.debezium.time.Date.SCHEMA_NAME).version(SCHEMA_VERSION);
         if (fallback == null) {
@@ -225,7 +226,7 @@ public class ZeroDateFallbackConverter
     private void registerDatetime(RelationalColumn field, ConverterRegistration<SchemaBuilder> registration) {
         final String columnRaw = lookupColumnFallback(field);
         final LocalDateTime effective = (columnRaw != null) ? parseDatetimeFallback(columnRaw) : fallbackDatetime;
-        final boolean hasDefault = field.hasDefaultValue();
+        final boolean hasDefault = field.hasDefaultValue() && field.defaultValue() != null;
         final boolean isMicro = field.length().isPresent() && field.length().getAsInt() >= 4;
 
         final String schemaName = isMicro
@@ -279,7 +280,7 @@ public class ZeroDateFallbackConverter
         final String columnRaw = lookupColumnFallback(field);
         final OffsetDateTime effective = (columnRaw != null) ? parseTimestampFallback(columnRaw) : fallbackTimestamp;
         final String fallback = effective == null ? null : effective.format(DateTimeFormatter.ISO_OFFSET_DATE_TIME);
-        final boolean hasDefault = field.hasDefaultValue();
+        final boolean hasDefault = field.hasDefaultValue() && field.defaultValue() != null;
 
         SchemaBuilder schema = SchemaBuilder.string().name(io.debezium.time.ZonedTimestamp.SCHEMA_NAME).version(SCHEMA_VERSION);
         if (fallback == null) {
