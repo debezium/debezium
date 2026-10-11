@@ -131,6 +131,9 @@ To ensure that Kafka retains the complete {prodname} change event message in its
 When you use the event flattening SMT to process a message emitted from a MongoDB connector, the SMT converts the structure of the records in the original message into properly typed Kafka Connect records that can be consumed by a typical sink connector.
 For example, the SMT converts the JSON strings that represent the `after` information in the original message into schema structures that any consumer can process.
 
+The SMT rebuilds the record key as well, and keeps the name that the connector gave the key field.
+With {link-prefix}:{link-mongodb-connector}#mongodb-property-change-event-key-mode[`change.event.key.mode`] set to `document_key` that field is named `documentKey` and holds the shard key fields followed by `_id`; otherwise it is named `id`.
+
 Optionally, you can configure the event flattening SMT for MongoDB to modify messages in other ways during processing.
 For more information, see the xref:mongodb-event-flattening-configuration[configuration topic].
 
@@ -536,7 +539,7 @@ This setting provides another way to indicate that the record has been deleted.
 
 |[[mongodb-extract-new-record-state-delete-tombstone-handling-mode-rewrite-with-id]]xref:mongodb-extract-new-record-state-delete-tombstone-handling-mode-rewrite-with-id[`delete.tombstone.handling.mode.rewrite-with-id`]
 |`false`
-|When set to `true` and `delete.tombstone.handling.mode` is `rewrite`, copies `id` field from the key and includes it as `_id` in the payload for delete events.
+|When set to `true` and `delete.tombstone.handling.mode` is `rewrite`, reads the `_id` of the deleted document from the record key and adds it to the payload for delete events.
 
 |[[mongodb-extract-new-record-state-add-headers-prefix]]<<mongodb-extract-new-record-state-add-headers-prefix, `add.headers.prefix`>>
 |__ (double-underscore)
