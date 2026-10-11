@@ -557,6 +557,49 @@ public class StringsTest {
     }
 
     @Test
+    @FixFor("debezium/dbz#2844")
+    public void listOfTrimmedWithRegexSpecialCharactersAsDelimiter() {
+        assertThat(Strings.listOfTrimmed("db1[ db2 [ db3", '[', Function.identity()))
+                .containsExactly("db1", "db2", "db3");
+        assertThat(Strings.listOfTrimmed("db1] db2 ] db3", ']', Function.identity()))
+                .containsExactly("db1", "db2", "db3");
+        assertThat(Strings.listOfTrimmed("db1\\ db2 \\ db3", '\\', Function.identity()))
+                .containsExactly("db1", "db2", "db3");
+        assertThat(Strings.listOfTrimmed("db1^ db2 ^ db3", '^', Function.identity()))
+                .containsExactly("db1", "db2", "db3");
+        assertThat(Strings.listOfTrimmed("db1. db2 . db3", '.', Function.identity()))
+                .containsExactly("db1", "db2", "db3");
+        assertThat(Strings.listOfTrimmed("db1- db2 - db3", '-', Function.identity()))
+                .containsExactly("db1", "db2", "db3");
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2844")
+    public void setOfWithRegexSpecialCharactersAsDelimiter() {
+        assertThat(Strings.setOf("db1[ db2 [ db3", '[', Function.identity()))
+                .containsExactlyInAnyOrder("db1", " db2 ", " db3");
+        assertThat(Strings.setOf("db1] db2 ] db3", ']', Function.identity()))
+                .containsExactlyInAnyOrder("db1", " db2 ", " db3");
+        assertThat(Strings.setOf("db1\\ db2 \\ db3", '\\', Function.identity()))
+                .containsExactlyInAnyOrder("db1", " db2 ", " db3");
+        assertThat(Strings.setOf("db1^ db2 ^ db3", '^', Function.identity()))
+                .containsExactlyInAnyOrder("db1", " db2 ", " db3");
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2844")
+    public void setOfTrimmedWithRegexSpecialCharactersAsDelimiter() {
+        assertThat(Strings.setOfTrimmed("db1[ db2 [ db3", '[', Function.identity()))
+                .containsExactlyInAnyOrder("db1", "db2", "db3");
+        assertThat(Strings.setOfTrimmed("db1] db2 ] db3", ']', Function.identity()))
+                .containsExactlyInAnyOrder("db1", "db2", "db3");
+        assertThat(Strings.setOfTrimmed("db1\\ db2 \\ db3", '\\', Function.identity()))
+                .containsExactlyInAnyOrder("db1", "db2", "db3");
+        assertThat(Strings.setOfTrimmed("db1^ db2 ^ db3", '^', Function.identity()))
+                .containsExactlyInAnyOrder("db1", "db2", "db3");
+    }
+
+    @Test
     public void listOfTrimmedWithCustomSplitterShouldTrimWhitespace() {
         List<String> result = Strings.listOfTrimmed("db1.col1, db2.col2 , db3.col3",
                 s -> s.split(","), Function.identity());
