@@ -40,8 +40,10 @@ runs:
       shell: ${{ inputs.shell }}
       run: |
         set -o pipefail
+        set +e
 
-        log_file="${RUNNER_TEMP}/mysql-${{ inputs.version-mysql-server }}-${{ inputs.profile }}.log"
+        trimmed_log="${RUNNER_TEMP}/mysql-${{ inputs.version-mysql-server }}-${{ inputs.profile }}-trimmed.log"
+        echo "::group::Full Maven output"
         ./mvnw clean install -B -ntp -pl debezium-connector-mysql -am \
           -P${{ inputs.profile }} \
           -Dcheckstyle.skip=true \
@@ -53,25 +55,32 @@ runs:
           -DfailFlakyTests=false \
           -Ddebezium.test.mongo.replica.primary.startup.timeout.seconds=120 \
           ${{ inputs.only-build == 'true' && '-DskipTests=true -DskipITs=true' || '' }} \
-          2>&1 | tee "${log_file}" | awk '
+          2>&1 | awk -v trimmed_log="${trimmed_log}" '
+            {
+              print
+              fflush()
+            }
             /\[ERROR\]/ || /(^|[[:space:]])ERROR([[:space:]:]|$)/ {
               error_context = 80
-              print
+              print > trimmed_log
               next
             }
             /\[WARNING\]/ || /(^|[[:space:]])WARN(ING)?([[:space:]:]|$)/ {
-              print
+              print > trimmed_log
               next
             }
             error_context > 0 {
-              print
+              print > trimmed_log
               error_context--
               next
             }
             /\[INFO\] (Running|Tests run:|Results:|Failures:|Errors:|Reactor Summary|BUILD |Total time:|Finished at:)/ {
-              print
+              print > trimmed_log
             }
           '
+        build_status=$?
+        echo "::endgroup::"
+        exit "${build_status}"
 
     - name: Summarize MySQL build failure
       if: failure()
@@ -81,7 +90,7 @@ runs:
         {
           echo "### MySQL ${{ inputs.version-mysql-server }} - ${{ inputs.profile }} failed"
           echo
-          echo "Full Maven output and test reports are available in artifact \`${artifact_name}\`."
+          echo "Trimmed Maven output and test reports are available in artifact \`${artifact_name}\`."
           echo
           echo '```text'
           find . -type f \( -path '*/target/surefire-reports/*.txt' -o -path '*/target/failsafe-reports/*.txt' \) \
@@ -96,7 +105,7 @@ runs:
       with:
         name: mysql-${{ inputs.version-mysql-server }}-${{ inputs.profile }}-diagnostics
         path: |
-          ${{ runner.temp }}/mysql-${{ inputs.version-mysql-server }}-${{ inputs.profile }}.log
+          ${{ runner.temp }}/mysql-${{ inputs.version-mysql-server }}-${{ inputs.profile }}-trimmed.log
           **/target/surefire-reports/**
           **/target/failsafe-reports/**
           **/target/*.dump
