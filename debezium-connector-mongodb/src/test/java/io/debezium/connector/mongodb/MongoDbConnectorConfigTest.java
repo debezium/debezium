@@ -35,6 +35,7 @@ import io.debezium.config.Configuration;
 import io.debezium.config.Field;
 import io.debezium.connector.mongodb.connection.MongoDbConnectionContext;
 import io.debezium.data.Envelope;
+import io.debezium.doc.FixFor;
 
 public class MongoDbConnectorConfigTest {
 
@@ -325,6 +326,23 @@ public class MongoDbConnectorConfigTest {
         verifyCursorPipelineValidateSuccess("[]");
         verifyCursorPipelineValidateSuccess("[{$match: {}}]");
         verifyCursorPipelineValidateSuccess("[{\"$match\": { \"$and\": [{\"operationType\": \"insert\"}, {\"fullDocument.eventId\": 1404 }] } }]\n");
+    }
+
+    @ParameterizedTest
+    @FixFor("debezium/dbz#79")
+    @ValueSource(strings = {
+            "[{$changeStream: {startAtOperationTime: {$timestamp: {t: 1753269600, i: 1}}}}]",
+            "[{$match: {operationType: 'insert'}}, {$changeStream: {}}]"
+    })
+    void shouldRejectChangeStreamStageInCursorPipeline(String pipeline) {
+        final var config = TestHelper.getConfiguration().edit()
+                .with(MongoDbConnectorConfig.CURSOR_PIPELINE, pipeline)
+                .build();
+        final var validation = new ConnectionValidationConnector().validate(config.asMap());
+        assertThat(validationErrors(validation, MongoDbConnectorConfig.CURSOR_PIPELINE))
+                .containsExactly("The 'cursor.pipeline' value is invalid: Change stream pipeline stage '$changeStream' is not supported: "
+                        + "the connector opens the change stream itself; to start streaming from a specific time, "
+                        + "use 'capture.start.op.time' or 'capture.start.timestamp'");
     }
 
     private static void verifyCursorPipelineValidateError(String value, String expectedError) {

@@ -1048,6 +1048,13 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig implements Sha
             .withImportance(Importance.LOW)
             .withDescription("The maximum processing time in milliseconds to wait for the oplog cursor to process a single poll request");
 
+    /**
+     * Change stream pipeline stages that cannot be used in {@link #CURSOR_PIPELINE}, mapped to the reason reported to the user.
+     */
+    private static final Map<String, String> UNSUPPORTED_CURSOR_PIPELINE_STAGES = Map.of(
+            "$changeStream", "the connector opens the change stream itself; to start streaming from a specific time, use '"
+                    + CAPTURE_START_OP_TIME.name() + "' or '" + CAPTURE_START_TIMESTAMP.name() + "'");
+
     public static final Field CURSOR_PIPELINE = Field.create("cursor.pipeline")
             .withDisplayName("Pipeline stages applied to the change stream cursor")
             .withType(Type.STRING)
@@ -1123,7 +1130,7 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig implements Sha
                     SNAPSHOT_FILTER_QUERY_BY_COLLECTION)
             .group(Field.Group.CONNECTOR, TOPIC_PREFIX, SNAPSHOT_MODE, CAPTURE_MODE, CAPTURE_SCOPE, CAPTURE_TARGET, JSON_SERIALIZATION_MODE, SCHEMA_NAME_ADJUSTMENT_MODE,
                     SOURCE_INFO_STRUCT_MAKER, CAPTURE_START_OP_TIME, CAPTURE_START_TIMESTAMP)
-            .group(Field.Group.CONNECTOR_ADVANCED, QUERY_FETCH_SIZE)
+            .group(Field.Group.CONNECTOR_ADVANCED, QUERY_FETCH_SIZE, CURSOR_PIPELINE)
             .create();
 
     /**
@@ -1231,14 +1238,26 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig implements Sha
     private static int validateChangeStreamPipeline(Configuration config, Field field, ValidationOutput problems) {
         String value = config.getString(field);
 
+        final ChangeStreamPipeline pipeline;
         try {
-            new ChangeStreamPipeline(value);
+            pipeline = new ChangeStreamPipeline(value);
         }
         catch (Exception e) {
             problems.accept(field, value, "Change stream pipeline JSON is invalid: " + e.getMessage());
             return 1;
         }
-        return 0;
+
+        int count = 0;
+        for (final var stage : pipeline.getStages()) {
+            for (final var stageName : stage.toBsonDocument().keySet()) {
+                final var reason = UNSUPPORTED_CURSOR_PIPELINE_STAGES.get(stageName);
+                if (reason != null) {
+                    problems.accept(field, value, "Change stream pipeline stage '" + stageName + "' is not supported: " + reason);
+                    count++;
+                }
+            }
+        }
+        return count;
     }
 
     private static int validateOversizeSkipThreshold(Configuration config, Field field, ValidationOutput problems) {
