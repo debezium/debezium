@@ -233,8 +233,9 @@ public class PostgresValueConverter extends JdbcValueConverters {
         switch (oidValue) {
             case PgOid.BIT:
             case PgOid.BIT_ARRAY:
-            case PgOid.VARBIT:
                 return column.length() > 1 ? Bits.builder(column.length()) : SchemaBuilder.bool();
+            case PgOid.VARBIT:
+                return Bits.builder(column.length());
             case PgOid.INTERVAL:
                 if (temporalPrecisionMode == TemporalPrecisionMode.STRUCTURED) {
                     return StructuredDuration.builder();
@@ -911,17 +912,12 @@ public class PostgresValueConverter extends JdbcValueConverters {
 
     @Override
     protected ValueConverter convertBits(Column column, Field fieldDefn) {
-        // For VARBIT(1), we need special handling because JDBC returns PGobject
-        if (column.nativeType() == PgOid.VARBIT && column.length() == 1) {
-            return data -> {
-                if (data instanceof PGobject pgObject) {
-                    data = pgObject.getValue();
-                }
-                if (data instanceof String str) {
-                    return Integer.valueOf(str, 2) == 0 ? Boolean.FALSE : Boolean.TRUE;
-                }
-                return convertBit(column, fieldDefn, data);
-            };
+        // VARBIT maps to BYTES, so always use the byte-array conversion path.
+        // (The base class routes length-1 columns to convertBit/boolean, which would
+        // conflict with the Bits schema and emit null.)
+        if (column.nativeType() == PgOid.VARBIT) {
+            int numBytes = column.length() / Byte.SIZE + (column.length() % Byte.SIZE == 0 ? 0 : 1);
+            return data -> convertBits(column, fieldDefn, data, numBytes);
         }
         return super.convertBits(column, fieldDefn);
     }
@@ -933,9 +929,8 @@ public class PostgresValueConverter extends JdbcValueConverters {
             data = pgObject.getValue();
         }
 
-        // For VARBIT(1), convert to boolean just like BIT(1)
-        if (column.length() == 1 && data instanceof String str) {
-            // Return boolean directly
+        // Only BIT(1) maps to boolean; VARBIT(1) falls through to the Bits path below
+        if (column.nativeType() == PgOid.BIT && column.length() == 1 && data instanceof String str) {
             return Integer.valueOf(str, 2) == 0 ? Boolean.FALSE : Boolean.TRUE;
         }
 

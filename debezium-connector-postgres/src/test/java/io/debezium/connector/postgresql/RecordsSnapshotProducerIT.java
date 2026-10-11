@@ -10,6 +10,7 @@ import static io.debezium.connector.postgresql.TestHelper.PK_FIELD;
 import static io.debezium.connector.postgresql.TestHelper.topicName;
 import static io.debezium.junit.EqualityCheck.LESS_THAN;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -108,7 +109,7 @@ public class RecordsSnapshotProducerIT extends AbstractRecordsProducerTest {
     }
 
     @Test
-    @FixFor("debezium/dbz#2025")
+    @FixFor({ "debezium/dbz#2025", "debezium/dbz#2772" })
     public void shouldGenerateSnapshotForVarbit1Datatype() throws Exception {
         TestHelper.dropAllSchemas();
         TestHelper.executeDDL("postgres_create_tables.ddl");
@@ -129,9 +130,9 @@ public class RecordsSnapshotProducerIT extends AbstractRecordsProducerTest {
             Struct after = value.getStruct(Envelope.FieldName.AFTER);
 
             // Verify bv1 (varbit(1)) field exists and has the correct value and type
-            Boolean varbit1Value = after.getBoolean("bv1");
+            byte[] varbit1Value = after.getBytes("bv1");
             assertNotNull(varbit1Value, "varbit(1) field 'bv1' should not be NULL in snapshot");
-            assertTrue(varbit1Value, "varbit(1) field 'bv1' should be true");
+            assertArrayEquals(new byte[]{ 1 }, varbit1Value, "varbit(1) field 'bv1' should be bytes {1}");
 
             // Verify bit(1) field works
             Boolean bit1Value = after.getBoolean("bol");

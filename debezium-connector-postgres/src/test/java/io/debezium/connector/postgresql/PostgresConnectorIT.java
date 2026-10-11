@@ -3676,6 +3676,30 @@ public class PostgresConnectorIT extends AbstractAsyncEngineConnectorTest {
     }
 
     @Test
+    @FixFor("debezium/dbz#2772")
+    public void shouldPreserveEmptyVarbitValue() throws Exception {
+        TestHelper.execute(CREATE_TABLES_STMT);
+        TestHelper.execute("CREATE TABLE s1.varbit_table (pk SERIAL, v varbit(1), primary key (pk))");
+        TestHelper.execute("INSERT INTO s1.varbit_table (pk, v) VALUES (1, B'')");
+        TestHelper.execute("INSERT INTO s1.varbit_table (pk, v) VALUES (2, B'1')");
+
+        Configuration config = TestHelper.defaultConfig()
+                .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL)
+                .with(PostgresConnectorConfig.TABLE_INCLUDE_LIST, "s1.varbit_table")
+                .build();
+        start(PostgresConnector.class, config);
+        assertConnectorIsRunning();
+
+        SourceRecords records = consumeRecordsByTopic(2);
+        List<SourceRecord> recs = records.recordsForTopic(topicName("s1.varbit_table"));
+        assertThat(recs).hasSize(2);
+
+        // empty B'' must be preserved as empty bytes, not NULL (the bug)
+        assertThat(((Struct) recs.get(0).value()).getStruct("after").get("v")).isEqualTo(new byte[]{});
+        assertThat(((Struct) recs.get(1).value()).getStruct("after").get("v")).isEqualTo(new byte[]{ 1 });
+    }
+
+    @Test
     @FixFor("DBZ-5204")
     public void testShouldNotCloseConnectionFetchingMetadataWithNewDataTypes() throws Exception {
         TestHelper.execute(CREATE_TABLES_STMT);
