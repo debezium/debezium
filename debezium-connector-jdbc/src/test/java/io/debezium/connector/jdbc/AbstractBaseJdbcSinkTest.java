@@ -35,7 +35,7 @@ public abstract class AbstractBaseJdbcSinkTest {
         final Map<String, String> config = new LinkedHashMap<>();
         // Create base configuration from system properties
         config.put(JdbcSinkConnectorConfig.ENABLE_SHARED_CHANGE_EVENT_SINK_FIELD.name(),
-                System.getProperty("enable.sces", "false"));
+                System.getProperty("enable.sces", "true"));
         return config;
     }
 

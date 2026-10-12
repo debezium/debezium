@@ -21,7 +21,7 @@ public class TestSinkConnectorConfig implements SinkConnectorConfig {
     private boolean deleteEnabled = false;
     private String collectionNameFormat = "${topic}";
     private String cloudEventsSchemaNamePattern = ".*CloudEvents\\.Envelope$";
-    private KeyedMessageBatchMode keyedMessageBatchMode = KeyedMessageBatchMode.DEDUPLICATION;
+    private BufferMode bufferMode = BufferMode.DEDUPLICATION;
     private CollectionNamingStrategy collectionNamingStrategy = new DefaultCollectionNamingStrategy();
 
     public TestSinkConnectorConfig withBatchSize(int batchSize) {
@@ -64,8 +64,8 @@ public class TestSinkConnectorConfig implements SinkConnectorConfig {
         return this;
     }
 
-    public TestSinkConnectorConfig withKeyedMessageBatchMode(KeyedMessageBatchMode keyedMessageBatchMode) {
-        this.keyedMessageBatchMode = keyedMessageBatchMode;
+    public TestSinkConnectorConfig withBufferMode(BufferMode bufferMode) {
+        this.bufferMode = bufferMode;
         return this;
     }
 
@@ -80,8 +80,8 @@ public class TestSinkConnectorConfig implements SinkConnectorConfig {
     }
 
     @Override
-    public KeyedMessageBatchMode getKeyedMessageBatchMode() {
-        return keyedMessageBatchMode;
+    public BufferMode getBufferMode() {
+        return bufferMode;
     }
 
     @Override
