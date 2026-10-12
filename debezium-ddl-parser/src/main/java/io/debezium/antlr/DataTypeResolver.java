@@ -80,6 +80,10 @@ public class DataTypeResolver {
     }
 
     private DataType buildDataType(ParserRuleContext dataTypeContext, DataTypeEntry dataTypeEntry, DataTypeBuilder dataTypeBuilder) {
+        if (dataTypeEntry.getDataTypeName() != null) {
+            dataTypeBuilder.reset();
+            dataTypeBuilder.addToName(dataTypeEntry.getDataTypeName());
+        }
         addOptionalSuffixToName(dataTypeContext, dataTypeEntry, dataTypeBuilder);
         dataTypeBuilder.jdbcType(dataTypeEntry.getJdbcDataType());
         dataTypeBuilder.length(dataTypeEntry.getDefaultLength());
@@ -131,6 +135,10 @@ public class DataTypeResolver {
          */
         private final Integer[] dbmsDataTypeTokenIdentifiers;
         /**
+         * An optional normalized name to use instead of the parsed DBMS data type tokens.
+         */
+        private String dataTypeName;
+        /**
          * Token identifiers for optional suffix tokens for DBMS data type.
          */
         private Integer[] suffixTokens = null;
@@ -148,6 +156,10 @@ public class DataTypeResolver {
 
         int getJdbcDataType() {
             return jdbcDataType;
+        }
+
+        String getDataTypeName() {
+            return dataTypeName;
         }
 
         Integer[] getSuffixTokens() {
@@ -170,6 +182,17 @@ public class DataTypeResolver {
          */
         public DataTypeEntry setSuffixTokens(Integer... suffixTokens) {
             this.suffixTokens = suffixTokens;
+            return this;
+        }
+
+        /**
+         * Sets the normalized name to use for the resolved data type.
+         *
+         * @param dataTypeName normalized data type name.
+         * @return instance of this class, so the calls may be chained.
+         */
+        public DataTypeEntry setDataTypeName(String dataTypeName) {
+            this.dataTypeName = dataTypeName;
             return this;
         }
 
@@ -200,7 +223,7 @@ public class DataTypeResolver {
         @Override
         public String toString() {
             return "DataTypeEntry [jdbcDataType=" + jdbcDataType + ", dbmsDataTypeTokenIdentifiers="
-                    + Arrays.toString(dbmsDataTypeTokenIdentifiers) + ", suffixTokens=" + Arrays.toString(suffixTokens)
+                    + Arrays.toString(dbmsDataTypeTokenIdentifiers) + ", dataTypeName=" + dataTypeName + ", suffixTokens=" + Arrays.toString(suffixTokens)
                     + ", defaultLength=" + defaultLength + ", defaultScale=" + defaultScale + "]";
         }
     }
