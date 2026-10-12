@@ -8,6 +8,7 @@ package io.debezium.relational;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Locale;
 import java.util.Objects;
 import java.util.Optional;
 
@@ -160,7 +161,7 @@ public class ColumnImpl implements Column, Comparable<Column> {
 
     @Override
     public int hashCode() {
-        return name.hashCode();
+        return name.toLowerCase(Locale.ROOT).hashCode();
     }
 
     @Override
