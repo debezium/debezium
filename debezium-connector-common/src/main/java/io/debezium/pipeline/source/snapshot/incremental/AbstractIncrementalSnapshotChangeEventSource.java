@@ -683,12 +683,13 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<P extends Par
     /**
      * Returns the declared id of the data collection a literal data collection id identifies, or the given id
      * as it is, if it identifies none. The id may as well be a regular expression that did not match any
-     * data collection, which need not even parse as a table id.
+     * data collection, which need not even parse as a table id. The id is parsed the way the connector parses
+     * table ids, so that it has the parts the connector's own ids have, which the table filter evaluates.
      */
     private String toDeclaredIdentifier(String dataCollectionId) {
 
         try {
-            final TableId tableId = TableId.parse(dataCollectionId);
+            final TableId tableId = TableId.parse(dataCollectionId, connectorConfig.useCatalogBeforeSchema());
             final Table table = tableId != null ? databaseSchema.tableFor(tableId) : null;
             return table != null ? table.id().identifier() : dataCollectionId;
         }

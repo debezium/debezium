@@ -39,7 +39,6 @@ public abstract class HistorizedRelationalDatabaseConnectorConfig extends Relati
 
     private static final String DEFAULT_SCHEMA_HISTORY = "io.debezium.storage.kafka.history.KafkaSchemaHistory";
 
-    private final boolean useCatalogBeforeSchema;
     private final Class<? extends SourceConnector> connectorClass;
     private final boolean multiPartitionMode;
     private final Predicate<String> ddlFilter;
@@ -113,7 +112,6 @@ public abstract class HistorizedRelationalDatabaseConnectorConfig extends Relati
                                                           ColumnFilterMode columnFilterMode,
                                                           boolean multiPartitionMode) {
         super(config, systemTablesFilter, tableIdMapper, defaultSnapshotFetchSize, columnFilterMode, useCatalogBeforeSchema);
-        this.useCatalogBeforeSchema = useCatalogBeforeSchema;
         this.connectorClass = connectorClass;
         this.multiPartitionMode = multiPartitionMode;
         this.ddlFilter = createDdlFilter(config);
@@ -152,10 +150,6 @@ public abstract class HistorizedRelationalDatabaseConnectorConfig extends Relati
                 new SchemaHistoryMetrics(this, multiPartitionMode(), internerMetrics), useCatalogBeforeSchema()); // validates
 
         return schemaHistory;
-    }
-
-    public boolean useCatalogBeforeSchema() {
-        return useCatalogBeforeSchema;
     }
 
     public boolean multiPartitionMode() {
