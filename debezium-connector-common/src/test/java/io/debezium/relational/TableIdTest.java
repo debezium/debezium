@@ -120,5 +120,11 @@ public class TableIdTest {
 
         TableId id3 = TableId.parse("[db].[schema].[table]]]", false, predicates);
         assertThat(id3).isEqualTo(new TableId("db", "schema", "table]"));
+
+        TableId id4 = new TableId(null, "schema", "tab]le");
+        assertThat(TableId.parse(id4.toBracketQuoted().toString(), false, predicates)).isEqualTo(id4);
+
+        TableId id5 = new TableId("db", "sch]ema", "tab]le");
+        assertThat(TableId.parse(id5.toBracketQuoted().toString(), false, predicates)).isEqualTo(id5);
     }
 }
