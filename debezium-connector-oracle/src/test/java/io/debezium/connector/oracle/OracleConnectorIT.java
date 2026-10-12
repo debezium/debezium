@@ -3585,14 +3585,19 @@ public class OracleConnectorIT extends AbstractAsyncEngineConnectorTest {
     @SkipWhenAdapterNameIsNot(value = SkipWhenAdapterNameIsNot.AdapterName.ANY_LOGMINER, reason = "Only applies to LogMiner")
     public void shouldRetireSnapshotBoundaryOffsetsOnceCommitScnPassesSnapshot() throws Exception {
         TestHelper.dropTable(connection, "dbz2779");
-        try {
+        TestHelper.dropTable(connection, "dbz2779_other");
+        try (OracleConnection otherConnection = TestHelper.testConnection()) {
             connection.execute("CREATE TABLE dbz2779 (id numeric(9,0) primary key, data varchar2(50))");
             TestHelper.streamTable(connection, "dbz2779");
+            // Not captured, only used to commit a transaction past the snapshot commit SCN.
+            connection.execute("CREATE TABLE dbz2779_other (id numeric(9,0) primary key)");
 
-            // Committed before the snapshot, so it must only be captured by the snapshot.
-            connection.execute("INSERT INTO dbz2779 (id,data) values (3, 'committed before snapshot')");
-            // In progress when the snapshot is taken, so it must only be captured by streaming.
+            // In progress when the snapshot is taken, so it must only be captured by streaming. Mining resumes
+            // just before it starts.
             connection.executeWithoutCommitting("INSERT INTO dbz2779 (id,data) values (1, 'in progress at snapshot')");
+            // Committed after mining resumes but before the snapshot is taken, so it is mined again on every
+            // restart and must only be captured by the snapshot.
+            otherConnection.execute("INSERT INTO dbz2779 (id,data) values (3, 'committed before snapshot')");
 
             // Without heartbeats, streaming emits no offset while no captured transaction commits.
             final Configuration config = TestHelper.defaultConfig()
@@ -3606,82 +3611,61 @@ public class OracleConnectorIT extends AbstractAsyncEngineConnectorTest {
             assertConnectorIsRunning();
             waitForStreamingRunning(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
 
-            // The snapshot offset already points before the in-progress transaction, where mining resumes,
-            // and carries the SCN the snapshot was taken at as the snapshot commit SCN.
             final List<SourceRecord> snapshotRecords = consumeRecordsUntilId(topicName, 3);
             assertThat(snapshotRecords).hasSize(1);
             assertThat(((Struct) snapshotRecords.get(0).value()).getString("op")).isEqualTo(Envelope.Operation.READ.code());
-            final Map<String, ?> snapshotOffset = snapshotRecords.get(0).sourceOffset();
-            // The last snapshot record's offset is rebuilt after the snapshot is marked completed.
+
+            // Recover after the snapshot completion offset is persisted but before any streaming offset is.
+            stopConnector();
+            final Map<String, Object> snapshotOffset = readLastCommittedOffset(config, partition);
+            // The restart does not take a new snapshot, and resumes mining before the in-progress transaction
+            // with the SCN the snapshot was taken at as the snapshot commit SCN.
             assertThat(snapshotOffset.get(OracleOffsetContext.SNAPSHOT_COMPLETED_KEY)).isEqualTo(true);
             final Scn resumeScn = OracleOffsetContext.getScnFromOffsetMapByKey(snapshotOffset, SourceInfo.SCN_KEY);
             final Scn snapshotCommitScn = OracleOffsetContext.loadSnapshotCommitScn(snapshotOffset);
-            assertThat(resumeScn).isNotNull();
-            assertThat(snapshotCommitScn).isNotNull();
             assertThat(resumeScn).isLessThan(snapshotCommitScn);
-            assertThat(snapshotOffset).doesNotContainKey("snapshot_scn");
 
             // The snapshot record is read as of the snapshot commit SCN.
             final Struct snapshotSource = ((Struct) snapshotRecords.get(0).value()).getStruct("source");
             assertThat(snapshotSource.getString(SourceInfo.EVENT_SCN_KEY)).isEqualTo(snapshotCommitScn.toString());
 
-            // Recover after the snapshot completion offset is persisted but before any streaming offset is.
-            stopConnector();
-            Map<String, Object> offset = readLastCommittedOffset(config, partition);
-            // The restart does not take a new snapshot and resumes mining from the persisted offset SCN.
-            assertThat(offset.get(OracleOffsetContext.SNAPSHOT_COMPLETED_KEY)).isEqualTo(true);
-            assertThat(OracleOffsetContext.getScnFromOffsetMapByKey(offset, SourceInfo.SCN_KEY)).isEqualTo(resumeScn);
-            assertThat(OracleOffsetContext.loadSnapshotCommitScn(offset)).isEqualTo(snapshotCommitScn);
+            // Every commit mined advances the commit SCN, so commit past the snapshot commit SCN while the
+            // in-progress transaction is still open, instead of relying on other activity in the database.
+            otherConnection.execute("INSERT INTO dbz2779_other (id) values (1)");
 
+            // The row committed before the snapshot is mined again and skipped by the snapshot commit SCN. Once
+            // every redo thread has committed past it, the snapshot commit SCN is retired, while the offset SCN
+            // still does not move backwards.
             start(OracleConnector.class, heartbeatConfig);
             assertConnectorIsRunning();
             waitForStreamingRunning(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
 
-            // Streaming persists its position without moving the offset SCN backwards, and keeps the snapshot
-            // commit SCN while the in-progress transaction has not committed past it.
             Awaitility.await().atMost(Duration.ofMinutes(2)).until(() -> {
                 final Map<String, Object> committedOffset = readLastCommittedOffset(config, partition);
                 return committedOffset != null
-                        && !committedOffset.containsKey(OracleOffsetContext.SNAPSHOT_COMPLETED_KEY)
                         && OracleOffsetContext.getScnFromOffsetMapByKey(committedOffset, SourceInfo.SCN_KEY).compareTo(resumeScn) >= 0
-                        && snapshotCommitScn.equals(OracleOffsetContext.loadSnapshotCommitScn(committedOffset));
-            });
-
-            // Recover after the first streaming offset is persisted but before the in-progress transaction commits.
-            stopConnector();
-            start(OracleConnector.class, heartbeatConfig);
-            assertConnectorIsRunning();
-            waitForStreamingRunning(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
-
-            // The transaction in progress at the snapshot commits after the snapshot commit SCN, and must be
-            // emitted exactly once, while the transaction committed before the snapshot must not be emitted again.
-            connection.commit();
-            final List<SourceRecord> streamingRecords = consumeRecordsUntilId(topicName, 1);
-            assertThat(streamingRecords).hasSize(1);
-            assertThat(((Struct) streamingRecords.get(0).value()).getString("op")).isEqualTo(Envelope.Operation.CREATE.code());
-
-            // Once every redo thread has committed past the snapshot commit SCN, it is retired too.
-            Awaitility.await().atMost(Duration.ofMinutes(2)).until(() -> {
-                final Map<String, Object> committedOffset = readLastCommittedOffset(config, partition);
-                return committedOffset != null
                         && CommitScn.load(committedOffset).compareTo(snapshotCommitScn) > 0
                         && !committedOffset.containsKey(OracleOffsetContext.SNAPSHOT_COMMIT_SCN_KEY);
             });
 
-            // Restarting from the retired offsets resumes streaming without emitting earlier changes again.
+            // Recover from the retired offsets before the in-progress transaction commits. The row committed
+            // before the snapshot is mined again and must now be skipped by the commit SCN.
             stopConnector();
             start(OracleConnector.class, heartbeatConfig);
             assertConnectorIsRunning();
             waitForStreamingRunning(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
 
-            connection.execute("INSERT INTO dbz2779 (id,data) values (4, 'after restart')");
-            final List<SourceRecord> restartRecords = consumeRecordsUntilId(topicName, 4);
-            assertThat(restartRecords).hasSize(1);
-            assertThat(((Struct) restartRecords.get(0).value()).getString("op")).isEqualTo(Envelope.Operation.CREATE.code());
+            // Records are kept across restarts, so the in-progress transaction must be emitted exactly once, and
+            // the row committed before the snapshot must not have been emitted by streaming after any restart.
+            connection.commit();
+            final List<SourceRecord> streamingRecords = consumeRecordsUntilId(topicName, 1);
+            assertThat(streamingRecords).hasSize(1);
+            assertThat(((Struct) streamingRecords.get(0).value()).getString("op")).isEqualTo(Envelope.Operation.CREATE.code());
         }
         finally {
             stopConnector();
             TestHelper.dropTable(connection, "dbz2779");
+            TestHelper.dropTable(connection, "dbz2779_other");
         }
     }
 
