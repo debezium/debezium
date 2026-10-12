@@ -92,6 +92,8 @@ public abstract class AbstractBufferedLogMinerStreamingChangeEventSourceTest ext
 
     private static final Logger LOGGER = LoggerFactory.getLogger(AbstractBufferedLogMinerStreamingChangeEventSourceTest.class);
 
+    // The catalog of the mocked event rows and relational model, independent of the database the suite runs against
+    private static final String CATALOG_NAME = "ORCLPDB1";
     private static final String TRANSACTION_ID_1 = "1234567890";
     private static final String TRANSACTION_ID_2 = "9876543210";
     private static final String TRANSACTION_ID_3 = "9880212345";
@@ -961,14 +963,14 @@ public abstract class AbstractBufferedLogMinerStreamingChangeEventSourceTest ext
         final Configuration config = getPhysicalStandbyConfig().build();
         final OracleConnectorConfig connectorConfig = new OracleConnectorConfig(config);
         final OracleConnection primary = connectionFactory.mainConnection();
-        Mockito.when(primary.getTableIdByObjectId(connectorConfig.getCatalogName(), 250282L, 250282L))
-                .thenReturn(new TableId(connectorConfig.getCatalogName(), "SYS", "MY_TABLE"));
+        Mockito.when(primary.getTableIdByObjectId(CATALOG_NAME, 250282L, 250282L))
+                .thenReturn(new TableId(CATALOG_NAME, "SYS", "MY_TABLE"));
 
         try (var source = getChangeEventSource(config)) {
             source.processEvent(getUnresolvableInsertLogMinerEventRow(2, TRANSACTION_ID_1, 250282L));
 
             Mockito.verify(primary).setSessionToPdb(connectorConfig.getPdbName());
-            Mockito.verify(primary).getTableIdByObjectId(connectorConfig.getCatalogName(), 250282L, 250282L);
+            Mockito.verify(primary).getTableIdByObjectId(CATALOG_NAME, 250282L, 250282L);
             Mockito.verify(primary).resetSessionToCdb();
             assertThat(source.getTransactionCache().getTransaction(TRANSACTION_ID_1)).isNull();
         }
@@ -1022,11 +1024,10 @@ public abstract class AbstractBufferedLogMinerStreamingChangeEventSourceTest ext
     @FixFor("debezium/dbz#2798")
     void shouldProcessEventForCapturedTableResolvedFromPrimaryOnPhysicalStandby() throws Exception {
         final Configuration config = getPhysicalStandbyConfig().build();
-        final OracleConnectorConfig connectorConfig = new OracleConnectorConfig(config);
-        final TableId resolvedTableId = TableId.parse("ORCLPDB1.DEBEZIUM.TEST_TABLE");
+        final TableId resolvedTableId = new TableId(CATALOG_NAME, "DEBEZIUM", "TEST_TABLE");
         final OracleConnection primary = connectionFactory.mainConnection();
         // The stub only matches when the streaming source hands the event's catalog to the lookup.
-        Mockito.when(primary.getTableIdByObjectId(connectorConfig.getCatalogName(), 250282L, 250282L)).thenReturn(resolvedTableId);
+        Mockito.when(primary.getTableIdByObjectId(CATALOG_NAME, 250282L, 250282L)).thenReturn(resolvedTableId);
 
         try (var source = getChangeEventSource(config)) {
             final LogMinerEventRow event = getUnresolvableInsertLogMinerEventRow(2, TRANSACTION_ID_1, 250282L);
@@ -1044,16 +1045,15 @@ public abstract class AbstractBufferedLogMinerStreamingChangeEventSourceTest ext
     @FixFor("debezium/dbz#2798")
     void shouldQueryPrimaryOnceForRepeatedEventsOfNonCapturedObjectOnPhysicalStandby() throws Exception {
         final Configuration config = getPhysicalStandbyConfig().build();
-        final OracleConnectorConfig connectorConfig = new OracleConnectorConfig(config);
         final OracleConnection primary = connectionFactory.mainConnection();
-        Mockito.when(primary.getTableIdByObjectId(connectorConfig.getCatalogName(), 250282L, 250282L))
-                .thenReturn(new TableId(connectorConfig.getCatalogName(), "SYS", "MY_TABLE"));
+        Mockito.when(primary.getTableIdByObjectId(CATALOG_NAME, 250282L, 250282L))
+                .thenReturn(new TableId(CATALOG_NAME, "SYS", "MY_TABLE"));
 
         try (var source = getChangeEventSource(config)) {
             source.processEvent(getUnresolvableInsertLogMinerEventRow(2, TRANSACTION_ID_1, 250282L));
             source.processEvent(getUnresolvableInsertLogMinerEventRow(3, TRANSACTION_ID_1, 250282L));
 
-            Mockito.verify(primary, Mockito.times(1)).getTableIdByObjectId(connectorConfig.getCatalogName(), 250282L, 250282L);
+            Mockito.verify(primary, Mockito.times(1)).getTableIdByObjectId(CATALOG_NAME, 250282L, 250282L);
             assertThat(source.getTransactionCache().getTransaction(TRANSACTION_ID_1)).isNull();
         }
     }
@@ -1062,18 +1062,17 @@ public abstract class AbstractBufferedLogMinerStreamingChangeEventSourceTest ext
     @FixFor("debezium/dbz#2798")
     void shouldQueryPrimaryAgainWhenDataObjectIdChangesOnPhysicalStandby() throws Exception {
         final Configuration config = getPhysicalStandbyConfig().build();
-        final OracleConnectorConfig connectorConfig = new OracleConnectorConfig(config);
         final OracleConnection primary = connectionFactory.mainConnection();
-        Mockito.when(primary.getTableIdByObjectId(eq(connectorConfig.getCatalogName()), eq(250282L), Mockito.anyLong()))
-                .thenReturn(new TableId(connectorConfig.getCatalogName(), "SYS", "MY_TABLE"));
+        Mockito.when(primary.getTableIdByObjectId(eq(CATALOG_NAME), eq(250282L), Mockito.anyLong()))
+                .thenReturn(new TableId(CATALOG_NAME, "SYS", "MY_TABLE"));
 
         try (var source = getChangeEventSource(config)) {
             // A truncate or a table move assigns a new data object id, which must invalidate the cached answer.
             source.processEvent(getUnresolvableInsertLogMinerEventRow(2, TRANSACTION_ID_1, 250282L, 250282L));
             source.processEvent(getUnresolvableInsertLogMinerEventRow(3, TRANSACTION_ID_1, 250282L, 250283L));
 
-            Mockito.verify(primary).getTableIdByObjectId(connectorConfig.getCatalogName(), 250282L, 250282L);
-            Mockito.verify(primary).getTableIdByObjectId(connectorConfig.getCatalogName(), 250282L, 250283L);
+            Mockito.verify(primary).getTableIdByObjectId(CATALOG_NAME, 250282L, 250282L);
+            Mockito.verify(primary).getTableIdByObjectId(CATALOG_NAME, 250282L, 250283L);
         }
     }
 
@@ -1083,14 +1082,13 @@ public abstract class AbstractBufferedLogMinerStreamingChangeEventSourceTest ext
         final Configuration config = getPhysicalStandbyConfig()
                 .with(CommonConnectorConfig.EVENT_PROCESSING_FAILURE_HANDLING_MODE, "warn")
                 .build();
-        final OracleConnectorConfig connectorConfig = new OracleConnectorConfig(config);
         final OracleConnection primary = connectionFactory.mainConnection();
 
         try (var source = getChangeEventSource(config)) {
             source.processEvent(getUnresolvableInsertLogMinerEventRow(2, TRANSACTION_ID_1, 250282L));
             source.processEvent(getUnresolvableInsertLogMinerEventRow(3, TRANSACTION_ID_1, 250282L));
 
-            Mockito.verify(primary, Mockito.times(1)).getTableIdByObjectId(connectorConfig.getCatalogName(), 250282L, 250282L);
+            Mockito.verify(primary, Mockito.times(1)).getTableIdByObjectId(CATALOG_NAME, 250282L, 250282L);
             assertThat(source.getTransactionCache().getTransaction(TRANSACTION_ID_1)).isNull();
         }
     }
@@ -1115,7 +1113,7 @@ public abstract class AbstractBufferedLogMinerStreamingChangeEventSourceTest ext
     }
 
     private LogMinerEventRow getUnresolvableInsertLogMinerEventRow(long scn, String transactionId, long objectId, long dataObjectId) {
-        final AtomicReference<TableId> tableId = new AtomicReference<>(new TableId("ORCLPDB1", "UNKNOWN", "OBJ# " + objectId));
+        final AtomicReference<TableId> tableId = new AtomicReference<>(new TableId(CATALOG_NAME, "UNKNOWN", "OBJ# " + objectId));
         final LogMinerEventRow row = getInsertLogMinerEventRow(scn, transactionId, Instant.now(), "TEST_TABLE", "AAAAAAAAAAAAAAAAAB", "'Test'");
         Mockito.when(row.getTableId()).thenAnswer(invocation -> tableId.get());
         Mockito.when(row.getTableName()).thenAnswer(invocation -> tableId.get().table());
