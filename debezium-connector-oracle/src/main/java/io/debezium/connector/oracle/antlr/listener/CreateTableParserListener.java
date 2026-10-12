@@ -15,7 +15,6 @@ import org.slf4j.LoggerFactory;
 
 import io.debezium.connector.oracle.antlr.OracleDdlParser;
 import io.debezium.ddl.parser.oracle.generated.PlSqlParser;
-import io.debezium.relational.Column;
 import io.debezium.relational.ColumnEditor;
 import io.debezium.relational.Table;
 import io.debezium.relational.TableEditor;
@@ -86,7 +85,7 @@ public class CreateTableParserListener extends BaseParserListener {
     public void enterColumn_definition(PlSqlParser.Column_definitionContext ctx) {
         parser.runIfNotNull(() -> {
             String columnName = getColumnName(ctx.column_name());
-            ColumnEditor columnEditor = Column.editor().name(columnName);
+            ColumnEditor columnEditor = parser.metadataFactory().columnEditor().name(columnName);
             if (columnDefinitionParserListener == null) {
                 columnDefinitionParserListener = new ColumnDefinitionParserListener(tableEditor, columnEditor, parser, listeners);
                 columnDefinitionParserListener.enterColumn_definition(ctx);

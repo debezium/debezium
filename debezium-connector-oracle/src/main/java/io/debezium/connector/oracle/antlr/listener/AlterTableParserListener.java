@@ -115,7 +115,7 @@ public class AlterTableParserListener extends BaseParserListener {
             columnEditors = new ArrayList<>(columns.size());
             for (PlSqlParser.Column_definitionContext column : columns) {
                 String columnName = getColumnName(column.column_name());
-                ColumnEditor editor = Column.editor().name(columnName);
+                ColumnEditor editor = parser.metadataFactory().columnEditor().name(columnName);
                 columnEditors.add(editor);
             }
             if (!columnEditors.isEmpty()) {
