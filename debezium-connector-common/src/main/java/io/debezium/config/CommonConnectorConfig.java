@@ -2400,6 +2400,21 @@ public abstract class CommonConnectorConfig {
                 .anyMatch(id -> id.equals(dataCollectionId));
     }
 
+    /**
+     * Checks whether the given data collection is a signaling data collection.
+     *
+     * @param dataCollectionId the data collection identifier; may be null
+     * @param caseInsensitive whether table identifiers are compared case-insensitively, because the database compares them that way
+     * @return {@code true} if the data collection is a signaling data collection, {@code false} otherwise
+     */
+    public boolean isSignalDataCollection(DataCollectionId dataCollectionId, boolean caseInsensitive) {
+        if (isSignalDataCollection(dataCollectionId)) {
+            return true;
+        }
+        return caseInsensitive && dataCollectionId instanceof TableId tableId
+                && signalingDataCollectionIds.stream().anyMatch(id -> id.toLowercase().equals(tableId.toLowercase()));
+    }
+
     public Optional<String> customRetriableException() {
         return Optional.ofNullable(config.getString(CUSTOM_RETRIABLE_EXCEPTION));
     }
