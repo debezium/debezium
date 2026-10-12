@@ -159,7 +159,7 @@ public final class Strings {
      * @return the list of objects included in the list; never null
      */
     public static <T> List<T> listOfTrimmed(String input, char delimiter, Function<String, T> factory) {
-        return listOf(input, (str) -> str.split(Pattern.quote(String.valueOf(delimiter))), factory, true);
+        return listOf(input, (str) -> split(str, delimiter), factory, true);
     }
 
     /**
@@ -171,7 +171,7 @@ public final class Strings {
      * @return the set of objects included in the list; never null
      */
     public static <T> Set<T> setOf(String input, char delimiter, Function<String, T> factory) {
-        return setOf(input, (str) -> str.split(Pattern.quote(String.valueOf(delimiter))), factory);
+        return setOf(input, (str) -> split(str, delimiter), factory);
     }
 
     /**
@@ -183,7 +183,11 @@ public final class Strings {
      * @return the set of objects included in the list; never null
      */
     public static <T> Set<T> setOfTrimmed(String input, char delimiter, Function<String, T> factory) {
-        return setOfTrimmed(input, (str) -> str.split(Pattern.quote(String.valueOf(delimiter))), factory);
+        return setOfTrimmed(input, (str) -> split(str, delimiter), factory);
+    }
+
+    private static String[] split(String str, char delimiter) {
+        return str.split(Pattern.quote(String.valueOf(delimiter)));
     }
 
     /**
