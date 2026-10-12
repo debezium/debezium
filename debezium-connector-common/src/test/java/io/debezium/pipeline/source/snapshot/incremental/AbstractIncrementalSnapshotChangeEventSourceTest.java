@@ -41,6 +41,7 @@ import io.debezium.pipeline.spi.Partition;
 import io.debezium.relational.ColumnFilterMode;
 import io.debezium.relational.RelationalDatabaseConnectorConfig;
 import io.debezium.relational.RelationalDatabaseSchema;
+import io.debezium.relational.RelationalTableFilters;
 import io.debezium.relational.Table;
 import io.debezium.relational.TableId;
 import io.debezium.relational.Tables;
@@ -73,7 +74,12 @@ public class AbstractIncrementalSnapshotChangeEventSourceTest {
     }
 
     private SignalBasedIncrementalSnapshotChangeEventSource<TestPartition, TableId> newSource(RelationalDatabaseSchema databaseSchema) {
-        return new SignalBasedIncrementalSnapshotChangeEventSource<>(config(), jdbcConnection, null, databaseSchema, null, progressListener, null,
+        return newSource(databaseSchema, true);
+    }
+
+    private SignalBasedIncrementalSnapshotChangeEventSource<TestPartition, TableId> newSource(RelationalDatabaseSchema databaseSchema,
+                                                                                              boolean useCatalogBeforeSchema) {
+        return new SignalBasedIncrementalSnapshotChangeEventSource<>(config(useCatalogBeforeSchema), jdbcConnection, null, databaseSchema, null, progressListener, null,
                 notificationService);
     }
 
@@ -161,12 +167,54 @@ public class AbstractIncrementalSnapshotChangeEventSourceTest {
     }
 
     /**
+     * A signal may name a data collection the database schema does not know about yet, e.g. a table created
+     * just before the signal was sent through a channel other than the change stream. Looking that id up must
+     * not make the table filter exclude the table: the filter caches its decisions, and the table is still to
+     * be captured once its first change arrives.
+     */
+    @Test
+    @FixFor("dbz#1563")
+    public void shouldNotExcludeTableUnknownToSchemaFromCapture() throws Exception {
+        final Tables.TableFilter tableFilter = schemaIncludeFilter("s1");
+        pausedSnapshotContext(false);
+        source = newSource(schemaFilteredBy(tableFilter, false), false);
+
+        startSnapshotOf("s1.tab2");
+
+        assertThat(tableFilter.isIncluded(new TableId(null, "s1", "tab2"))).isTrue();
+    }
+
+    /**
+     * The ids of the start-snapshot signal that match no schema id are looked up as literal ids. On a connector
+     * whose ids put the schema before the table, they must be parsed that way, too: the table filter decides by
+     * the schema, and a table it excludes keeps the case it was spelled in, so the stop signal does not find it.
+     */
+    @Test
+    @FixFor("dbz#1563")
+    public void shouldStopSnapshotOfMixedCaseTableWhenSchemaPrecedesTable() throws Exception {
+        final SignalBasedIncrementalSnapshotContext<TableId> context = pausedSnapshotContext(false);
+        source = newSource(schemaFilteredBy(schemaIncludeFilter("s1"), true, new TableId(null, "s1", "MyTable")), false);
+
+        startSnapshotOf("s1.MYTABLE");
+        assertThat(context.snapshotRunning()).isTrue();
+
+        source.requestStopSnapshot(null, offsetContext, Map.of(), List.of(".*"));
+        source.readChunk(null, offsetContext);
+
+        assertThat(context.snapshotRunning()).isFalse();
+    }
+
+    /**
      * Puts an empty, paused snapshot context on {@link #offsetContext}. Being paused keeps the source from
      * doing anything beyond processing the signals it is sent, so that the outcome of a test is the one of
      * those signals alone.
      */
     private SignalBasedIncrementalSnapshotContext<TableId> pausedSnapshotContext() {
-        final SignalBasedIncrementalSnapshotContext<TableId> context = new SignalBasedIncrementalSnapshotContext<>();
+        return pausedSnapshotContext(true);
+    }
+
+    private SignalBasedIncrementalSnapshotContext<TableId> pausedSnapshotContext(boolean useCatalogBeforeSchema) {
+        final SignalBasedIncrementalSnapshotContext<TableId> context = new SignalBasedIncrementalSnapshotContext<>(useCatalogBeforeSchema);
         context.pauseSnapshot();
         doReturn(context).when(offsetContext).getIncrementalSnapshotContext();
         return context;
@@ -194,12 +242,40 @@ public class AbstractIncrementalSnapshotChangeEventSourceTest {
         return databaseSchema;
     }
 
-    private RelationalDatabaseConnectorConfig config() {
+    /**
+     * A schema that holds the given tables and includes the ones the given filter includes.
+     */
+    private RelationalDatabaseSchema schemaFilteredBy(Tables.TableFilter tableFilter, boolean tableIdCaseInsensitive, TableId... tableIds) {
+        return new RelationalDatabaseSchema(config(true), null, tableFilter, null, null, tableIdCaseInsensitive, null, null) {
+            {
+                for (TableId tableId : tableIds) {
+                    tables().overwriteTable(Table.editor().tableId(tableId).create());
+                }
+            }
+
+            @Override
+            public boolean tableInformationComplete() {
+                return false;
+            }
+        };
+    }
+
+    /**
+     * The table filter of a connector whose table ids put the schema before the table, capturing the given schemas.
+     */
+    private Tables.TableFilter schemaIncludeFilter(String schemaIncludeList) {
+        return new RelationalTableFilters(
+                Configuration.create().with(RelationalDatabaseConnectorConfig.SCHEMA_INCLUDE_LIST, schemaIncludeList).build(),
+                tableId -> true, TableId::toString, false)
+                .dataCollectionFilter();
+    }
+
+    private RelationalDatabaseConnectorConfig config(boolean useCatalogBeforeSchema) {
         final Configuration configuration = Configuration.create()
                 .with(RelationalDatabaseConnectorConfig.SIGNAL_DATA_COLLECTION, "debezium.signal")
                 .with(RelationalDatabaseConnectorConfig.TOPIC_PREFIX, "core")
                 .build();
-        return new RelationalDatabaseConnectorConfig(configuration, null, null, 0, ColumnFilterMode.CATALOG, true) {
+        return new RelationalDatabaseConnectorConfig(configuration, null, null, 0, ColumnFilterMode.CATALOG, useCatalogBeforeSchema) {
             @Override
             protected SourceInfoStructMaker<?> getSourceInfoStructMaker(Version version) {
                 return null;

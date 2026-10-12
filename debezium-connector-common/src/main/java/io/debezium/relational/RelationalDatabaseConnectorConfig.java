@@ -584,6 +584,7 @@ public abstract class RelationalDatabaseConnectorConfig extends CommonConnectorC
     private final TemporalPrecisionMode temporalPrecisionMode;
     private final KeyMapper keyMapper;
     private final TableIdToStringMapper tableIdMapper;
+    private final boolean useCatalogBeforeSchema;
     private final JdbcConfiguration jdbcConfig;
     private final String heartbeatActionQuery;
     private final FieldNamer<Column> fieldNamer;
@@ -597,6 +598,7 @@ public abstract class RelationalDatabaseConnectorConfig extends CommonConnectorC
         this.temporalPrecisionMode = TemporalPrecisionMode.parse(config.getString(TIME_PRECISION_MODE));
         this.keyMapper = CustomKeyMapper.getInstance(config.getString(MSG_KEY_COLUMNS), tableIdMapper);
         this.tableIdMapper = tableIdMapper;
+        this.useCatalogBeforeSchema = useCatalogBeforeSchema;
 
         this.jdbcConfig = JdbcConfiguration.adapt(
                 config.subset(ConfigurationNames.DATABASE_CONFIG_PREFIX, true).merge(config.subset(DRIVER_CONFIG_PREFIX, true)));
@@ -721,6 +723,13 @@ public abstract class RelationalDatabaseConnectorConfig extends CommonConnectorC
 
     public TableIdToStringMapper getTableIdMapper() {
         return tableIdMapper;
+    }
+
+    /**
+     * Whether the first of two parts of a table id is the catalog rather than the schema.
+     */
+    public boolean useCatalogBeforeSchema() {
+        return useCatalogBeforeSchema;
     }
 
     private static int validateTableExcludeList(Configuration config, Field field, ValidationOutput problems) {
