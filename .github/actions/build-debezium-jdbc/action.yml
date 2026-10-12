@@ -20,7 +20,7 @@ inputs:
   sink-framework:
     description: "Enables usage of the new shared sink framework logic"
     required: false
-    default: 'false'
+    default: 'true'
   shell:
     description: "The shell to use"
     required: false
