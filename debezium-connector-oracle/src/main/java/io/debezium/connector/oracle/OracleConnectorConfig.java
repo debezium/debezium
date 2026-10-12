@@ -40,6 +40,7 @@ import io.debezium.connector.oracle.jdbc.CaptureMode;
 import io.debezium.connector.oracle.jdbc.OracleJdbcConfiguration;
 import io.debezium.connector.oracle.logminer.buffered.infinispan.RemoteInfinispanCacheProvider;
 import io.debezium.connector.oracle.logminer.logwriter.LogWriterFlushStrategy;
+import io.debezium.connector.oracle.relational.OracleRelationalMetadataFactory;
 import io.debezium.connector.oracle.util.OracleUtils;
 import io.debezium.jdbc.JdbcConfiguration;
 import io.debezium.relational.ColumnFilterMode;
@@ -1103,6 +1104,11 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
     @Override
     public HistoryRecordComparator getHistoryRecordComparator() {
         return getAdapter().getHistoryRecordComparator();
+    }
+
+    @Override
+    public OracleRelationalMetadataFactory getRelationalMetadataFactory() {
+        return OracleRelationalMetadataFactory.INSTANCE;
     }
 
     /**

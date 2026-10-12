@@ -24,7 +24,7 @@ import io.debezium.config.Configuration;
 import io.debezium.connector.oracle.OracleConnectorConfig;
 import io.debezium.connector.oracle.logminer.parser.DmlParser;
 import io.debezium.connector.oracle.logminer.parser.LogMinerDmlParser;
-import io.debezium.relational.Column;
+import io.debezium.connector.oracle.relational.OracleRelationalMetadataFactory;
 import io.debezium.relational.Table;
 import io.debezium.relational.TableEditor;
 import io.debezium.relational.TableId;
@@ -59,12 +59,12 @@ public class LogMinerDmlParserPerf {
         }
 
         private Table createTable() {
-            TableEditor editor = Table.editor()
+            TableEditor editor = OracleRelationalMetadataFactory.INSTANCE.tableEditor()
                     .tableId(TableId.parse("DEBEZIUM.TEST"))
-                    .addColumn(Column.editor().name("ID").create());
+                    .addColumn(OracleRelationalMetadataFactory.INSTANCE.columnEditor().name("ID").create());
 
             for (int i = 0; i < columnCount; ++i) {
-                editor.addColumn(Column.editor().name("COL" + i).create());
+                editor.addColumn(OracleRelationalMetadataFactory.INSTANCE.columnEditor().name("COL" + i).create());
             }
 
             return editor.create();
