@@ -18,6 +18,7 @@ import java.sql.SQLException;
 import java.sql.Types;
 import java.time.Duration;
 import java.time.Instant;
+import java.time.LocalDateTime;
 import java.time.OffsetDateTime;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -756,6 +757,9 @@ public class SqlServerConnection extends JdbcConnection {
 
         if (columnType == Types.TIME) {
             return rs.getTimestamp(columnIndex);
+        }
+        else if (columnType == Types.TIMESTAMP) {
+            return rs.getObject(columnIndex, LocalDateTime.class);
         }
         else {
             return super.getColumnValue(rs, columnIndex, column, table);

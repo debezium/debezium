@@ -9,6 +9,7 @@ import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 import java.sql.Types;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -79,8 +80,12 @@ public class SqlServerChangeTablePointer extends ChangeTableResultSet<SqlServerC
 
     @Override
     protected Object getColumnData(ResultSet resultSet, int columnIndex) throws SQLException {
-        if (resultSet.getMetaData().getColumnType(columnIndex) == Types.TIME) {
+        int columnType = resultSet.getMetaData().getColumnType(columnIndex);
+        if (columnType == Types.TIME) {
             return resultSet.getTimestamp(columnIndex);
+        }
+        else if (columnType == Types.TIMESTAMP) {
+            return resultSet.getObject(columnIndex, LocalDateTime.class);
         }
         return super.getColumnData(resultSet, columnIndex);
     }
