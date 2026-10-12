@@ -51,7 +51,7 @@ public abstract class AbstractChangeEventSink implements ChangeEventSink {
         this.config = config;
         this.errorReporter = errorReporter != null ? errorReporter : ErrorReporters.nop();
         boolean keyed = !SinkConnectorConfig.PrimaryKeyMode.NONE.equals(config.getPrimaryKeyMode());
-        if (SinkConnectorConfig.KeyedMessageBatchMode.PASSTHROUGH.equals(config.getKeyedMessageBatchMode())) {
+        if (SinkConnectorConfig.BufferMode.PASSTHROUGH.equals(config.getBufferMode())) {
             buffer = new PassthroughBuffer(config, keyed);
         }
         else {
