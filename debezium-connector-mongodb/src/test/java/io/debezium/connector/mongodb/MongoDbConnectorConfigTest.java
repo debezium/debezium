@@ -14,8 +14,10 @@ import static org.mockito.Mockito.mock;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.stream.Stream;
 
 import org.apache.kafka.common.config.Config;
+import org.apache.kafka.common.config.ConfigDef;
 import org.apache.kafka.common.config.ConfigException;
 import org.apache.kafka.common.config.ConfigValue;
 import org.apache.kafka.connect.data.Schema;
@@ -25,6 +27,7 @@ import org.bson.BsonTimestamp;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.junit.jupiter.params.provider.NullAndEmptySource;
 import org.junit.jupiter.params.provider.NullSource;
 import org.junit.jupiter.params.provider.ValueSource;
@@ -36,6 +39,7 @@ import io.debezium.config.Field;
 import io.debezium.connector.mongodb.connection.MongoDbConnectionContext;
 import io.debezium.data.Envelope;
 import io.debezium.doc.FixFor;
+import io.debezium.schema.DefaultTopicNamingStrategy;
 
 public class MongoDbConnectorConfigTest {
 
@@ -82,6 +86,25 @@ public class MongoDbConnectorConfigTest {
             assertThat(MongoDbConnectorConfig.ALL_FIELDS.fieldWithName(field.name())).isNotNull();
             assertThat(configDef.configKeys()).containsKey(field.name());
         }
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2846")
+    void shouldExposeMongoDbSpecificFields() {
+        final var configDef = new MongoDbConnector().config();
+        for (var field : new Field[]{ MongoDbConnectorConfig.SSL_KEYSTORE, MongoDbConnectorConfig.SSL_KEYSTORE_PASSWORD,
+                MongoDbConnectorConfig.SSL_KEYSTORE_TYPE, MongoDbConnectorConfig.SSL_TRUSTSTORE, MongoDbConnectorConfig.SSL_TRUSTSTORE_PASSWORD,
+                MongoDbConnectorConfig.SSL_TRUSTSTORE_TYPE, MongoDbConnectorConfig.AUTH_PROVIDER_CLASS, MongoDbConnectorConfig.FILTERS_MATCH_MODE,
+                MongoDbConnectorConfig.CAPTURE_MODE_FULL_UPDATE_TYPE, MongoDbConnectorConfig.CURSOR_PIPELINE_ORDER,
+                MongoDbConnectorConfig.CURSOR_OVERSIZE_HANDLING_MODE, MongoDbConnectorConfig.CURSOR_OVERSIZE_SKIP_THRESHOLD,
+                MongoDbConnectorConfig.TOPIC_NAMING_STRATEGY }) {
+            assertThat(MongoDbConnectorConfig.ALL_FIELDS.fieldWithName(field.name())).isNotNull();
+            assertThat(configDef.configKeys()).containsKey(field.name());
+        }
+        assertThat(configDef.configKeys().get(MongoDbConnectorConfig.TOPIC_NAMING_STRATEGY.name()).defaultValue)
+                .isEqualTo(DefaultTopicNamingStrategy.class);
+        assertThat(configDef.configKeys().get(MongoDbConnectorConfig.SSL_KEYSTORE_PASSWORD.name()).type).isEqualTo(ConfigDef.Type.PASSWORD);
+        assertThat(configDef.configKeys().get(MongoDbConnectorConfig.SSL_TRUSTSTORE_PASSWORD.name()).type).isEqualTo(ConfigDef.Type.PASSWORD);
     }
 
     @ParameterizedTest
@@ -343,6 +366,36 @@ public class MongoDbConnectorConfigTest {
                 .containsExactly("The 'cursor.pipeline' value is invalid: Change stream pipeline stage '$changeStream' is not supported: "
                         + "the connector opens the change stream itself; to start streaming from a specific time, "
                         + "use 'capture.start.op.time' or 'capture.start.timestamp'");
+    }
+
+    @ParameterizedTest
+    @FixFor("debezium/dbz#2846")
+    @MethodSource("enumFields")
+    void shouldRejectInvalidEnumValue(Field field) {
+        final var config = TestHelper.getConfiguration().edit()
+                .with(field, "invalid")
+                .build();
+        final var validation = new ConnectionValidationConnector().validate(config.asMap());
+        assertThat(validationErrors(validation, field))
+                .singleElement().asString()
+                .startsWith("The '" + field.name() + "' value is invalid: Value must be one of ");
+    }
+
+    private static Stream<Field> enumFields() {
+        return Stream.of(MongoDbConnectorConfig.FILTERS_MATCH_MODE, MongoDbConnectorConfig.CURSOR_PIPELINE_ORDER,
+                MongoDbConnectorConfig.CURSOR_OVERSIZE_HANDLING_MODE, MongoDbConnectorConfig.CAPTURE_MODE_FULL_UPDATE_TYPE);
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2846")
+    void shouldRejectNonPositiveOversizeSkipThreshold() {
+        final var config = TestHelper.getConfiguration().edit()
+                .with(MongoDbConnectorConfig.CURSOR_OVERSIZE_HANDLING_MODE, "skip")
+                .with(MongoDbConnectorConfig.CURSOR_OVERSIZE_SKIP_THRESHOLD, -5)
+                .build();
+        final var validation = new ConnectionValidationConnector().validate(config.asMap());
+        assertThat(validationErrors(validation, MongoDbConnectorConfig.CURSOR_OVERSIZE_SKIP_THRESHOLD))
+                .containsExactly("The 'cursor.oversize.skip.threshold' value is invalid: Invalid threshold value for skipped document size");
     }
 
     private static void verifyCursorPipelineValidateError(String value, String expectedError) {
