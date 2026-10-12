@@ -15,6 +15,7 @@ import java.util.Map;
 import org.apache.kafka.connect.data.Struct;
 import org.junit.jupiter.api.Test;
 
+import io.debezium.doc.FixFor;
 import io.debezium.document.Array;
 import io.debezium.document.Document;
 import io.debezium.document.DocumentReader;
@@ -118,8 +119,16 @@ public class HistoryRecordTest {
         assertThat(firstAttribute.get("name")).isEqualTo("object_id");
         assertThat(firstAttribute.get("value")).isEqualTo("12345");
 
+        // The table comment is stored on the table document, not on the change
+        final Document change = deserialized.tableChanges().get(0).asDocument();
+        assertThat(change.has("comment")).isFalse();
+        assertThat(change.getDocument("table").getString("comment")).isEqualTo("table comment");
+
         final TableChangesSerializer<Array> tableChangesSerializer = new JsonTableChangeSerializer();
-        assertThat((Object) tableChangesSerializer.deserialize(deserialized.tableChanges(), true)).isEqualTo(tableChanges);
+        final TableChanges deserializedChanges = tableChangesSerializer.deserialize(deserialized.tableChanges(), true);
+        assertThat((Object) deserializedChanges).isEqualTo(tableChanges);
+        // Table equality ignores the comment, so check it on its own
+        assertThat(deserializedChanges.iterator().next().getTable().comment()).isEqualTo("table comment");
 
         final TableChangesSerializer<List<Struct>> connectTableChangeSerializer = new ConnectTableChangeSerializer(SchemaNameAdjuster.NO_OP);
         Struct struct = connectTableChangeSerializer.serialize(tableChanges).get(0);
@@ -130,5 +139,32 @@ public class HistoryRecordTest {
         assertThat(columnStructs.get(0).get(ConnectTableChangeSerializer.ENUM_VALUES)).isNull();
         assertThat(columnStructs.get(1).get(ConnectTableChangeSerializer.DEFAULT_VALUE_EXPRESSION)).isEqualTo("1");
         assertThat(columnStructs.get(1).get(ConnectTableChangeSerializer.ENUM_VALUES)).isEqualTo(Collect.arrayListOf("1", "2"));
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2848")
+    public void shouldReadTableCommentWrittenOnTheChangeByEarlierVersions() throws Exception {
+        // Earlier versions wrote the table comment on the change document rather than on the table document
+        final String serialized = "{"
+                + "  \"type\": \"CREATE\","
+                + "  \"id\": \"\\\"db\\\".\\\"t1\\\"\","
+                + "  \"comment\": \"table comment\","
+                + "  \"table\": {"
+                + "    \"primaryKeyColumnNames\": [\"first\"],"
+                + "    \"columns\": [{"
+                + "      \"name\": \"first\", \"jdbcType\": 12, \"typeName\": \"VARCHAR\", \"position\": 1,"
+                + "      \"optional\": false, \"autoIncremented\": false, \"generated\": false, \"hasDefaultValue\": false"
+                + "    }],"
+                + "    \"attributes\": []"
+                + "  }"
+                + "}";
+
+        final Document document = DocumentReader.defaultReader().read(serialized);
+        final TableChanges tableChanges = new JsonTableChangeSerializer().deserialize(Array.create(List.of(document)), true);
+
+        final Table table = tableChanges.iterator().next().getTable();
+        assertThat(table.id()).isEqualTo(new TableId("db", null, "t1"));
+        assertThat(table.comment()).isEqualTo("table comment");
+        assertThat(table.columnWithName("first").typeName()).isEqualTo("VARCHAR");
     }
 }
