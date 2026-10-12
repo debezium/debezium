@@ -1,6 +1,6 @@
 // Category: debezium-using
 // Type: assembly
-// Title: Integrating OpenLineage with {prodname} (Technology Preview)
+// Title: Integrating OpenLineage with {prodname}
 // ModuleID: integrating-openlineage-with-debezium
 [id="open-lineage-integration"]
 = OpenLineage Integration
@@ -18,17 +18,6 @@ endif::community[]
 {prodname} provides built-in integration with OpenLineage to automatically track data lineage for Change Data Capture (CDC) operations.
 The OpenLineage integration provides you with comprehensive visibility into the data flow and transformations that you use in your data pipeline.
 
-ifdef::product[]
-[IMPORTANT]
-====
-The {prodname} integration with OpenLineage is a Technology Preview feature only.
-Technology Preview features are not supported with Red{nbsp}Hat production service level agreements (SLAs) and might not be functionally complete.
-Red{nbsp}Hat does not recommend using them in production.
-These features provide early access to upcoming product features, enabling customers to test functionality and provide feedback during the development process.
-
-For more information about the support scope of Red{nbsp}Hat Technology Preview features, see link:https://access.redhat.com/support/offerings/techpreview/[Technology Preview Features Support Scope].
-====
-endif::product[]
 
 // Type: concept
 [id="debezium-openlineage-about-data-lineage-and-openlineage"]
