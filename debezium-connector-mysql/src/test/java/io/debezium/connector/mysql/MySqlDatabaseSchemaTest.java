@@ -18,6 +18,7 @@ import io.debezium.config.CommonConnectorConfig.BinaryHandlingMode;
 import io.debezium.config.Configuration;
 import io.debezium.connector.binlog.BinlogConnectorConfig;
 import io.debezium.connector.binlog.BinlogDatabaseSchemaTest;
+import io.debezium.connector.binlog.jdbc.LowerCaseTableNames;
 import io.debezium.connector.mysql.jdbc.MySqlValueConverters;
 import io.debezium.connector.mysql.util.MySqlValueConvertersFactory;
 import io.debezium.jdbc.JdbcValueConverters.BigIntUnsignedMode;
@@ -59,7 +60,7 @@ public class MySqlDatabaseSchemaTest extends BinlogDatabaseSchemaTest<MySqlConne
     }
 
     @Override
-    protected MySqlDatabaseSchema getSchema(Configuration config) {
+    protected MySqlDatabaseSchema getSchema(Configuration config, LowerCaseTableNames lowerCaseTableNames) {
         this.connectorConfig = getConnectorConfig(config);
         return new MySqlDatabaseSchema(
                 connectorConfig,
@@ -72,7 +73,7 @@ public class MySqlDatabaseSchemaTest extends BinlogDatabaseSchemaTest<MySqlConne
                         CommonConnectorConfig.EventConvertingFailureHandlingMode.WARN),
                 (TopicNamingStrategy) DefaultTopicNamingStrategy.create(connectorConfig),
                 SchemaNameAdjuster.create(),
-                false, new CustomConverterRegistry(emptyList()), new MySqlTaskContext(config, connectorConfig));
+                lowerCaseTableNames, new CustomConverterRegistry(emptyList()), new MySqlTaskContext(config, connectorConfig));
     }
 
     @Override

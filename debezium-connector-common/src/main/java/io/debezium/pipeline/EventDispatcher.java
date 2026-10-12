@@ -340,7 +340,7 @@ public class EventDispatcher<P extends Partition, T extends DataCollectionId> im
                     private boolean isASignalEventToProcess(T dataCollectionId, Operation operation) {
                         return (operation == Operation.CREATE ||
                                 (operation == Operation.DELETE && connectorConfig.getIncrementalSnapshotWatermarkingStrategy() == INSERT_DELETE)) &&
-                                connectorConfig.isSignalDataCollection(dataCollectionId);
+                                connectorConfig.isSignalDataCollection(dataCollectionId, EventDispatcher.this.schema.isTableIdCaseInsensitive());
                     }
                 });
                 handled = true;

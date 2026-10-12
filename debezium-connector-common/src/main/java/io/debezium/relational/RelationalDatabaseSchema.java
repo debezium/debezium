@@ -46,6 +46,7 @@ public abstract class RelationalDatabaseSchema implements DatabaseSchema<TableId
 
     private final SchemasByTableId schemasByTableId;
     private final Tables tables;
+    private final boolean tableIdCaseInsensitive;
 
     protected RelationalDatabaseSchema(RelationalDatabaseConnectorConfig config, TopicNamingStrategy<TableId> topicNamingStrategy,
                                        TableFilter tableFilter, ColumnNameFilter columnFilter, TableSchemaBuilder schemaBuilder,
@@ -61,7 +62,13 @@ public abstract class RelationalDatabaseSchema implements DatabaseSchema<TableId
 
         this.schemasByTableId = new SchemasByTableId(config.createSchemaStorage(tableIdCaseInsensitive));
         this.tables = new Tables(tableIdCaseInsensitive, config);
+        this.tableIdCaseInsensitive = tableIdCaseInsensitive;
         this.taskContext = taskContext;
+    }
+
+    @Override
+    public boolean isTableIdCaseInsensitive() {
+        return tableIdCaseInsensitive;
     }
 
     @Override

@@ -9,7 +9,9 @@ import java.time.Instant;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.regex.Pattern;
@@ -19,7 +21,9 @@ import org.slf4j.LoggerFactory;
 
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.connector.binlog.jdbc.BinlogSystemVariables;
+import io.debezium.connector.binlog.jdbc.LowerCaseTableNames;
 import io.debezium.connector.common.CdcSourceTaskContext;
+import io.debezium.pipeline.spi.Offsets;
 import io.debezium.relational.CustomConverterRegistry;
 import io.debezium.relational.DefaultValueConverter;
 import io.debezium.relational.HistorizedRelationalDatabaseSchema;
@@ -65,7 +69,11 @@ public abstract class BinlogDatabaseSchema<P extends BinlogPartition, O extends 
     private final Map<Long, TableId> excludeTableIdsByTableNumber = new ConcurrentHashMap<>();
     private final BinlogConnectorConfig connectorConfig;
     private final V valueConverter;
-    private final boolean tableIdCaseInsensitive;
+    private final LowerCaseTableNames lowerCaseTableNames;
+    /**
+     * The names of known databases by their lowercase name, as created on a server with {@code lower_case_table_names=2}.
+     */
+    private final Map<String, String> databaseNames = new ConcurrentHashMap<>();
 
     /**
      * Creates a binlog-connector based relational schema based on the supplied configuration. The DDL
@@ -76,7 +84,7 @@ public abstract class BinlogDatabaseSchema<P extends BinlogPartition, O extends 
      * @param defaultValueConverter the connector-specific default value converter, should not be null
      * @param topicNamingStrategy the topic naming strategy to be used, should not be null
      * @param schemaNameAdjuster the schema name adjuster, should not be null
-     * @param tableIdCaseInsensitive whether table identifiers are case-insensitive
+     * @param lowerCaseTableNames how the server stores and compares database and table names, should not be null
      * @param converterRegistry
      */
     public BinlogDatabaseSchema(BinlogConnectorConfig connectorConfig,
@@ -84,7 +92,7 @@ public abstract class BinlogDatabaseSchema<P extends BinlogPartition, O extends 
                                 D defaultValueConverter,
                                 TopicNamingStrategy<TableId> topicNamingStrategy,
                                 SchemaNameAdjuster schemaNameAdjuster,
-                                boolean tableIdCaseInsensitive, CustomConverterRegistry converterRegistry,
+                                LowerCaseTableNames lowerCaseTableNames, CustomConverterRegistry converterRegistry,
                                 CdcSourceTaskContext<? extends CommonConnectorConfig> taskContext) {
         super(connectorConfig,
                 topicNamingStrategy,
@@ -99,13 +107,13 @@ public abstract class BinlogDatabaseSchema<P extends BinlogPartition, O extends 
                         connectorConfig.getFieldNamer(),
                         false,
                         connectorConfig.getEventConvertingFailureHandlingMode()),
-                tableIdCaseInsensitive,
+                lowerCaseTableNames.isCaseInsensitive(),
                 connectorConfig.getKeyMapper(), taskContext);
         this.ddlParser = createDdlParser(connectorConfig, valueConverter);
         this.connectorConfig = connectorConfig;
         this.filters = connectorConfig.getTableFilters();
         this.valueConverter = valueConverter;
-        this.tableIdCaseInsensitive = tableIdCaseInsensitive;
+        this.lowerCaseTableNames = lowerCaseTableNames;
     }
 
     /**
@@ -120,11 +128,16 @@ public abstract class BinlogDatabaseSchema<P extends BinlogPartition, O extends 
      */
     Table parseTableDefinition(TableId tableId, String createTableDdl, Map<String, String> systemVariables) {
         final DdlParser parser = createDdlParser(connectorConfig, valueConverter);
-        final Tables parsedTables = new Tables(tableIdCaseInsensitive);
+        final Tables parsedTables = new Tables(lowerCaseTableNames.isCaseInsensitive());
         systemVariables.forEach((name, value) -> parser.systemVariables().setVariable(BinlogSystemVariables.BinlogScope.SESSION, name, value));
         parser.setCurrentDatabase(tableId.catalog());
         parser.parse(createTableDdl, parsedTables);
-        return parsedTables.forTable(tableId);
+        final Table table = parsedTables.forTable(tableId);
+        if (table == null) {
+            return null;
+        }
+        final Table knownTable = tables().forTable(table.id());
+        return table.edit().tableId(knownTable != null ? knownTable.id() : toServerTableId(table.id())).create();
     }
 
     @Override
@@ -176,7 +189,11 @@ public abstract class BinlogDatabaseSchema<P extends BinlogPartition, O extends 
      * @return array of table names
      */
     public String[] capturedTablesAsStringArray() {
-        return tableIds().stream().map(TableId::toString).toArray(String[]::new);
+        return tableIds().stream()
+                .map(this::tableFor)
+                .filter(Objects::nonNull)
+                .map(table -> table.id().toString())
+                .toArray(String[]::new);
     }
 
     /**
@@ -222,7 +239,9 @@ public abstract class BinlogDatabaseSchema<P extends BinlogPartition, O extends 
             excludeTableIdsByTableNumber.put(tableNumber, id);
             return false;
         }
-        tableIdsByTableNumber.put(tableNumber, id);
+        // With case-insensitive table names, TABLE_MAP events can use a different case than the table schema.
+        // Events use the identifier of the table schema, so that all of them refer to the table by the same name.
+        tableIdsByTableNumber.put(tableNumber, tableSchema.id());
         return true;
     }
 
@@ -328,6 +347,120 @@ public abstract class BinlogDatabaseSchema<P extends BinlogPartition, O extends 
         tableIds().forEach(id -> buildAndRegisterSchema(tableFor(id)));
     }
 
+    @Override
+    public void recover(Offsets<?, ?> offsets) throws InterruptedException {
+        super.recover(offsets);
+        // The schema history can contain names recorded before they followed lower_case_table_names
+        if (lowerCaseTableNames.isCaseInsensitive() && applyServerNamesToTables()) {
+            refreshSchemas();
+        }
+    }
+
+    /**
+     * Returns the identifier under which the server reports the given table, based on {@code lower_case_table_names}.
+     * With {@code 1}, database and table names are lowercase. With {@code 2}, the table name is kept and the database
+     * name is resolved to the name of the known database, because MySQL records the session database in lowercase.
+     *
+     * @param tableId the table identifier; may be null
+     * @return the table identifier as reported by the server, or null if the given identifier is null
+     */
+    protected TableId toServerTableId(TableId tableId) {
+        if (tableId == null || !lowerCaseTableNames.isCaseInsensitive()) {
+            return tableId;
+        }
+        final String tableName = lowerCaseTableNames == LowerCaseTableNames.STORED_IN_LOWERCASE
+                ? tableId.table().toLowerCase(Locale.ROOT)
+                : tableId.table();
+        return new TableId(toServerDatabaseName(tableId.catalog()), tableId.schema(), tableName);
+    }
+
+    /**
+     * Returns the name under which the server reports the given database, based on {@code lower_case_table_names}.
+     *
+     * @param databaseName the database name; may be null
+     * @return the database name as reported by the server, or null if the given name is null
+     */
+    protected String toServerDatabaseName(String databaseName) {
+        if (databaseName == null || !lowerCaseTableNames.isCaseInsensitive()) {
+            return databaseName;
+        }
+        final String lowercaseName = databaseName.toLowerCase(Locale.ROOT);
+        return lowerCaseTableNames == LowerCaseTableNames.STORED_IN_LOWERCASE
+                ? lowercaseName
+                : databaseNames.getOrDefault(lowercaseName, databaseName);
+    }
+
+    /**
+     * Renames the table affected by a DDL statement to the name reported by the server, if needed.
+     */
+    private TableId applyServerName(TableId tableId) {
+        if (tableId == null || !lowerCaseTableNames.isCaseInsensitive()) {
+            return tableId;
+        }
+        final Table table = tables().forTable(tableId);
+        if (table == null) {
+            // The table was dropped or renamed by the statement
+            return toServerTableId(tableId);
+        }
+        final TableId serverTableId = toServerTableId(table.id());
+        if (!serverTableId.equals(table.id())) {
+            tables().overwriteTable(table.edit().tableId(serverTableId).create());
+        }
+        return serverTableId;
+    }
+
+    /**
+     * Renames recovered tables to the names reported by the server, if needed.
+     *
+     * @return true if any table was renamed
+     */
+    private boolean applyServerNamesToTables() {
+        final List<Table> knownTables = tables().tableIds().stream()
+                .map(tables()::forTable)
+                .filter(Objects::nonNull)
+                .toList();
+        if (lowerCaseTableNames == LowerCaseTableNames.CASE_INSENSITIVE) {
+            knownTables.forEach(table -> rememberRecoveredDatabaseName(table.id().catalog()));
+        }
+        boolean renamed = false;
+        for (Table table : knownTables) {
+            final TableId serverTableId = toServerTableId(table.id());
+            if (!serverTableId.equals(table.id())) {
+                tables().overwriteTable(table.edit().tableId(serverTableId).create());
+                renamed = true;
+            }
+        }
+        return renamed;
+    }
+
+    /**
+     * Records the name of a database created or dropped by a DDL statement. With {@code lower_case_table_names=2}, the
+     * server keeps the name as it was created.
+     */
+    private void rememberDatabaseName(DdlParserListener.Event event) {
+        if (lowerCaseTableNames != LowerCaseTableNames.CASE_INSENSITIVE) {
+            return;
+        }
+        if (event instanceof DdlParserListener.DatabaseCreatedEvent created && !Strings.isNullOrEmpty(created.databaseName())) {
+            databaseNames.put(created.databaseName().toLowerCase(Locale.ROOT), created.databaseName());
+        }
+        else if (event instanceof DdlParserListener.DatabaseDroppedEvent dropped && !Strings.isNullOrEmpty(dropped.databaseName())) {
+            databaseNames.remove(dropped.databaseName().toLowerCase(Locale.ROOT));
+        }
+    }
+
+    /**
+     * Records the name of the database of a recovered table, unless another name of the database is already known.
+     * A lowercase name is replaced, because it can come from the session database, which MySQL records in lowercase.
+     */
+    private void rememberRecoveredDatabaseName(String databaseName) {
+        if (Strings.isNullOrEmpty(databaseName)) {
+            return;
+        }
+        final String lowercaseName = databaseName.toLowerCase(Locale.ROOT);
+        databaseNames.merge(lowercaseName, databaseName, (known, recovered) -> known.equals(lowercaseName) ? recovered : known);
+    }
+
     private List<SchemaChangeEvent> parseDdl(P partition, String ddlStatements, String databaseName, O offset,
                                              Instant sourceTime, boolean snapshot) {
         final List<SchemaChangeEvent> schemaChangeEvents = new ArrayList<>(3);
@@ -368,18 +501,20 @@ public abstract class BinlogDatabaseSchema<P extends BinlogPartition, O extends 
                 // They also apply to more databases than 'databaseName', so we need to apply the DDL statements in
                 // the same order they were read for each _affected_ database, grouped together if multiple apply
                 // to the same _affected_ database...
-                ddlChanges.getEventsByDatabase((String dbName, List<DdlParserListener.Event> events) -> {
+                ddlChanges.getEventsByDatabase((String parsedDbName, List<DdlParserListener.Event> events) -> {
+                    events.forEach(this::rememberDatabaseName);
+                    final String dbName = toServerDatabaseName(parsedDbName);
                     final String sanitizedDbName = Strings.defaultIfEmpty(dbName, "");
                     if (acceptableDatabase(dbName)) {
                         final Set<TableId> tableIds = new HashSet<>();
                         events.forEach(event -> {
-                            final TableId tableId = getTableId(event);
+                            final TableId tableId = applyServerName(getTableId(event));
                             if (tableId != null) {
                                 tableIds.add(tableId);
                             }
                         });
                         events.forEach(event -> {
-                            final TableId tableId = getTableId(event);
+                            final TableId tableId = applyServerName(getTableId(event));
                             handleTableEvent(offset, dbName, tableIds, sourceTime);
                             // For SET with multiple parameters
                             if (event instanceof DdlParserListener.TableCreatedEvent) {
@@ -442,7 +577,7 @@ public abstract class BinlogDatabaseSchema<P extends BinlogPartition, O extends 
                     null,
                     event.statement(),
                     tableId != null ? tables().forTable(tableId) : null,
-                    ((DdlParserListener.TableAlteredEvent) event).previousTableId());
+                    toServerTableId(((DdlParserListener.TableAlteredEvent) event).previousTableId()));
         }
         else {
             Table table = getTable(tableId, type);

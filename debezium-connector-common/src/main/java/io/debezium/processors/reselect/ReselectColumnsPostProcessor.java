@@ -241,7 +241,7 @@ public class ReselectColumnsPostProcessor implements PostProcessor, BeanRegistry
             return;
         }
 
-        if (connectorConfig.isSignalDataCollection(tableId)) {
+        if (connectorConfig.isSignalDataCollection(tableId, schema.isTableIdCaseInsensitive())) {
             LOGGER.debug("Signal table '{}' events are not eligible for re-selection.", tableId);
             return;
         }

@@ -27,6 +27,7 @@ import io.debezium.connector.base.QueueProviderService;
 import io.debezium.connector.binlog.BinlogEventMetadataProvider;
 import io.debezium.connector.binlog.BinlogSourceTask;
 import io.debezium.connector.binlog.jdbc.BinlogConnectorConnection;
+import io.debezium.connector.binlog.jdbc.LowerCaseTableNames;
 import io.debezium.connector.common.CdcSourceTaskContext;
 import io.debezium.connector.common.DebeziumHeaderProducer;
 import io.debezium.connector.mysql.jdbc.MySqlConnection;
@@ -115,13 +116,13 @@ public class MySqlConnectorTask extends BinlogSourceTask<MySqlPartition, MySqlOf
                 new MySqlPartition.Provider(connectorConfig, config),
                 new MySqlOffsetContext.Loader(connectorConfig));
 
-        final boolean tableIdCaseInsensitive = connection.isTableIdCaseSensitive();
+        final LowerCaseTableNames lowerCaseTableNames = connection.lowerCaseTableNames();
         // Service providers
         registerServiceProviders(connectorConfig.getServiceRegistry());
 
         CustomConverterRegistry converterRegistry = connectorConfig.getServiceRegistry().tryGetService(CustomConverterRegistry.class);
 
-        this.schema = new MySqlDatabaseSchema(connectorConfig, valueConverters, topicNamingStrategy, schemaNameAdjuster, tableIdCaseInsensitive, converterRegistry,
+        this.schema = new MySqlDatabaseSchema(connectorConfig, valueConverters, topicNamingStrategy, schemaNameAdjuster, lowerCaseTableNames, converterRegistry,
                 taskContext);
 
         // Manual Bean Registration

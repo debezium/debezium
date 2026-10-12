@@ -30,6 +30,7 @@ import io.debezium.connector.binlog.BinlogEventMetadataProvider;
 import io.debezium.connector.binlog.BinlogSourceTask;
 import io.debezium.connector.binlog.jdbc.BinlogConnectorConnection;
 import io.debezium.connector.binlog.jdbc.BinlogFieldReader;
+import io.debezium.connector.binlog.jdbc.LowerCaseTableNames;
 import io.debezium.connector.common.CdcSourceTaskContext;
 import io.debezium.connector.common.DebeziumHeaderProducer;
 import io.debezium.connector.mariadb.jdbc.MariaDbConnection;
@@ -127,10 +128,10 @@ public class MariaDbConnectorTask extends BinlogSourceTask<MariaDbPartition, Mar
         // Service providers
         registerServiceProviders(connectorConfig.getServiceRegistry());
 
-        final boolean tableIdCaseInsensitive = connection.isTableIdCaseSensitive();
+        final LowerCaseTableNames lowerCaseTableNames = connection.lowerCaseTableNames();
         CustomConverterRegistry converterRegistry = connectorConfig.getServiceRegistry().tryGetService(CustomConverterRegistry.class);
 
-        this.schema = new MariaDbDatabaseSchema(connectorConfig, valueConverters, topicNamingStrategy, schemaNameAdjuster, tableIdCaseInsensitive, converterRegistry,
+        this.schema = new MariaDbDatabaseSchema(connectorConfig, valueConverters, topicNamingStrategy, schemaNameAdjuster, lowerCaseTableNames, converterRegistry,
                 taskContext);
 
         // Manual Bean Registration

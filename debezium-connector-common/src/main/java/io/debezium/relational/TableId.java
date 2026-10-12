@@ -343,7 +343,13 @@ public final class TableId implements DataCollectionId, Comparable<TableId> {
         return new StringBuilder().append(quotingChar).append(quotingChar).toString();
     }
 
+    /**
+     * Returns this identifier with the catalog and table names in lowercase, for looking up tables case-insensitively.
+     * MySQL and MariaDB compare database names, which are represented as catalogs, case-insensitively along with table names.
+     *
+     * @return the identifier in lowercase; never null
+     */
     public TableId toLowercase() {
-        return new TableId(catalogName, schemaName, tableName.toLowerCase());
+        return new TableId(catalogName != null ? catalogName.toLowerCase() : null, schemaName, tableName.toLowerCase());
     }
 }
