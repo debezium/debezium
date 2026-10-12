@@ -72,11 +72,22 @@ public final class Tables {
 
     /**
      * A {@link TableFilter} that caches the results of another filter.
+     * <p>
+     * The results are cached by the parts of the table ids rather than by the table ids themselves: table ids are
+     * equal when their string representations are, e.g. a table {@code tab} in catalog {@code c} and one in schema
+     * {@code c}, whereas a filter may well include only one of them.
      */
     private static final class CachingTableFilter implements TableFilter {
 
+        private record CacheKey(String catalog, String schema, String table) {
+
+            CacheKey(TableId tableId) {
+                this(tableId.catalog(), tableId.schema(), tableId.table());
+            }
+        }
+
         private final TableFilter delegate;
-        private final ConcurrentMap<TableId, Boolean> cache = new ConcurrentHashMap<>();
+        private final ConcurrentMap<CacheKey, Boolean> cache = new ConcurrentHashMap<>();
 
         CachingTableFilter(TableFilter delegate) {
             this.delegate = Objects.requireNonNull(delegate);
@@ -84,7 +95,7 @@ public final class Tables {
 
         @Override
         public boolean isIncluded(TableId tableId) {
-            return cache.computeIfAbsent(tableId, delegate::isIncluded);
+            return cache.computeIfAbsent(new CacheKey(tableId), key -> delegate.isIncluded(tableId));
         }
     }
 
