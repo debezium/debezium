@@ -24,11 +24,13 @@ import java.time.ZoneId;
 import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
 import java.time.temporal.TemporalAdjuster;
+import java.util.List;
 import java.util.TimeZone;
 import java.util.concurrent.TimeUnit;
 
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceConnector;
+import org.apache.kafka.connect.source.SourceRecord;
 import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -825,120 +827,7 @@ public abstract class BinlogRegressionIT<C extends SourceConnector> extends Abst
                 }
             }
             else if (record.topic().endsWith("dbz_342_timetest")) {
-                Struct after = value.getStruct(Envelope.FieldName.AFTER);
-
-                String durationValue = getDuration();
-                long timeWithNanoSeconds = getTimeWithNanoSecondsLarge();
-                int nanos = getNanos();
-
-                // '517:51:04.777'
-                long c1 = after.getInt64("c1");
-                Duration c1Time = Duration.ofNanos(c1 * 1_000);
-                Duration c1ExpectedTime = toDuration(durationValue);
-                assertEquals(c1ExpectedTime, c1Time);
-                assertEquals(c1ExpectedTime.toNanos(), c1Time.toNanos());
-                assertThat(c1Time.toNanos()).isEqualTo(timeWithNanoSeconds);
-                assertThat(c1Time).isEqualTo(Duration.ofHours(517).plusMinutes(51).plusSeconds(4).plusMillis(nanos));
-
-                // '-13:14:50'
-                long c2 = after.getInt64("c2");
-                Duration c2Time = Duration.ofNanos(c2 * 1_000);
-                Duration c2ExpectedTime = toDuration("-PT13H14M50S");
-                assertEquals(c2ExpectedTime, c2Time);
-                assertEquals(c2ExpectedTime.toNanos(), c2Time.toNanos());
-                assertThat(c2Time.toNanos()).isEqualTo(-47690000000000L);
-                assertTrue(c2Time.isNegative());
-                assertThat(c2Time).isEqualTo(Duration.ofHours(-13).minusMinutes(14).minusSeconds(50));
-
-                // '-733:00:00.0011'
-                long c3 = after.getInt64("c3");
-                Duration c3Time = Duration.ofNanos(c3 * 1_000);
-                Duration c3ExpectedTime = toDuration("-PT733H0M0.001S");
-                assertEquals(c3ExpectedTime, c3Time);
-                assertEquals(c3ExpectedTime.toNanos(), c3Time.toNanos());
-                assertThat(c3Time.toNanos()).isEqualTo(-2638800001000000L);
-                assertTrue(c3Time.isNegative());
-                assertThat(c3Time).isEqualTo(Duration.ofHours(-733).minusMillis(1));
-
-                // '-1:59:59.0011'
-                long c4 = after.getInt64("c4");
-                Duration c4Time = Duration.ofNanos(c4 * 1_000);
-                Duration c4ExpectedTime = toDuration("-PT1H59M59.001S");
-                assertEquals(c4ExpectedTime, c4Time);
-                assertEquals(c4ExpectedTime.toNanos(), c4Time.toNanos());
-                assertThat(c4Time.toNanos()).isEqualTo(-7199001000000L);
-                assertTrue(c4Time.isNegative());
-                assertThat(c4Time).isEqualTo(Duration.ofHours(-1).minusMinutes(59).minusSeconds(59).minusMillis(1));
-
-                // '-838:59:58.999999'
-                long c5 = after.getInt64("c5");
-                Duration c5Time = Duration.ofNanos(c5 * 1_000);
-                Duration c5ExpectedTime = toDuration("-PT838H59M58.999999S");
-                assertEquals(c5ExpectedTime, c5Time);
-                assertEquals(c5ExpectedTime.toNanos(), c5Time.toNanos());
-                assertThat(c5Time.toNanos()).isEqualTo(-3020398999999000L);
-                assertTrue(c5Time.isNegative());
-                assertThat(c5Time).isEqualTo(Duration.ofHours(-838).minusMinutes(59).minusSeconds(58).minusNanos(999999000));
-
-                // '-00:20:38.000000'
-                long c6 = after.getInt64("c6");
-                Duration c6Time = Duration.ofNanos(c6 * 1_000);
-                Duration c6ExpectedTime = toDuration("-PT00H20M38.000000S");
-                assertEquals(c6ExpectedTime, c6Time);
-                assertEquals(c6ExpectedTime.toNanos(), c6Time.toNanos());
-                assertThat(c6Time.toNanos()).isEqualTo(-1238000000000L);
-                assertTrue(c6Time.isNegative());
-                assertThat(c6Time).isEqualTo(Duration.ofHours(0).negated().minusMinutes(20).minusSeconds(38).minusNanos(0));
-
-                // '-01:01:01.000001'
-                long c7 = after.getInt64("c7");
-                Duration c7Time = Duration.ofNanos(c7 * 1_000);
-                Duration c7ExpectedTime = toDuration("-PT01H01M01.000001S");
-                assertEquals(c7ExpectedTime, c7Time);
-                assertEquals(c7ExpectedTime.toNanos(), c7Time.toNanos());
-                assertThat(c7Time.toNanos()).isEqualTo(-3661000001000L);
-                assertTrue(c7Time.isNegative());
-                assertThat(c7Time).isEqualTo(Duration.ofHours(-1).minusMinutes(1).minusSeconds(1).minusNanos(1_000));
-
-                // '-01:01:01.000000'
-                long c8 = after.getInt64("c8");
-                Duration c8Time = Duration.ofNanos(c8 * 1_000);
-                Duration c8ExpectedTime = toDuration("-PT01H01M01.000000S");
-                assertEquals(c8ExpectedTime, c8Time);
-                assertEquals(c8ExpectedTime.toNanos(), c8Time.toNanos());
-                assertThat(c8Time.toNanos()).isEqualTo(-3661000000000L);
-                assertTrue(c8Time.isNegative());
-                assertThat(c8Time).isEqualTo(Duration.ofHours(-1).minusMinutes(1).minusSeconds(1).minusNanos(0));
-
-                // '-01:01:00.000000'
-                long c9 = after.getInt64("c9");
-                Duration c9Time = Duration.ofNanos(c9 * 1_000);
-                Duration c9ExpectedTime = toDuration("-PT01H01M00.000000S");
-                assertEquals(c9ExpectedTime, c9Time);
-                assertEquals(c9ExpectedTime.toNanos(), c9Time.toNanos());
-                assertThat(c9Time.toNanos()).isEqualTo(-3660000000000L);
-                assertTrue(c9Time.isNegative());
-                assertThat(c9Time).isEqualTo(Duration.ofHours(-1).minusMinutes(1).minusSeconds(0).minusNanos(0));
-
-                // '-01:00:00.000000'
-                long c10 = after.getInt64("c10");
-                Duration c10Time = Duration.ofNanos(c10 * 1_000);
-                Duration c10ExpectedTime = toDuration("-PT01H00M00.000000S");
-                assertEquals(c10ExpectedTime, c10Time);
-                assertEquals(c10ExpectedTime.toNanos(), c10Time.toNanos());
-                assertThat(c10Time.toNanos()).isEqualTo(-3600000000000L);
-                assertTrue(c10Time.isNegative());
-                assertThat(c10Time).isEqualTo(Duration.ofHours(-1).minusMinutes(0).minusSeconds(0).minusNanos(0));
-
-                // '-00:00:00.000000'
-                long c11 = after.getInt64("c11");
-                Duration c11Time = Duration.ofNanos(c11 * 1_000);
-                Duration c11ExpectedTime = toDuration("PT00H00M00.000000S");
-                assertEquals(c11ExpectedTime, c11Time);
-                assertEquals(c11ExpectedTime.toNanos(), c11Time.toNanos());
-                assertThat(c11Time.toNanos()).isEqualTo(0L);
-                assertTrue(c11Time.isZero());
-                assertThat(c11Time).isEqualTo(Duration.ofHours(0).minusMinutes(0).minusSeconds(0).minusNanos(0));
+                assertTimeTestValues(value.getStruct(Envelope.FieldName.AFTER));
             }
         });
 
@@ -960,6 +849,27 @@ public abstract class BinlogRegressionIT<C extends SourceConnector> extends Abst
             assertThat(rec2.get("nnc2")).isEqualTo(60_000_000L); // 1 minute
             assertThat(rec2.get("nnc3")).isEqualTo(0L);
         }
+    }
+
+    @Test
+    @FixFor("debezium/dbz#1015")
+    @SkipWhenDatabaseIs(value = SkipWhenDatabaseIs.Type.MARIADB, reason = "MariaDB JDBC driver issue CONJ-1226")
+    public void shouldConsumeTimeValuesUsingSnapshotWithBinaryProtocol() throws SQLException, InterruptedException {
+        // A snapshot fetch size makes the connector read the snapshot through the binary protocol
+        config = DATABASE.defaultConfig()
+                .with(BinlogConnectorConfig.TABLE_INCLUDE_LIST, DATABASE.qualifiedTableName("dbz_342_timetest"))
+                .with(BinlogConnectorConfig.INCLUDE_SCHEMA_CHANGES, false)
+                .with(BinlogConnectorConfig.SNAPSHOT_FETCH_SIZE, 101)
+                .build();
+
+        DATABASE.initialize();
+        start(getConnectorClass(), config);
+
+        final SourceRecords records = consumeRecordsByTopic(1);
+        stopConnector();
+        final List<SourceRecord> timeRecords = records.recordsForTopic(DATABASE.topicForTable("dbz_342_timetest"));
+        assertThat(timeRecords).hasSize(1);
+        assertTimeTestValues(((Struct) timeRecords.get(0).value()).getStruct(Envelope.FieldName.AFTER));
     }
 
     @Test
@@ -1178,6 +1088,121 @@ public abstract class BinlogRegressionIT<C extends SourceConnector> extends Abst
                 assertThat(decimalValue).isEqualTo("12345.67");
             }
         });
+    }
+
+    private void assertTimeTestValues(Struct after) {
+        String durationValue = getDuration();
+        long timeWithNanoSeconds = getTimeWithNanoSecondsLarge();
+        int nanos = getNanos();
+
+        // '517:51:04.777'
+        long c1 = after.getInt64("c1");
+        Duration c1Time = Duration.ofNanos(c1 * 1_000);
+        Duration c1ExpectedTime = toDuration(durationValue);
+        assertEquals(c1ExpectedTime, c1Time);
+        assertEquals(c1ExpectedTime.toNanos(), c1Time.toNanos());
+        assertThat(c1Time.toNanos()).isEqualTo(timeWithNanoSeconds);
+        assertThat(c1Time).isEqualTo(Duration.ofHours(517).plusMinutes(51).plusSeconds(4).plusMillis(nanos));
+
+        // '-13:14:50'
+        long c2 = after.getInt64("c2");
+        Duration c2Time = Duration.ofNanos(c2 * 1_000);
+        Duration c2ExpectedTime = toDuration("-PT13H14M50S");
+        assertEquals(c2ExpectedTime, c2Time);
+        assertEquals(c2ExpectedTime.toNanos(), c2Time.toNanos());
+        assertThat(c2Time.toNanos()).isEqualTo(-47690000000000L);
+        assertTrue(c2Time.isNegative());
+        assertThat(c2Time).isEqualTo(Duration.ofHours(-13).minusMinutes(14).minusSeconds(50));
+
+        // '-733:00:00.0011'
+        long c3 = after.getInt64("c3");
+        Duration c3Time = Duration.ofNanos(c3 * 1_000);
+        Duration c3ExpectedTime = toDuration("-PT733H0M0.001S");
+        assertEquals(c3ExpectedTime, c3Time);
+        assertEquals(c3ExpectedTime.toNanos(), c3Time.toNanos());
+        assertThat(c3Time.toNanos()).isEqualTo(-2638800001000000L);
+        assertTrue(c3Time.isNegative());
+        assertThat(c3Time).isEqualTo(Duration.ofHours(-733).minusMillis(1));
+
+        // '-1:59:59.0011'
+        long c4 = after.getInt64("c4");
+        Duration c4Time = Duration.ofNanos(c4 * 1_000);
+        Duration c4ExpectedTime = toDuration("-PT1H59M59.001S");
+        assertEquals(c4ExpectedTime, c4Time);
+        assertEquals(c4ExpectedTime.toNanos(), c4Time.toNanos());
+        assertThat(c4Time.toNanos()).isEqualTo(-7199001000000L);
+        assertTrue(c4Time.isNegative());
+        assertThat(c4Time).isEqualTo(Duration.ofHours(-1).minusMinutes(59).minusSeconds(59).minusMillis(1));
+
+        // '-838:59:58.999999'
+        long c5 = after.getInt64("c5");
+        Duration c5Time = Duration.ofNanos(c5 * 1_000);
+        Duration c5ExpectedTime = toDuration("-PT838H59M58.999999S");
+        assertEquals(c5ExpectedTime, c5Time);
+        assertEquals(c5ExpectedTime.toNanos(), c5Time.toNanos());
+        assertThat(c5Time.toNanos()).isEqualTo(-3020398999999000L);
+        assertTrue(c5Time.isNegative());
+        assertThat(c5Time).isEqualTo(Duration.ofHours(-838).minusMinutes(59).minusSeconds(58).minusNanos(999999000));
+
+        // '-00:20:38.000000'
+        long c6 = after.getInt64("c6");
+        Duration c6Time = Duration.ofNanos(c6 * 1_000);
+        Duration c6ExpectedTime = toDuration("-PT00H20M38.000000S");
+        assertEquals(c6ExpectedTime, c6Time);
+        assertEquals(c6ExpectedTime.toNanos(), c6Time.toNanos());
+        assertThat(c6Time.toNanos()).isEqualTo(-1238000000000L);
+        assertTrue(c6Time.isNegative());
+        assertThat(c6Time).isEqualTo(Duration.ofHours(0).negated().minusMinutes(20).minusSeconds(38).minusNanos(0));
+
+        // '-01:01:01.000001'
+        long c7 = after.getInt64("c7");
+        Duration c7Time = Duration.ofNanos(c7 * 1_000);
+        Duration c7ExpectedTime = toDuration("-PT01H01M01.000001S");
+        assertEquals(c7ExpectedTime, c7Time);
+        assertEquals(c7ExpectedTime.toNanos(), c7Time.toNanos());
+        assertThat(c7Time.toNanos()).isEqualTo(-3661000001000L);
+        assertTrue(c7Time.isNegative());
+        assertThat(c7Time).isEqualTo(Duration.ofHours(-1).minusMinutes(1).minusSeconds(1).minusNanos(1_000));
+
+        // '-01:01:01.000000'
+        long c8 = after.getInt64("c8");
+        Duration c8Time = Duration.ofNanos(c8 * 1_000);
+        Duration c8ExpectedTime = toDuration("-PT01H01M01.000000S");
+        assertEquals(c8ExpectedTime, c8Time);
+        assertEquals(c8ExpectedTime.toNanos(), c8Time.toNanos());
+        assertThat(c8Time.toNanos()).isEqualTo(-3661000000000L);
+        assertTrue(c8Time.isNegative());
+        assertThat(c8Time).isEqualTo(Duration.ofHours(-1).minusMinutes(1).minusSeconds(1).minusNanos(0));
+
+        // '-01:01:00.000000'
+        long c9 = after.getInt64("c9");
+        Duration c9Time = Duration.ofNanos(c9 * 1_000);
+        Duration c9ExpectedTime = toDuration("-PT01H01M00.000000S");
+        assertEquals(c9ExpectedTime, c9Time);
+        assertEquals(c9ExpectedTime.toNanos(), c9Time.toNanos());
+        assertThat(c9Time.toNanos()).isEqualTo(-3660000000000L);
+        assertTrue(c9Time.isNegative());
+        assertThat(c9Time).isEqualTo(Duration.ofHours(-1).minusMinutes(1).minusSeconds(0).minusNanos(0));
+
+        // '-01:00:00.000000'
+        long c10 = after.getInt64("c10");
+        Duration c10Time = Duration.ofNanos(c10 * 1_000);
+        Duration c10ExpectedTime = toDuration("-PT01H00M00.000000S");
+        assertEquals(c10ExpectedTime, c10Time);
+        assertEquals(c10ExpectedTime.toNanos(), c10Time.toNanos());
+        assertThat(c10Time.toNanos()).isEqualTo(-3600000000000L);
+        assertTrue(c10Time.isNegative());
+        assertThat(c10Time).isEqualTo(Duration.ofHours(-1).minusMinutes(0).minusSeconds(0).minusNanos(0));
+
+        // '-00:00:00.000000'
+        long c11 = after.getInt64("c11");
+        Duration c11Time = Duration.ofNanos(c11 * 1_000);
+        Duration c11ExpectedTime = toDuration("PT00H00M00.000000S");
+        assertEquals(c11ExpectedTime, c11Time);
+        assertEquals(c11ExpectedTime.toNanos(), c11Time.toNanos());
+        assertThat(c11Time.toNanos()).isEqualTo(0L);
+        assertTrue(c11Time.isZero());
+        assertThat(c11Time).isEqualTo(Duration.ofHours(0).minusMinutes(0).minusSeconds(0).minusNanos(0));
     }
 
     private void assertTimestamp(ZoneId timezoneId, String c4) {
