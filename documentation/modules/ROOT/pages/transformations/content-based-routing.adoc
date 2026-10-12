@@ -225,6 +225,7 @@ For example:
 value.op == 'u' ? 'updates' : null
 ----
 
+ifdef::community[]
 .Go with TinyGo
 When you create content-based routing conditions by using Go with the TinyGo compiler, you can leverage a fully typed API for lazy access to the fields.
 For example:
@@ -240,6 +241,7 @@ if !debezium.IsNull(value) {
 }
 return debezium.SetNull()
 ----
+endif::community[]
 
 // Type: reference
 // ModuleID: options-for-configuring-the-content-based-routing-transformation
@@ -263,14 +265,18 @@ If the name of the topic does not match the value in `topic.regex`, the SMT pass
 |The language in which the expression is written. 
 For JSR223, prefix the value with `jsr223.`, for example, `jsr223.groovy`, or `jsr223.graal.js`.
 {prodname} supports bootstrapping through the https://jcp.org/en/jsr/detail?id=223[JSR 223 API ("Scripting for the Java (TM) Platform")].
+ifdef::community[]
 For Go-based filters, specify `wasm.chicory` or `wasm.chicory-interpreter`.
+endif::community[]
 
 |[[content-based-router-topic-expression]]<<content-based-router-topic-expression, `topic.expression`>>
 |No default value
 |The expression to be evaluated for every message.
 Must evaluate to a `String` value where a result of non-null reroutes the message to a new topic, and a `null` value routes the message to the default topic.
+ifdef::community[]
 With Go, the value of this property specifies the filesystem location where the `wasm` expression is available to be evaluated for every message.
 The Go function must evaluate to a String value or Null.
+endif::community[]
 
 |[[content-based-router-null-handling-mode]]<<content-based-router-null-handling-mode, `null.handling.mode`>>
 |`keep`
