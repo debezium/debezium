@@ -52,7 +52,6 @@ public class JsonTableChangeSerializer implements TableChanges.TableChangesSeria
 
         if (tableChange.getTable() != null) {
             document.setDocument("table", toDocument(tableChange.getTable()));
-            document.setString("comment", tableChange.getTable().comment());
         }
 
         return document;
@@ -62,6 +61,7 @@ public class JsonTableChangeSerializer implements TableChanges.TableChangesSeria
         Document document = Document.create();
 
         document.set("defaultCharsetName", table.defaultCharsetName());
+        document.setString("comment", table.comment());
         document.set("primaryKeyColumnNames", Array.create(table.primaryKeyColumnNames()));
 
         List<Document> columns = table.columns()
@@ -234,7 +234,12 @@ public class JsonTableChangeSerializer implements TableChanges.TableChangesSeria
         Table table = null;
 
         if (type == TableChangeType.CREATE || type == TableChangeType.ALTER) {
-            table = fromDocument(id, document.getDocument("table"));
+            Document tableDocument = document.getDocument("table");
+            // Records written by earlier versions carry the table comment on the change document only
+            if (!tableDocument.has("comment") && document.getString("comment") != null) {
+                tableDocument.setString("comment", document.getString("comment"));
+            }
+            table = fromDocument(id, tableDocument);
         }
         else {
             table = Table.editor().tableId(id).create();
