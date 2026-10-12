@@ -15,6 +15,7 @@ import java.sql.SQLTimeoutException;
 import org.junit.jupiter.api.Test;
 
 import io.debezium.config.Configuration;
+import io.debezium.connector.oracle.junit.SkipWhenAdapterNameIsNot;
 import io.debezium.connector.oracle.util.TestHelper;
 import io.debezium.doc.FixFor;
 import io.debezium.relational.TableId;
@@ -59,6 +60,7 @@ public class ConnectionIT implements Testing {
 
     @Test
     @FixFor("debezium/dbz#2798")
+    @SkipWhenAdapterNameIsNot(SkipWhenAdapterNameIsNot.AdapterName.ANY_LOGMINER)
     void shouldResolveTableIdByObjectIdAndDataObjectId() throws SQLException {
         final Configuration config = TestHelper.defaultConfig().build();
         final String catalogName = new OracleConnectorConfig(config).getCatalogName();
@@ -96,6 +98,7 @@ public class ConnectionIT implements Testing {
 
     @Test
     @FixFor("debezium/dbz#2798")
+    @SkipWhenAdapterNameIsNot(SkipWhenAdapterNameIsNot.AdapterName.ANY_LOGMINER)
     void shouldResolveTableIdForSysOwnedTableNotListedInAllObjects() throws SQLException {
         // The connector user cannot select from SYS.OBJ$, so ALL_OBJECTS does not list it. Events for such
         // tables are the ones a physical standby cannot name from a stale dictionary, so the lookup must
