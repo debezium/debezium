@@ -6,6 +6,7 @@
 package io.debezium.relational.history;
 
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
@@ -17,6 +18,8 @@ import io.debezium.document.Value;
 import io.debezium.relational.Attribute;
 import io.debezium.relational.Column;
 import io.debezium.relational.ColumnEditor;
+import io.debezium.relational.DefaultRelationalMetadataFactory;
+import io.debezium.relational.RelationalMetadataFactory;
 import io.debezium.relational.Table;
 import io.debezium.relational.TableEditor;
 import io.debezium.relational.TableId;
@@ -24,12 +27,31 @@ import io.debezium.relational.history.TableChanges.TableChange;
 import io.debezium.relational.history.TableChanges.TableChangeType;
 
 /**
- * Ther serializer responsible for converting of {@link TableChanges} into a JSON format.
+ * The serializer responsible for converting of {@link TableChanges} into a JSON format.
+ * <p>
+ * Tables and columns read back from JSON are created through the {@link RelationalMetadataFactory} the
+ * serializer was built with. A connector whose metadata classes carry additional fields subclasses this
+ * serializer and overrides the extension hooks ({@link #writeColumnExtensions}, {@link #readColumnExtensions},
+ * {@link #writeTableExtensions}, {@link #readTableExtensions}); the base fields and their keys never change.
  *
  * @author Jiri Pechanec
  *
  */
 public class JsonTableChangeSerializer implements TableChanges.TableChangesSerializer<Array> {
+
+    private final RelationalMetadataFactory metadataFactory;
+
+    public JsonTableChangeSerializer() {
+        this(DefaultRelationalMetadataFactory.INSTANCE);
+    }
+
+    public JsonTableChangeSerializer(RelationalMetadataFactory metadataFactory) {
+        this.metadataFactory = Objects.requireNonNull(metadataFactory, "metadataFactory");
+    }
+
+    protected RelationalMetadataFactory metadataFactory() {
+        return metadataFactory;
+    }
 
     @Override
     public Array serialize(TableChanges tableChanges) {
@@ -58,7 +80,13 @@ public class JsonTableChangeSerializer implements TableChanges.TableChangesSeria
         return document;
     }
 
-    private Document toDocument(Table table) {
+    /**
+     * Converts a single table to its document form, the same form used inside a table change document.
+     *
+     * @param table the table; never null
+     * @return the document; never null
+     */
+    public Document toDocument(Table table) {
         Document document = Document.create();
 
         document.set("defaultCharsetName", table.defaultCharsetName());
@@ -78,10 +106,11 @@ public class JsonTableChangeSerializer implements TableChanges.TableChangesSeria
 
         document.setArray("attributes", Array.create(attributes));
 
+        writeTableExtensions(table, document);
         return document;
     }
 
-    private Document toDocument(Column column) {
+    protected Document toDocument(Column column) {
         Document document = Document.create();
 
         document.setString("name", column.name());
@@ -114,7 +143,49 @@ public class JsonTableChangeSerializer implements TableChanges.TableChangesSeria
                 .map(List::toArray)
                 .ifPresent(enums -> document.setArray("enumValues", enums));
 
+        writeColumnExtensions(column, document);
         return document;
+    }
+
+    /**
+     * Writes connector-specific column metadata into the column's document. The default writes nothing.
+     * Implementations should nest their fields under a single entry keyed by the connector name so the base
+     * layout stays flat.
+     *
+     * @param column the column being serialized; never null
+     * @param document the column's document, already holding the base fields; never null
+     */
+    protected void writeColumnExtensions(Column column, Document document) {
+    }
+
+    /**
+     * Reads connector-specific column metadata written by {@link #writeColumnExtensions} back into the editor.
+     * The default reads nothing. A document written before the extension existed has no entry, and
+     * implementations should leave the editor's defaults in place in that case.
+     *
+     * @param document the column's document; never null
+     * @param editor the editor created by the metadata factory, already holding the base fields; never null
+     */
+    protected void readColumnExtensions(Document document, ColumnEditor editor) {
+    }
+
+    /**
+     * Writes connector-specific table metadata into the table's document. The default writes nothing.
+     *
+     * @param table the table being serialized; never null
+     * @param document the table's document, already holding the base fields; never null
+     */
+    protected void writeTableExtensions(Table table, Document document) {
+    }
+
+    /**
+     * Reads connector-specific table metadata written by {@link #writeTableExtensions} back into the editor.
+     * The default reads nothing.
+     *
+     * @param document the table's document; never null
+     * @param editor the editor created by the metadata factory, already holding the base fields; never null
+     */
+    protected void readTableExtensions(Document document, TableEditor editor) {
     }
 
     private Document toDocument(Attribute attribute) {
@@ -145,8 +216,16 @@ public class JsonTableChangeSerializer implements TableChanges.TableChangesSeria
         return tableChanges;
     }
 
-    private static Table fromDocument(TableId id, Document document) {
-        TableEditor editor = Table.editor()
+    /**
+     * Rebuilds a table from the document form produced by {@link #toDocument(Table)}, using the metadata factory
+     * this serializer was created with.
+     *
+     * @param id the table identifier; never null
+     * @param document the table document; never null
+     * @return the table; never null
+     */
+    public Table fromDocument(TableId id, Document document) {
+        TableEditor editor = metadataFactory.tableEditor()
                 .tableId(id)
                 .setDefaultCharsetName(document.getString("defaultCharsetName"));
         if (document.getString("comment") != null) {
@@ -157,7 +236,7 @@ public class JsonTableChangeSerializer implements TableChanges.TableChangesSeria
                 .streamValues()
                 .map(Value::asDocument)
                 .map(v -> {
-                    ColumnEditor columnEditor = Column.editor()
+                    ColumnEditor columnEditor = metadataFactory.columnEditor()
                             .name(v.getString("name"))
                             .jdbcType(v.getInteger("jdbcType"));
 
@@ -206,6 +285,7 @@ public class JsonTableChangeSerializer implements TableChanges.TableChangesSeria
                             .autoIncremented(v.getBoolean("autoIncremented"))
                             .generated(v.getBoolean("generated"));
 
+                    readColumnExtensions(v, columnEditor);
                     return columnEditor.create();
                 })
                 .forEach(editor::addColumn);
@@ -221,10 +301,11 @@ public class JsonTableChangeSerializer implements TableChanges.TableChangesSeria
                 .map(Value::asString)
                 .collect(Collectors.toList()));
 
+        readTableExtensions(document, editor);
         return editor.create();
     }
 
-    public static TableChange fromDocument(Document document, boolean useCatalogBeforeSchema) {
+    public TableChange fromDocument(Document document, boolean useCatalogBeforeSchema) {
         TableChangeType type = TableChangeType.valueOf(document.getString("type"));
         TableId id = TableId.parse(document.getString("id"), useCatalogBeforeSchema);
         TableId previousId = null;
@@ -237,7 +318,7 @@ public class JsonTableChangeSerializer implements TableChanges.TableChangesSeria
             table = fromDocument(id, document.getDocument("table"));
         }
         else {
-            table = Table.editor().tableId(id).create();
+            table = metadataFactory.tableEditor().tableId(id).create();
         }
         return new TableChange(type, table, previousId);
     }

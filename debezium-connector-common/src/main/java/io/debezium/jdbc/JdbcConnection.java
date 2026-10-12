@@ -60,7 +60,9 @@ import io.debezium.pipeline.source.snapshot.incremental.DefaultChunkQueryBuilder
 import io.debezium.relational.Attribute;
 import io.debezium.relational.Column;
 import io.debezium.relational.ColumnEditor;
+import io.debezium.relational.DefaultRelationalMetadataFactory;
 import io.debezium.relational.RelationalDatabaseConnectorConfig;
+import io.debezium.relational.RelationalMetadataFactory;
 import io.debezium.relational.Table;
 import io.debezium.relational.TableId;
 import io.debezium.relational.Tables;
@@ -1407,6 +1409,16 @@ public class JdbcConnection implements AutoCloseable {
     }
 
     /**
+     * The factory that creates the column editors returned by {@link #readTableColumn}. Connectors whose
+     * columns carry additional metadata override this to return the factory from their connector config.
+     *
+     * @return the metadata factory; never {@code null}
+     */
+    protected RelationalMetadataFactory metadataFactory() {
+        return DefaultRelationalMetadataFactory.INSTANCE;
+    }
+
+    /**
      * Returns a {@link ColumnEditor} representing the current record of the given result set of column metadata, if
      * included in column.include.list.
      */
@@ -1416,7 +1428,7 @@ public class JdbcConnection implements AutoCloseable {
 
         final String columnName = columnMetadata.getString(4);
         if (columnFilter == null || columnFilter.matches(tableId.catalog(), tableId.schema(), tableId.table(), columnName)) {
-            ColumnEditor column = Column.editor().name(columnName);
+            ColumnEditor column = metadataFactory().columnEditor().name(columnName);
             column.type(columnMetadata.getString(6));
             column.length(columnMetadata.getInt(7));
             if (columnMetadata.getObject(9) != null) {

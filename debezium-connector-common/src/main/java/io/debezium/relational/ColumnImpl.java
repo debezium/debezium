@@ -6,13 +6,28 @@
 package io.debezium.relational;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 
+import io.debezium.util.Interner;
 import io.debezium.util.Strings;
 
-final class ColumnImpl implements Column, Comparable<Column> {
+/**
+ * The default {@link Column} implementation.
+ * <p>
+ * A connector that needs to carry additional column metadata subclasses this class, adds its own fields,
+ * and creates instances from its own {@link ColumnEditorImpl} subclass. Such a subclass must override
+ * {@link #equals(Object)} to accept only instances of its own type and compare its own fields after the base
+ * fields, because {@link Tables} and {@link Interner} rely on equality to detect a changed column and an
+ * equal ColumnImpl must never stand in for the subclass. It must override {@link #hashCode()} to combine the base
+ * hash code with the same fields, and should override {@link #edit()} and {@link #appendExtensions(StringBuilder)}.
+ * The extra fields add metadata and never change identity, which stays with the column name.
+ *
+ * @author Randall Hauch
+ */
+public class ColumnImpl implements Column, Comparable<Column> {
     private final String name;
     private final int position;
     private final int jdbcType;
@@ -30,45 +45,36 @@ final class ColumnImpl implements Column, Comparable<Column> {
     private final List<String> enumValues;
     private final String comment;
 
-    protected ColumnImpl(String columnName, int position, int jdbcType, int componentType, String typeName, String typeExpression,
-                         String charsetName, String defaultCharsetName, int columnLength, Integer columnScale,
-                         boolean optional, boolean autoIncremented, boolean generated) {
-        this(columnName, position, jdbcType, componentType, typeName, typeExpression, charsetName,
-                defaultCharsetName, columnLength, columnScale, null, optional, autoIncremented, generated, null, false, null);
-    }
-
-    protected ColumnImpl(String columnName, int position, int jdbcType, int nativeType, String typeName, String typeExpression,
-                         String charsetName, String defaultCharsetName, int columnLength, Integer columnScale,
-                         boolean optional, boolean autoIncremented, boolean generated, String defaultValueExpression, boolean hasDefaultValue) {
-        this(columnName, position, jdbcType, nativeType, typeName, typeExpression, charsetName,
-                defaultCharsetName, columnLength, columnScale, null, optional, autoIncremented, generated, defaultValueExpression, hasDefaultValue, null);
-    }
-
-    protected ColumnImpl(String columnName, int position, int jdbcType, int nativeType, String typeName, String typeExpression,
-                         String charsetName, String defaultCharsetName, int columnLength, Integer columnScale,
-                         List<String> enumValues, boolean optional, boolean autoIncremented, boolean generated,
-                         String defaultValueExpression, boolean hasDefaultValue, String comment) {
-        this.name = columnName;
-        this.position = position;
-        this.jdbcType = jdbcType;
-        this.nativeType = nativeType;
-        this.typeName = typeName;
-        this.typeExpression = typeExpression;
+    /**
+     * Creates a column from the current state of the given editor. Subclasses call this constructor
+     * and then copy their own fields from their own editor type.
+     *
+     * @param editor the editor whose state is copied; may not be null
+     */
+    protected ColumnImpl(ColumnEditor editor) {
+        this.name = Interner.intern(editor.name());
+        this.position = editor.position();
+        this.jdbcType = editor.jdbcType();
+        this.nativeType = editor.nativeType();
+        this.typeName = Interner.intern(editor.typeName());
+        this.typeExpression = Interner.intern(editor.typeExpression());
         // We want to always capture the charset name for the column (if the column needs one) ...
+        String charsetName = editor.charsetName();
         if (typeUsesCharset() && (charsetName == null || "DEFAULT".equalsIgnoreCase(charsetName))) {
             // Use the default charset name ...
-            charsetName = defaultCharsetName;
+            charsetName = editor.charsetNameOfTable();
         }
-        this.charsetName = charsetName;
-        this.length = columnLength;
-        this.scale = columnScale;
-        this.optional = optional;
-        this.autoIncremented = autoIncremented;
-        this.generated = generated;
-        this.defaultValueExpression = defaultValueExpression;
-        this.hasDefaultValue = hasDefaultValue;
-        this.enumValues = enumValues == null ? new ArrayList<>() : enumValues;
-        this.comment = comment;
+        this.charsetName = Interner.intern(charsetName);
+        this.length = editor.length();
+        this.scale = editor.scale().orElse(null);
+        this.optional = editor.isOptional();
+        this.autoIncremented = editor.isAutoIncremented();
+        this.generated = editor.isGenerated();
+        this.defaultValueExpression = Interner.intern(editor.defaultValueExpression().orElse(null));
+        this.hasDefaultValue = editor.hasDefaultValue();
+        final List<String> enumValues = editor.enumValues();
+        this.enumValues = enumValues == null ? new ArrayList<>() : Interner.intern(Collections.unmodifiableList(enumValues));
+        this.comment = Interner.intern(editor.comment());
         assert this.length >= -1;
     }
 
@@ -214,27 +220,47 @@ final class ColumnImpl implements Column, Comparable<Column> {
         if (comment != null) {
             sb.append(" COMMENT '").append(comment).append("'");
         }
+        appendExtensions(sb);
         return sb.toString();
+    }
+
+    /**
+     * Appends any subclass-specific state to the {@link #toString()} output. The default appends nothing.
+     *
+     * @param sb the builder holding the base column rendering; never null
+     */
+    protected void appendExtensions(StringBuilder sb) {
     }
 
     @Override
     public ColumnEditor edit() {
-        final ColumnEditor editor = Column.editor()
-                .name(name())
-                .type(typeName(), typeExpression())
-                .jdbcType(jdbcType())
+        return copyTo(new ColumnEditorImpl());
+    }
+
+    /**
+     * Copies the state of this column into the given editor and returns that editor. Subclasses call this
+     * from their own {@link #edit()} with their own editor type and then set their additional fields.
+     *
+     * @param editor the editor to populate; may not be null
+     * @return the given editor
+     * @param <E> the editor type
+     */
+    protected <E extends ColumnEditor> E copyTo(E editor) {
+        editor.name(name)
+                .type(typeName, typeExpression)
+                .jdbcType(jdbcType)
                 .nativeType(nativeType)
                 .charsetName(charsetName)
-                .length(length())
-                .scale(scale().orElse(null))
-                .position(position())
-                .optional(isOptional())
-                .autoIncremented(isAutoIncremented())
-                .generated(isGenerated())
+                .length(length)
+                .scale(scale)
+                .position(position)
+                .optional(optional)
+                .autoIncremented(autoIncremented)
+                .generated(generated)
                 .enumValues(enumValues)
                 .comment(comment);
-        if (hasDefaultValue()) {
-            editor.defaultValueExpression(defaultValueExpression().orElse(null));
+        if (hasDefaultValue) {
+            editor.defaultValueExpression(defaultValueExpression);
         }
         return editor;
     }
