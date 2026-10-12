@@ -17,6 +17,7 @@ import io.debezium.pipeline.signal.actions.snapshotting.PauseIncrementalSnapshot
 import io.debezium.pipeline.signal.actions.snapshotting.ResumeIncrementalSnapshot;
 import io.debezium.pipeline.signal.actions.snapshotting.StopSnapshot;
 import io.debezium.pipeline.spi.Partition;
+import io.debezium.relational.RelationalDatabaseConnectorConfig;
 import io.debezium.relational.history.JsonTableChangeSerializer;
 import io.debezium.spi.schema.DataCollectionId;
 
@@ -26,12 +27,19 @@ public class StandardActionProvider implements SignalActionProvider {
                                                                             ChangeEventSourceCoordinator<P, ?> changeEventSourceCoordinator,
                                                                             CommonConnectorConfig connectorConfig) {
         return Map.of(Log.NAME, new Log<>(),
-                SchemaChanges.NAME, new SchemaChanges<>(dispatcher, connectorConfig, new JsonTableChangeSerializer()),
+                SchemaChanges.NAME, new SchemaChanges<>(dispatcher, connectorConfig, createTableChangesSerializer(connectorConfig)),
                 ExecuteSnapshot.NAME, new ExecuteSnapshot<>(dispatcher, changeEventSourceCoordinator),
                 StopSnapshot.NAME, new StopSnapshot<>(dispatcher),
                 OpenIncrementalSnapshotWindow.NAME, new OpenIncrementalSnapshotWindow<>(),
                 CloseIncrementalSnapshotWindow.NAME, new CloseIncrementalSnapshotWindow<>(dispatcher),
                 PauseIncrementalSnapshot.NAME, new PauseIncrementalSnapshot<>(dispatcher),
                 ResumeIncrementalSnapshot.NAME, new ResumeIncrementalSnapshot<>(dispatcher));
+    }
+
+    private static JsonTableChangeSerializer createTableChangesSerializer(CommonConnectorConfig connectorConfig) {
+        if (connectorConfig instanceof RelationalDatabaseConnectorConfig relationalConfig) {
+            return relationalConfig.getRelationalMetadataFactory().jsonTableChangesSerializer();
+        }
+        return new JsonTableChangeSerializer();
     }
 }

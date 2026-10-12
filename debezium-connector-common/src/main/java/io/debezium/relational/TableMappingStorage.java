@@ -13,6 +13,14 @@ import io.debezium.common.annotation.Incubating;
 /**
  * Interface for storing mappings between {@link TableId} and associated data.
  * This abstraction allows for alternative storage implementations to reduce memory pressure.
+ * <p>
+ * A {@link Type#TABLES tables} storage must hand back the {@link Table} instances it was given, or rebuild
+ * them through {@link RelationalDatabaseConnectorConfig#getRelationalMetadataFactory()}. A connector's
+ * factory may create {@code Table} and {@code Column} subclasses that carry extra metadata, and a table rebuilt
+ * any other way, such as through the static {@link Table#editor()}, silently loses it. A storage that keeps
+ * tables outside the heap can write each one with the factory's
+ * {@link RelationalMetadataFactory#jsonTableChangesSerializer() JSON serializer}, using
+ * {@code toDocument(Table)} and {@code fromDocument(TableId, Document)}, as {@code RocksDbTableMappingStorage} does.
  *
  * @param <V> the type of values stored
  * @author Debezium Authors

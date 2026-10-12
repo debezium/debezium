@@ -19,7 +19,11 @@ import io.debezium.schema.SchemaFactory;
 import io.debezium.schema.SchemaNameAdjuster;
 
 /**
- * Ther serializer responsible for converting of {@link TableChanges} into an array of {@link Struct}s.
+ * The serializer responsible for converting of {@link TableChanges} into an array of {@link Struct}s.
+ * <p>
+ * A connector whose metadata classes carry additional fields subclasses this serializer, builds it with a
+ * {@link SchemaFactory} whose column and table schemas declare those fields, and overrides
+ * {@link #writeColumnExtensions} and {@link #writeTableExtensions}; the base fields and their keys never change.
  *
  * @author Jiri Pechanec
  *
@@ -53,11 +57,13 @@ public class ConnectTableChangeSerializer implements TableChanges.TableChangesSe
     private final Schema changeSchema;
 
     public ConnectTableChangeSerializer(SchemaNameAdjuster schemaNameAdjuster) {
-        columnSchema = SchemaFactory.get().schemaHistoryColumnSchema(schemaNameAdjuster);
+        this(schemaNameAdjuster, SchemaFactory.get());
+    }
 
-        tableSchema = SchemaFactory.get().schemaHistoryTableSchema(schemaNameAdjuster);
-
-        changeSchema = SchemaFactory.get().schemaHistoryChangeSchema(schemaNameAdjuster);
+    public ConnectTableChangeSerializer(SchemaNameAdjuster schemaNameAdjuster, SchemaFactory schemaFactory) {
+        columnSchema = schemaFactory.schemaHistoryColumnSchema(schemaNameAdjuster);
+        tableSchema = schemaFactory.schemaHistoryTableSchema(schemaNameAdjuster);
+        changeSchema = schemaFactory.schemaHistoryChangeSchema(schemaNameAdjuster);
     }
 
     public Schema getChangeSchema() {
@@ -82,7 +88,7 @@ public class ConnectTableChangeSerializer implements TableChanges.TableChangesSe
         return struct;
     }
 
-    private Struct toStruct(Table table) {
+    protected Struct toStruct(Table table) {
         final Struct struct = new Struct(tableSchema);
 
         struct.put(DEFAULT_CHARSET_NAME_KEY, table.defaultCharsetName());
@@ -94,10 +100,11 @@ public class ConnectTableChangeSerializer implements TableChanges.TableChangesSe
 
         struct.put(COLUMNS_KEY, columns);
         struct.put(COMMENT_KEY, table.comment());
+        writeTableExtensions(table, struct);
         return struct;
     }
 
-    private Struct toStruct(Column column) {
+    protected Struct toStruct(Column column) {
         final Struct struct = new Struct(columnSchema);
 
         struct.put(NAME_KEY, column.name());
@@ -128,7 +135,28 @@ public class ConnectTableChangeSerializer implements TableChanges.TableChangesSe
             struct.put(ENUM_VALUES, column.enumValues());
         }
 
+        writeColumnExtensions(column, struct);
         return struct;
+    }
+
+    /**
+     * Writes connector-specific column metadata into the column's struct. The default writes nothing. The
+     * struct's schema comes from the {@link SchemaFactory} the serializer was built with, so implementations
+     * only put fields that factory declares, ideally one nested struct keyed by the connector name.
+     *
+     * @param column the column being serialized; never null
+     * @param struct the column's struct, already holding the base fields; never null
+     */
+    protected void writeColumnExtensions(Column column, Struct struct) {
+    }
+
+    /**
+     * Writes connector-specific table metadata into the table's struct. The default writes nothing.
+     *
+     * @param table the table being serialized; never null
+     * @param struct the table's struct, already holding the base fields; never null
+     */
+    protected void writeTableExtensions(Table table, Struct struct) {
     }
 
     @Override

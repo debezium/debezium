@@ -218,7 +218,11 @@ public class SchemaFactory {
                 .build();
     }
 
-    public Schema schemaHistoryColumnSchema(SchemaNameAdjuster adjuster) {
+    /**
+     * The builder of the schema used for a column in schema change events. Connectors that add column metadata
+     * override this, call the super builder and add their own, ideally nested, field before it is built.
+     */
+    public SchemaBuilder schemaHistoryColumnSchemaBuilder(SchemaNameAdjuster adjuster) {
         return SchemaBuilder.struct()
                 .name(adjuster.adjust(SCHEMA_HISTORY_COLUMN_SCHEMA_NAME))
                 .version(SCHEMA_HISTORY_COLUMN_SCHEMA_VERSION)
@@ -236,11 +240,17 @@ public class SchemaFactory {
                 .field(ConnectTableChangeSerializer.GENERATED_KEY, Schema.OPTIONAL_BOOLEAN_SCHEMA)
                 .field(ConnectTableChangeSerializer.COMMENT_KEY, Schema.OPTIONAL_STRING_SCHEMA)
                 .field(ConnectTableChangeSerializer.DEFAULT_VALUE_EXPRESSION, Schema.OPTIONAL_STRING_SCHEMA)
-                .field(ConnectTableChangeSerializer.ENUM_VALUES, SchemaBuilder.array(Schema.STRING_SCHEMA).optional().build())
-                .build();
+                .field(ConnectTableChangeSerializer.ENUM_VALUES, SchemaBuilder.array(Schema.STRING_SCHEMA).optional().build());
     }
 
-    public Schema schemaHistoryTableSchema(SchemaNameAdjuster adjuster) {
+    public Schema schemaHistoryColumnSchema(SchemaNameAdjuster adjuster) {
+        return schemaHistoryColumnSchemaBuilder(adjuster).build();
+    }
+
+    /**
+     * The builder of the schema used for a table in schema change events; see {@link #schemaHistoryColumnSchemaBuilder}.
+     */
+    public SchemaBuilder schemaHistoryTableSchemaBuilder(SchemaNameAdjuster adjuster) {
         return SchemaBuilder.struct()
                 .name(adjuster.adjust(SCHEMA_HISTORY_TABLE_SCHEMA_NAME))
                 .version(SCHEMA_HISTORY_TABLE_SCHEMA_VERSION)
@@ -248,8 +258,11 @@ public class SchemaFactory {
                 .field(ConnectTableChangeSerializer.PRIMARY_KEY_COLUMN_NAMES_KEY, SchemaBuilder.array(Schema.STRING_SCHEMA).optional().build())
                 .field(ConnectTableChangeSerializer.COLUMNS_KEY, SchemaBuilder.array(schemaHistoryColumnSchema(adjuster)).build())
                 .field(ConnectTableChangeSerializer.COMMENT_KEY, Schema.OPTIONAL_STRING_SCHEMA)
-                .optional()
-                .build();
+                .optional();
+    }
+
+    public Schema schemaHistoryTableSchema(SchemaNameAdjuster adjuster) {
+        return schemaHistoryTableSchemaBuilder(adjuster).build();
     }
 
     public Schema schemaHistoryChangeSchema(SchemaNameAdjuster adjuster) {

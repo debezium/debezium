@@ -82,7 +82,7 @@ public class PhysicalRowIdentifierChunkQueryBuilder<T extends DataCollectionId> 
     }
 
     private Column buildPhysicalColumn(Table table) {
-        ColumnEditor columnEditor = Column.editor()
+        ColumnEditor columnEditor = connectorConfig.getRelationalMetadataFactory().columnEditor()
                 .name(physicalColumnName)
                 .jdbcType(physicalJdbcType)
                 .nativeType(physicalNativeType)

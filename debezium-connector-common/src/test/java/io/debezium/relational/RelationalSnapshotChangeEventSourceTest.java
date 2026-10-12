@@ -162,6 +162,28 @@ public class RelationalSnapshotChangeEventSourceTest {
         };
     }
 
+    @Test
+    @FixFor("debezium/dbz#2843")
+    public void shouldCreateSnapshotTablesWithDefaultMetadataFactory() {
+        final RelationalSnapshotChangeEventSource.RelationalSnapshotContext<Partition, OffsetContext> snapshotContext = new RelationalSnapshotChangeEventSource.RelationalSnapshotContext<>(
+                Map::of, "db1", false);
+
+        final Table table = snapshotContext.tables.editOrCreateTable(new TableId("db1", "s1", "t1")).create();
+
+        assertThat(table).isExactlyInstanceOf(TableImpl.class);
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2843")
+    public void shouldCreateSnapshotTablesWithConfiguredMetadataFactory() {
+        final RelationalSnapshotChangeEventSource.RelationalSnapshotContext<Partition, OffsetContext> snapshotContext = new RelationalSnapshotChangeEventSource.RelationalSnapshotContext<>(
+                Map::of, "db1", false, ExtendedMetadata.ExtendedRelationalMetadataFactory.INSTANCE);
+
+        final Table table = snapshotContext.tables.editOrCreateTable(new TableId("db1", "s1", "t1")).create();
+
+        assertThat(table).isInstanceOf(ExtendedMetadata.ExtendedTable.class);
+    }
+
     /**
      * Minimal concrete snapshot source; only {@code doCreateDataEventsForChunk} is exercised.
      */
