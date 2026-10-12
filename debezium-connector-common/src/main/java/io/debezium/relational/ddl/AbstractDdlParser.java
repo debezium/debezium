@@ -16,6 +16,8 @@ import org.slf4j.LoggerFactory;
 
 import io.debezium.relational.Column;
 import io.debezium.relational.ColumnEditor;
+import io.debezium.relational.DefaultRelationalMetadataFactory;
+import io.debezium.relational.RelationalMetadataFactory;
 import io.debezium.relational.SystemVariables;
 import io.debezium.relational.TableId;
 import io.debezium.text.MultipleParsingExceptions;
@@ -344,8 +346,18 @@ public abstract class AbstractDdlParser implements DdlParser {
         return list;
     }
 
+    /**
+     * The factory that creates the column and table editors used while parsing DDL. Connectors whose
+     * columns carry additional metadata override this to return the factory from their connector config.
+     *
+     * @return the metadata factory; never {@code null}
+     */
+    protected RelationalMetadataFactory metadataFactory() {
+        return DefaultRelationalMetadataFactory.INSTANCE;
+    }
+
     protected Column createColumnFromConstant(String columnName, String constantValue) {
-        ColumnEditor column = Column.editor().name(columnName);
+        ColumnEditor column = metadataFactory().columnEditor().name(columnName);
         try {
             if (constantValue.startsWith("'") || constantValue.startsWith("\"")) {
                 column.type("CHAR");

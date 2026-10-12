@@ -1473,9 +1473,20 @@ public abstract class RelationalSnapshotChangeEventSource<P extends Partition, O
         public Set<TableId> capturedSchemaTables;
 
         public RelationalSnapshotContext(P partition, String catalogName, boolean onDemand) {
+            this(partition, catalogName, onDemand, DefaultRelationalMetadataFactory.INSTANCE);
+        }
+
+        /**
+         * Creates a snapshot context whose {@link #tables} are created through the given metadata factory.
+         * Connectors that extend {@link Table} or {@link Column} must use this constructor so that the
+         * schema read during the snapshot is made of their types.
+         *
+         * @param metadataFactory the factory used to create the snapshot tables; never null
+         */
+        public RelationalSnapshotContext(P partition, String catalogName, boolean onDemand, RelationalMetadataFactory metadataFactory) {
             super(partition);
             this.catalogName = catalogName;
-            this.tables = new Tables();
+            this.tables = new Tables(false, metadataFactory);
             this.onDemand = onDemand;
         }
     }

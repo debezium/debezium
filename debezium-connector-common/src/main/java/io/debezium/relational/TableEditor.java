@@ -8,6 +8,7 @@ package io.debezium.relational;
 import java.util.List;
 import java.util.stream.Collectors;
 
+import io.debezium.DebeziumException;
 import io.debezium.annotation.NotThreadSafe;
 
 /**
@@ -221,6 +222,18 @@ public interface TableEditor {
     TableEditor setComment(String comment);
 
     /**
+     * Get the name of the character set that should be used by default in the columns of this table.
+     * @return the default character set name, or null if none has been set
+     */
+    String defaultCharsetName();
+
+    /**
+     * Get the comment of the table.
+     * @return the comment, or null if none has been set
+     */
+    String comment();
+
+    /**
      * Determine if a {@link #setDefaultCharsetName(String) default character set} has been set on this table.
      * @return {@code true} if this has a default character set, or {@code false} if one has not yet been set
      */
@@ -287,4 +300,23 @@ public interface TableEditor {
      * @return the immutable table definition; never null
      */
     Table create();
+
+    /**
+     * Return an object of the specified {@code clazz} type to allow access to a provider-specific API. If the
+     * provider implementation of {@link TableEditor} does not support the given type, a {@link DebeziumException}
+     * is thrown.
+     *
+     * @param clazz the class the object to be returned. This is usually either the underlying class that
+     *              implements {@link TableEditor} or an interface that it implements.
+     * @return an instance of the specified class
+     * @throws DebeziumException if the table editor does not support the given type
+     */
+    default <T extends TableEditor> T unwrap(Class<T> clazz) {
+        if (!clazz.isInstance(this)) {
+            throw new DebeziumException(
+                    "TableEditor '%s' is a %s, not a %s; was it created through the connector's RelationalMetadataFactory?".formatted(
+                            tableId(), getClass().getSimpleName(), clazz.getSimpleName()));
+        }
+        return clazz.cast(this);
+    }
 }

@@ -13,9 +13,14 @@ import java.util.Optional;
 
 import org.junit.jupiter.api.Test;
 
+import io.debezium.doc.FixFor;
 import io.debezium.jdbc.JdbcConnection;
+import io.debezium.junit.relational.TestRelationalDatabaseConfig;
 import io.debezium.relational.Column;
+import io.debezium.relational.ExtendedMetadata;
+import io.debezium.relational.ExtendedMetadata.ExtendedColumn;
 import io.debezium.relational.RelationalDatabaseConnectorConfig;
+import io.debezium.relational.RelationalMetadataFactory;
 import io.debezium.relational.Table;
 import io.debezium.relational.TableId;
 
@@ -66,6 +71,27 @@ public class PhysicalRowIdentifierChunkQueryBuilderTest extends DefaultChunkQuer
 
         assertThat(chunkQueryBuilder.resolveChunkEndPosition(context, preparedTable, new Object[]{ "AAABBB" }))
                 .containsExactly("AAACCC");
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2843")
+    public void testPhysicalColumnIsCreatedByConfiguredMetadataFactory() {
+        final RelationalDatabaseConnectorConfig config = new TestRelationalDatabaseConfig(config().getConfig(), null, null, 0) {
+            @Override
+            public RelationalMetadataFactory getRelationalMetadataFactory() {
+                return ExtendedMetadata.ExtendedRelationalMetadataFactory.INSTANCE;
+            }
+        };
+        final InspectablePhysicalRowIdentifierChunkQueryBuilder chunkQueryBuilder = new InspectablePhysicalRowIdentifierChunkQueryBuilder(
+                config, new JdbcConnection(config.getJdbcConfig(), c -> null, "\"", "\""));
+        final IncrementalSnapshotContext<TableId> context = new SignalBasedIncrementalSnapshotContext<>();
+        final Table table = createTwoPrimaryKeysTable();
+
+        context.addDataCollectionNamesToSnapshot("12345", List.of(table.id().toString()), List.of(), "ROWID");
+        final Table preparedTable = chunkQueryBuilder.prepareTable(context, table);
+
+        assertThat(preparedTable.columnWithName("ROWID")).isInstanceOf(ExtendedColumn.class);
+        assertThat(preparedTable.columnWithName("pk1")).isNotInstanceOf(ExtendedColumn.class);
     }
 
     private Table createTwoPrimaryKeysTable() {

@@ -15,7 +15,16 @@ import java.util.stream.Collectors;
 
 import io.debezium.util.Interner;
 
-class TableEditorImpl implements TableEditor {
+/**
+ * The default {@link TableEditor}, which creates {@link TableImpl} instances.
+ * <p>
+ * A connector that needs to carry additional table metadata subclasses this class, adds its own
+ * setters, and overrides {@link #create()} to return its own {@link TableImpl} subclass, calling
+ * {@link #checkCreatable()} first.
+ *
+ * @author Randall Hauch
+ */
+public class TableEditorImpl implements TableEditor {
 
     private TableId id;
     private LinkedHashMap<String, Column> sortedColumns = new LinkedHashMap<>();
@@ -28,13 +37,26 @@ class TableEditorImpl implements TableEditor {
     protected TableEditorImpl() {
     }
 
+    /**
+     * Verifies that a table can be created from the current state of this editor.
+     *
+     * @throws IllegalStateException if no table identifier has been set
+     * @throws IllegalArgumentException if a primary key column name does not match a column
+     */
+    protected void checkCreatable() {
+        if (id == null) {
+            throw new IllegalStateException("Unable to create a table from an editor that has no table ID");
+        }
+        updatePrimaryKeys();
+    }
+
     @Override
     public TableId tableId() {
         return id;
     }
 
     @Override
-    public TableEditor tableId(TableId id) {
+    public TableEditorImpl tableId(TableId id) {
         this.id = id;
         return this;
     }
@@ -59,7 +81,7 @@ class TableEditorImpl implements TableEditor {
     }
 
     @Override
-    public TableEditor addColumns(Column... columns) {
+    public TableEditorImpl addColumns(Column... columns) {
         for (Column column : columns) {
             add(column);
         }
@@ -68,7 +90,7 @@ class TableEditorImpl implements TableEditor {
     }
 
     @Override
-    public TableEditor addColumns(Iterable<Column> columns) {
+    public TableEditorImpl addColumns(Iterable<Column> columns) {
         columns.forEach(this::add);
         assert positionsAreValid();
         return this;
@@ -84,7 +106,7 @@ class TableEditorImpl implements TableEditor {
     }
 
     @Override
-    public TableEditor setColumns(Column... columns) {
+    public TableEditorImpl setColumns(Column... columns) {
         sortedColumns.clear();
         addColumns(columns);
         assert positionsAreValid();
@@ -92,7 +114,7 @@ class TableEditorImpl implements TableEditor {
     }
 
     @Override
-    public TableEditor setColumns(Iterable<Column> columns) {
+    public TableEditorImpl setColumns(Iterable<Column> columns) {
         sortedColumns.clear();
         addColumns(columns);
         assert positionsAreValid();
@@ -114,12 +136,12 @@ class TableEditorImpl implements TableEditor {
     }
 
     @Override
-    public TableEditor setPrimaryKeyNames(String... pkColumnNames) {
+    public TableEditorImpl setPrimaryKeyNames(String... pkColumnNames) {
         return setPrimaryKeyNames(Arrays.asList(pkColumnNames));
     }
 
     @Override
-    public TableEditor setPrimaryKeyNames(List<String> pkColumnNames) {
+    public TableEditorImpl setPrimaryKeyNames(List<String> pkColumnNames) {
         this.pkColumnNames.clear();
         this.pkColumnNames.addAll(pkColumnNames);
         uniqueValues = false;
@@ -127,7 +149,7 @@ class TableEditorImpl implements TableEditor {
     }
 
     @Override
-    public TableEditor setUniqueValues() {
+    public TableEditorImpl setUniqueValues() {
         pkColumnNames.clear();
         uniqueValues = true;
         return this;
@@ -139,15 +161,25 @@ class TableEditorImpl implements TableEditor {
     }
 
     @Override
-    public TableEditor setDefaultCharsetName(String charsetName) {
+    public TableEditorImpl setDefaultCharsetName(String charsetName) {
         this.defaultCharsetName = charsetName;
         return this;
     }
 
     @Override
-    public TableEditor setComment(String comment) {
+    public TableEditorImpl setComment(String comment) {
         this.comment = comment;
         return this;
+    }
+
+    @Override
+    public String defaultCharsetName() {
+        return defaultCharsetName;
+    }
+
+    @Override
+    public String comment() {
+        return comment;
     }
 
     @Override
@@ -161,7 +193,7 @@ class TableEditorImpl implements TableEditor {
     }
 
     @Override
-    public TableEditor removeColumn(String columnName) {
+    public TableEditorImpl removeColumn(String columnName) {
         Column existing = sortedColumns.remove(columnName.toLowerCase());
         if (existing != null) {
             updatePositions();
@@ -173,7 +205,7 @@ class TableEditorImpl implements TableEditor {
     }
 
     @Override
-    public TableEditor updateColumn(Column newColumn) {
+    public TableEditorImpl updateColumn(Column newColumn) {
         setColumns(columns().stream()
                 .map(c -> c.name().equals(newColumn.name()) ? newColumn : c)
                 .collect(Collectors.toList()));
@@ -181,7 +213,7 @@ class TableEditorImpl implements TableEditor {
     }
 
     @Override
-    public TableEditor reorderColumn(String columnName, String afterColumnName) {
+    public TableEditorImpl reorderColumn(String columnName, String afterColumnName) {
         Column columnToMove = columnWithName(columnName);
         if (columnToMove == null) {
             throw new IllegalArgumentException("No column with name '" + columnName + "'");
@@ -213,7 +245,7 @@ class TableEditorImpl implements TableEditor {
     }
 
     @Override
-    public TableEditor renameColumn(String existingName, String newName) {
+    public TableEditorImpl renameColumn(String existingName, String newName) {
         final Column existing = columnWithName(existingName);
         if (existing == null) {
             throw new IllegalArgumentException("No column with name '" + existingName + "'");
@@ -251,7 +283,7 @@ class TableEditorImpl implements TableEditor {
     }
 
     @Override
-    public TableEditor addAttribute(Attribute attribute) {
+    public TableEditorImpl addAttribute(Attribute attribute) {
         if (attribute != null) {
             attributes.put(attribute.name().toLowerCase(), attribute);
         }
@@ -259,7 +291,7 @@ class TableEditorImpl implements TableEditor {
     }
 
     @Override
-    public TableEditor addAttributes(List<Attribute> attributes) {
+    public TableEditorImpl addAttributes(List<Attribute> attributes) {
         for (Attribute attribute : attributes) {
             addAttribute(attribute);
         }
@@ -267,7 +299,7 @@ class TableEditorImpl implements TableEditor {
     }
 
     @Override
-    public TableEditor removeAttribute(String attributeName) {
+    public TableEditorImpl removeAttribute(String attributeName) {
         if (attributeName != null) {
             attributes.remove(attributeName.toLowerCase());
         }
@@ -298,16 +330,7 @@ class TableEditorImpl implements TableEditor {
 
     @Override
     public Table create() {
-        if (id == null) {
-            throw new IllegalStateException("Unable to create a table from an editor that has no table ID");
-        }
-        List<Column> columns = new ArrayList<>();
-        sortedColumns.values().forEach(column -> {
-            column = column.edit().charsetNameOfTable(defaultCharsetName).create();
-            columns.add(column);
-        });
-        updatePrimaryKeys();
-        List<Attribute> attributes = new ArrayList<>(this.attributes.values());
-        return Interner.intern(new TableImpl(id, columns, primaryKeyColumnNames(), defaultCharsetName, comment, attributes));
+        checkCreatable();
+        return Interner.intern(new TableImpl(this));
     }
 }

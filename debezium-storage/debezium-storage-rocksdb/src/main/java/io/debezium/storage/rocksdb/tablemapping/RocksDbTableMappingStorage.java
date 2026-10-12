@@ -14,6 +14,7 @@ import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.function.BiConsumer;
@@ -26,10 +27,14 @@ import org.slf4j.LoggerFactory;
 
 import io.debezium.DebeziumException;
 import io.debezium.common.annotation.Incubating;
+import io.debezium.document.DocumentReader;
+import io.debezium.document.DocumentWriter;
 import io.debezium.relational.AbstractCachedTableMappingStorage;
 import io.debezium.relational.RelationalDatabaseConnectorConfig;
+import io.debezium.relational.RelationalMetadataFactory;
 import io.debezium.relational.TableId;
 import io.debezium.relational.TableMappingStorage;
+import io.debezium.relational.history.JsonTableChangeSerializer;
 import io.debezium.storage.rocksdb.RocksDbUtil;
 import io.debezium.util.Strings;
 
@@ -44,6 +49,10 @@ import io.debezium.util.Strings;
  *   <li>{@code memory.management.cache.size} - Cache size for frequently accessed entries (default: 1000)</li>
  * </ul>
  *
+ * <p>Tables are stored in the JSON form of the connector's {@link JsonTableChangeSerializer}, obtained from the
+ * connector's {@link RelationalMetadataFactory}, so a connector that extends {@code Table} or {@code Column}
+ * gets its own types and extension data back. Entries written in the earlier binary form are still read.
+ *
  * @param <V> the type of values stored (must be Serializable)
  * @author Debezium Authors
  */
@@ -53,10 +62,16 @@ public class RocksDbTableMappingStorage<V> extends AbstractCachedTableMappingSto
     static {
         RocksDB.loadLibrary();
     }
+    private static final byte TABLE_BINARY_MARKER = 1;
+    private static final byte TABLE_SCHEMA_MARKER = 2;
+    private static final byte TABLE_JSON_MARKER = 3;
+
     private RocksDB db;
     private Path dbPath;
     private boolean cleanupOnClose = true;
     private boolean cacheOnlyMode = false;
+    private RelationalMetadataFactory metadataFactory;
+    private JsonTableChangeSerializer tableSerializer;
 
     /**
      * Creates a new RocksDb storage instance.
@@ -67,6 +82,9 @@ public class RocksDbTableMappingStorage<V> extends AbstractCachedTableMappingSto
 
     @Override
     protected void configureStorage(RelationalDatabaseConnectorConfig config, TableMappingStorage.Type type) {
+        metadataFactory = config.getRelationalMetadataFactory();
+        tableSerializer = metadataFactory.jsonTableChangesSerializer();
+
         // For SCHEMAS type, use cache-only mode (no RocksDB persistence)
         // TableSchema objects contain non-serializable StructGenerators and can be regenerated from Table objects
         if (type == TableMappingStorage.Type.SCHEMAS) {
@@ -117,7 +135,7 @@ public class RocksDbTableMappingStorage<V> extends AbstractCachedTableMappingSto
         try {
             byte[] key = serializeTableId(tableId);
             byte[] value = db.get(key);
-            return value != null ? deserializeValue(value) : null;
+            return value != null ? deserializeValue(tableId, value) : null;
         }
         catch (RocksDBException | IOException | ClassNotFoundException e) {
             throw new DebeziumException("Failed to get value from RocksDb", e);
@@ -230,7 +248,7 @@ public class RocksDbTableMappingStorage<V> extends AbstractCachedTableMappingSto
             iterator.seekToFirst();
             while (iterator.isValid()) {
                 TableId tableId = deserializeTableId(iterator.key());
-                V value = deserializeValue(iterator.value());
+                V value = deserializeValue(tableId, iterator.value());
                 action.accept(tableId, value);
                 iterator.next();
             }
@@ -316,7 +334,7 @@ public class RocksDbTableMappingStorage<V> extends AbstractCachedTableMappingSto
      */
     private byte[] serializeValue(V value) throws IOException {
         if (value instanceof io.debezium.relational.Table table) {
-            return serializeTable(table);
+            return serializeTableAsJson(table);
         }
         if (value instanceof io.debezium.relational.TableSchema tableSchema) {
             return serializeTableSchema(tableSchema);
@@ -334,13 +352,16 @@ public class RocksDbTableMappingStorage<V> extends AbstractCachedTableMappingSto
      * Uses custom deserialization for Table and TableSchema objects.
      */
     @SuppressWarnings("unchecked")
-    private V deserializeValue(byte[] bytes) throws IOException, ClassNotFoundException {
+    private V deserializeValue(TableId tableId, byte[] bytes) throws IOException, ClassNotFoundException {
         // Check type marker in first byte
         if (bytes.length > 0) {
-            if (bytes[0] == 1) {
+            if (bytes[0] == TABLE_JSON_MARKER) {
+                return (V) deserializeTableFromJson(tableId, bytes);
+            }
+            if (bytes[0] == TABLE_BINARY_MARKER) {
                 return (V) deserializeTable(bytes);
             }
-            if (bytes[0] == 2) {
+            if (bytes[0] == TABLE_SCHEMA_MARKER) {
                 return (V) deserializeTableSchema(bytes);
             }
         }
@@ -352,56 +373,28 @@ public class RocksDbTableMappingStorage<V> extends AbstractCachedTableMappingSto
     }
 
     /**
-     * Serializes a Table to bytes using custom binary format.
+     * Serializes a Table to bytes as the connector's JSON table document, prefixed with a type marker.
+     * The table identifier is not part of the value; it is the entry's key.
      */
-    private byte[] serializeTable(io.debezium.relational.Table table) throws IOException {
-        try (ByteArrayOutputStream baos = new ByteArrayOutputStream();
-                DataOutputStream dos = new DataOutputStream(baos)) {
-
-            // Write type marker for Table
-            dos.writeByte(1);
-
-            // Write TableId
-            writeNullableString(dos, table.id().catalog());
-            writeNullableString(dos, table.id().schema());
-            dos.writeUTF(table.id().table());
-
-            // Write columns
-            dos.writeInt(table.columns().size());
-            for (io.debezium.relational.Column col : table.columns()) {
-                serializeColumn(dos, col);
-            }
-
-            // Write primary key names
-            dos.writeInt(table.primaryKeyColumnNames().size());
-            for (String pkName : table.primaryKeyColumnNames()) {
-                dos.writeUTF(pkName);
-            }
-
-            // Write default charset
-            writeNullableString(dos, table.defaultCharsetName());
-
-            // Write comment
-            writeNullableString(dos, table.comment());
-
-            // Write attributes
-            final var attributes = table.attributes();
-            if (attributes == null) {
-                dos.writeInt(0);
-            }
-            else {
-                dos.writeInt(attributes.size());
-                for (io.debezium.relational.Attribute attr : attributes) {
-                    serializeAttribute(dos, attr);
-                }
-            }
-
-            return baos.toByteArray();
-        }
+    private byte[] serializeTableAsJson(io.debezium.relational.Table table) {
+        final byte[] json = DocumentWriter.defaultWriter().writeAsBytes(tableSerializer.toDocument(table));
+        final byte[] bytes = new byte[json.length + 1];
+        bytes[0] = TABLE_JSON_MARKER;
+        System.arraycopy(json, 0, bytes, 1, json.length);
+        return bytes;
     }
 
     /**
-     * Deserializes bytes to a Table using custom binary format.
+     * Deserializes a Table stored as a JSON table document, rebuilding it through the connector's metadata factory.
+     */
+    private io.debezium.relational.Table deserializeTableFromJson(TableId tableId, byte[] bytes) throws IOException {
+        final var document = DocumentReader.defaultReader().read(Arrays.copyOfRange(bytes, 1, bytes.length));
+        return tableSerializer.fromDocument(tableId, document);
+    }
+
+    /**
+     * Deserializes bytes to a Table using the earlier custom binary format, kept so that entries written by a
+     * previous version remain readable. New entries are written as JSON.
      */
     private io.debezium.relational.Table deserializeTable(byte[] bytes) throws IOException {
         try (ByteArrayInputStream bais = new ByteArrayInputStream(bytes);
@@ -409,7 +402,7 @@ public class RocksDbTableMappingStorage<V> extends AbstractCachedTableMappingSto
 
             // Read and verify type marker
             final byte marker = dis.readByte();
-            if (marker != 1) {
+            if (marker != TABLE_BINARY_MARKER) {
                 throw new IOException("Invalid table serialization marker: " + marker);
             }
 
@@ -420,7 +413,7 @@ public class RocksDbTableMappingStorage<V> extends AbstractCachedTableMappingSto
             final var tableId = new TableId(catalog, schema, table);
 
             // Create TableEditor
-            final var editor = io.debezium.relational.Table.editor().tableId(tableId);
+            final var editor = metadataFactory.tableEditor().tableId(tableId);
 
             // Read columns
             final int columnCount = dis.readInt();
@@ -457,65 +450,10 @@ public class RocksDbTableMappingStorage<V> extends AbstractCachedTableMappingSto
     }
 
     /**
-     * Serializes a Column to the output stream.
-     */
-    private void serializeColumn(DataOutputStream dos, io.debezium.relational.Column col) throws IOException {
-        dos.writeUTF(col.name());
-        dos.writeInt(col.position());
-        dos.writeInt(col.jdbcType());
-        dos.writeInt(col.nativeType());
-        dos.writeUTF(col.typeName());
-        writeNullableString(dos, col.typeExpression());
-        writeNullableString(dos, col.charsetName());
-        dos.writeInt(col.length());
-
-        // Write scale (Optional<Integer>)
-        final var scale = col.scale();
-        if (scale.isPresent()) {
-            dos.writeBoolean(true);
-            dos.writeInt(scale.get());
-        }
-        else {
-            dos.writeBoolean(false);
-        }
-
-        dos.writeBoolean(col.isOptional());
-        dos.writeBoolean(col.isAutoIncremented());
-        dos.writeBoolean(col.isGenerated());
-
-        // Write default value expression (Optional<String>)
-        final var defaultValue = col.defaultValueExpression();
-        if (defaultValue.isPresent()) {
-            dos.writeBoolean(true);
-            dos.writeUTF(defaultValue.get());
-        }
-        else {
-            dos.writeBoolean(false);
-        }
-
-        dos.writeBoolean(col.hasDefaultValue());
-
-        // Write enum values
-        final var enumValues = col.enumValues();
-        if (enumValues == null) {
-            dos.writeInt(0);
-        }
-        else {
-            dos.writeInt(enumValues.size());
-            for (String enumValue : enumValues) {
-                dos.writeUTF(enumValue);
-            }
-        }
-
-        // Write comment
-        writeNullableString(dos, col.comment());
-    }
-
-    /**
      * Deserializes a Column from the input stream.
      */
     private io.debezium.relational.Column deserializeColumn(DataInputStream dis) throws IOException {
-        final var editor = io.debezium.relational.Column.editor();
+        final var editor = metadataFactory.columnEditor();
 
         editor.name(dis.readUTF());
         editor.position(dis.readInt());
@@ -569,14 +507,6 @@ public class RocksDbTableMappingStorage<V> extends AbstractCachedTableMappingSto
     }
 
     /**
-     * Serializes an Attribute to the output stream.
-     */
-    private void serializeAttribute(DataOutputStream dos, io.debezium.relational.Attribute attr) throws IOException {
-        dos.writeUTF(attr.name());
-        writeNullableString(dos, attr.value());
-    }
-
-    /**
      * Deserializes an Attribute from the input stream.
      */
     private io.debezium.relational.Attribute deserializeAttribute(DataInputStream dis) throws IOException {
@@ -598,7 +528,7 @@ public class RocksDbTableMappingStorage<V> extends AbstractCachedTableMappingSto
                 DataOutputStream dos = new DataOutputStream(baos)) {
 
             // Write type marker for TableSchema
-            dos.writeByte(2);
+            dos.writeByte(TABLE_SCHEMA_MARKER);
 
             // Write TableId
             final var tableId = tableSchema.id();
@@ -653,7 +583,7 @@ public class RocksDbTableMappingStorage<V> extends AbstractCachedTableMappingSto
 
             // Read and verify type marker
             final byte marker = dis.readByte();
-            if (marker != 2) {
+            if (marker != TABLE_SCHEMA_MARKER) {
                 throw new IOException("Invalid TableSchema serialization marker: " + marker);
             }
 

@@ -50,6 +50,8 @@ import io.debezium.pipeline.txmetadata.TransactionInfo;
 import io.debezium.pipeline.txmetadata.TransactionMonitor;
 import io.debezium.processors.PostProcessorRegistry;
 import io.debezium.processors.spi.PostProcessor;
+import io.debezium.relational.RelationalDatabaseConnectorConfig;
+import io.debezium.relational.RelationalMetadataFactory;
 import io.debezium.relational.history.ConnectTableChangeSerializer;
 import io.debezium.relational.history.HistoryRecord.Fields;
 import io.debezium.schema.DataCollectionFilters.DataCollectionFilter;
@@ -146,6 +148,17 @@ public class EventDispatcher<P extends Partition, T extends DataCollectionId> im
                 schemaNameAdjuster, null, debeziumHeaderProducer);
     }
 
+    /**
+     * The schema change topic serializer comes from the connector's {@link RelationalMetadataFactory} so that
+     * connector-specific column and table metadata reaches the topic; non-relational connectors use the default.
+     */
+    private static ConnectTableChangeSerializer createTableChangesSerializer(CommonConnectorConfig connectorConfig, SchemaNameAdjuster schemaNameAdjuster) {
+        if (connectorConfig instanceof RelationalDatabaseConnectorConfig relationalConfig) {
+            return relationalConfig.getRelationalMetadataFactory().connectTableChangesSerializer(schemaNameAdjuster);
+        }
+        return new ConnectTableChangeSerializer(schemaNameAdjuster);
+    }
+
     public EventDispatcher(CommonConnectorConfig connectorConfig, TopicNamingStrategy<T> topicNamingStrategy,
                            DatabaseSchema<T> schema, ChangeEventQueue<DataChangeEvent> queue, DataCollectionFilter<T> filter,
                            ChangeEventCreator changeEventCreator, InconsistentSchemaHandler<P, T> inconsistentSchemaHandler,
@@ -153,7 +166,7 @@ public class EventDispatcher<P extends Partition, T extends DataCollectionId> im
                            SignalProcessor<P, ?> signalProcessor,
                            DebeziumHeaderProducer debeziumHeaderProducer) {
         this.debeziumHeaderProducer = debeziumHeaderProducer;
-        this.tableChangesSerializer = new ConnectTableChangeSerializer(schemaNameAdjuster);
+        this.tableChangesSerializer = createTableChangesSerializer(connectorConfig, schemaNameAdjuster);
         this.connectorConfig = connectorConfig;
         this.topicNamingStrategy = topicNamingStrategy;
         this.schema = schema;
@@ -191,7 +204,7 @@ public class EventDispatcher<P extends Partition, T extends DataCollectionId> im
                            ChangeEventCreator changeEventCreator, InconsistentSchemaHandler<P, T> inconsistentSchemaHandler, ScheduledHeartbeat heartbeat,
                            SchemaNameAdjuster schemaNameAdjuster, TransactionMonitor transactionMonitor,
                            SignalProcessor<P, ?> signalProcessor, DebeziumHeaderProducer debeziumHeaderProducer) {
-        this.tableChangesSerializer = new ConnectTableChangeSerializer(schemaNameAdjuster);
+        this.tableChangesSerializer = createTableChangesSerializer(connectorConfig, schemaNameAdjuster);
         this.connectorConfig = connectorConfig;
         this.topicNamingStrategy = topicNamingStrategy;
         this.schema = schema;

@@ -9,6 +9,7 @@ import java.sql.Types;
 import java.util.List;
 import java.util.Optional;
 
+import io.debezium.DebeziumException;
 import io.debezium.annotation.NotThreadSafe;
 
 /**
@@ -301,4 +302,23 @@ public interface ColumnEditor {
      * @return the immutable column definition; never null
      */
     Column create();
+
+    /**
+     * Return an object of the specified {@code clazz} type to allow access to a provider-specific API. If the
+     * provider implementation of {@link ColumnEditor} does not support the given type, a {@link DebeziumException}
+     * is thrown.
+     *
+     * @param clazz the class the object to be returned. This is usually either the underlying class that
+     *              implements {@link ColumnEditor} or an interface that it implements.
+     * @return an instance of the specified class
+     * @throws DebeziumException if the column editor does not support the given type
+     */
+    default <T extends ColumnEditor> T unwrap(Class<T> clazz) {
+        if (!clazz.isInstance(this)) {
+            throw new DebeziumException(
+                    "ColumnEditor '%s' is a %s, not a %s; was it created through the connector's RelationalMetadataFactory?".formatted(
+                            name(), getClass().getSimpleName(), clazz.getSimpleName()));
+        }
+        return clazz.cast(this);
+    }
 }
