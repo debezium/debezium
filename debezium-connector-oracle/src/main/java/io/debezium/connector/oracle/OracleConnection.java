@@ -41,6 +41,7 @@ import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Field;
 import io.debezium.connector.oracle.OracleConnectorConfig.ConnectorAdapter;
 import io.debezium.connector.oracle.logminer.SqlUtils;
+import io.debezium.connector.oracle.relational.OracleRelationalMetadataFactory;
 import io.debezium.connector.oracle.util.OracleUtils;
 import io.debezium.jdbc.JdbcConfiguration;
 import io.debezium.jdbc.JdbcConnection;
@@ -682,6 +683,11 @@ public class OracleConnection extends JdbcConnection {
                     }
                     return rs.getLong(1) == 1L;
                 });
+    }
+
+    @Override
+    protected OracleRelationalMetadataFactory metadataFactory() {
+        return OracleRelationalMetadataFactory.INSTANCE;
     }
 
     @Override
