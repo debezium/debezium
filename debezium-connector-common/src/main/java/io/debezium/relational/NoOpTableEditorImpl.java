@@ -25,7 +25,7 @@ final class NoOpTableEditorImpl implements TableEditor {
     }
 
     @Override
-    public TableEditor tableId(TableId id) {
+    public NoOpTableEditorImpl tableId(TableId id) {
         this.id = id;
         return this;
     }
@@ -50,37 +50,37 @@ final class NoOpTableEditorImpl implements TableEditor {
     }
 
     @Override
-    public TableEditor addColumns(Column... columns) {
+    public NoOpTableEditorImpl addColumns(Column... columns) {
         return this;
     }
 
     @Override
-    public TableEditor addColumns(Iterable<Column> columns) {
+    public NoOpTableEditorImpl addColumns(Iterable<Column> columns) {
         return this;
     }
 
     @Override
-    public TableEditor setColumns(Column... columns) {
+    public NoOpTableEditorImpl setColumns(Column... columns) {
         return this;
     }
 
     @Override
-    public TableEditor setColumns(Iterable<Column> columns) {
+    public NoOpTableEditorImpl setColumns(Iterable<Column> columns) {
         return this;
     }
 
     @Override
-    public TableEditor setPrimaryKeyNames(String... pkColumnNames) {
+    public NoOpTableEditorImpl setPrimaryKeyNames(String... pkColumnNames) {
         return this;
     }
 
     @Override
-    public TableEditor setPrimaryKeyNames(List<String> pkColumnNames) {
+    public NoOpTableEditorImpl setPrimaryKeyNames(List<String> pkColumnNames) {
         return this;
     }
 
     @Override
-    public TableEditor setUniqueValues() {
+    public NoOpTableEditorImpl setUniqueValues() {
         this.uniqueValues = true;
         return this;
     }
@@ -91,15 +91,25 @@ final class NoOpTableEditorImpl implements TableEditor {
     }
 
     @Override
-    public TableEditor setDefaultCharsetName(String charsetName) {
+    public NoOpTableEditorImpl setDefaultCharsetName(String charsetName) {
         this.defaultCharsetName = charsetName;
         return this;
     }
 
     @Override
-    public TableEditor setComment(String comment) {
+    public NoOpTableEditorImpl setComment(String comment) {
         this.comment = comment;
         return this;
+    }
+
+    @Override
+    public String defaultCharsetName() {
+        return defaultCharsetName;
+    }
+
+    @Override
+    public String comment() {
+        return comment;
     }
 
     @Override
@@ -113,22 +123,22 @@ final class NoOpTableEditorImpl implements TableEditor {
     }
 
     @Override
-    public TableEditor removeColumn(String columnName) {
+    public NoOpTableEditorImpl removeColumn(String columnName) {
         return this;
     }
 
     @Override
-    public TableEditor updateColumn(Column column) {
+    public NoOpTableEditorImpl updateColumn(Column column) {
         return this;
     }
 
     @Override
-    public TableEditor reorderColumn(String columnName, String afterColumnName) {
+    public NoOpTableEditorImpl reorderColumn(String columnName, String afterColumnName) {
         return this;
     }
 
     @Override
-    public TableEditor renameColumn(String existingName, String newName) {
+    public NoOpTableEditorImpl renameColumn(String existingName, String newName) {
         return this;
     }
 
@@ -143,17 +153,17 @@ final class NoOpTableEditorImpl implements TableEditor {
     }
 
     @Override
-    public TableEditor addAttribute(Attribute attribute) {
+    public NoOpTableEditorImpl addAttribute(Attribute attribute) {
         return this;
     }
 
     @Override
-    public TableEditor addAttributes(List<Attribute> attributes) {
+    public NoOpTableEditorImpl addAttributes(List<Attribute> attributes) {
         return this;
     }
 
     @Override
-    public TableEditor removeAttribute(String attributeName) {
+    public NoOpTableEditorImpl removeAttribute(String attributeName) {
         return this;
     }
 

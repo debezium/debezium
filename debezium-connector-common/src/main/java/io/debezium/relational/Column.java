@@ -9,6 +9,7 @@ import java.sql.Types;
 import java.util.List;
 import java.util.Optional;
 
+import io.debezium.DebeziumException;
 import io.debezium.annotation.Immutable;
 
 /**
@@ -28,7 +29,7 @@ public interface Column extends Comparable<Column> {
      * @return the editor; never null
      */
     static ColumnEditor editor() {
-        return new ColumnEditorImpl();
+        return DefaultRelationalMetadataFactory.INSTANCE.columnEditor();
     }
 
     /**
@@ -191,5 +192,24 @@ public interface Column extends Comparable<Column> {
             default:
                 return false;
         }
+    }
+
+    /**
+     * Return an object of the specified {@code clazz} type to allow access to a provider-specific API. If the
+     * provider implementation of {@link Column} does not support the given type, a {@link DebeziumException}
+     * is thrown.
+     *
+     * @param clazz the class the object to be returned. This is usually either the underlying class that
+     *              implements {@link Column} or an interface that it implements.
+     * @return an instance of the specified class
+     * @throws DebeziumException if the column does not support the given type
+     */
+    default <T extends Column> T unwrap(Class<T> clazz) {
+        if (!clazz.isInstance(this)) {
+            throw new DebeziumException(
+                    "Column '%s' is a %s, not a %s; was it created through the connector's RelationalMetadataFactory?".formatted(
+                            name(), getClass().getSimpleName(), clazz.getSimpleName()));
+        }
+        return clazz.cast(this);
     }
 }

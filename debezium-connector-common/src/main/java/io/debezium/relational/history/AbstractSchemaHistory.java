@@ -20,6 +20,7 @@ import io.debezium.config.Field;
 import io.debezium.document.Array;
 import io.debezium.document.Document;
 import io.debezium.function.Predicates;
+import io.debezium.relational.RelationalMetadataFactory;
 import io.debezium.relational.Tables;
 import io.debezium.relational.ddl.DdlParser;
 import io.debezium.relational.history.TableChanges.TableChange;
@@ -47,7 +48,7 @@ public abstract class AbstractSchemaHistory implements SchemaHistory {
     private SchemaHistoryListener listener = SchemaHistoryListener.NOOP;
     private boolean useCatalogBeforeSchema;
     private boolean preferDdl = false;
-    private final TableChangesSerializer<Array> tableChangesSerializer = new JsonTableChangeSerializer();
+    private TableChangesSerializer<Array> tableChangesSerializer = new JsonTableChangeSerializer();
 
     protected AbstractSchemaHistory() {
     }
@@ -66,6 +67,13 @@ public abstract class AbstractSchemaHistory implements SchemaHistory {
     }
 
     @Override
+    public void configure(Configuration config, HistoryRecordComparator comparator, SchemaHistoryListener listener, boolean useCatalogBeforeSchema,
+                          RelationalMetadataFactory metadataFactory) {
+        this.tableChangesSerializer = metadataFactory.jsonTableChangesSerializer();
+        configure(config, comparator, listener, useCatalogBeforeSchema);
+    }
+
+    @Override
     public void start() {
         listener.started();
     }
@@ -81,7 +89,7 @@ public abstract class AbstractSchemaHistory implements SchemaHistory {
     public final void record(Map<String, ?> source, Map<String, ?> position, String databaseName, String schemaName,
                              String ddl, TableChanges changes, Instant timestamp)
             throws SchemaHistoryException {
-        final HistoryRecord record = new HistoryRecord(source, position, databaseName, schemaName, ddl, changes, timestamp);
+        final HistoryRecord record = new HistoryRecord(source, position, databaseName, schemaName, ddl, changes, timestamp, tableChangesSerializer);
         storeRecord(record);
         listener.onChangeApplied(record);
     }

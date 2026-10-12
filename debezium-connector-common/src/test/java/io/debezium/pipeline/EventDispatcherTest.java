@@ -45,6 +45,7 @@ import io.debezium.pipeline.spi.Partition;
 import io.debezium.pipeline.txmetadata.TransactionStructMaker;
 import io.debezium.pipeline.txmetadata.spi.TransactionMetadataFactory;
 import io.debezium.processors.PostProcessorRegistry;
+import io.debezium.relational.DefaultRelationalMetadataFactory;
 import io.debezium.relational.RelationalDatabaseConnectorConfig;
 import io.debezium.relational.SnapshotChangeRecordEmitter;
 import io.debezium.relational.TableSchema;
@@ -153,6 +154,7 @@ public class EventDispatcherTest {
         when(envelope.read(any(), any(), any())).thenReturn(struct);
         when(databaseSchema.schemaFor(any())).thenReturn(dataCollectionSchema);
         when(config.getServiceRegistry()).thenReturn(serviceRegistry);
+        when(config.getRelationalMetadataFactory()).thenReturn(DefaultRelationalMetadataFactory.INSTANCE);
         when(serviceRegistry.tryGetService(PostProcessorRegistry.class)).thenReturn(postProcessorRegistry);
         when(config.getSourceInfoStructMaker()).thenReturn(sourceInfoStructMaker);
         when(sourceInfoStructMaker.schema()).thenReturn(schema);
@@ -188,6 +190,7 @@ public class EventDispatcherTest {
         when(envelope.read(any(), any(), any())).thenReturn(struct);
         when(databaseSchema.schemaFor(any())).thenReturn(dataCollectionSchema);
         when(config.getServiceRegistry()).thenReturn(serviceRegistry);
+        when(config.getRelationalMetadataFactory()).thenReturn(DefaultRelationalMetadataFactory.INSTANCE);
         when(serviceRegistry.tryGetService(PostProcessorRegistry.class)).thenReturn(postProcessorRegistry);
         when(config.getSourceInfoStructMaker()).thenReturn(sourceInfoStructMaker);
         when(sourceInfoStructMaker.schema()).thenReturn(schema);
@@ -230,6 +233,7 @@ public class EventDispatcherTest {
         when(envelope.read(any(), any(), any())).thenReturn(struct);
         when(databaseSchema.schemaFor(any())).thenReturn(dataCollectionSchema);
         when(config.getServiceRegistry()).thenReturn(serviceRegistry);
+        when(config.getRelationalMetadataFactory()).thenReturn(DefaultRelationalMetadataFactory.INSTANCE);
         when(serviceRegistry.tryGetService(PostProcessorRegistry.class)).thenReturn(postProcessorRegistry);
         when(config.getSourceInfoStructMaker()).thenReturn(sourceInfoStructMaker);
         when(sourceInfoStructMaker.schema()).thenReturn(schema);

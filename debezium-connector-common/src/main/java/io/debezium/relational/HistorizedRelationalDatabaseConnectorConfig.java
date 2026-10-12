@@ -147,7 +147,8 @@ public abstract class HistorizedRelationalDatabaseConnectorConfig extends Relati
                 : null;
         HistoryRecordComparator historyComparator = getHistoryRecordComparator();
         schemaHistory.configure(schemaHistoryConfig, historyComparator,
-                new SchemaHistoryMetrics(this, multiPartitionMode(), internerMetrics), useCatalogBeforeSchema()); // validates
+                new SchemaHistoryMetrics(this, multiPartitionMode(), internerMetrics), useCatalogBeforeSchema(),
+                getRelationalMetadataFactory()); // validates
 
         return schemaHistory;
     }

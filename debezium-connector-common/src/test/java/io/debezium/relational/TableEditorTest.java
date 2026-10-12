@@ -212,4 +212,20 @@ public class TableEditorTest {
         AtomicInteger position = new AtomicInteger(1);
         assertThat(editor.columns().stream().allMatch(defn -> defn.position() == position.getAndIncrement())).isTrue();
     }
+
+    @Test
+    @FixFor("debezium/dbz#2843")
+    public void shouldRetainAttributesWhenEditingTable() {
+        table = editor.tableId(id)
+                .addColumn(columnEditor.name("id").jdbcType(Types.INTEGER).create())
+                .addAttribute(attributeEditor.name("OBJECT_ID").value(42).create())
+                .create();
+        assertThat(table.attributeWithName("OBJECT_ID").asInteger()).isEqualTo(42);
+
+        final Table edited = table.edit().setComment("edited").create();
+
+        assertThat(edited.comment()).isEqualTo("edited");
+        assertThat(edited.attributes()).hasSize(1);
+        assertThat(edited.attributeWithName("OBJECT_ID").asInteger()).isEqualTo(42);
+    }
 }
