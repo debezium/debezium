@@ -5,6 +5,7 @@
  */
 package io.debezium.connector.mysql.jdbc;
 
+import java.nio.charset.StandardCharsets;
 import java.sql.Blob;
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -50,22 +51,33 @@ public class MySqlBinaryProtocolFieldReader extends AbstractFieldReader {
             return Duration.ZERO;
         }
 
-        // if micro_seconds is 0, length is 8; otherwise length is 12
-        if (b.length() != NativeConstants.BIN_LEN_TIME_NO_FRAC && b.length() != NativeConstants.BIN_LEN_TIME_WITH_MICROS) {
-            logInvalidValue(rs, columnIndex, b);
-            throw new RuntimeException(String.format("Invalid length when read MySQL TIME value. BIN_LEN_TIME is %d. " +
-                    "Enable TRACE logging to log the problematic column and its value.", b.length()));
+        // TODO Connector/J 9.7.0 fixed the decoding of negative TIME values (Bug #119863). Once the driver is upgraded to 9.7.0
+        // or later, rs.getObject(columnIndex, Duration.class) returns the correct value for both the binary and the text protocol,
+        // so it can replace the decoding below.
+        final byte[] bytes = b.getBytes(1, (int) (b.length()));
+        if (!isBinaryTime(bytes)) {
+            // A statement without a server-side cursor, such as the maximum key query of an incremental snapshot,
+            // returns the text representation of the value
+            return MySqlValueConverters.stringToDuration(new String(bytes, StandardCharsets.UTF_8));
         }
 
-        final byte[] bytes = b.getBytes(1, (int) (b.length()));
-        final int days = (bytes[1] & 0xFF) | ((bytes[2] & 0xFF) << 8) | ((bytes[3] & 0xFF) << 16) | ((bytes[4] & 0xFF) << 24);
-        final int hours = bytes[5];
-        final int minutes = bytes[6];
-        final int seconds = bytes[7];
-        final int nanos = 1000 * days;
-        final int finalHours = (bytes[0] == 1 ? days * -1 : days) * 24 + hours;
+        // The value consists of the sign, days, hours, minutes, seconds and, if its length is 12, microseconds
+        final Duration duration = Duration.ofDays(readUnsignedInt(bytes, 1))
+                .plusHours(bytes[5])
+                .plusMinutes(bytes[6])
+                .plusSeconds(bytes[7])
+                .plusNanos(bytes.length == NativeConstants.BIN_LEN_TIME_WITH_MICROS ? readUnsignedInt(bytes, 8) * 1_000 : 0);
+        return bytes[0] == 1 ? duration.negated() : duration;
+    }
 
-        return MySqlValueConverters.stringToDuration(String.format("%d:%d:%d.%d", finalHours, minutes, seconds, nanos));
+    private static boolean isBinaryTime(byte[] bytes) {
+        // A binary value starts with the sign flag 0 or 1, while a text value starts with a digit or '-'
+        return (bytes.length == NativeConstants.BIN_LEN_TIME_NO_FRAC || bytes.length == NativeConstants.BIN_LEN_TIME_WITH_MICROS)
+                && (bytes[0] == 0 || bytes[0] == 1);
+    }
+
+    private static long readUnsignedInt(byte[] bytes, int offset) {
+        return (bytes[offset] & 0xFFL) | ((bytes[offset + 1] & 0xFFL) << 8) | ((bytes[offset + 2] & 0xFFL) << 16) | ((bytes[offset + 3] & 0xFFL) << 24);
     }
 
     /**
