@@ -205,7 +205,7 @@ public class MongoDbSinkConnectorConfig implements SharedMongoDbConnectorConfig,
     }
 
     @Override
-    public KeyedMessageBatchMode getKeyedMessageBatchMode() {
+    public BufferMode getBufferMode() {
         return null;
     }
 
