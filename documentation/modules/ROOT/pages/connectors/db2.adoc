@@ -3385,7 +3385,11 @@ One second is not allowed as this can result in an infinite loop.  Recommended n
 |false (disabled)
 |A switch to control if the connector instance is responsible for updating the prune table (usually
 done by IBM DB2 Apply agent) which will cause the IBM Capture agent to prune read data from the change tables.
-If true, related configuration must be specified.
+|Specifies whether the connector updates the prune table.
+The IBM DB2 Apply agent typically performs this task.
+
+When you enable this property (set the value to `true`), after the connector reads a record in the change data table, it updates the prune table, enabling the IBM Capture agent to prune the related record from the change table.
+To use this property you must also configure the related `update.capture.table.prune` properties.
 
 |[[db2-property-update-capture-table-prune-set-name]]<<db2-property-update-capture-table-prune-set-name, update.capture.table.prune.set.name>>
 | No default
