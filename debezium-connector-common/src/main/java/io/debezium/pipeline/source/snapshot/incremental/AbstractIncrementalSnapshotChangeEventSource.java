@@ -355,13 +355,6 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<P extends Par
             return;
         }
 
-        LOGGER.info("Incremental snapshot in progress detected. Validating restored state...");
-        if (!validateRestoredContext(context)) {
-            LOGGER.warn("Restored snapshot context validation failed. Resetting snapshot context.");
-            postIncrementalSnapshotCompleted();
-            return;
-        }
-
         LOGGER.info("Incremental snapshot resuming from: table={}, chunk position={}",
                 context.currentDataCollectionId() != null ? context.currentDataCollectionId().getId() : "start",
                 context.chunkEndPosititon() != null ? java.util.Arrays.toString(context.chunkEndPosititon()) : "start");
@@ -1348,16 +1341,6 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<P extends Par
             LOGGER.info("Shutting down parallel incremental snapshot coordinator");
             parallelCoordinator.shutdown();
         }
-    }
-
-    protected boolean validateRestoredContext(IncrementalSnapshotContext<T> context) {
-        if (context.dataCollectionsToBeSnapshottedCount() == 0) {
-            LOGGER.warn("No data collections to snapshot in restored context");
-            return false;
-        }
-        LOGGER.info("Restored incremental snapshot context validated. Tables to snapshot: {}",
-                context.dataCollectionsToBeSnapshottedCount());
-        return true;
     }
 
     protected Table refreshTableSchema(Table table) throws SQLException {
