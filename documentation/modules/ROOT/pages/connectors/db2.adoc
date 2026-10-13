@@ -3401,7 +3401,16 @@ If true, related configuration must be specified.
 
 |[[db2-property-update-capture-table-prune-apply-qual]]<<db2-property-update-capture-table-prune-apply-qual, update.capture.table.prune.apply.qual>>
 | No default
-| The apply_qual name that represents the apply agent (this instance) to the prune set.
+| Specifies the Apply qualifier (`APPLY_QUAL`) that the connector uses when updating the prune table.
+
+The value identifies the connector instance as a consumer of change-table data and enables the IBM Capture agent to track the connector's progress for pruning.
+
+When {prodname} reads the change tables and streams records from them to Kafka, it acts as an Apply Agent. 
+However, as an external system, {prodname} is unknown to the internal Db2 cleanup system.
+The unique name that you specify represents {prodname} to Db2 so that it correctly identifies the connector instance when it processes a change event record.
+By assigning this `apply-qual` name, you enable the database to track which read operations correspond to the specific connector instance, helping to prevent the database from deleting data before the instance can read it.
+
+This setting applies only when `update.capture.table.prune.ind` is enabled.
 
 |[[db2-property-update-capture-table-prune-target-server]]<<db2-property-update-capture-table-prune-target-server, update.capture.table.prune.target.server>>
 | No default
