@@ -95,7 +95,8 @@ public class ArrayType extends AbstractType {
             dimensions.add(values.size());
         }
         else if (dimensions.get(depth) != values.size()) {
-            throw new ConnectException("Multidimensional array must have sub-arrays with matching dimensions at depth " + depth + ": expected " + dimensions.get(depth) + " but found " + values.size());
+            throw new ConnectException("Multidimensional array must have sub-arrays with matching dimensions at depth " + depth + ": expected " + dimensions.get(depth)
+                    + " but found " + values.size());
         }
 
         if (elementSchema.type() != Schema.Type.ARRAY) {
