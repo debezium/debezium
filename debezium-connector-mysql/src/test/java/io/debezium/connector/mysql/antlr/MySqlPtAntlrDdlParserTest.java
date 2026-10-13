@@ -83,6 +83,7 @@ public class MySqlPtAntlrDdlParserTest
     }
 
     @Test
+    @FixFor("debezium/dbz#2842")
     void shouldParseAlterDatabaseWithDefaultCharsetWithoutDatabaseName() {
         parser.parse("CREATE DATABASE db1 CHARACTER SET latin1;", tables);
         parser.parse("USE db1;", tables);
@@ -97,6 +98,7 @@ public class MySqlPtAntlrDdlParserTest
     }
 
     @Test
+    @FixFor("debezium/dbz#2842")
     void shouldParseAlterDatabaseWithDefaultCharsetAndDatabaseName() {
         parser.parse("CREATE DATABASE db1 CHARACTER SET latin1;", tables);
         parser.parse("CREATE DATABASE db2 CHARACTER SET latin1;", tables);
