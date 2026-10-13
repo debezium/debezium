@@ -2174,7 +2174,7 @@ The connector cannot process columns that include the following types of data:
 * JavaScript-based stored procedures
 * LONG
 * LONG RAW
-* ROWID (not supported on XStream)
+* ROWID (supported for LogMiner only)
 * Table value constructor (TVCs)
 * UROWID (Universal ROWID)
 * VECTOR
