@@ -438,8 +438,8 @@ public class GeneralDatabaseDialect implements DatabaseDialect {
         try {
             return field.bind(startIndex, value, schemaType);
         }
-        catch (IllegalArgumentException e) {
-            throw new IllegalArgumentException("Unable to bind field '" + field.getName() + "': " + e.getMessage(), e);
+        catch (Exception e) {
+            throw new ConnectException("Unable to bind field '" + field.getName() + "': " + e.getMessage(), e);
         }
     }
 
