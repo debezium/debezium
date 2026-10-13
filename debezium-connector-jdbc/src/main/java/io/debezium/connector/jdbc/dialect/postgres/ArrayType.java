@@ -12,6 +12,7 @@ import java.util.Locale;
 import java.util.Set;
 
 import org.apache.kafka.connect.data.Schema;
+import org.apache.kafka.connect.errors.ConnectException;
 
 import io.debezium.connector.jdbc.dialect.DatabaseDialect;
 import io.debezium.connector.jdbc.type.AbstractType;
@@ -94,7 +95,7 @@ public class ArrayType extends AbstractType {
             dimensions.add(values.size());
         }
         else if (dimensions.get(depth) != values.size()) {
-            throw new IllegalArgumentException("Nested array is ragged; PostgreSQL requires rectangular arrays");
+            throw new ConnectException("Multidimensional array must have sub-arrays with matching dimensions at depth " + depth + ": expected " + dimensions.get(depth) + " but found " + values.size());
         }
 
         if (elementSchema.type() != Schema.Type.ARRAY) {
@@ -104,10 +105,10 @@ public class ArrayType extends AbstractType {
         final List<Object> converted = new ArrayList<>(values.size());
         for (Object value : values) {
             if (value == null) {
-                throw new IllegalArgumentException("Nested array contains a null inner array");
+                throw new ConnectException("Nested array contains a null inner array");
             }
             if (!(value instanceof Collection<?> nested)) {
-                throw new IllegalArgumentException("Nested array has non-array value of type "
+                throw new ConnectException("Nested array has non-array value of type "
                         + value.getClass().getName());
             }
             converted.add(convertArray(elementSchema.valueSchema(), nested, dimensions, depth + 1));
