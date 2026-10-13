@@ -833,7 +833,7 @@ public abstract class CommonConnectorConfig {
             .withWidth(Width.SHORT)
             .withImportance(Importance.LOW)
             .withDescription("Multiplier applied to the previous delay on each retry. Use a value greater than 1.0 for the delay to grow exponentially.")
-            .withDefault(String.valueOf(DEFAULT_INCREMENTAL_SNAPSHOT_RETRY_BACKOFF_MULTIPLIER))
+            .withDefault(DEFAULT_INCREMENTAL_SNAPSHOT_RETRY_BACKOFF_MULTIPLIER)
             .withValidation(Field::isPositiveDouble);
 
     public static final long DEFAULT_INCREMENTAL_SNAPSHOT_POOL_RELEASE_DELAY_MS = 60_000L;
@@ -1738,7 +1738,7 @@ public abstract class CommonConnectorConfig {
         this.incrementalSnapshotRetryMaxAttempts = config.getInteger(INCREMENTAL_SNAPSHOT_RETRY_MAX_ATTEMPTS);
         this.incrementalSnapshotRetryInitialDelayMs = config.getLong(INCREMENTAL_SNAPSHOT_RETRY_INITIAL_DELAY_MS);
         this.incrementalSnapshotRetryMaxDelayMs = config.getLong(INCREMENTAL_SNAPSHOT_RETRY_MAX_DELAY_MS);
-        this.incrementalSnapshotRetryBackoffMultiplier = Double.parseDouble(config.getString(INCREMENTAL_SNAPSHOT_RETRY_BACKOFF_MULTIPLIER));
+        this.incrementalSnapshotRetryBackoffMultiplier = config.getDouble(INCREMENTAL_SNAPSHOT_RETRY_BACKOFF_MULTIPLIER);
         this.incrementalSnapshotPoolReleaseDelayMs = config.getLong(INCREMENTAL_SNAPSHOT_POOL_RELEASE_DELAY_MS);
         this.schemaNameAdjustmentMode = SchemaNameAdjustmentMode.parse(config.getString(SCHEMA_NAME_ADJUSTMENT_MODE));
         this.fieldNameAdjustmentMode = FieldNameAdjustmentMode.parse(config.getString(FIELD_NAME_ADJUSTMENT_MODE));
