@@ -58,7 +58,16 @@ public class MySqlBinaryProtocolFieldReader extends AbstractFieldReader {
         if (!isBinaryTime(bytes)) {
             // A statement without a server-side cursor, such as the maximum key query of an incremental snapshot,
             // returns the text representation of the value
-            return MySqlValueConverters.stringToDuration(new String(bytes, StandardCharsets.UTF_8));
+            final String value = new String(bytes, StandardCharsets.UTF_8);
+            try {
+                return MySqlValueConverters.stringToDuration(value);
+            }
+            catch (RuntimeException e) {
+                logInvalidValue(rs, columnIndex, value);
+                LOGGER.error("Could not read MySQL TIME value of length {}. " +
+                        "Enable TRACE logging to log the problematic column and its value.", bytes.length);
+                throw e;
+            }
         }
 
         // The value consists of the sign, days, hours, minutes, seconds and, if its length is 12, microseconds
