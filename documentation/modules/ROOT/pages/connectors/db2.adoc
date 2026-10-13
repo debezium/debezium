@@ -2235,15 +2235,22 @@ In the `IBMSNAP_CAPPARMS` table, the following parameters have the greatest effe
 [id="db2-change-table-pruning"]
 === Db2 Change Table Pruning
 
-As the capture agent functions by creating sql records that represent changes in the captured tables and Debezium produces
-these as Kafka events, it is necessary to have a pruning process of the change capture tables.  In default deployments, this
-is controlled by the DB2 *Apply* agent (responsible for reading the change tables and representing them elsewhere, like Debezium),
-updating a set of prune tables that notify the *Capture* agent that the records have been reflected to the target system(s)
-and the data can be removed from the change tables, otherwise they will grow and become unmanagable or exhaust resourced.
+Change data tables grow continuously unless processed records are removed.
+Review how pruning works and how to ensure that pruning continues in a {prodname} environment.
 
-If the *Apply* agent is not needed as Debezium is handling that role, a use case that solutions often encounter, the *Apply* agent
-can be stopped - it need not use resources, but the *prune* function must be fulfilled in its absence, and the database must be
-configured such that the prune thread is able to use the tables that communicate what can be pruned.
+The IBM Db2 capture agent (ASNCDC) creates SQL records in change data (CD) tables to represent changes that occur in monitored source tables. 
+Typically, for each source table that {prodname} captures, the capture agent creates a corresponding CD table.
+{prodname} captures event records from CD tables and emits corresponding change event messages that represent them to Apache Kafka topics.
+After {prodname} processes a record from the CD table, the record is no longer needed, but Db2 does not automatically delete the processed rows. 
+Without intervention, the CD tables continuously accumulate records until they consume all available disk space.
+To prevent uncontrolled table growth, reduces storage requirements, and helps maintain replication and database performance, it's important to implement a pruning process. 
+
+In deployments where {prodname} does not consume change event records, pruning is controlled by the DB2 Apply agent, which reads the change tables and replicates data to a set of prune tables at the configured destination. 
+After the Apply agent updates the target prune tables it notifies the *Capture* agent that the records have been successfully replicated, and the data can be removed from the change tables.
+
+In a {prodname} environment, because the *Apply* agent is not required to read the CD tables, users sometimes stop the agent to conserve processing resources.
+Stopping the agent also stops the associated *prune* function, which can lead to unwanted CD table growth.
+To avoid this situation, you must configure Db2 so that the prune thread is able to identify the records that need pruning.
 
 // Type: procedure
 [id="enable-the-db2-capture-agent-to-prune-obsolete-cd-tables"]
