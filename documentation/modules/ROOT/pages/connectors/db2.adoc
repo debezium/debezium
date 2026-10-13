@@ -3389,7 +3389,10 @@ If true, related configuration must be specified.
 
 |[[db2-property-update-capture-table-prune-set-name]]<<db2-property-update-capture-table-prune-set-name, update.capture.table.prune.set.name>>
 | No default
-| If set to update the prune table, this will identify the prune set name that should be used when updating the table for this instance. The if prune update is enabled, the set name must be set to a non-empty string. The if prune update is disabled, the set name may not be set to a value.
+|Specifies the prune set name that the connector uses when it updates the prune table for this instance.
+ This setting only applies if you enable `update.capture.table.prune.ind` so that the connector updates the prune table.
+ Specify a prune set name to any non-empty string. 
+ If `update.capture.table.prune.ind` is disabled, do not specify a prune set name for this property.
 
 |[[db2-property-update-capture-table-prune-min-interval]]<<db2-property-update-capture-table-prune-min-interval, update.capture.table.prune.min.interval.ms>>
 |10000 (10 seconds)
