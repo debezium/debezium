@@ -1672,7 +1672,7 @@ public final class Field {
                 return 0;
             }
         }
-        catch (NumberFormatException e) {
+        catch (Throwable e) {
         }
         problems.accept(field, value, "A positive, non-zero, finite double value is expected");
         return 1;
