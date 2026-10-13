@@ -88,6 +88,32 @@ public class MySqlOffsetWithoutGtidSetIT extends AbstractAsyncEngineConnectorTes
 
     @Test
     @FixFor("debezium/dbz#2852")
+    public void shouldResumeAfterFirstGtidTransactionWhenSnapshotHasNoGtidSet() throws Exception {
+        startServer("OFF");
+        execute("CREATE DATABASE " + DATABASE,
+                "CREATE TABLE " + DATABASE + ".t (id INT PRIMARY KEY)",
+                "INSERT INTO " + DATABASE + ".t VALUES (1), (2)");
+        enableGtids();
+        assertThat(gtidExecuted()).isEmpty();
+
+        start(MySqlConnector.class, config(SnapshotMode.INITIAL));
+        assertNextRecords("r1", "r2");
+        waitForStreamingRunning("mysql", SERVER_NAME);
+
+        execute("INSERT INTO " + DATABASE + ".t VALUES (3)");
+        assertNextRecords("c3");
+
+        // The offset contains a GTID set now
+        stopConnector();
+        execute("INSERT INTO " + DATABASE + ".t VALUES (4)");
+        start(MySqlConnector.class, config(SnapshotMode.INITIAL));
+        waitForStreamingRunning("mysql", SERVER_NAME);
+        execute("INSERT INTO " + DATABASE + ".t VALUES (5)");
+        assertNextRecords("c4", "c5");
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2852")
     public void shouldResumeFromBinlogPositionWhenGtidsWereEnabledWhileConnectorWasStopped() throws Exception {
         startServer("OFF");
         execute("CREATE DATABASE " + DATABASE,
