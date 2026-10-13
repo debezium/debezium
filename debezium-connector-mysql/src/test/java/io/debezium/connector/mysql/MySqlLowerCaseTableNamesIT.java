@@ -6,6 +6,7 @@
 package io.debezium.connector.mysql;
 
 import java.time.Duration;
+import java.util.ArrayList;
 import java.util.List;
 
 import org.testcontainers.containers.JdbcDatabaseContainer;
@@ -21,12 +22,16 @@ public class MySqlLowerCaseTableNamesIT extends BinlogLowerCaseTableNamesIT<MySq
 
     @Override
     protected JdbcDatabaseContainer<?> createContainer(List<String> serverOptions) {
+        final List<String> options = new ArrayList<>(serverOptions);
+        // MySQL 9 enables GTIDs by default, and streaming with GTIDs fails on a server that has not executed any
+        // transaction yet, such as a new server of the Oracle images. Disable them as in earlier versions.
+        options.add("--gtid-mode=OFF");
         return new MySQLContainer(DockerImageName.parse(IMAGE).asCompatibleSubstituteFor("mysql"))
                 .withUsername("root")
                 .withPassword(ROOT_PASSWORD)
                 // The Oracle images only allow root to connect from localhost by default
                 .withEnv("MYSQL_ROOT_HOST", "%")
-                .withCommand(serverOptions.toArray(String[]::new))
+                .withCommand(options.toArray(String[]::new))
                 .withStartupTimeout(Duration.ofMinutes(3));
     }
 
