@@ -651,6 +651,11 @@ public abstract class CommonConnectorConfig {
     public static final long DEFAULT_MAX_QUEUE_SIZE_IN_BYTES = 0; // In case we don't want to pass max.queue.size.in.bytes;
     public static final String NOTIFICATION_CONFIGURATION_FIELD_PREFIX_STRING = "notification.";
     public static final long DEFAULT_CONNECTION_VALIDATION_TIMEOUT_MS = 60000L; // 60 seconds default timeout
+    public static final int DEFAULT_INCREMENTAL_SNAPSHOT_RETRY_MAX_ATTEMPTS = 5;
+    public static final long DEFAULT_INCREMENTAL_SNAPSHOT_RETRY_INITIAL_DELAY_MS = 1000L;
+    public static final long DEFAULT_INCREMENTAL_SNAPSHOT_RETRY_MAX_DELAY_MS = 60_000L;
+    public static final double DEFAULT_INCREMENTAL_SNAPSHOT_RETRY_BACKOFF_MULTIPLIER = 2.0;
+    public static final long DEFAULT_INCREMENTAL_SNAPSHOT_POOL_RELEASE_DELAY_MS = 60_000L;
 
     public static final int DEFAULT_MAX_RETRIES = ErrorHandler.RETRIES_UNLIMITED;
     public static final String ERRORS_MAX_RETRIES = "errors.max.retries";
@@ -795,11 +800,6 @@ public abstract class CommonConnectorConfig {
             .withDefault(1024)
             .withValidation(Field::isNonNegativeInteger);
 
-    public static final int DEFAULT_INCREMENTAL_SNAPSHOT_RETRY_MAX_ATTEMPTS = 5;
-    public static final long DEFAULT_INCREMENTAL_SNAPSHOT_RETRY_INITIAL_DELAY_MS = 1000L;
-    public static final long DEFAULT_INCREMENTAL_SNAPSHOT_RETRY_MAX_DELAY_MS = 60_000L;
-    public static final double DEFAULT_INCREMENTAL_SNAPSHOT_RETRY_BACKOFF_MULTIPLIER = 2.0;
-
     public static final Field INCREMENTAL_SNAPSHOT_RETRY_MAX_ATTEMPTS = Field.create("incremental.snapshot.retry.max.attempts")
             .withDisplayName("Incremental snapshot retry max attempts")
             .withType(Type.INT)
@@ -835,8 +835,6 @@ public abstract class CommonConnectorConfig {
             .withDescription("Multiplier applied to the previous delay on each retry. Use a value greater than 1.0 for the delay to grow exponentially.")
             .withDefault(DEFAULT_INCREMENTAL_SNAPSHOT_RETRY_BACKOFF_MULTIPLIER)
             .withValidation(Field::isPositiveDouble);
-
-    public static final long DEFAULT_INCREMENTAL_SNAPSHOT_POOL_RELEASE_DELAY_MS = 60_000L;
 
     public static final Field INCREMENTAL_SNAPSHOT_POOL_RELEASE_DELAY_MS = Field.create("incremental.snapshot.pool.release.delay.ms")
             .withDisplayName("Incremental snapshot pool release delay (ms)")
