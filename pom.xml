@@ -192,6 +192,15 @@
         <!-- Advanced statistics -->
         <version.datadog.sketches>0.8.2</version.datadog.sketches>
 
+        <!-- Static code analysis -->
+        <version.sonar.plugin>5.5.0.6356</version.sonar.plugin>
+        <sonar.host.url>https://sonarcloud.io</sonar.host.url>
+        <sonar.organization>debezium</sonar.organization>
+        <sonar.projectName>debezium</sonar.projectName>
+        <sonar.projectKey>debezium_debezium</sonar.projectKey>
+        <sonar.sourceEncoding>UTF-8</sonar.sourceEncoding>
+        <sonar.maven.scanAll>true</sonar.maven.scanAll>
+
         <!-- Testing -->
         <opentelemetry.agent.for.testing.artifact.relative.path>io/opentelemetry/javaagent/opentelemetry-agent-for-testing/${version.opentelemetry.testing}/opentelemetry-agent-for-testing-${version.opentelemetry.testing}.jar</opentelemetry.agent.for.testing.artifact.relative.path>
 
@@ -335,6 +344,11 @@
                     <groupId>org.codehaus.mojo</groupId>
                     <artifactId>build-helper-maven-plugin</artifactId>
                     <version>${version.build-helper.plugin}</version>
+                </plugin>
+                <plugin>
+                    <groupId>org.sonarsource.scanner.maven</groupId>
+                    <artifactId>sonar-maven-plugin</artifactId>
+                    <version>${version.sonar.plugin}</version>
                 </plugin>
             </plugins>
         </pluginManagement>
