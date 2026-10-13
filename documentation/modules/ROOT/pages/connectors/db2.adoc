@@ -3428,7 +3428,11 @@ If true, related configuration must be specified.
 
 |[[db2-property-update-capture-table-prune-procedure-override-name]]<<db2-property-update-capture-table-prune-procedure-override-name, update.capture.table.prune.procedure.override.name>>
 | No default
-| The name of a prepared statement in the database that will be used instead of direct SQL update to allow for DBA control of the update code where needed.
+| Specifies the name of the prepared statement that the connector uses instead of issuing direct SQL update statements.
+ 
+Use this property when database administrators require control over the update implementation.
+
+This setting applies only when `update.capture.table.prune.ind` is enabled.
 
 |===
 
