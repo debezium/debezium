@@ -1667,13 +1667,14 @@ public final class Field {
             return 0;
         }
         try {
-            if (Double.parseDouble(value) > 0) {
+            final double parsed = Double.parseDouble(value);
+            if (Double.isFinite(parsed) && parsed > 0) {
                 return 0;
             }
         }
         catch (NumberFormatException e) {
         }
-        problems.accept(field, value, "A positive, non-zero double value is expected");
+        problems.accept(field, value, "A positive, non-zero, finite double value is expected");
         return 1;
     }
 
