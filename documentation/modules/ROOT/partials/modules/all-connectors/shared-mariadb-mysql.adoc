@@ -840,13 +840,13 @@ A {prodname} `set-binlog-position` signal message includes the standard `id`, `t
 The exact format of the message depends on which signaling channel you use.
 For more information about the format of {prodname} signals, see {link-prefix}:{link-signalling}#debezium-signaling-overview}[Sending signals to a {prodname} connector].
 
-To designate the binlog position in a `set-binlog-position` signal, in the data portion of the signal, you specify either the binlog file and position, or a GTID set, depending on whether GTID (Global Transaction Identifier) mode is enabled.
+To designate the binlog position in a `set-binlog-position` signal, in the data portion of the signal, you specify either the binlog file and position, or, when GTID (Global Transaction Identifier) mode is enabled, a GTID set.
 You cannot use both formats in the same signal.
 
 The following examples illustrate the two formats for specifying the binlog position in a signal:
 
 Binlog file and position format::
-When GTID mode is disabled, specify the binlog filename and position in the signal, as in the following example:
+Specify the binlog filename and position in the signal, as in the following example:
 +
 [example]
 ====
@@ -858,10 +858,18 @@ When GTID mode is disabled, specify the binlog filename and position in the sign
 The `binlog_filename` must match the binlog naming pattern (for example, `mysql-bin.000001` for MySQL or `mariadb-bin.000001` for MariaDB).
 +
 The `binlog_position` must be a non-negative integer.
++
+When the connector processes the signal, it queries the database server for the GTID set that the server had executed at the specified position, and records that GTID set in the offsets together with the file and position, replacing the GTID set that was previously recorded.
+When GTID mode is enabled, the connector resumes from the recorded GTID set rather than from the file and position, so the recorded set ensures that the connector resumes at the position that you specify.
+If the position falls inside a transaction, the GTID set does not include that transaction, and the connector streams the transaction again after it restarts.
+When GTID mode is disabled, the GTID set is empty, and the connector resumes from the file and position.
++
+The binlog file must still exist on the database server.
+If the connector cannot determine the GTID set for the position, it rejects the signal and does not change its offsets.
 
 
 GTID set format::
-When GTID mode is enabled, specify the GTID set in the signal.
+When GTID mode is enabled, you can specify the GTID set in the signal instead of a file and position.
 The format of the GTID set value differs between MySQL and MariaDB:
 +
 --
@@ -911,7 +919,7 @@ In the data portion of the signal, specify the target position as determined in 
 +
 For example, for the source signaling channel, add one of the following SQL commands to the `data` component of the signal, depending on whether GTID is enabled:
 +
-SQL to use when GTID is disabled (uses the binlog file and position)::
+SQL that specifies the binlog file and position::
 +
 [source,sql,indent=0,subs="+attributes"]
 ----
@@ -922,7 +930,7 @@ INSERT INTO debezium_signal (id, type, data) VALUES (
 );
 ----
 +
-SQL to use when GTID is enabled (specifies {gtid-label})::
+SQL that specifies {gtid-label} (GTID mode only)::
 +
 [source,sql,indent=0,subs="+attributes"]
 ----

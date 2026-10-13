@@ -27,6 +27,7 @@ import io.debezium.connector.mariadb.gtid.MariaDbGtidSet.MariaDbGtid;
 public class MariaDbConnection extends BinlogConnectorConnection {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(MariaDbConnection.class);
+    private static final int BINLOG_EVENTS_PAGE_SIZE = 10_000;
 
     public MariaDbConnection(ConnectionConfiguration configuration, BinlogFieldReader fieldReader) {
         super(configuration, fieldReader);
@@ -102,5 +103,118 @@ public class MariaDbConnection extends BinlogConnectorConnection {
 
         LOGGER.info("Final merged GTID set to use when connecting to MariaDB: {}", mergedGtidSet);
         return mergedGtidSet;
+    }
+
+    /**
+     * Returns the GTID position the server had reached at {@code binlogPosition} in {@code binlogFilename}.
+     * <p>
+     * {@code BINLOG_GTID_POS} counts a transaction as soon as its GTID event lies before the position, so it is
+     * asked for the start of the transaction the position falls inside, which is then read again rather than skipped.
+     *
+     * @param binlogFilename the binlog file, which must still exist on the server
+     * @param binlogPosition the position within that file
+     * @return the GTID position, empty if nothing was executed before it
+     */
+    public String gtidSetAtPosition(String binlogFilename, long binlogPosition) {
+        if (binlogFilename.indexOf('\'') >= 0 || binlogFilename.indexOf('\\') >= 0) {
+            throw new DebeziumException("Invalid binlog filename: " + binlogFilename);
+        }
+        final String gtidSet;
+        try {
+            final long transactionStart = transactionStart(binlogFilename, binlogPosition);
+            gtidSet = prepareQueryAndMap("SELECT BINLOG_GTID_POS(?, ?)",
+                    ps -> {
+                        ps.setString(1, binlogFilename);
+                        ps.setLong(2, transactionStart);
+                    },
+                    rs -> rs.next() ? rs.getString(1) : null);
+        }
+        catch (SQLException e) {
+            throw new DebeziumException("Unable to resolve the GTID position at binlog file '" + binlogFilename + "' position " + binlogPosition, e);
+        }
+        if (gtidSet == null) {
+            // BINLOG_GTID_POS returns NULL when the file does not exist or the position is not an event boundary.
+            throw new DebeziumException("No GTID position at binlog file '" + binlogFilename + "' position " + binlogPosition);
+        }
+        LOGGER.info("GTID position at binlog file '{}' position {}: {}", binlogFilename, binlogPosition, gtidSet);
+        return gtidSet;
+    }
+
+    private long transactionStart(String binlogFilename, long binlogPosition) throws SQLException {
+        final TransactionStart finder = new TransactionStart(binlogPosition);
+        // End_log_pos can be 0 inside MariaDB transactions, so each page restarts at the last event read and skips it.
+        long from = 4;
+        int skip = 0;
+        while (true) {
+            final String query = String.format("SHOW BINLOG EVENTS IN '%s' FROM %d LIMIT %d, %d",
+                    binlogFilename, from, skip, BINLOG_EVENTS_PAGE_SIZE);
+            final boolean morePages = queryAndMap(query, rs -> {
+                int rows = 0;
+                while (rs.next()) {
+                    rows++;
+                    if (!finder.accept(rs.getString("Event_type"), rs.getLong("Pos"))) {
+                        return false;
+                    }
+                }
+                return rows == BINLOG_EVENTS_PAGE_SIZE;
+            });
+            if (!morePages) {
+                return finder.transactionStart();
+            }
+            from = finder.lastEventPosition();
+            skip = 1;
+        }
+    }
+
+    /**
+     * Finds, from the events of one binlog file in file order, the position {@code BINLOG_GTID_POS} has to be asked for.
+     */
+    static final class TransactionStart {
+
+        private final long position;
+        private long openTransactionStart = -1;
+        private long lastEventPosition = 4;
+        private Long result;
+
+        TransactionStart(long position) {
+            this.position = position;
+        }
+
+        /**
+         * Accepts the next event of the file.
+         *
+         * @return {@code false} once the first event at or after the position has been seen
+         */
+        boolean accept(String eventType, long eventPosition) {
+            final boolean boundary = isTransactionBoundary(eventType);
+            if (eventPosition >= position) {
+                if (eventPosition == position && boundary) {
+                    result = position;
+                }
+                else {
+                    // Inside a transaction, or inside an event: go back to the start of the open transaction.
+                    result = openTransactionStart >= 0 ? openTransactionStart : 4;
+                }
+                return false;
+            }
+            if (boundary) {
+                openTransactionStart = "gtid".equalsIgnoreCase(eventType) ? eventPosition : -1;
+            }
+            lastEventPosition = eventPosition;
+            return true;
+        }
+
+        long lastEventPosition() {
+            return lastEventPosition;
+        }
+
+        long transactionStart() {
+            // Past the last event the position is the end of the file, or beyond it, which BINLOG_GTID_POS rejects.
+            return result != null ? result : position;
+        }
+
+        private static boolean isTransactionBoundary(String eventType) {
+            return "gtid".equalsIgnoreCase(eventType) || "rotate".equalsIgnoreCase(eventType) || "stop".equalsIgnoreCase(eventType);
+        }
     }
 }
