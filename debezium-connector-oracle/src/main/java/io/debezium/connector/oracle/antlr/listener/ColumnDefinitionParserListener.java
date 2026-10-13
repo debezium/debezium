@@ -359,8 +359,10 @@ public class ColumnDefinitionParserListener extends BaseParserListener {
     }
 
     private void setScale(PlSqlParser.Precision_partContext precisionPart, ColumnEditor columnEditor) {
-        if (precisionPart.numeric().size() > 1) {
-            columnEditor.scale(Integer.valueOf(precisionPart.numeric(1).getText()));
+        // When precision is an asterisk, e.g. NUMBER(*,s), the only numeric is the scale
+        final int scaleIndex = precisionPart.ASTERISK() != null ? 0 : 1;
+        if (precisionPart.numeric().size() > scaleIndex) {
+            columnEditor.scale(Integer.valueOf(precisionPart.numeric(scaleIndex).getText()));
         }
         else if (precisionPart.numeric_negative() != null) {
             columnEditor.scale(Integer.valueOf(precisionPart.numeric_negative().getText()));
