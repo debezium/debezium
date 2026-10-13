@@ -250,6 +250,11 @@ public class PostgresReadOnlyIncrementalSnapshotChangeEventSource<P extends Post
     }
 
     @Override
+    protected boolean supportsParallelSnapshot() {
+        return true;
+    }
+
+    @Override
     protected JdbcConnection createSnapshotConnection() throws SQLException {
         LOGGER.debug("[{}] Creating new snapshot connection in NORMAL mode (not replication)",
                 Thread.currentThread().getName());

@@ -323,14 +323,21 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<P extends Par
     protected abstract void emitWindowClose(P partition, OffsetContext offsetContext) throws Exception;
 
     /**
+     * Whether this implementation can read chunks in parallel on dedicated connections.
+     * Implementations returning {@code true} must also override {@link #createSnapshotConnection()}.
+     */
+    protected boolean supportsParallelSnapshot() {
+        return false;
+    }
+
+    /**
      * Creates a new dedicated JDBC connection for parallel snapshot worker threads.
-     * Must NOT return the main streaming connection. Override in connectors that
-     * support parallel incremental snapshots.
+     * Must NOT return the main streaming connection. Only called when
+     * {@link #supportsParallelSnapshot()} returns {@code true}.
      */
     protected JdbcConnection createSnapshotConnection() throws SQLException {
-        throw new UnsupportedOperationException(
-                "Parallel snapshot connections not supported by this connector implementation. " +
-                        "Override createSnapshotConnection() to enable multi-threaded incremental snapshots.");
+        throw new IllegalStateException(getClass().getSimpleName()
+                + " declares parallel snapshot support but does not override createSnapshotConnection()");
     }
 
     @Override
@@ -918,6 +925,14 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<P extends Par
         if (parallelCoordinator != null || parallelInitPermanentlyDisabled || parallelSnapshotThreads <= 1) {
             return;
         }
+        if (!supportsParallelSnapshot()) {
+            parallelInitPermanentlyDisabled = true;
+            LOGGER.warn("Incremental snapshot multi-threading requested ({} threads) but not supported by {}. "
+                    + "Parallel incremental snapshots are only supported by read-only snapshot implementations "
+                    + "that provide dedicated snapshot connections. Running single-threaded.",
+                    parallelSnapshotThreads, getClass().getSimpleName());
+            return;
+        }
         try {
             JdbcConnection testConnection = createSnapshotConnection();
             testConnection.close();
@@ -926,11 +941,6 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<P extends Par
                     connectorConfig.getLogicalName(),
                     connectorConfig.getIncrementalSnapshotPoolReleaseDelayMs());
             LOGGER.info("Incremental snapshot multi-threading enabled with {} threads", parallelSnapshotThreads);
-        }
-        catch (UnsupportedOperationException e) {
-            parallelInitPermanentlyDisabled = true;
-            LOGGER.warn("Incremental snapshot multi-threading requested ({} threads) but not supported by this connector. "
-                    + "Falling back to single-threaded mode permanently.", parallelSnapshotThreads, e);
         }
         catch (Exception e) {
             long now = System.currentTimeMillis();

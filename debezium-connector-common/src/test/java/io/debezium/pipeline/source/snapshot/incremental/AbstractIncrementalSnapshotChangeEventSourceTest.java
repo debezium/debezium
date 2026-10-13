@@ -19,6 +19,7 @@ import java.sql.SQLNonTransientConnectionException;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -27,6 +28,7 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
 import io.debezium.config.EnumeratedValue;
 import io.debezium.connector.SourceInfoStructMaker;
@@ -270,10 +272,32 @@ public class AbstractIncrementalSnapshotChangeEventSourceTest {
                 .dataCollectionFilter();
     }
 
+    @Test
+    @FixFor("dbz#1829")
+    public void shouldNotOpenSnapshotConnectionWhenParallelSnapshotIsNotSupported() {
+        final AtomicInteger snapshotConnections = new AtomicInteger();
+        final var unsupported = new SignalBasedIncrementalSnapshotChangeEventSource<TestPartition, TableId>(config(true, 4), jdbcConnection, null, null, null,
+                progressListener, null, notificationService) {
+            @Override
+            protected JdbcConnection createSnapshotConnection() {
+                snapshotConnections.incrementAndGet();
+                return mock(JdbcConnection.class);
+            }
+        };
+
+        assertThat(unsupported.parallelCoordinator).isNull();
+        assertThat(snapshotConnections).hasValue(0);
+    }
+
     private RelationalDatabaseConnectorConfig config(boolean useCatalogBeforeSchema) {
+        return config(useCatalogBeforeSchema, 1);
+    }
+
+    private RelationalDatabaseConnectorConfig config(boolean useCatalogBeforeSchema, int snapshotMaxThreads) {
         final Configuration configuration = Configuration.create()
                 .with(RelationalDatabaseConnectorConfig.SIGNAL_DATA_COLLECTION, "debezium.signal")
                 .with(RelationalDatabaseConnectorConfig.TOPIC_PREFIX, "core")
+                .with(CommonConnectorConfig.SNAPSHOT_MAX_THREADS, snapshotMaxThreads)
                 .build();
         return new RelationalDatabaseConnectorConfig(configuration, null, null, 0, ColumnFilterMode.CATALOG, useCatalogBeforeSchema) {
             @Override
