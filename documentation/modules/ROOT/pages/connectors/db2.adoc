@@ -2229,6 +2229,10 @@ In the `IBMSNAP_CAPPARMS` table, the following parameters have the greatest effe
 .Additional resources
 * For more information about capture agent parameters, see the Db2 documentation.
 
+// Type: concept
+// ModuleID: understanding-how-db2-change-table-pruning-works-in-a-debezium-environment
+// Title: Understanding how Db2 change table pruning works in a {prodname} environment
+[id="db2-change-table-pruning"]
 === Db2 Change Table Pruning
 
 As the capture agent functions by creating sql records that represent changes in the captured tables and Debezium produces
