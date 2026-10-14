@@ -3452,7 +3452,6 @@ Set the value to `true` if you want the connector to update the prune table.
 After the connector reads data from the change tables, it then updates the prune table.
 The IBM Capture agent then prunes the change table to remove records that the connector read.
 
-When you enable this property (set the value to `true`), after the connector reads a record in the change data table, it updates the prune table, enabling the IBM Capture agent to prune the related record from the change table.
 To use this property you must also configure the related `update.capture.table.prune` properties.
 
 |[[db2-property-update-capture-table-prune-set-name]]<<db2-property-update-capture-table-prune-set-name, update.capture.table.prune.set.name>>
