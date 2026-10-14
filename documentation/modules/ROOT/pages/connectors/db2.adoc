@@ -3491,7 +3491,7 @@ This setting applies only when `update.capture.table.prune.ind` is enabled.
 | No default
 | Specifies the name of the target server for the subscription set.
 
-The value identifies the destination database associated with the connector's Apply-agent identity.
+This property specifies the target database for the connector's Apply agent.
 This setting applies only when `update.capture.table.prune.ind` is enabled.
 
 |[[db2-property-update-capture-table-prune-procedure-override-name]]<<db2-property-update-capture-table-prune-procedure-override-name, update.capture.table.prune.procedure.override.name>>
