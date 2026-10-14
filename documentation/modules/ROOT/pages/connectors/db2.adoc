@@ -3451,7 +3451,7 @@ To use this property you must also configure the related `update.capture.table.p
 Specifies whether the connector decrements the prune LSN/syncpoint by one before updating the prune table.
 
 When enabled, the connector preserves the last processed LSN in the change tables. 
-Preserving this record helps prevent unnecessary snapshots that might occur if the last processed LSN is no longer present in the change table.
+Preserving this record helps prevent the connector from running unnecessary snapshots when the last processed LSN is removed in the change table.
 
 This setting applies only when `update.capture.table.prune.ind` is enabled.
 
