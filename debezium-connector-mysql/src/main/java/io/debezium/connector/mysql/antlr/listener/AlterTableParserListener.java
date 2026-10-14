@@ -458,6 +458,9 @@ public class AlterTableParserListener extends TableCommonParserListener {
             if (signed.literal().nullLiteral() != null) {
                 return null;
             }
+            if (signed.literal().HEX_NUMBER() != null || signed.literal().BIN_NUMBER() != null) {
+                return DefaultValueParserListener.parseBinaryLiteral(signed.literal(), defaultValueColumnEditor, parser);
+            }
             return sign + extractLiteralValue(signed.literal());
         }
 
