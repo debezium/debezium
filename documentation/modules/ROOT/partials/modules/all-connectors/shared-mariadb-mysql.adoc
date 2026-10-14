@@ -2285,22 +2285,26 @@ The {prodname} JDBC sink connector can consume these structured temporal schemas
 
 |`DATE`
 |`STRUCT`
-a|`io.debezium.time.StructuredDate` +
+a|`io.debezium.time.StructuredDate`
+
 Contains `year`, `month`, and `day` fields.
 
 |`TIME[(M)]`
 |`STRUCT`
-a|`io.debezium.time.StructuredDuration` +
+a|`io.debezium.time.StructuredDuration`
+
 Contains signed `years`, `months`, `days`, `hours`, `minutes`, `seconds`, `nanos`, and optional `precision` fields.
 
 |`DATETIME[(M)]`
 |`STRUCT`
-a|`io.debezium.time.StructuredTimestamp` +
+a|`io.debezium.time.StructuredTimestamp`
+
 Contains `year`, `month`, `day`, `hour`, `minute`, `second`, `nanos`, and optional `precision` fields.
 
 |`TIMESTAMP[(M)]`
 |`STRUCT`
-a|`io.debezium.time.StructuredZonedTimestamp` +
+a|`io.debezium.time.StructuredZonedTimestamp`
+
 Contains calendar and clock component fields, `offsetSeconds`, optional `zoneId`, and optional `precision`.
 
 |===
@@ -3294,4 +3298,3 @@ If the snapshot is disabled, the connector fails with an error.
 
 See xref:{context}-snapshots[snapshots] for details about how {connector-name} connectors perform initial snapshots.
 end::wrong-things[]
-
