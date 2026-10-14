@@ -164,7 +164,10 @@ public class TableSchemaBuilder {
         AtomicBoolean hasPrimaryKey = new AtomicBoolean(false);
 
         Key tableKey = new Key.Builder(table).customKeyMapper(keysMapper).build();
-        tableKey.keyColumns().forEach(column -> {
+        List<Column> keyColumns = tableKey.keyColumns().stream()
+                .filter(column -> !column.isSynthetic())
+                .collect(Collectors.toList());
+        keyColumns.forEach(column -> {
             addField(keySchemaBuilder, table, column, null);
             hasPrimaryKey.set(true);
         });
@@ -174,6 +177,7 @@ public class TableSchemaBuilder {
 
         table.columns()
                 .stream()
+                .filter(column -> !column.isSynthetic())
                 .filter(column -> filter == null || filter.matches(tableId.catalog(), tableId.schema(), tableId.table(), column.name()))
                 .forEach(column -> {
                     ColumnMapper mapper = mappers == null ? null : mappers.mapperFor(tableId, column);
@@ -196,7 +200,7 @@ public class TableSchemaBuilder {
                 .build();
 
         // Create the generators ...
-        StructGenerator keyGenerator = createKeyGenerator(keySchema, tableId, tableKey.keyColumns(), topicNamingStrategy);
+        StructGenerator keyGenerator = createKeyGenerator(keySchema, tableId, keyColumns, topicNamingStrategy);
         StructGenerator valueGenerator = createValueGenerator(valSchema, tableId, table.columns(), filter, mappers);
 
         // And the table schema ...
@@ -287,6 +291,7 @@ public class TableSchemaBuilder {
                                                    ColumnNameFilter filter, ColumnMappers mappers) {
         if (schema != null) {
             List<Column> columnsThatShouldBeAdded = columns.stream()
+                    .filter(column -> !column.isSynthetic())
                     .filter(column -> filter == null || filter.matches(tableId.catalog(), tableId.schema(), tableId.table(), column.name()))
                     .collect(Collectors.toList());
             int[] recordIndexes = indexesForColumns(columnsThatShouldBeAdded);
