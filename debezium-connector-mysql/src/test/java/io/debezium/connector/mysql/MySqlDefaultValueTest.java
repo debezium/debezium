@@ -8,9 +8,11 @@ package io.debezium.connector.mysql;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.util.List;
+import java.util.stream.Stream;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.MethodSource;
 
@@ -111,6 +113,20 @@ public class MySqlDefaultValueTest extends BinlogDefaultValueTest<MySqlValueConv
     @FixFor("debezium/dbz#2751")
     void shouldPreserveNonStrictBitDefaultValues(BitDefaultValueCase testCase) {
         assertBitDefaultValue(testCase);
+    }
+
+    @ParameterizedTest(name = "{0} DEFAULT {1}, {3}")
+    @MethodSource("quotedHexadecimalDefaults")
+    @FixFor("debezium/dbz#2765")
+    void shouldConvertQuotedHexadecimalDefaultsToNumbers(String type, String literal, String equivalentLiteral, String action) {
+        assertBinaryLiteralDefault(type, literal, equivalentLiteral, action);
+    }
+
+    private static Stream<Arguments> quotedHexadecimalDefaults() {
+        // MySQL treats X'31' like 0x31, as the number 49 in a numeric context
+        return withDdlActions(Stream.of(
+                Arguments.of("INT", "X'31'", "'49'"),
+                Arguments.of("DOUBLE", "X'312E35'", "'3223093'")));
     }
 
     @Override

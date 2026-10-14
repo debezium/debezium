@@ -11,6 +11,7 @@ import java.util.stream.Stream;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.junit.jupiter.params.provider.ValueSource;
 
@@ -46,6 +47,20 @@ public class DefaultValueTest extends BinlogDefaultValueTest<MariaDbValueConvert
     @FixFor("debezium/dbz#2751")
     void shouldPreserveQuotedHexDefaultsWithLeadingZeroBytes(BitDefaultValueCase testCase) {
         assertBitDefaultValue(testCase);
+    }
+
+    @ParameterizedTest(name = "{0} DEFAULT {1}, {3}")
+    @MethodSource("quotedHexadecimalDefaults")
+    @FixFor("debezium/dbz#2765")
+    void shouldConvertQuotedHexadecimalDefaultsAsStrings(String type, String literal, String equivalentLiteral, String action) {
+        assertBinaryLiteralDefault(type, literal, equivalentLiteral, action);
+    }
+
+    private static Stream<Arguments> quotedHexadecimalDefaults() {
+        // Unlike 0x31, MariaDB treats X'31' as the string '1', also in a numeric context
+        return withDdlActions(Stream.of(
+                Arguments.of("INT", "X'31'", "'1'"),
+                Arguments.of("DOUBLE", "X'312E35'", "'1.5'")));
     }
 
     @ParameterizedTest(name = "{0}")
@@ -95,22 +110,6 @@ public class DefaultValueTest extends BinlogDefaultValueTest<MariaDbValueConvert
         assertThat(getColumnSchema(restoredTable, "required_value").isOptional()).isFalse();
         assertThat(getColumnSchema(restoredTable, "optional_value").defaultValue()).isNull();
         assertThat(getColumnSchema(restoredTable, "optional_value").isOptional()).isTrue();
-    }
-
-    @ParameterizedTest
-    @ValueSource(strings = { "INT", "VARCHAR(8)" })
-    @FixFor("debezium/dbz#2751")
-    void shouldKeepBinaryLiteralDefaultsUnknownForOtherColumnTypes(String type) {
-        final var tableId = new TableId(null, null, "unknown_defaults");
-        parser.parse("CREATE TABLE unknown_defaults (v " + type + " DEFAULT 0b101)", tables);
-        assertThat(tables.forTable(tableId).columnWithName("v").defaultValueExpression()).isEmpty();
-        assertThat(getColumnSchema(tables.forTable(tableId), "v").defaultValue()).isNull();
-
-        parser.parse("ALTER TABLE unknown_defaults ALTER COLUMN v SET DEFAULT 1", tables);
-        assertThat(getColumnSchema(tables.forTable(tableId), "v").defaultValue()).isNotNull();
-        parser.parse("ALTER TABLE unknown_defaults ALTER COLUMN v SET DEFAULT 0b101", tables);
-        assertThat(tables.forTable(tableId).columnWithName("v").defaultValueExpression()).isEmpty();
-        assertThat(getColumnSchema(tables.forTable(tableId), "v").defaultValue()).isNull();
     }
 
     @Test
