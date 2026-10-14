@@ -1,0 +1,77 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="1160" height="330" viewBox="0 0 1160 330" font-family="Helvetica, Arial, sans-serif" font-size="12" fill="#222">
+  <title>Change event dispatch flow</title>
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#444"/>
+    </marker>
+  </defs>
+  <rect width="1160" height="330" fill="#ffffff"/>
+
+  <!-- Your streaming source -->
+  <rect x="20" y="80" width="190" height="130" rx="8" fill="#e8f1fa" stroke="#3b6ea5" stroke-width="1.5"/>
+  <text x="115" y="106" text-anchor="middle" font-weight="bold">AcmeDbStreaming</text>
+  <text x="115" y="122" text-anchor="middle" font-weight="bold">ChangeEventSource</text>
+  <text x="115" y="150" text-anchor="middle" font-size="11">reads changes from AcmeDB</text>
+  <text x="115" y="166" text-anchor="middle" font-size="11">advances AcmeDbOffsetContext</text>
+  <text x="115" y="182" text-anchor="middle" font-size="11">creates AcmeDbChangeRecordEmitter</text>
+
+  <!-- arrow 1 -->
+  <line x1="210" y1="145" x2="268" y2="145" stroke="#444" stroke-width="1.5" marker-end="url(#arrow)"/>
+  <text x="239" y="26" text-anchor="middle" font-size="11" font-family="Menlo, Consolas, monospace">dispatchDataChangeEvent(</text>
+  <text x="239" y="40" text-anchor="middle" font-size="11" font-family="Menlo, Consolas, monospace">partition, id, emitter)</text>
+
+  <line x1="239" y1="46" x2="239" y2="138" stroke="#999" stroke-width="1" stroke-dasharray="3,3"/>
+  <!-- EventDispatcher (framework) -->
+  <rect x="270" y="50" width="350" height="190" rx="8" fill="#f4f6f8" stroke="#4a4a4a" stroke-width="1.5"/>
+  <text x="445" y="76" text-anchor="middle" font-weight="bold">EventDispatcher</text>
+  <text x="445" y="92" text-anchor="middle" font-size="11" fill="#555">(debezium-connector-common)</text>
+  <text x="290" y="120" font-size="11">1. Applies the DataCollectionFilter; filtered ids are skipped</text>
+  <text x="290" y="140" font-size="11">2. Looks up schema.schemaFor(id) → DataCollectionSchema</text>
+  <text x="290" y="160" font-size="11">3. Calls emitter.emitChangeRecords(schema, receiver)</text>
+  <text x="290" y="180" font-size="11">4. Receiver builds the SourceRecord: key, envelope</text>
+  <text x="290" y="196" font-size="11">    value, topic name, and offsetContext.getOffset()</text>
+  <text x="290" y="222" font-size="11" fill="#555">Also routes heartbeats, schema changes, and signals</text>
+
+  <!-- arrow 2 -->
+  <line x1="620" y1="145" x2="678" y2="145" stroke="#444" stroke-width="1.5" marker-end="url(#arrow)"/>
+  <text x="649" y="128" text-anchor="middle" font-size="11">enqueue</text>
+
+  <!-- ChangeEventQueue (framework) -->
+  <rect x="680" y="80" width="170" height="130" rx="8" fill="#f4f6f8" stroke="#4a4a4a" stroke-width="1.5"/>
+  <text x="765" y="106" text-anchor="middle" font-weight="bold">ChangeEventQueue</text>
+  <text x="765" y="134" text-anchor="middle" font-size="11">bounded by max.queue.size</text>
+  <text x="765" y="150" text-anchor="middle" font-size="11">producer blocks when full</text>
+  <text x="765" y="166" text-anchor="middle" font-size="11">(backpressure)</text>
+  <text x="765" y="190" text-anchor="middle" font-size="11">batches of max.batch.size</text>
+
+  <!-- arrow 3 -->
+  <line x1="850" y1="145" x2="908" y2="145" stroke="#444" stroke-width="1.5" marker-end="url(#arrow)"/>
+  <text x="879" y="128" text-anchor="middle" font-size="11">poll</text>
+
+  <!-- Your task -->
+  <rect x="910" y="80" width="120" height="130" rx="8" fill="#e8f1fa" stroke="#3b6ea5" stroke-width="1.5"/>
+  <text x="970" y="106" text-anchor="middle" font-weight="bold">AcmeDb</text>
+  <text x="970" y="122" text-anchor="middle" font-weight="bold">ConnectorTask</text>
+  <text x="970" y="150" text-anchor="middle" font-size="11">doPoll()</text>
+  <text x="970" y="166" text-anchor="middle" font-size="11">pollRecords(queue)</text>
+
+  <!-- arrow 4 -->
+  <line x1="1030" y1="145" x2="1058" y2="145" stroke="#444" stroke-width="1.5" marker-end="url(#arrow)"/>
+
+  <!-- Runtime -->
+  <rect x="1060" y="80" width="80" height="130" rx="8" fill="#fff7e6" stroke="#b8860b" stroke-width="1.5"/>
+  <text x="1100" y="106" text-anchor="middle" font-weight="bold">Runtime</text>
+  <text x="1100" y="134" text-anchor="middle" font-size="10">Kafka Connect</text>
+  <text x="1100" y="148" text-anchor="middle" font-size="10">Debezium Server</text>
+  <text x="1100" y="162" text-anchor="middle" font-size="10">Debezium Engine</text>
+  <text x="1100" y="186" text-anchor="middle" font-size="10">persists offsets</text>
+
+  <!-- Legend -->
+  <rect x="20" y="270" width="14" height="14" fill="#e8f1fa" stroke="#3b6ea5" stroke-width="1.5"/>
+  <text x="42" y="282" font-size="11">Classes you implement</text>
+  <rect x="200" y="270" width="14" height="14" fill="#f4f6f8" stroke="#4a4a4a" stroke-width="1.5"/>
+  <text x="222" y="282" font-size="11">Framework services (debezium-connector-common)</text>
+  <rect x="510" y="270" width="14" height="14" fill="#fff7e6" stroke="#b8860b" stroke-width="1.5"/>
+  <text x="532" y="282" font-size="11">Runtime</text>
+</svg>
