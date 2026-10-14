@@ -2145,7 +2145,7 @@ Typically, for each source table that {prodname} captures, the capture agent cre
 {prodname} captures event records from CD tables and emits corresponding change event messages that represent them to Apache Kafka topics.
 After {prodname} processes a record from the CD table, the record is no longer needed, but Db2 does not automatically delete the processed rows. 
 Without intervention, the CD tables continuously accumulate records until they consume all available disk space.
-To prevent uncontrolled table growth, reduces storage requirements, and helps maintain replication and database performance, it's important to implement a pruning process. 
+To prevent uncontrolled table growth, reduce storage requirements, and help maintain replication and database performance, it's important to implement a pruning strategy. 
 
 In deployments where {prodname} does not consume change event records, pruning is controlled by the DB2 Apply agent, which reads the change tables and replicates data to a set of prune tables at the configured destination. 
 After the Apply agent updates the target prune tables it notifies the *Capture* agent that the records have been successfully replicated, and the data can be removed from the change tables.
