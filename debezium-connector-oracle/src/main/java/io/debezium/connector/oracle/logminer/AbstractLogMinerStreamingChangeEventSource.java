@@ -2140,7 +2140,7 @@ public abstract class AbstractLogMinerStreamingChangeEventSource
                 .filter(LogFile::isArchive)
                 .collect(Collectors.groupingBy(
                         LogFile::getThread,
-                        Collectors.mapping(LogFile::getNextScn, Collectors.maxBy(Scn::compareTo))))
+                        Collectors.mapping(LogFile::getLastScn, Collectors.maxBy(Scn::compareTo))))
                 .values()
                 .stream()
                 .flatMap(Optional::stream)
