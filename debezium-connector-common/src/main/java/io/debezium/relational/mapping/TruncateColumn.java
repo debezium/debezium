@@ -67,7 +67,13 @@ public class TruncateColumn implements ColumnMapper {
             if (value instanceof String) {
                 String str = (String) value;
                 if (str.length() > maxLength) {
-                    return str.substring(0, maxLength);
+                    // Avoid splitting a surrogate pair, which would leave an unpaired high surrogate
+                    // and produce an invalid string once encoded (e.g. as UTF-8 or JSON)
+                    int end = maxLength;
+                    if (end > 0 && Character.isHighSurrogate(str.charAt(end - 1)) && Character.isLowSurrogate(str.charAt(end))) {
+                        end--;
+                    }
+                    return str.substring(0, end);
                 }
             }
             else if (value instanceof ByteBuffer) {
