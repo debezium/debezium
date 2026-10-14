@@ -1006,6 +1006,84 @@ public abstract class BinlogDefaultValueTest<V extends BinlogValueConverters, P 
         return Arrays.copyOf(bytes, (testCase.width() + Byte.SIZE - 1) / Byte.SIZE);
     }
 
+    @ParameterizedTest(name = "{0} DEFAULT {1}, {3}")
+    @MethodSource("compactTemporalDefaults")
+    @FixFor("debezium/dbz#2767")
+    void shouldConvertTemporalDefaultsWithoutDelimiters(String type, String literal, String normalizedLiteral, String action) {
+        // The default temporal precision mode represents negative TIME values and TIME values of more than 24 hours
+        final V adaptiveConverters = getValueConverter(JdbcValueConverters.DecimalMode.PRECISE,
+                TemporalPrecisionMode.ADAPTIVE_TIME_MICROSECONDS,
+                JdbcValueConverters.BigIntUnsignedMode.LONG,
+                BinaryHandlingMode.BYTES);
+        final TableSchemaBuilder adaptiveTableSchemaBuilder = new TableSchemaBuilder(
+                adaptiveConverters,
+                getDefaultValueConverter(adaptiveConverters),
+                SchemaNameAdjuster.NO_OP, new CustomConverterRegistry(null), SchemaBuilder.struct().build(),
+                FieldNameSelector.defaultSelector(SchemaNameAdjuster.NO_OP), false,
+                EventConvertingFailureHandlingMode.WARN);
+
+        // A snapshot reads the default in the normalized form that SHOW CREATE TABLE returns
+        final Object expected = getColumnSchema(parseTable(type, normalizedLiteral, "create-table"), "v", adaptiveTableSchemaBuilder).defaultValue();
+        assertThat(expected).isNotNull();
+        assertThat(getColumnSchema(parseTable(type, literal, action), "v", adaptiveTableSchemaBuilder).defaultValue()).isEqualTo(expected);
+    }
+
+    protected static Stream<Arguments> compactTemporalDefaults() {
+        return withDdlActions(Stream.of(
+                Arguments.of("DATETIME", "20260928123456", "'2026-09-28 12:34:56'"),
+                Arguments.of("DATETIME", "'20260928123456'", "'2026-09-28 12:34:56'"),
+                Arguments.of("DATETIME", "260928123456", "'2026-09-28 12:34:56'"),
+                Arguments.of("DATETIME", "'260928123456'", "'2026-09-28 12:34:56'"),
+                Arguments.of("DATETIME", "991231235959", "'1999-12-31 23:59:59'"),
+                Arguments.of("DATETIME", "20260928", "'2026-09-28 00:00:00'"),
+                Arguments.of("DATETIME", "'20260928'", "'2026-09-28 00:00:00'"),
+                Arguments.of("DATETIME", "260928", "'2026-09-28 00:00:00'"),
+                Arguments.of("DATETIME(3)", "20260928123456.789", "'2026-09-28 12:34:56.789'"),
+                Arguments.of("DATETIME(3)", "'20260928123456.789'", "'2026-09-28 12:34:56.789'"),
+                Arguments.of("TIMESTAMP", "20260928123456", "'2026-09-28 12:34:56'"),
+                Arguments.of("TIMESTAMP", "'20260928123456'", "'2026-09-28 12:34:56'"),
+                Arguments.of("TIMESTAMP", "20260928", "'2026-09-28 00:00:00'"),
+                Arguments.of("TIMESTAMP(3)", "20260928123456.789", "'2026-09-28 12:34:56.789'"),
+                Arguments.of("TIME", "123456", "'12:34:56'"),
+                Arguments.of("TIME", "'123456'", "'12:34:56'"),
+                Arguments.of("TIME", "3456", "'00:34:56'"),
+                Arguments.of("TIME", "'3456'", "'00:34:56'"),
+                Arguments.of("TIME", "56", "'00:00:56'"),
+                Arguments.of("TIME", "-123456", "'-12:34:56'"),
+                Arguments.of("TIME", "'-123456'", "'-12:34:56'"),
+                Arguments.of("TIME", "8385959", "'838:59:59'"),
+                Arguments.of("TIME(3)", "123456.789", "'12:34:56.789'")));
+    }
+
+    protected static Stream<Arguments> withDdlActions(Stream<Arguments> cases) {
+        final List<Arguments> list = cases.toList();
+        return Stream.of("create-table", "add-column", "modify-column", "alter-default")
+                .flatMap(action -> list.stream().map(arguments -> Arguments.of(arguments.get()[0], arguments.get()[1], arguments.get()[2], action)));
+    }
+
+    private Table parseTable(String type, String literal, String action) {
+        final var literalTables = new Tables();
+        final String column = "v " + type + " DEFAULT " + literal;
+        switch (action) {
+            case "create-table" -> parser.parse("CREATE TABLE literal_defaults (id INT, " + column + ")", literalTables);
+            case "add-column" -> {
+                parser.parse("CREATE TABLE literal_defaults (id INT)", literalTables);
+                parser.parse("ALTER TABLE literal_defaults ADD COLUMN " + column, literalTables);
+            }
+            case "modify-column" -> {
+                // Start from another default, so that a literal that is not converted cannot keep a matching default
+                parser.parse("CREATE TABLE literal_defaults (id INT, v " + type + " DEFAULT NULL)", literalTables);
+                parser.parse("ALTER TABLE literal_defaults MODIFY COLUMN " + column, literalTables);
+            }
+            case "alter-default" -> {
+                parser.parse("CREATE TABLE literal_defaults (id INT, v " + type + " DEFAULT NULL)", literalTables);
+                parser.parse("ALTER TABLE literal_defaults ALTER COLUMN v SET DEFAULT " + literal, literalTables);
+            }
+            default -> throw new IllegalArgumentException("Unexpected DDL action: " + action);
+        }
+        return literalTables.forTable(new TableId(null, null, "literal_defaults"));
+    }
+
     protected abstract P getDdlParser();
 
     protected abstract V getValueConverter(JdbcValueConverters.DecimalMode decimalMode,
