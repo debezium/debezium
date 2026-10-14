@@ -2323,7 +2323,9 @@ SQL Server does not support CDC directly on replicas.
 This is required by SQL Server.
 When {prodname} detects this configuration option, it responds by taking the following actions:
 
-** Sets `snapshot.isolation.mode` to `snapshot`, which is the only one transaction isolation mode supported for read-only replicas.
+** Defaults `snapshot.isolation.mode` to `snapshot`, which is the only transaction isolation mode supported for read-only replicas.
+If you set `snapshot.isolation.mode` explicitly, {prodname} uses the configured value instead.
+This lets a read-only routed connection that fails over to a primary database with `ALLOW_SNAPSHOT_ISOLATION` set to `OFF` snapshot under a supported isolation level.
 ** Commits the (read-only) transaction in every execution of the streaming query loop, which is necessary to get the latest view of CDC data.
 
 endif::community[]
@@ -3090,6 +3092,11 @@ to be read).
 The `snapshot`, `read_committed` and `read_uncommitted` modes do not prevent other
 transactions from updating table rows during initial snapshot.
 The `exclusive` and `repeatable_read` modes do prevent concurrent updates.
+
+ifdef::community[]
+When `driver.applicationIntent` is set to `ReadOnly` and this property is not set, the default changes to `snapshot`.
+See xref:sqlserver-always-on-replica[].
+endif::community[]
 
 Mode choice also affects data consistency. Only `exclusive` and `snapshot` modes guarantee full consistency, that is, initial
 snapshot and streaming logs constitute a linear history.
