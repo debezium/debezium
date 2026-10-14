@@ -33,6 +33,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
+import org.junit.jupiter.params.provider.ValueSource;
 
 import io.debezium.antlr.AntlrDdlParser;
 import io.debezium.config.CommonConnectorConfig.BinaryHandlingMode;
@@ -838,6 +839,100 @@ public abstract class BinlogDefaultValueTest<V extends BinlogValueConverters, P 
                 .isEqualTo(new byte[]{ (byte) 0xE9, (byte) 0xA9, (byte) 0xC3, 0, 0, 0, 0, 0 });
         assertThat(getColumnSchema(table, "introduced_value").defaultValue())
                 .isEqualTo(new byte[]{ (byte) 0xE9, (byte) 0xA9, (byte) 0xC3, 0, 0, 0, 0, 0 });
+    }
+
+    @ParameterizedTest(name = "{0} DEFAULT {1}, {3}")
+    @MethodSource("binaryLiteralDefaults")
+    @FixFor("debezium/dbz#2765")
+    void shouldConvertHexadecimalAndBitValueDefaults(String type, String literal, String equivalentLiteral, String action) {
+        assertBinaryLiteralDefault(type, literal, equivalentLiteral, action);
+    }
+
+    protected static Stream<Arguments> binaryLiteralDefaults() {
+        // Each literal is paired with the literal that SHOW CREATE TABLE, and thus a snapshot, uses for the stored default
+        return withDdlActions(Stream.of(
+                Arguments.of("INT", "0x10", "'16'"),
+                Arguments.of("INT", "b'10'", "'2'"),
+                Arguments.of("INT", "0b10", "'2'"),
+                Arguments.of("TINYINT UNSIGNED", "0xFF", "'255'"),
+                Arguments.of("BIGINT UNSIGNED", "0xFFFFFFFFFFFFFFFF", "'18446744073709551615'"),
+                Arguments.of("DECIMAL(10,2)", "0x10", "'16.00'"),
+                Arguments.of("DOUBLE", "b'10'", "'2'"),
+                Arguments.of("YEAR", "0x07E8", "'2024'"),
+                Arguments.of("BOOLEAN", "0x01", "'1'"),
+                Arguments.of("VARCHAR(32)", "0x4142", "'AB'"),
+                Arguments.of("VARCHAR(32)", "X'4142'", "'AB'"),
+                Arguments.of("VARCHAR(32)", "b'01000001'", "'A'"),
+                Arguments.of("VARCHAR(32)", "0b1000001", "'A'"),
+                Arguments.of("VARCHAR(32) CHARACTER SET utf8mb4", "0xE4BDA0", "'你'"),
+                Arguments.of("VARCHAR(32) CHARACTER SET latin1", "0xE9", "'é'"),
+                Arguments.of("VARCHAR(32) CHARACTER SET latin1", "_utf8mb4 0xC3A9", "'é'"),
+                Arguments.of("CHAR(4)", "0x41", "'A'"),
+                Arguments.of("ENUM('a','b')", "0x62", "'b'"),
+                Arguments.of("SET('a','b')", "0x612C62", "'a,b'"),
+                Arguments.of("DATE", "0x323032342D30312D3032", "'2024-01-02'"),
+                Arguments.of("BINARY(2)", "0x4142", "'AB'"),
+                Arguments.of("VARBINARY(16)", "0x4142", "'AB'"),
+                // A character set introducer makes the literal a string, also in a numeric context
+                Arguments.of("INT", "_latin1 0x31", "'1'")));
+    }
+
+    protected static Stream<Arguments> withDdlActions(Stream<Arguments> cases) {
+        final List<Arguments> list = cases.toList();
+        return Stream.of("create-table", "add-column", "modify-column", "alter-default")
+                .flatMap(action -> list.stream().map(arguments -> Arguments.of(arguments.get()[0], arguments.get()[1], arguments.get()[2], action)));
+    }
+
+    protected void assertBinaryLiteralDefault(String type, String literal, String equivalentLiteral, String action) {
+        final Object expected = parseDefaultValue(type, equivalentLiteral, "create-table");
+        assertThat(expected).isNotNull();
+        assertThat(parseDefaultValue(type, literal, action)).isEqualTo(expected);
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2765")
+    void shouldKeepLeadingZeroBytesOfHexadecimalAndBitValueDefaults() {
+        assertThat(parseDefaultValue("VARCHAR(32)", "0x041", "create-table")).isEqualTo("\0A");
+        assertThat(parseDefaultValue("VARCHAR(32)", "b'0000000001000001'", "alter-default")).isEqualTo("\0A");
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2765")
+    void shouldDecodeHexadecimalDefaultsInDatabaseCharacterSet() {
+        parser.parse("CREATE DATABASE latin1_db CHARACTER SET latin1; USE latin1_db;", tables);
+        parser.parse("CREATE TABLE latin1_defaults (v VARCHAR(32) DEFAULT 0xE9)", tables);
+        assertThat(getColumnSchema(tables.forTable(new TableId("latin1_db", null, "latin1_defaults")), "v").defaultValue()).isEqualTo("é");
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = { "create-table", "add-column", "modify-column", "alter-default" })
+    @FixFor("debezium/dbz#2765")
+    void shouldOmitBinaryDefaultThatIsNotValidUtf8(String action) {
+        // The default value of a binary column is converted from a UTF-8 string, which cannot represent these bytes
+        assertThat(parseDefaultValue("VARBINARY(16)", "0x00FF41", action)).isNull();
+    }
+
+    private Object parseDefaultValue(String type, String literal, String action) {
+        final var literalTables = new Tables();
+        final String column = "v " + type + " DEFAULT " + literal;
+        switch (action) {
+            case "create-table" -> parser.parse("CREATE TABLE literal_defaults (id INT, " + column + ")", literalTables);
+            case "add-column" -> {
+                parser.parse("CREATE TABLE literal_defaults (id INT)", literalTables);
+                parser.parse("ALTER TABLE literal_defaults ADD COLUMN " + column, literalTables);
+            }
+            case "modify-column" -> {
+                // Start from another default, so that a literal that is not converted cannot keep a matching default
+                parser.parse("CREATE TABLE literal_defaults (id INT, v " + type + " DEFAULT NULL)", literalTables);
+                parser.parse("ALTER TABLE literal_defaults MODIFY COLUMN " + column, literalTables);
+            }
+            case "alter-default" -> {
+                parser.parse("CREATE TABLE literal_defaults (id INT, v " + type + " DEFAULT NULL)", literalTables);
+                parser.parse("ALTER TABLE literal_defaults ALTER COLUMN v SET DEFAULT " + literal, literalTables);
+            }
+            default -> throw new IllegalArgumentException("Unexpected DDL action: " + action);
+        }
+        return getColumnSchema(literalTables.forTable(new TableId(null, null, "literal_defaults")), "v").defaultValue();
     }
 
     private static Object expectedBitDefault(BitDefaultValueCase testCase) {
