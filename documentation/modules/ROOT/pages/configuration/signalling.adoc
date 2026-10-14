@@ -35,6 +35,7 @@ ifdef::community[]
 * CockroachDB
 endif::community[]
 * Db2
+* Informix
 * MariaDB
 * MongoDB
 * MySQL
@@ -96,6 +97,7 @@ ifdef::community[]
 CockroachDB:: `_<databaseName>_._<schemaName>_._<tableName>_`
 endif::community[]
 Db2:: `_<schemaName>_._<tableName>_`
+Informix:: `_<databaseName>_._<schemaName>_._<tableName>_``
 MariaDB:: `_<databaseName>_._<tableName>_`
 MongoDB:: `_<databaseName>_._<collectionName>_`
 MySQL:: `_<databaseName>_._<tableName>_`
@@ -527,6 +529,7 @@ ifdef::community[]
 * CockroachDB
 endif::community[]
 * Db2
+* Informix
 * MariaDB
 * MongoDB
 * MySQL
@@ -575,9 +578,12 @@ For more information about ad hoc snapshots, see the _Snapshots_ topic in the do
 
 
 .Additional resources
-
+ifdef::community[]
 * {link-prefix}:{link-cockroachdb-connector}#cockroachdb-incremental-snapshots[CockroachDB connector incremental snapshots]
+endif::community[]
 * {link-prefix}:{link-db2-connector}#debezium-db2-incremental-snapshots[Db2 connector incremental snapshots]
+* {link-prefix}:{link-informix-connector}#debezium-informix-incremental-snapshots[Informix connector incremental snapshots]
+* {link-prefix}:{link-mariadb-connector}#debezium-mariadb-incremental-snapshots[MariaDB connector incremental snapshots]
 * {link-prefix}:{link-mongodb-connector}#debezium-mongodb-incremental-snapshots[MongoDB connector incremental snapshots]
 * {link-prefix}:{link-mysql-connector}#debezium-mysql-incremental-snapshots[MySQL connector incremental snapshots]
 * {link-prefix}:{link-oracle-connector}#debezium-oracle-incremental-snapshots[Oracle connector incremental snapshots]
@@ -597,6 +603,7 @@ ifdef::community[]
 * CockroachDB
 endif::community[]
 * Db2
+* Informix
 * MariaDB
 * MongoDB
 * MySQL
@@ -658,6 +665,7 @@ ifdef::community[]
 * CockroachDB
 endif::community[]
 * Db2
+* Informix
 * MariaDB
 * MongoDB
 * MySQL
@@ -694,6 +702,7 @@ ifdef::community[]
 * CockroachDB
 endif::community[]
 * Db2
+* Informix
 * MariaDB
 * MongoDB
 * MySQL
@@ -726,6 +735,8 @@ ifdef::community[]
 * {link-prefix}:{link-cockroachdb-connector}#cockroachdb-incremental-snapshots[CockroachDB connector incremental snapshots]
 endif::community[]
 * {link-prefix}:{link-db2-connector}#debezium-db2-incremental-snapshots[Db2 connector incremental snapshots]
+* {link-prefix}:{link-informix-connector}#debezium-informix-incremental-snapshots[Informix connector incremental snapshots]
+* {link-prefix}:{link-mariadb-connector}#debezium-mariadb-incremental-snapshots[MariaDB connector incremental snapshots]
 * {link-prefix}:{link-mongodb-connector}#debezium-mongodb-incremental-snapshots[MongoDB connector incremental snapshots]
 * {link-prefix}:{link-mysql-connector}#debezium-mysql-incremental-snapshots[MySQL connector incremental snapshots]
 * {link-prefix}:{link-oracle-connector}#debezium-oracle-incremental-snapshots[Oracle connector incremental snapshots]
@@ -749,6 +760,7 @@ ifdef::community[]
 * CockroachDB
 endif::community[]
 * Db2
+* Informix
 * MariaDB
 ifdef::community[]
 * MongoDB
@@ -800,9 +812,11 @@ For more information about blocking snapshots, see the _Snapshots_ topic in the 
 .Additional resources
 
 * {link-prefix}:{link-db2-connector}#db2-blocking-snapshots[Db2 connector ad hoc blocking snapshots]
+* {link-prefix}:{link-informix-connector}#informix-blocking-snapshots[Informix connector ad hoc blocking snapshots]
 ifdef::community[]
 * {link-prefix}:{link-mongodb-connector}#mongodb-blocking-snapshots[MongoDB connector ad hoc blocking snapshots]
 endif::community[]
+* {link-prefix}:{link-mariadb-connector}#mariadb-blocking-snapshots[MariaDB connector ad hoc blocking snapshots]
 * {link-prefix}:{link-mysql-connector}#mysql-blocking-snapshots[MySQL connector ad hoc blocking snapshots]
 * {link-prefix}:{link-oracle-connector}#oracle-blocking-snapshots[Oracle connector ad hoc blocking snapshots]
 * {link-prefix}:{link-postgresql-connector}#postgresql-blocking-snapshots[PostgreSQL connector ad hoc blocking snapshots]
