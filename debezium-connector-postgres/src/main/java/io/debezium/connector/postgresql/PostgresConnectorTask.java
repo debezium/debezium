@@ -190,6 +190,8 @@ public class PostgresConnectorTask extends BaseSourceTask<PostgresPartition, Pos
 
         validateSchemaHistory(connectorConfig, jdbcConnection::validateLogPosition, previousOffsets, schema, snapshotter);
 
+        validateSignalDataCollection(connectorConfig, jdbcConnection);
+
         LoggingContext.PreviousContext previousContext = taskContext.configureLoggingContext(CONTEXT_NAME);
 
         try {

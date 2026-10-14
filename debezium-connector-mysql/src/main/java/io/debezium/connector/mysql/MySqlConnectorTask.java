@@ -163,6 +163,8 @@ public class MySqlConnectorTask extends BinlogSourceTask<MySqlPartition, MySqlOf
 
         validateSchemaHistory(connectorConfig, connection::validateLogPosition, previousOffsets, schema, snapshotter);
 
+        validateSignalDataCollection(connectorConfig, connection);
+
         LOGGER.info("Reconnecting after validating schema recovery");
 
         try {
