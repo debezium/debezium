@@ -4383,6 +4383,7 @@ With the `decoderbufs` plug-in, the connector reads the schema of the table from
 This setting can significantly reduce the startup time for databases with a large number of captured tables.
 The setting affects only the load when streaming starts; a snapshot still loads the schema of the tables that it captures.
 When the connector receives an incremental snapshot signal, it loads the schema of the tables to snapshot that are not loaded yet.
+If the signal matches many tables, for example through a regular expression, loading their schemas can take a while before the incremental snapshot starts.
 If an incremental snapshot is in progress when the connector starts, the connector loads the schema of all captured tables.
 
 When this property is set to `false`, the following behavior changes:
