@@ -4469,6 +4469,7 @@ For example to request the publisher to send all changes, that is, changes that 
 |`__debezium_unavailable_value`
 |Specifies the constant that the connector provides to indicate that the original value is a toasted value that is not provided by the database.
 If the setting of `unavailable.value.placeholder` starts with the `hex:` prefix it is expected that the rest of the string represents hexadecimally encoded octets.
+If the rest of the string is not an even number of hexadecimal characters, the connector configuration fails validation.
 For more information, see xref:postgresql-toasted-values[toasted values].
 
 |[[postgresql-property-provide-transaction-metadata]]<<postgresql-property-provide-transaction-metadata, `+provide.transaction.metadata+`>>
