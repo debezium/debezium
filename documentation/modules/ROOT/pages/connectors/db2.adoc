@@ -2147,7 +2147,7 @@ After {prodname} processes a record from the CD table, the record is no longer n
 Without intervention, the CD tables continuously accumulate records until they consume all available disk space.
 To prevent uncontrolled table growth, reduce storage requirements, and help maintain replication and database performance, it's important to implement a pruning strategy. 
 
-In deployments where {prodname} does not consume change event records, pruning is controlled by the DB2 Apply agent, which reads the change tables and replicates data to a set of prune tables at the configured destination. 
+In deployments where {prodname} does not consume change event records, pruning is controlled by the Db2 Apply agent, which reads the change tables and replicates data to a set of prune tables at the configured destination. 
 After the Apply agent updates the target prune tables it notifies the *Capture* agent that the records have been successfully replicated, and the data can be removed from the change tables.
 
 In a {prodname} environment, because the *Apply* agent is not required to read the CD tables, users sometimes stop the agent to conserve processing resources.
