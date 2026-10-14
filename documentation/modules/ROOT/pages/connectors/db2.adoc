@@ -2259,7 +2259,7 @@ To avoid this situation, you must configure Db2 so that the prune thread is able
 Specific control table settings are required to enable pruning in {prodname} Db2 connector deployments.
 Verify the control table configuration that the pruning process requires.
 
-For more information about the `IBMSNAP_*` control tables and their use in your environment, see thehttps://www.ibm.com/docs/en/idr/11.4.0?topic=structures-tables-capture-control-server[IBM Db2 documentation].
+For more information about the `IBMSNAP_*` control tables and their use in your environment, see the https://www.ibm.com/docs/en/idr/11.4.0?topic=structures-tables-capture-control-server[IBM Db2 documentation].
  
 .Procedure
  
