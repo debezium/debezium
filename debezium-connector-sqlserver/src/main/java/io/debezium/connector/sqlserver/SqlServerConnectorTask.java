@@ -137,6 +137,8 @@ public class SqlServerConnectorTask extends BaseSourceTask<SqlServerPartition, S
         validateSchemaHistory(connectorConfig, dataConnection::validateLogPosition, offsets, schema,
                 snapshotterService.getSnapshotter());
 
+        validateSignalDataCollection(connectorConfig, dataConnection);
+
         // Set up the task record queue ...
         this.queue = new ChangeEventQueue.Builder<DataChangeEvent>()
                 .pollInterval(connectorConfig.getPollInterval())
