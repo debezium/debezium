@@ -48,6 +48,8 @@
         <!-- No mockito agent configured by default. Just override this in the project that uses mockito -->
         <mockito.argLine />
 
+        <!-- Empty by default, populated by JaCoCo when the sonar profile is active -->
+        <argLine />
 
         <!-- Assembly configuration -->
         <assembly.descriptor>connector-distribution</assembly.descriptor>
@@ -101,7 +103,7 @@
                     <configuration>
                         <printSummary>true</printSummary>
                         <reportFormat>plain</reportFormat>
-                        <argLine>${debug.argline} ${modules.argline} ${test.argline} ${mockito.argLine}</argLine>
+                        <argLine>@{argLine} ${debug.argline} ${modules.argline} ${test.argline} ${mockito.argLine}</argLine>
                         <useSystemClassLoader>${useSystemClassLoader}</useSystemClassLoader>
                         <systemPropertyVariables combine.children="append">
                             <project.basedir>${project.basedir}</project.basedir>
@@ -272,7 +274,7 @@
                         <dbz.test.data.dir>${project.build.directory}/data</dbz.test.data.dir>
                         <docker.host.address>${docker.host.address}</docker.host.address>
                     </systemPropertyVariables>
-                    <argLine>-Djava.awt.headless=true ${debug.argline} ${modules.argline} ${mockito.argLine}</argLine>
+                    <argLine>@{argLine} -Djava.awt.headless=true ${debug.argline} ${modules.argline} ${mockito.argLine}</argLine>
                     <!--runOrder>alphabetical</runOrder-->
                     <useFile>false</useFile>
                     <enableAssertions>true</enableAssertions>
