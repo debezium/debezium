@@ -1,3 +1,4 @@
+:page-aliases: integrations/outbox.adoc
 [id="outbox-quarkus-extension"]
 = Outbox Quarkus Extension
 

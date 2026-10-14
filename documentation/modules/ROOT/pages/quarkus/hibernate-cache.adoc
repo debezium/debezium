@@ -1,3 +1,4 @@
+:page-aliases: integrations/hibernate-cache.adoc
 [id="hibernate-cache-invalidation"]
 = Hibernate Second-Level Cache Invalidation
 
