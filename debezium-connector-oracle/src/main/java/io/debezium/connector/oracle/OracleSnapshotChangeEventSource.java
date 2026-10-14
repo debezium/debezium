@@ -96,7 +96,8 @@ public class OracleSnapshotChangeEventSource extends RelationalSnapshotChangeEve
                         throw new InterruptedException("Interrupted while locking table " + tableId);
                     }
 
-                    Optional<String> lockingStatement = snapshotterService.getSnapshotLock().tableLockingStatement(null, jdbcConnection.quotedTableIdString(tableId));
+                    Optional<String> lockingStatement = snapshotterService.getSnapshotLock().tableLockingStatement(connectorConfig.snapshotLockTimeout(),
+                            jdbcConnection.quotedTableIdString(tableId));
                     if (lockingStatement.isPresent()) {
                         LOGGER.debug("Locking table {}", tableId);
                         statement.execute(lockingStatement.get());
