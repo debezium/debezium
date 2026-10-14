@@ -11,6 +11,7 @@ import java.nio.ByteBuffer;
 
 import org.junit.jupiter.api.Test;
 
+import io.debezium.doc.FixFor;
 import io.debezium.relational.Column;
 import io.debezium.relational.ValueConverter;
 
@@ -45,6 +46,19 @@ public class TruncateColumnTest {
         assertThat(converter.convert("1").toString()).isEqualTo("");
         assertThat(converter.convert("").toString()).isEqualTo("");
         assertThat(converter.convert(null)).isNull();
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2873")
+    public void shouldNotSplitSurrogatePairWhenTruncatingStrings() {
+        // "\uD83D\uDE00" is a single emoji (U+1F600) encoded as a surrogate pair
+        converter = new TruncateColumn(5).create(column);
+        assertThat(converter.convert("1234\uD83D\uDE00").toString()).isEqualTo("1234");
+        assertThat(converter.convert("123\uD83D\uDE00X").toString()).isEqualTo("123\uD83D\uDE00");
+        assertThat(converter.convert("12345\uD83D\uDE00").toString()).isEqualTo("12345");
+
+        converter = new TruncateColumn(1).create(column);
+        assertThat(converter.convert("\uD83D\uDE00").toString()).isEqualTo("");
     }
 
     @Test
