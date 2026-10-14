@@ -68,7 +68,7 @@ For more information about using CDC to remove stale cache entries, see the blog
 
     <!-- Debezium Hibernate Cache Invalidation extension -->
     <dependency>
-        <groupId>io.debezium</groupId>
+        <groupId>io.debezium.quarkus</groupId>
         <artifactId>debezium-quarkus-hibernate-cache</artifactId>
         <version>{debezium-version}</version>
     </dependency>
