@@ -4245,6 +4245,8 @@ You can set the following values:
 `extended`:: Prevents all DDL on the table, including Oracle non-blocking DDL, for the duration of the snapshot.
   The connector acquires a `SHARE` level lock when it captures the table schema and holds it until the table data has been read.
   Other sessions can read the table, but any write to the table is blocked until the snapshot completes.
+  The connector waits up to the duration specified by the xref:oracle-property-snapshot-lock-timeout-ms[`snapshot.lock.timeout.ms`] property, rounded down to whole seconds, to acquire each table lock.
+  If a lock cannot be acquired in that time, the snapshot fails.
 
 `none`:: Prevents the connector from acquiring any table locks during the snapshot.
   Use this setting only if no schema changes might occur during the creation of the snapshot.
@@ -4259,6 +4261,16 @@ ifdef::community[]
 | When `snapshot.locking.mode` is set as `custom`, use this setting to specify the name of the custom implementation provided in the `name()` method that is defined by the 'io.debezium.spi.snapshot.SnapshotLock' interface.
 For more information, see xref:connector-custom-snapshot[custom snapshotter SPI].
 endif::community[]
+
+|[[oracle-property-snapshot-lock-timeout-ms]]<<oracle-property-snapshot-lock-timeout-ms, `+snapshot.lock.timeout.ms+`>>
+|`10000`
+|Specifies the maximum amount of time (in milliseconds) to wait to obtain each table lock when performing a snapshot.
+The value is rounded down to whole seconds.
+If the connector cannot acquire a table lock in this interval, the snapshot fails.
+A value from `0` to `999` causes the snapshot to fail immediately if a table lock cannot be acquired.
+Set the value to `-1` to wait indefinitely.
+While the connector waits for a table lock, writes to that table are queued behind the pending lock request.
+Of the built-in xref:oracle-property-snapshot-locking-mode[`snapshot.locking.mode`] options, this property applies only to `extended`.
 
 |[[oracle-property-snapshot-query-mode]]<<oracle-property-snapshot-query-mode, `+snapshot.query.mode+`>>
 |`select_all`
