@@ -46,6 +46,7 @@ import io.debezium.connector.base.QueueProviderServiceProvider;
 import io.debezium.converters.custom.CustomConverterServiceProvider;
 import io.debezium.data.Envelope;
 import io.debezium.function.LogPositionValidator;
+import io.debezium.jdbc.JdbcConnection;
 import io.debezium.openlineage.DebeziumOpenLineageEmitter;
 import io.debezium.pipeline.ChangeEventSourceCoordinator;
 import io.debezium.pipeline.DataChangeEvent;
@@ -58,6 +59,10 @@ import io.debezium.pipeline.spi.OffsetContext;
 import io.debezium.pipeline.spi.Offsets;
 import io.debezium.pipeline.spi.Partition;
 import io.debezium.processors.PostProcessorRegistryServiceProvider;
+import io.debezium.relational.RelationalDatabaseConnectorConfig;
+import io.debezium.relational.SignalDataCollectionValidationRequest;
+import io.debezium.relational.SignalDataCollectionValidationResult;
+import io.debezium.relational.SignalDataCollectionValidator;
 import io.debezium.schema.DatabaseSchema;
 import io.debezium.schema.HistorizedDatabaseSchema;
 import io.debezium.service.spi.ServiceRegistry;
@@ -167,6 +172,14 @@ public abstract class BaseSourceTask<P extends Partition, O extends OffsetContex
                     }
                 }
             }
+        }
+    }
+
+    protected void validateSignalDataCollection(RelationalDatabaseConnectorConfig connectorConfig, JdbcConnection connection) {
+        SignalDataCollectionValidationResult result = SignalDataCollectionValidator.validate(
+                SignalDataCollectionValidationRequest.forConnector(connectorConfig, rawValue -> connection));
+        if (!result.isValid()) {
+            throw new DebeziumException(String.join("; ", result.errors()));
         }
     }
 

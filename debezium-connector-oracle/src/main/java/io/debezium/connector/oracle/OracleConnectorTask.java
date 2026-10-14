@@ -158,6 +158,8 @@ public class OracleConnectorTask extends BaseSourceTask<OraclePartition, OracleO
 
         validateSchemaHistory(connectorConfig, jdbcConnection::validateLogPosition, previousOffsets, schema, snapshotterService.getSnapshotter());
 
+        validateSignalDataCollection(connectorConfig, jdbcConnection);
+
         Clock clock = Clock.system();
 
         // Set up the task record queue ...

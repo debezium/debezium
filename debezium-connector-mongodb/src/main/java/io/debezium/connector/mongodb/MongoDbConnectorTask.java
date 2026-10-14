@@ -41,6 +41,7 @@ import io.debezium.connector.mongodb.connection.ConnectionStrings;
 import io.debezium.connector.mongodb.connection.MongoDbConnection;
 import io.debezium.connector.mongodb.connection.MongoDbConnectionContext;
 import io.debezium.connector.mongodb.connection.MongoDbConnections;
+import io.debezium.connector.mongodb.connection.client.MongoDbClient;
 import io.debezium.connector.mongodb.metrics.MongoDbChangeEventSourceMetricsFactory;
 import io.debezium.document.DocumentReader;
 import io.debezium.pipeline.ChangeEventSourceCoordinator;
@@ -121,6 +122,8 @@ public final class MongoDbConnectorTask extends BaseSourceTask<MongoDbPartition,
         this.taskName = "task" + config.getInteger(MongoDbConnectorConfig.TASK_ID);
 
         this.connectionContext = taskContext.getConnectionContext();
+
+        validateSignalDataCollection(connectorConfig);
 
         final Schema structSchema = connectorConfig.getSourceInfoStructMaker().schema();
         this.schema = new MongoDbSchema(connectorConfig, taskContext, connectorConfig.getTopicNamingStrategy(MongoDbConnectorConfig.TOPIC_NAMING_STRATEGY),
@@ -441,6 +444,16 @@ public final class MongoDbConnectorTask extends BaseSourceTask<MongoDbPartition,
         catch (DebeziumException e) {
             LOGGER.error("Failed to validate guardrail limits! " + e.getMessage(), e);
             throw new DebeziumException("Failed to validate guardrail limits", e);
+        }
+    }
+
+    private void validateSignalDataCollection(MongoDbConnectorConfig connectorConfig) {
+        try (MongoDbClient client = connectionContext.openClient()) {
+            SignalDataCollectionValidationResult result = SignalDataCollectionValidator.validate(client.getClient(),
+                    SignalDataCollectionValidationRequest.forConnector(connectorConfig));
+            if (!result.isValid()) {
+                throw new DebeziumException(String.join("; ", result.errors()));
+            }
         }
     }
 }
