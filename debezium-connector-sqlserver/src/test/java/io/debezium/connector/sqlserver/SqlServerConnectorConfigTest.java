@@ -17,6 +17,8 @@ import org.slf4j.LoggerFactory;
 
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
+import io.debezium.connector.sqlserver.SqlServerConnectorConfig.SnapshotIsolationMode;
+import io.debezium.doc.FixFor;
 import io.debezium.storage.kafka.history.KafkaSchemaHistory;
 
 public class SqlServerConnectorConfigTest {
@@ -105,6 +107,51 @@ public class SqlServerConnectorConfigTest {
                         .with(SqlServerConnectorConfig.QUERY_FETCH_SIZE, 20_000)
                         .build());
         assertEquals(connectorConfig.getQueryFetchSize(), 20_000);
+    }
+
+    @Test
+    @FixFor("debezium/dbz#1387")
+    void readOnlyApplicationIntentDefaultsToSnapshotIsolation() {
+        final SqlServerConnectorConfig connectorConfig = new SqlServerConnectorConfig(
+                defaultConfig()
+                        .with(CommonConnectorConfig.DRIVER_CONFIG_PREFIX + "applicationIntent", "ReadOnly")
+                        .build());
+        assertTrue(connectorConfig.isReadOnlyDatabaseConnection());
+        assertEquals(SnapshotIsolationMode.SNAPSHOT, connectorConfig.getSnapshotIsolationMode());
+    }
+
+    @Test
+    @FixFor("debezium/dbz#1387")
+    void readOnlyApplicationIntentHonorsConfiguredSnapshotIsolationMode() {
+        final SqlServerConnectorConfig connectorConfig = new SqlServerConnectorConfig(
+                defaultConfig()
+                        .with(CommonConnectorConfig.DRIVER_CONFIG_PREFIX + "applicationIntent", "ReadOnly")
+                        .with(SqlServerConnectorConfig.SNAPSHOT_ISOLATION_MODE, SnapshotIsolationMode.READ_COMMITTED)
+                        .build());
+        assertTrue(connectorConfig.isReadOnlyDatabaseConnection());
+        assertEquals(SnapshotIsolationMode.READ_COMMITTED, connectorConfig.getSnapshotIsolationMode());
+    }
+
+    @Test
+    @FixFor("debezium/dbz#1387")
+    void readOnlyApplicationIntentHonorsExplicitlyConfiguredDefaultSnapshotIsolationMode() {
+        // repeatable_read is the field default, so this proves the check is "was the key set" and not "differs from default"
+        final SqlServerConnectorConfig connectorConfig = new SqlServerConnectorConfig(
+                defaultConfig()
+                        .with(CommonConnectorConfig.DATABASE_CONFIG_PREFIX + "applicationIntent", "ReadOnly")
+                        .with(SqlServerConnectorConfig.SNAPSHOT_ISOLATION_MODE, SnapshotIsolationMode.REPEATABLE_READ)
+                        .build());
+        assertTrue(connectorConfig.isReadOnlyDatabaseConnection());
+        assertEquals(SnapshotIsolationMode.REPEATABLE_READ, connectorConfig.getSnapshotIsolationMode());
+    }
+
+    @Test
+    @FixFor("debezium/dbz#1387")
+    void snapshotIsolationModeDefaultsToRepeatableReadWithoutReadOnlyApplicationIntent() {
+        final SqlServerConnectorConfig connectorConfig = new SqlServerConnectorConfig(
+                defaultConfig().build());
+        assertFalse(connectorConfig.isReadOnlyDatabaseConnection());
+        assertEquals(SnapshotIsolationMode.REPEATABLE_READ, connectorConfig.getSnapshotIsolationMode());
     }
 
     @Test
