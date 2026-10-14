@@ -274,7 +274,7 @@
                         <dbz.test.data.dir>${project.build.directory}/data</dbz.test.data.dir>
                         <docker.host.address>${docker.host.address}</docker.host.address>
                     </systemPropertyVariables>
-                    <argLine>@{argLine} -Djava.awt.headless=true ${debug.argline} ${modules.argline} ${mockito.argLine}</argLine>
+                    <argLine>-Djava.awt.headless=true @{argLine} ${debug.argline} ${modules.argline} ${mockito.argLine}</argLine>
                     <!--runOrder>alphabetical</runOrder-->
                     <useFile>false</useFile>
                     <enableAssertions>true</enableAssertions>

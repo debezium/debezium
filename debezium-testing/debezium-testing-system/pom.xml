@@ -580,7 +580,7 @@
               <trimStackTrace>false</trimStackTrace>
               <runOrder>${runOrder}</runOrder>
               <!-- Idea not picking up and emitting a warning not sure why, it works in other modules just fine -->
-              <argLine>--add-opens java.base/java.net=ALL-UNNAMED</argLine>
+              <argLine>@{argLine} --add-opens java.base/java.net=ALL-UNNAMED</argLine>
               <systemPropertyVariables>
                 <test.wait.scale>1</test.wait.scale>
                 <test.product.build>${product.build}</test.product.build>

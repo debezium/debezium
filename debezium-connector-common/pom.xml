@@ -215,6 +215,7 @@
                 <artifactId>maven-surefire-plugin</artifactId>
                 <configuration>
                     <argLine>
+                        @{argLine}
                         -Dnet.bytebuddy.experimental=${net.bytebuddy.experimental}
                         -javaagent:${io.opentelemetry.javaagent:opentelemetry-agent-for-testing:jar}
                     </argLine>
