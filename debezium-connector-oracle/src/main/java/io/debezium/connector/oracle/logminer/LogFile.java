@@ -114,6 +114,16 @@ public class LogFile {
         return nextScn;
     }
 
+    /**
+     * Returns the highest system change number the log can hold. The next SCN is exclusive, being the
+     * first system change number of the redo thread's following log.
+     *
+     * @return the next system change number minus one
+     */
+    public Scn getLastScn() {
+        return nextScn.subtract(Scn.ONE);
+    }
+
     public BigInteger getSequence() {
         return sequence;
     }
