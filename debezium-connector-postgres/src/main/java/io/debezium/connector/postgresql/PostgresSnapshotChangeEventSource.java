@@ -273,7 +273,9 @@ public class PostgresSnapshotChangeEventSource extends RelationalSnapshotChangeE
     }
 
     /**
-     * Generate a valid Postgres query string for the specified table and columns
+     * Generate a valid Postgres query string for the specified table and columns.
+     * <p>
+     * The table reference excludes rows of inheriting tables, see {@link PostgresConnection#tableReferenceForDataQuery(TableId)}.
      *
      * @param tableId the table to generate a query for
      * @return a valid query string
@@ -282,7 +284,7 @@ public class PostgresSnapshotChangeEventSource extends RelationalSnapshotChangeE
     protected Optional<String> getSnapshotSelect(RelationalSnapshotContext<PostgresPartition, PostgresOffsetContext> snapshotContext,
                                                  TableId tableId, List<String> columns) {
 
-        return snapshotterService.getSnapshotQuery().snapshotQuery(tableId.toDoubleQuotedString(), columns);
+        return snapshotterService.getSnapshotQuery().snapshotQuery(jdbcConnection.tableReferenceForDataQuery(tableId), columns);
     }
 
     protected void setSnapshotTransactionIsolationLevel(boolean isOnDemand) throws SQLException {
