@@ -10,16 +10,24 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
+import java.util.function.Consumer;
 
+import org.bson.BsonBoolean;
+import org.bson.BsonDocument;
+import org.bson.BsonInt32;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.mongodb.ConnectionString;
+import com.mongodb.ReadConcern;
 import com.mongodb.ReadPreference;
+import com.mongodb.client.MongoClient;
+import com.mongodb.client.internal.MongoClientImpl;
 import com.mongodb.connection.ClusterDescription;
 import com.mongodb.connection.ClusterType;
 import com.mongodb.event.ClusterDescriptionChangedEvent;
 import com.mongodb.event.ClusterListener;
+import com.mongodb.internal.operation.ListCollectionsOperation;
 
 import io.debezium.config.Configuration;
 import io.debezium.connector.mongodb.MongoDbConnectorConfig;
@@ -95,6 +103,39 @@ public class MongoDbConnectionContext implements AutoCloseable {
         return clientFactory.openClient();
     }
 
+    public void forEachCollectionNameInDatabase(MongoClient client, String databaseName, Consumer<String> operation) {
+        var nativeClient = nativeClient(client);
+        var listCollections = new ListCollectionsOperation<>(
+                databaseName,
+                nativeClient.getCodecRegistry().get(BsonDocument.class))
+                .nameOnly(true)
+                .retryReads(nativeClient.getSettings().getRetryReads());
+
+        // Match the driver's listCollections behavior rather than inheriting the client's application read concern.
+        try (var cursor = nativeClient.getOperationExecutor().execute(
+                listCollections,
+                client.getReadPreference(),
+                ReadConcern.DEFAULT)) {
+            while (cursor.hasNext()) {
+                cursor.next().stream()
+                        .map(collection -> collection.getString("name").getValue())
+                        .forEach(operation);
+            }
+        }
+    }
+
+    public void forEachDatabaseName(MongoClient client, Consumer<String> operation) {
+        var command = new BsonDocument("listDatabases", new BsonInt32(1))
+                .append("nameOnly", BsonBoolean.TRUE);
+        // Keep metadata commands independent of the client's application read concern.
+        var result = client.getDatabase("admin")
+                .withReadConcern(ReadConcern.DEFAULT)
+                .runCommand(command, client.getReadPreference(), BsonDocument.class);
+        result.getArray("databases").stream()
+                .map(database -> database.asDocument().getString("name").getValue())
+                .forEach(operation);
+    }
+
     public ClusterDescription getClusterDescription() {
         try (var client = openClient()) {
             LOGGER.info("Reading description of cluster at {}", getMaskedConnectionString());
@@ -116,14 +157,18 @@ public class MongoDbConnectionContext implements AutoCloseable {
         }
 
         var shardNames = new HashSet<String>();
-        try (var client = openClient()) {
-            MongoUtils.onCollectionDocuments(client.getClient(), "config", "shards", doc -> {
-                String shardName = doc.getString("_id");
-                shardNames.add(shardName);
-            });
+        try (var connection = openClient()) {
+            var client = connection.getClient();
+            var shards = client.getDatabase("config").getCollection("shards");
+            try (var cursor = shards.find().iterator()) {
+                while (cursor.hasNext()) {
+                    shardNames.add(cursor.next().getString("_id"));
+                }
+            }
         }
         catch (Throwable t) {
-            LOGGER.warn("Unable to read shard topology.");
+            shardNames.clear();
+            LOGGER.warn("Unable to read shard topology.", t);
         }
         return shardNames;
     }
@@ -145,5 +190,19 @@ public class MongoDbConnectionContext implements AutoCloseable {
             return true;
         }
         return getClusterDescription().getType() != ClusterType.REPLICA_SET;
+    }
+
+    private static MongoClientImpl nativeClient(MongoClient client) {
+        if (client instanceof MongoClientImpl nativeClient) {
+            return nativeClient;
+        }
+        throw new UnsupportedMongoClientException(client);
+    }
+
+    static final class UnsupportedMongoClientException extends IllegalArgumentException {
+
+        private UnsupportedMongoClientException(MongoClient client) {
+            super("MongoDB collection metadata operations require a driver-native MongoClient, but received " + client.getClass().getName());
+        }
     }
 }
