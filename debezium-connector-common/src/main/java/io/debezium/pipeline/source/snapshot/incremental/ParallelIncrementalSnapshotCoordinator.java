@@ -362,11 +362,11 @@ public class ParallelIncrementalSnapshotCoordinator<P extends Partition, T exten
         return !activeWorkers.isEmpty();
     }
 
-    public void recordCompletedTables(List<T> tableIds) {
+    public synchronized void recordCompletedTables(List<T> tableIds) {
         completedTables.addAll(tableIds);
     }
 
-    public List<T> consumeCompletedTables() {
+    public synchronized List<T> consumeCompletedTables() {
         if (completedTables.isEmpty()) {
             return List.of();
         }
