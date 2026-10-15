@@ -536,12 +536,6 @@
             </properties>
         </profile>
         <profile>
-            <id>postgres-14</id>
-            <properties>
-                <version.postgres.server>14</version.postgres.server>
-            </properties>
-        </profile>
-        <profile>
             <id>postgres-15</id>
             <properties>
                 <version.postgres.server>15</version.postgres.server>
