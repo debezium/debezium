@@ -286,11 +286,12 @@ public class OracleOffsetContext extends CommonOffsetContext<SourceInfo> {
     }
 
     /**
-     * Returns the SCN the initial snapshot is taken at, which the snapshot records are read as of.
+     * Returns the SCN the snapshot reads the tables at.
      * <p>
-     * For LogMiner it is the snapshot commit SCN, because the offset SCN is already the position
-     * where mining resumes, before the snapshot. XStream and OpenLogReplicator start streaming at
-     * the SCN the snapshot is taken at, so for them it is the offset SCN itself.
+     * With LogMiner in {@code all} mode, mining starts where the oldest open transaction started,
+     * which is earlier than the snapshot, so the snapshot SCN is stored separately as the snapshot
+     * commit SCN. With LogMiner in {@code skip} mode, and for XStream and OpenLogReplicator,
+     * streaming starts right after the snapshot, so the snapshot SCN is the offset SCN.
      *
      * @return the SCN the snapshot is taken at, only meaningful during the snapshot
      */

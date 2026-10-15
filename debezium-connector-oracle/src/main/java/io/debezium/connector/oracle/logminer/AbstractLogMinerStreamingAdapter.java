@@ -16,6 +16,7 @@ import io.debezium.connector.base.ChangeEventQueueMetrics;
 import io.debezium.connector.oracle.AbstractStreamingAdapter;
 import io.debezium.connector.oracle.OracleConnection;
 import io.debezium.connector.oracle.OracleConnectorConfig;
+import io.debezium.connector.oracle.OracleConnectorConfig.TransactionSnapshotBoundaryMode;
 import io.debezium.connector.oracle.OracleOffsetContext;
 import io.debezium.connector.oracle.OraclePartition;
 import io.debezium.connector.oracle.OracleTaskContext;
@@ -62,8 +63,10 @@ public abstract class AbstractLogMinerStreamingAdapter
     }
 
     /**
-     * Resolves the snapshot offset so that transactions in progress at the snapshot boundary are
-     * neither lost nor emitted twice:
+     * Resolves the snapshot offset.
+     * <p>
+     * With {@link TransactionSnapshotBoundaryMode#ALL}, transactions in progress at the snapshot
+     * boundary are neither lost nor emitted twice:
      * <ol>
      * <li>Read the current SCN as {@code S0}.</li>
      * <li>Read the oldest start SCN of the transactions in progress as {@code M}.</li>
@@ -74,6 +77,10 @@ public abstract class AbstractLogMinerStreamingAdapter
      * when {@code M} was read, so its start is mined. A transaction that commits at or before
      * {@code S}, stored as the snapshot commit SCN, is already part of the snapshot and is discarded
      * by streaming.
+     * <p>
+     * With {@link TransactionSnapshotBoundaryMode#SKIP}, the default, only {@code S0} is read. The
+     * snapshot is taken at {@code S0} and mining starts after it, so changes made before {@code S0}
+     * by transactions that commit after it are not captured.
      */
     @Override
     public OracleOffsetContext determineSnapshotOffset(RelationalSnapshotContext<OraclePartition, OracleOffsetContext> ctx,
@@ -85,6 +92,16 @@ public abstract class AbstractLogMinerStreamingAdapter
         final String transactionTableName = getTransactionTableName(connectorConfig);
 
         final Scn initialScn = getCurrentScn(latestTableDdlScn, connection);
+        if (connectorConfig.getLogMiningTransactionSnapshotBoundaryMode() != TransactionSnapshotBoundaryMode.ALL) {
+            LOGGER.info("\tNo in-progress transactions will be captured, mining starts after the snapshot SCN {}.", initialScn);
+            return OracleOffsetContext.create()
+                    .logicalName(connectorConfig)
+                    .scn(initialScn)
+                    .transactionContext(new TransactionContext())
+                    .incrementalSnapshotContext(new SignalBasedIncrementalSnapshotContext<>())
+                    .build();
+        }
+
         final Optional<Scn> pendingTransactionStartScn = getMinimumPendingTransactionStartScn(connection, transactionTableName);
         final Scn snapshotCommitScn = getCurrentScn(latestTableDdlScn, connection);
 
