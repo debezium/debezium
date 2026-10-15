@@ -25,9 +25,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.OptionalLong;
-import java.util.concurrent.CompletionService;
 import java.util.concurrent.ExecutionException;
-import java.util.concurrent.ExecutorCompletionService;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -46,6 +44,7 @@ import io.debezium.pipeline.notification.IncrementalSnapshotNotificationService.
 import io.debezium.pipeline.notification.NotificationService;
 import io.debezium.pipeline.signal.SignalPayload;
 import io.debezium.pipeline.signal.actions.snapshotting.SnapshotConfiguration;
+import io.debezium.pipeline.source.snapshot.ThreadedSnapshotExecutor;
 import io.debezium.pipeline.source.spi.DataChangeEventListener;
 import io.debezium.pipeline.source.spi.SnapshotProgressListener;
 import io.debezium.pipeline.spi.ChangeRecordEmitter;
@@ -624,14 +623,12 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<P extends Par
         final Map<T, TableSnapshotWorker<P, T>> activeWorkers = parallelCoordinator.getActiveWorkers();
 
         DebeziumException primaryFailure = null;
-        try {
-            CompletionService<Void> completion = new ExecutorCompletionService<>(parallelCoordinator.getExecutor());
-            int submittedTasks = 0;
+        try (ThreadedSnapshotExecutor executor = new ThreadedSnapshotExecutor(parallelCoordinator.getExecutor())) {
             for (Map.Entry<T, TableSnapshotWorker<P, T>> entry : activeWorkers.entrySet()) {
                 final T tableId = entry.getKey();
                 final TableSnapshotWorker<P, T> worker = entry.getValue();
 
-                completion.submit(() -> {
+                executor.submit(() -> {
                     final JdbcConnection conn;
                     try {
                         conn = parallelCoordinator.borrowConnection();
@@ -666,13 +663,10 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<P extends Par
                     }
                     return null;
                 });
-                submittedTasks++;
             }
 
             try {
-                for (int i = 0; i < submittedTasks; i++) {
-                    completion.take().get();
-                }
+                executor.awaitCompletion();
             }
             catch (InterruptedException e) {
                 Thread.currentThread().interrupt();

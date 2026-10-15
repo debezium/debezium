@@ -26,13 +26,8 @@ import java.util.Queue;
 import java.util.Set;
 import java.util.TreeSet;
 import java.util.concurrent.Callable;
-import java.util.concurrent.CompletionService;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.ExecutorCompletionService;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.regex.Pattern;
@@ -55,6 +50,7 @@ import io.debezium.pipeline.signal.actions.snapshotting.AdditionalCondition;
 import io.debezium.pipeline.signal.actions.snapshotting.SnapshotConfiguration;
 import io.debezium.pipeline.source.AbstractSnapshotChangeEventSource;
 import io.debezium.pipeline.source.SnapshottingTask;
+import io.debezium.pipeline.source.snapshot.ThreadedSnapshotExecutor;
 import io.debezium.pipeline.source.snapshot.chunked.ChunkBoundaryCalculator;
 import io.debezium.pipeline.source.snapshot.chunked.SnapshotChunk;
 import io.debezium.pipeline.source.snapshot.chunked.SnapshotChunkQueryBuilder;
@@ -1308,38 +1304,6 @@ public abstract class RelationalSnapshotChangeEventSource<P extends Partition, O
             else {
                 return SnapshotRecord.TRUE;
             }
-        }
-    }
-
-    /**
-     * Manages threaded execution of snapshot work using a thread pool.
-     */
-    private static class ThreadedSnapshotExecutor implements AutoCloseable {
-
-        private final ExecutorService executorService;
-        private final CompletionService<Void> completionService;
-        private int submittedTasks = 0;
-
-        ThreadedSnapshotExecutor(int threadCount, String description) {
-            LOGGER.info("Creating {} worker pool with {} worker thread(s)", description, threadCount);
-            this.executorService = Executors.newFixedThreadPool(threadCount);
-            this.completionService = new ExecutorCompletionService<>(executorService);
-        }
-
-        void submit(Callable<Void> task) {
-            completionService.submit(task);
-            submittedTasks++;
-        }
-
-        void awaitCompletion() throws InterruptedException, ExecutionException {
-            for (int i = 0; i < submittedTasks; i++) {
-                completionService.take().get();
-            }
-        }
-
-        @Override
-        public void close() {
-            executorService.shutdownNow();
         }
     }
 
