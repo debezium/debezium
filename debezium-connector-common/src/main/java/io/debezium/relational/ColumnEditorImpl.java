@@ -6,13 +6,20 @@
 package io.debezium.relational;
 
 import java.sql.Types;
-import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 
 import io.debezium.util.Interner;
 
-final class ColumnEditorImpl implements ColumnEditor {
+/**
+ * The default {@link ColumnEditor}, which creates {@link ColumnImpl} instances.
+ * <p>
+ * A connector that needs to carry additional column metadata subclasses this class, adds its own
+ * setters, and overrides {@link #create()} to return its own {@link ColumnImpl} subclass.
+ *
+ * @author Randall Hauch
+ */
+public class ColumnEditorImpl implements ColumnEditor {
 
     private String name;
     private int jdbcType = Types.INTEGER;
@@ -134,7 +141,7 @@ final class ColumnEditorImpl implements ColumnEditor {
     }
 
     @Override
-    public ColumnEditor type(String typeName, String typeExpression) {
+    public ColumnEditorImpl type(String typeName, String typeExpression) {
         this.typeName = typeName;
         this.typeExpression = typeExpression != null ? typeExpression : typeName;
         return this;
@@ -153,13 +160,13 @@ final class ColumnEditorImpl implements ColumnEditor {
     }
 
     @Override
-    public ColumnEditor charsetName(String charsetName) {
+    public ColumnEditorImpl charsetName(String charsetName) {
         this.charsetName = charsetName;
         return this;
     }
 
     @Override
-    public ColumnEditor charsetNameOfTable(String charsetName) {
+    public ColumnEditorImpl charsetNameOfTable(String charsetName) {
         this.tableCharsetName = charsetName;
         return this;
     }
@@ -206,54 +213,46 @@ final class ColumnEditorImpl implements ColumnEditor {
     }
 
     @Override
-    public ColumnEditor defaultValueExpression(String defaultValueExpression) {
+    public ColumnEditorImpl defaultValueExpression(String defaultValueExpression) {
         this.hasDefaultValue = true;
         this.defaultValueExpression = defaultValueExpression;
         return this;
     }
 
     @Override
-    public ColumnEditor unsetDefaultValueExpression() {
+    public ColumnEditorImpl unsetDefaultValueExpression() {
         this.hasDefaultValue = false;
         this.defaultValueExpression = null;
         return this;
     }
 
     @Override
-    public ColumnEditor unsetLength() {
+    public ColumnEditorImpl unsetLength() {
         this.length = Column.UNSET_INT_VALUE;
         return this;
     }
 
     @Override
-    public ColumnEditor unsetScale() {
+    public ColumnEditorImpl unsetScale() {
         this.scale = null;
         return this;
     }
 
     @Override
-    public ColumnEditor enumValues(List<String> enumValues) {
+    public ColumnEditorImpl enumValues(List<String> enumValues) {
         this.enumValues = enumValues;
         return this;
     }
 
     @Override
-    public ColumnEditor comment(String comment) {
+    public ColumnEditorImpl comment(String comment) {
         this.comment = comment;
         return this;
     }
 
     @Override
     public Column create() {
-        Column column = new ColumnImpl(
-                Interner.intern(name), position, jdbcType, nativeType,
-                Interner.intern(typeName), Interner.intern(typeExpression),
-                Interner.intern(charsetName), Interner.intern(tableCharsetName),
-                length, scale, enumValues == null ? null : Interner.intern(Collections.unmodifiableList(enumValues)),
-                optional, autoIncremented, generated,
-                Interner.intern(defaultValueExpression), hasDefaultValue,
-                Interner.intern(comment));
-        return Interner.intern(column);
+        return Interner.intern(new ColumnImpl(this));
     }
 
     @Override
