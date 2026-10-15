@@ -1,3 +1,4 @@
+:page-aliases: integrations/quarkus-debezium-engine-extension.adoc
 [id="debezium-quarkus-engine-extension"]
 = {prodname} Extensions for Quarkus
 

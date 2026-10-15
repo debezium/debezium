@@ -1,3 +1,4 @@
+:page-aliases: integrations/outbox.adoc
 [id="outbox-quarkus-extension"]
 = Outbox Quarkus Extension
 
@@ -26,7 +27,7 @@ In order to start using the {prodname} Outbox Quarkus extension, the extension n
 [source,xml,subs="verbatim,attributes"]
 ----
 <dependency>
-  <groupId>io.debezium</groupId>
+  <groupId>io.debezium.quarkus</groupId>
   <artifactId>debezium-quarkus-outbox</artifactId>
   <version>{debezium-version}</version>
 </dependency>
@@ -134,7 +135,7 @@ For example, use the following configuration to  import the reactive variant of 
 [source,xml,subs="verbatim,attributes"]
 ----
 <dependency>
-  <groupId>io.debezium</groupId>
+  <groupId>io.debezium.quarkus</groupId>
   <artifactId>debezium-quarkus-outbox-reactive</artifactId>
   <version>{debezium-version}</version>
 </dependency>

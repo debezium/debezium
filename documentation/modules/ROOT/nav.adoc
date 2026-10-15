@@ -69,13 +69,15 @@
 ** xref:development/converters.adoc[Custom Converters]
 * Integrations
 ** xref:integrations/serdes.adoc[Change Event SerDes]
-** xref:integrations/outbox.adoc[Outbox Quarkus Extension]
 ** xref:integrations/cloudevents.adoc[CloudEvents]
 ** xref:integrations/openlineage.adoc[OpenLineage]
 ** xref:integrations/tracing.adoc[OpenTelemetry]
-** xref:integrations/quarkus-debezium-engine-extension.adoc[Debezium Extensions for Quarkus]
-** xref:integrations/hibernate-cache.adoc[Hibernate Cache Invalidation]
 ** xref:integrations/testcontainers.adoc[Integration Testing with Testcontainers]
+* Debezium on Quarkus
+** xref:quarkus/index.adoc[Overview]
+** xref:quarkus/quarkus-debezium-engine-extension.adoc[Debezium Runtime Extensions]
+** xref:quarkus/outbox.adoc[Outbox Pattern Extension]
+** xref:quarkus/hibernate-cache.adoc[Hibernate Cache Invalidation]
 * Debezium AI
 ** xref:ai/debezium-ai-python.adoc[PyDebeziumAI]
 ** xref:ai/embeddings.adoc[Embeddings Transformation]

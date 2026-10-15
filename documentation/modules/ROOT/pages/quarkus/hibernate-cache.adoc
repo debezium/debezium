@@ -1,3 +1,4 @@
+:page-aliases: integrations/hibernate-cache.adoc
 [id="hibernate-cache-invalidation"]
 = Hibernate Second-Level Cache Invalidation
 
@@ -21,7 +22,7 @@ The link:https://docs.jboss.org/hibernate/stable/orm/userguide/html_single/Hiber
 However, the Hibernate cache can become stale when database changes bypass the ORM layer — for example, when another application, a batch job, or a database administrator modifies records directly.
 
 The {prodname} Hibernate Cache Invalidation extension for Quarkus can help to prevent cache staleness by using change data capture (CDC) to automatically invalidate affected L2C entries in near-real-time.
-The extension, which is based on the xref:integrations/quarkus-debezium-engine-extension.adoc[{prodname} Extensions for Quarkus], automatically performs the following tasks:
+The extension, which is based on the xref:quarkus/quarkus-debezium-engine-extension.adoc[{prodname} Extensions for Quarkus], automatically performs the following tasks:
 
 * Scans the JPA/Hibernate metamodel at build time to identify entities that are eligible for caching.
 * Registers CDC event handlers that listen for data changes in the corresponding database tables.
@@ -67,7 +68,7 @@ For more information about using CDC to remove stale cache entries, see the blog
 
     <!-- Debezium Hibernate Cache Invalidation extension -->
     <dependency>
-        <groupId>io.debezium</groupId>
+        <groupId>io.debezium.quarkus</groupId>
         <artifactId>debezium-quarkus-hibernate-cache</artifactId>
         <version>{debezium-version}</version>
     </dependency>
