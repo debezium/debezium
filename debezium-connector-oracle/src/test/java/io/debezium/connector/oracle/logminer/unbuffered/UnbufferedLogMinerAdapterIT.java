@@ -24,7 +24,6 @@ import io.debezium.config.Configuration;
 import io.debezium.connector.oracle.OracleConnection;
 import io.debezium.connector.oracle.OracleConnector;
 import io.debezium.connector.oracle.OracleConnectorConfig;
-import io.debezium.connector.oracle.OracleConnectorConfig.TransactionSnapshotBoundaryMode;
 import io.debezium.connector.oracle.OracleOffsetContext;
 import io.debezium.connector.oracle.OraclePartition;
 import io.debezium.connector.oracle.Scn;
@@ -90,7 +89,6 @@ public class UnbufferedLogMinerAdapterIT extends AbstractAsyncEngineConnectorTes
 
             final Configuration config = TestHelper.defaultConfig()
                     .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "DEBEZIUM\\.DBZ9013")
-                    .with(OracleConnectorConfig.LOG_MINING_TRANSACTION_SNAPSHOT_BOUNDARY_MODE, TransactionSnapshotBoundaryMode.ALL)
                     .build();
 
             start(OracleConnector.class, config);
@@ -120,18 +118,18 @@ public class UnbufferedLogMinerAdapterIT extends AbstractAsyncEngineConnectorTes
             final OraclePartition partition = new OraclePartition(TestHelper.SERVER_NAME, TestHelper.DATABASE);
             final Map<String, Object> committedOffsets = readLastCommittedOffset(config, partition.getSourcePartition());
 
-            // Get the SCN the snapshot was taken at, which is retired from the offsets once streaming commits past it
-            final Scn snapshotCommitScn = (Scn) adapterLogInterceptor.getLoggingEvents("Snapshot boundary resolved").get(0).getArgumentArray()[1];
-            assertThat(OracleOffsetContext.loadSnapshotCommitScn(committedOffsets)).isNull();
+            // Get the offset SCN written by the snapshot, where streaming starts mining
+            final Scn snapshotOffsetScn = (Scn) adapterLogInterceptor.getLoggingEvents("No in-progress transactions will be captured").get(0)
+                    .getArgumentArray()[0];
 
             // Get the SCN low watermark updated by the streaming phase
             final Scn lowWatermarkScn = OracleOffsetContext.getScnFromOffsetMapByKey(committedOffsets, SourceInfo.SCN_KEY);
             assertThat(lowWatermarkScn).isNotNull();
 
             // Verify the SCN values were updated
-            // Before this fix, the lowWatermarkScn was always the same as the snapshot commit SCN
-            // With the fix, the low watermark should be after the snapshot scn
-            assertThat(lowWatermarkScn.asBigInteger()).isGreaterThan(snapshotCommitScn.asBigInteger());
+            // Before this fix, the lowWatermarkScn was always the same as the offset SCN written by the snapshot
+            // With the fix, the low watermark should be after it
+            assertThat(lowWatermarkScn.asBigInteger()).isGreaterThan(snapshotOffsetScn.asBigInteger());
         }
         finally {
             TestHelper.dropTable(connection, "dbz9013");
