@@ -1071,7 +1071,7 @@ public abstract class AbstractIncrementalSnapshotTest<T extends SourceConnector>
     }
 
     @Test
-    void testNotification() throws Exception {
+    protected void testNotification() throws Exception {
 
         populateTable();
         startConnector(x -> x.with(CommonConnectorConfig.NOTIFICATION_ENABLED_CHANNELS, "sink")
@@ -1320,7 +1320,7 @@ public abstract class AbstractIncrementalSnapshotTest<T extends SourceConnector>
                 ((Struct) record.value()).getString("type").equals("ABORTED");
     }
 
-    private void assertCorrectIncrementalSnapshotNotification(List<SourceRecord> notifications) {
+    protected void assertCorrectIncrementalSnapshotNotification(List<SourceRecord> notifications) {
         List<Struct> incrementalSnapshotNotification = notifications.stream().map(s -> ((Struct) s.value()))
                 .filter(s -> s.getString("aggregate_type").equals("Incremental Snapshot"))
                 .toList();
