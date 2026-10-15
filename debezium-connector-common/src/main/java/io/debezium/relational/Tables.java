@@ -10,7 +10,6 @@ import java.util.List;
 import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentMap;
 import java.util.function.BiConsumer;
 import java.util.function.Function;
 import java.util.function.Predicate;
@@ -86,8 +85,12 @@ public final class Tables {
             }
         }
 
+        // a snapshot asks about every table on the server, so excluded decisions are kept only up to a bound
+        private static final int MAX_EXCLUDED = 10_000;
+
         private final TableFilter delegate;
-        private final ConcurrentMap<CacheKey, Boolean> cache = new ConcurrentHashMap<>();
+        private final Set<CacheKey> included = ConcurrentHashMap.newKeySet();
+        private final Set<CacheKey> excluded = ConcurrentHashMap.newKeySet();
 
         CachingTableFilter(TableFilter delegate) {
             this.delegate = Objects.requireNonNull(delegate);
@@ -95,7 +98,24 @@ public final class Tables {
 
         @Override
         public boolean isIncluded(TableId tableId) {
-            return cache.computeIfAbsent(new CacheKey(tableId), key -> delegate.isIncluded(tableId));
+            final CacheKey key = new CacheKey(tableId);
+            if (included.contains(key)) {
+                return true;
+            }
+            if (excluded.contains(key)) {
+                return false;
+            }
+            final boolean result = delegate.isIncluded(tableId);
+            if (result) {
+                included.add(new CacheKey(Interner.intern(tableId)));
+            }
+            else {
+                if (excluded.size() >= MAX_EXCLUDED) {
+                    excluded.clear();
+                }
+                excluded.add(key);
+            }
+            return result;
         }
     }
 
