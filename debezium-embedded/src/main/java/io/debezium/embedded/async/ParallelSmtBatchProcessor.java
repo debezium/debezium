@@ -26,9 +26,11 @@ import io.debezium.engine.DebeziumEngine;
 public class ParallelSmtBatchProcessor extends AbstractRecordProcessor<SourceRecord> {
     private static final Logger LOGGER = LoggerFactory.getLogger(ParallelSmtBatchProcessor.class);
 
+    private final DebeziumEngine.RecordCommitter<SourceRecord> committer;
     private final BatchProcessor<SourceRecord> processor;
 
-    public ParallelSmtBatchProcessor(BatchProcessor<SourceRecord> processor) {
+    public ParallelSmtBatchProcessor(DebeziumEngine.RecordCommitter<SourceRecord> committer, BatchProcessor<SourceRecord> processor) {
+        this.committer = committer;
         this.processor = processor;
     }
 
@@ -41,13 +43,10 @@ public class ParallelSmtBatchProcessor extends AbstractRecordProcessor<SourceRec
         LOGGER.trace("Thread {} is getting source records.", Thread.currentThread().getName());
         final List<SourceRecord> transformedRecords = new ArrayList<>(recordFutures.size());
         for (Future<SourceRecord> f : recordFutures) {
-            SourceRecord record = f.get(); // we need the whole batch, eventually wait forever
-            if (record != null) {
-                transformedRecords.add(record);
-            }
+            transformedRecords.add(f.get()); // we need the whole batch, eventually wait forever
         }
 
-        processor.process(transformedRecords);
+        processBatch(processor, records, transformedRecords, committer, committer);
     }
 
     public static <R> ParallelSmtBatchProcessor create(DebeziumEngine.RecordCommitter<SourceRecord> committer,
@@ -58,13 +57,13 @@ public class ParallelSmtBatchProcessor extends AbstractRecordProcessor<SourceRec
                                                        Map<String, String> configuration) {
 
         if (shutdown == null) {
-            return new ParallelSmtBatchProcessor(new BatchProcessor.DirectProcessor(committer, userHandler));
+            return new ParallelSmtBatchProcessor(committer, new BatchProcessor.DirectProcessor(userHandler));
         }
 
         return new ParallelSmtBatchProcessor(
+                committer,
                 new ObservableProcessor(
                         watcher,
-                        committer,
                         new ShutdownChangeConsumer<>(
                                 (ShutdownHandler<SourceRecord>) DefaultShutdownHandler.create(shutdown.before(), runner, committer, configuration),
                                 (ShutdownHandler<SourceRecord>) DefaultShutdownHandler.create(shutdown.after(), runner, committer, configuration),
