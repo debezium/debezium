@@ -69,6 +69,7 @@
                 <artifactId>maven-surefire-plugin</artifactId>
                 <configuration>
                     <argLine>
+                        @{argLine}
                         --add-opens=java.base/sun.nio.ch=ALL-UNNAMED
                         --add-opens=java.base/java.lang=ALL-UNNAMED
                         --add-opens=java.base/java.lang.reflect=ALL-UNNAMED

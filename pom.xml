@@ -192,6 +192,11 @@
         <!-- Advanced statistics -->
         <version.datadog.sketches>0.8.2</version.datadog.sketches>
 
+        <!-- Static code analysis -->
+        <version.sonar.plugin>5.5.0.6356</version.sonar.plugin>
+        <version.jacoco.plugin>0.8.12</version.jacoco.plugin>
+        <version.properties.plugin>1.2.1</version.properties.plugin>
+
         <!-- Testing -->
         <opentelemetry.agent.for.testing.artifact.relative.path>io/opentelemetry/javaagent/opentelemetry-agent-for-testing/${version.opentelemetry.testing}/opentelemetry-agent-for-testing-${version.opentelemetry.testing}.jar</opentelemetry.agent.for.testing.artifact.relative.path>
 
@@ -453,6 +458,73 @@
         </plugins>
     </build>
     <profiles>
+        <profile>
+            <id>sonar</id>
+            <!--
+                All the sonar workflow goes in here.
+
+                To run the analysis you need to have SONAR_TOKEN either in your env or pass it as an argument
+                And then run: ./mvnw clean verify -Psonar
+                Optionally: you can run it with -DskipITs
+            -->
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.codehaus.mojo</groupId>
+                        <artifactId>properties-maven-plugin</artifactId>
+                        <version>${version.properties.plugin}</version>
+                        <executions>
+                            <execution>
+                                <id>load-sonar-properties</id>
+                                <phase>initialize</phase>
+                                <goals>
+                                    <goal>read-project-properties</goal>
+                                </goals>
+                                <configuration>
+                                    <files>
+                                        <file>${maven.multiModuleProjectDirectory}/sonar-project.properties</file>
+                                    </files>
+                                </configuration>
+                            </execution>
+                        </executions>
+                    </plugin>
+                    <plugin>
+                        <groupId>org.jacoco</groupId>
+                        <artifactId>jacoco-maven-plugin</artifactId>
+                        <version>${version.jacoco.plugin}</version>
+                        <executions>
+                            <execution>
+                                <id>prepare-agent</id>
+                                <goals>
+                                    <goal>prepare-agent</goal>
+                                </goals>
+                            </execution>
+                            <execution>
+                                <id>report</id>
+                                <phase>verify</phase>
+                                <goals>
+                                    <goal>report</goal>
+                                </goals>
+                            </execution>
+                        </executions>
+                    </plugin>
+                    <plugin>
+                        <groupId>org.sonarsource.scanner.maven</groupId>
+                        <artifactId>sonar-maven-plugin</artifactId>
+                        <version>${version.sonar.plugin}</version>
+                        <executions>
+                            <execution>
+                                <id>sonar-analysis</id>
+                                <phase>verify</phase>
+                                <goals>
+                                    <goal>sonar</goal>
+                                </goals>
+                            </execution>
+                        </executions>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
         <profile>
             <!--
                 Keeps COPYRIGHT.txt, Aliases.txt and FilteredNames.txt sorted. These are
