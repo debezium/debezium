@@ -274,7 +274,10 @@ public class AbstractIncrementalSnapshotChangeEventSourceTest {
 
     @Test
     @FixFor("dbz#1829")
-    public void shouldNotOpenSnapshotConnectionWhenParallelSnapshotIsNotSupported() {
+    public void shouldReadOnTheStreamingConnectionWhenParallelSnapshotIsNotSupported() throws Exception {
+        // snapshot.max.threads is above one but the source does not declare parallel support: the chunk must be
+        // read on the streaming connection and no snapshot connection must ever be opened.
+        snapshotInProgressOf("public.a");
         final AtomicInteger snapshotConnections = new AtomicInteger();
         final var unsupported = new SignalBasedIncrementalSnapshotChangeEventSource<TestPartition, TableId>(config(true, 4), jdbcConnection, null, null, null,
                 progressListener, null, notificationService) {
@@ -284,8 +287,11 @@ public class AbstractIncrementalSnapshotChangeEventSourceTest {
                 return mock(JdbcConnection.class);
             }
         };
+        when(jdbcConnection.commit()).thenThrow(new SQLException("stop the chunk read here"));
 
-        assertThat(unsupported.parallelCoordinator).isNull();
+        unsupported.readChunk(null, offsetContext);
+
+        verify(jdbcConnection).commit();
         assertThat(snapshotConnections).hasValue(0);
     }
 
