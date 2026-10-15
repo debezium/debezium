@@ -866,6 +866,13 @@ When GTID mode is disabled, the GTID set is empty, and the connector resumes fro
 +
 The binlog file must still exist on the database server.
 If the connector cannot determine the GTID set for the position, it rejects the signal and does not change its offsets.
+ifdef::MARIADB[]
+ifdef::community[]
++
+When MariaDB stores the binary log in InnoDB (`binlog_storage_engine=innodb`), binlog file positions are not meaningful, so the connector rejects a signal that specifies a file and position.
+Specify a GTID set instead.
+endif::community[]
+endif::MARIADB[]
 
 
 GTID set format::

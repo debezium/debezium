@@ -6,6 +6,9 @@
 package io.debezium.connector.mariadb;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.junit.jupiter.api.Assumptions.assumeFalse;
+import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
 import java.nio.file.Path;
 import java.sql.SQLException;
@@ -20,6 +23,7 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
+import io.debezium.DebeziumException;
 import io.debezium.config.Configuration;
 import io.debezium.connector.binlog.AbstractBinlogConnectorIT;
 import io.debezium.connector.binlog.BinlogConnectorConfig;
@@ -290,6 +294,7 @@ public class MariaDbBinlogPositionSignalIT extends AbstractBinlogConnectorIT<Mar
     @Test
     @FixFor("debezium/dbz#2731")
     public void shouldResolveGtidSetAtBinlogPosition() throws Exception {
+        assumeFalse(isInnoDbBinlogEnabled(), "Binlog positions are not meaningful with the InnoDB-based binary log");
         DATABASE.createAndInitialize();
         connection = getTestDatabaseConnection(DATABASE.getDatabaseName());
 
@@ -315,6 +320,24 @@ public class MariaDbBinlogPositionSignalIT extends AbstractBinlogConnectorIT<Mar
                         .as("GTID position at %s", checkpoint)
                         .isEqualTo(new MariaDbGtidSet((String) checkpoint.get("gtids")));
             }
+        }
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2731")
+    public void shouldRejectBinlogPositionWithInnoDbBinlog() throws Exception {
+        assumeTrue(isInnoDbBinlogEnabled(), "Only applies to the InnoDB-based binary log");
+        DATABASE.createAndInitialize();
+        connection = getTestDatabaseConnection(DATABASE.getDatabaseName());
+        connection.execute("INSERT INTO test_table VALUES (1, 'value1')");
+        final Map<String, Object> position = getCurrentBinlogPosition();
+
+        final Configuration config = DATABASE.defaultConfig().build();
+        try (MariaDbConnection mariaDbConnection = new MariaDbConnection(new MariaDbConnectionConfiguration(config),
+                new MariaDbFieldReader(new MariaDbConnectorConfig(config)))) {
+            assertThatThrownBy(() -> mariaDbConnection.gtidSetAtPosition((String) position.get("file"), (Long) position.get("position")))
+                    .isInstanceOf(DebeziumException.class)
+                    .hasMessageContaining("InnoDB-based binary log");
         }
     }
 

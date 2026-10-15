@@ -6,9 +6,11 @@
 package io.debezium.connector.mariadb.jdbc;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import org.junit.jupiter.api.Test;
 
+import io.debezium.DebeziumException;
 import io.debezium.doc.FixFor;
 
 /**
@@ -68,6 +70,15 @@ public class MariaDbConnectionTransactionStartTest {
     public void shouldKeepPositionAtOrAfterEndOfFile() {
         assertTransactionStart(1148, 1148);
         assertTransactionStart(99_999, 99_999);
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2731")
+    public void shouldFailWhenPagePositionsDoNotAdvance() {
+        assertThat(MariaDbConnection.nextPageStart("mariadb-bin.000001", 4, 1117)).isEqualTo(1117);
+        // The InnoDB-based binary log reports every event position as 0.
+        assertThatThrownBy(() -> MariaDbConnection.nextPageStart("binlog-000000.ibb", 4, 0)).isInstanceOf(DebeziumException.class);
+        assertThatThrownBy(() -> MariaDbConnection.nextPageStart("mariadb-bin.000001", 1117, 1117)).isInstanceOf(DebeziumException.class);
     }
 
     private static void assertTransactionStart(long position, long expected) {

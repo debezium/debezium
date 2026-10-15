@@ -121,6 +121,10 @@ public class MariaDbConnection extends BinlogConnectorConnection {
         }
         final String gtidSet;
         try {
+            if (isInnoDbBinlog()) {
+                // File offsets are not meaningful in the InnoDB-based binary log and BINLOG_GTID_POS is not available.
+                throw new DebeziumException("A binlog file and position cannot be resolved with the InnoDB-based binary log; use a GTID set");
+            }
             final long transactionStart = transactionStart(binlogFilename, binlogPosition);
             gtidSet = prepareQueryAndMap("SELECT BINLOG_GTID_POS(?, ?)",
                     ps -> {
@@ -161,9 +165,21 @@ public class MariaDbConnection extends BinlogConnectorConnection {
             if (!morePages) {
                 return finder.transactionStart();
             }
-            from = finder.lastEventPosition();
+            from = nextPageStart(binlogFilename, from, finder.lastEventPosition());
             skip = 1;
         }
+    }
+
+    static long nextPageStart(String binlogFilename, long from, long lastEventPosition) {
+        if (lastEventPosition <= from) {
+            throw new DebeziumException("Binlog event positions in '" + binlogFilename + "' do not advance past " + from);
+        }
+        return lastEventPosition;
+    }
+
+    private boolean isInnoDbBinlog() throws SQLException {
+        return queryAndMap("SHOW GLOBAL VARIABLES LIKE 'binlog_storage_engine'",
+                rs -> rs.next() && "innodb".equalsIgnoreCase(rs.getString(2)));
     }
 
     /**
