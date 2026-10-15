@@ -20,8 +20,8 @@ import io.debezium.relational.CustomConverterRegistry;
 import io.debezium.service.spi.InstanceResolver;
 import io.debezium.service.spi.ServiceProvider;
 import io.debezium.service.spi.ServiceProviderContributor;
+import io.debezium.service.spi.ServiceProviderRegistrar;
 import io.debezium.service.spi.ServiceRegistry;
-import io.debezium.service.spi.ServiceRegistryBuilder;
 import io.debezium.snapshot.SnapshotterService;
 
 /**
@@ -69,8 +69,8 @@ class DefaultServiceRegistryTest {
 
     public static class TestContributor implements ServiceProviderContributor {
         @Override
-        public void contribute(ServiceRegistryBuilder registryBuilder) {
-            registryBuilder.registerServiceProvider(new ServiceProvider<CustomConverterRegistry>() {
+        public void contribute(ServiceProviderRegistrar registrar) {
+            registrar.registerServiceProvider(new ServiceProvider<CustomConverterRegistry>() {
                 @Override
                 public CustomConverterRegistry createService(Configuration configuration, ServiceRegistry serviceRegistry) {
                     return CONTRIBUTED_REGISTRY;

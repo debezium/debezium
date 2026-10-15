@@ -28,9 +28,9 @@ import io.debezium.service.spi.Configurable;
 import io.debezium.service.spi.InjectService;
 import io.debezium.service.spi.ServiceProvider;
 import io.debezium.service.spi.ServiceProviderContributor;
+import io.debezium.service.spi.ServiceProviderRegistrar;
 import io.debezium.service.spi.ServiceRegistry;
 import io.debezium.service.spi.ServiceRegistryAware;
-import io.debezium.service.spi.ServiceRegistryBuilder;
 import io.debezium.service.spi.Startable;
 
 /**
@@ -40,7 +40,7 @@ import io.debezium.service.spi.Startable;
  */
 @Incubating
 @ThreadSafe
-public class DefaultServiceRegistry implements ServiceRegistry, ServiceRegistryBuilder {
+public class DefaultServiceRegistry implements ServiceRegistry {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(DefaultServiceRegistry.class);
 
@@ -250,14 +250,14 @@ public class DefaultServiceRegistry implements ServiceRegistry, ServiceRegistryB
     }
 
     private void loadContributedServices() {
-        final ServiceRegistryBuilder builder = new ServiceRegistryBuilder() {
+        final ServiceProviderRegistrar registrar = new ServiceProviderRegistrar() {
             @Override
             public <T extends Service> void registerServiceProvider(ServiceProvider<T> serviceProvider) {
                 contributedServices.add(serviceProvider.getServiceClass());
                 serviceRegistrations.put(serviceProvider.getServiceClass(), new ServiceRegistration<>(serviceProvider));
             }
         };
-        ServiceLoader.load(ServiceProviderContributor.class).forEach(contributor -> contributor.contribute(builder));
+        ServiceLoader.load(ServiceProviderContributor.class).forEach(contributor -> contributor.contribute(registrar));
     }
 
 }

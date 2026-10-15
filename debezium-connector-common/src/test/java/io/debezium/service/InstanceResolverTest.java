@@ -62,8 +62,8 @@ import io.debezium.schema.SchemaTopicNamingStrategy;
 import io.debezium.service.spi.InstanceResolver;
 import io.debezium.service.spi.ServiceProvider;
 import io.debezium.service.spi.ServiceProviderContributor;
+import io.debezium.service.spi.ServiceProviderRegistrar;
 import io.debezium.service.spi.ServiceRegistry;
-import io.debezium.service.spi.ServiceRegistryBuilder;
 import io.debezium.spi.converter.ConvertedField;
 import io.debezium.spi.converter.CustomConverter;
 import io.debezium.spi.topic.TopicNamingStrategy;
@@ -363,8 +363,8 @@ class InstanceResolverTest {
 
     public static class TestContributor implements ServiceProviderContributor {
         @Override
-        public void contribute(ServiceRegistryBuilder registryBuilder) {
-            registryBuilder.registerServiceProvider(new ServiceProvider<InstanceResolver>() {
+        public void contribute(ServiceProviderRegistrar registrar) {
+            registrar.registerServiceProvider(new ServiceProvider<InstanceResolver>() {
                 @Override
                 public Class<InstanceResolver> getServiceClass() {
                     return InstanceResolver.class;

@@ -9,12 +9,15 @@ import io.debezium.common.annotation.Incubating;
 import io.debezium.service.Service;
 
 /**
- * Builder contract for creating a {@link ServiceRegistry} instance.
+ * Contract given to a {@link ServiceProviderContributor} for registering service providers while the
+ * {@link ServiceRegistry} is being created. It deliberately exposes only registration, not service
+ * resolution, because the registry is not yet complete during contribution, and providers registered
+ * through it are tracked as contributed so that they take precedence over Debezium's defaults.
  *
  * @author Chris Cranford
  */
 @Incubating
-public interface ServiceRegistryBuilder {
+public interface ServiceProviderRegistrar {
     /**
      * Register a service provider with the service registry. A provider allows the construction
      * and resolution of services lazily as they're needed.
