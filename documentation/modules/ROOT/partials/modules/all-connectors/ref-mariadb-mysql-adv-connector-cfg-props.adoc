@@ -304,7 +304,10 @@ Default value::: `-1`
 Description:::
 Specifies how the connector responds after an operation that results in a retriable error, such as a connection error.
 +
-Set one of the following options:
+When xref:{context}-property-incremental-snapshot-allow-schema-changes[`incremental.snapshot.allow.schema.changes`] is enabled, this property also limits chunk retries after a column mismatch.
+These retries do not restart the connector and use a separate counter for each chunk.
++
+For connector restart attempts, the values have the following meanings:
 
 `-1`:::: No limit.
 The connector always restarts automatically, and retries the operation, regardless of the number of previous failures.
@@ -389,6 +392,19 @@ Default value::: `false`
 Description:::
 Specifies whether the connector allows schema changes during an incremental snapshot.
 When the value is set to `true`, the connector detects schema change during an incremental snapshot, and re-select a current chunk to avoid locking DDLs.
++
+If a query result contains a column that is absent from the connector's cached table definition, the connector discards the current chunk and retries it after closing the watermark window.
+The retry retains the current table and the last emitted snapshot key, allowing streaming to process the pending schema change before reading the chunk again.
+This behavior applies to both signal-table and read-only incremental snapshots.
+After the initial read fails, xref:{context}-property-errors-max-retries[`errors.max.retries`] limits the number of chunk retries in subsequent watermark windows.
+The default value, `-1`, allows unlimited retries; `0` disables retries; a positive value allows that many retries after the initial failure.
+When no retries remain, the connector reports an error through its task error handling instead of skipping the table.
+These chunk retries do not restart the connector and are counted separately from connector restart attempts.
+Windows spent verifying the schema do not consume retries.
+The retry count resets after a successful chunk read or when a new table or snapshot begins.
+The connector does not report the snapshot as complete while the table is waiting for its schema to catch up.
+If transaction cleanup or watermark-window closure fails during recovery, the connector reports the failure through its task error handling.
+When this property is `false`, a column mismatch continues to skip the affected table after transaction cleanup is attempted.
 +
 Changes to a primary key are not supported.
 Changing the primary during an incremental snapshot, can lead to incorrect results.

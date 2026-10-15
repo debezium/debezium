@@ -21,6 +21,7 @@ import io.debezium.pipeline.notification.NotificationService;
 import io.debezium.pipeline.signal.SignalPayload;
 import io.debezium.pipeline.signal.actions.snapshotting.SnapshotConfiguration;
 import io.debezium.pipeline.source.snapshot.incremental.AbstractIncrementalSnapshotChangeEventSource;
+import io.debezium.pipeline.source.snapshot.incremental.IncrementalSnapshotContext;
 import io.debezium.pipeline.source.spi.DataChangeEventListener;
 import io.debezium.pipeline.source.spi.SnapshotProgressListener;
 import io.debezium.pipeline.spi.OffsetContext;
@@ -165,12 +166,29 @@ public abstract class BinlogReadOnlyIncrementalSnapshotChangeEventSource<P exten
         return (BinlogReadOnlyIncrementalSnapshotContext<TableId>) context;
     }
 
+    @Override
+    protected boolean supportsSchemaMismatchRecovery() {
+        return true;
+    }
+
+    @Override
+    protected void postReadChunk(IncrementalSnapshotContext<TableId> context) {
+        // Binlog snapshot queries must not retain metadata locks between chunks, even if
+        // a watermark method returns without ending the transaction or a chunk exits early.
+        rollbackChunkTransaction(null);
+        super.postReadChunk(context);
+    }
+
     private void readUntilGtidChange(P partition, OffsetContext offsetContext) throws InterruptedException {
         String currentGtid = getContext().getCurrentGtid(offsetContext);
         while (getContext().snapshotRunning() && getContext().reachedHighWatermark(currentGtid)) {
             getContext().closeWindow();
             sendWindowEvents(partition, offsetContext);
             readChunk(partition, offsetContext);
+            if (isSchemaMismatchRetryPending()) {
+                // Yield to streaming so that a pending DDL event can refresh the table model.
+                return;
+            }
             if (currentGtid == null && getContext().watermarksChanged()) {
                 return;
             }
