@@ -20,7 +20,7 @@ public interface ServiceProviderContributor {
     /**
      * Contribute a custom service to the {@link ServiceRegistry}.
      *
-     * @param registryBuilder the service registry builder, never {@code null}
+     * @param registrar the registrar for contributed service providers, never {@code null}
      */
-    void contribute(ServiceRegistryBuilder registryBuilder);
+    void contribute(ServiceProviderRegistrar registrar);
 }
