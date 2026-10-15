@@ -612,6 +612,15 @@ public abstract class BinlogSnapshotChangeEventSource<P extends BinlogPartition,
     }
 
     @Override
+    protected void completed(SnapshotContext<P, O> snapshotContext) {
+        // the bean registry keeps the context for the connector's lifetime
+        final RelationalSnapshotContext<P, O> ctx = (RelationalSnapshotContext<P, O>) snapshotContext;
+        ctx.tables.clear();
+        ctx.capturedTables = Set.of();
+        ctx.capturedSchemaTables = Set.of();
+    }
+
+    @Override
     protected void createSchemaChangeEventsForTables(ChangeEventSourceContext sourceContext,
                                                      RelationalSnapshotContext<P, O> snapshotContext,
                                                      SnapshottingTask snapshottingTask)
@@ -643,6 +652,8 @@ public abstract class BinlogSnapshotChangeEventSource<P extends BinlogPartition,
         }
         finally {
             schemaHistory.stopBuffering();
+            // the source outlives the snapshot
+            schemaEvents.clear();
         }
 
         // Make schema available for snapshot source
