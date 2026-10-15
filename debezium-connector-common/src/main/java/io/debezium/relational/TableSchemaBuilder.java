@@ -7,6 +7,7 @@ package io.debezium.relational;
 
 import java.sql.Types;
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -36,6 +37,7 @@ import io.debezium.schema.FieldNameSelector.FieldNamer;
 import io.debezium.schema.SchemaFactory;
 import io.debezium.schema.SchemaNameAdjuster;
 import io.debezium.spi.topic.TopicNamingStrategy;
+import io.debezium.util.Interner;
 import io.debezium.util.Loggings;
 
 /**
@@ -444,7 +446,7 @@ public class TableSchemaBuilder {
                 }
             }
 
-            builder.field(fieldNamer.fieldNameFor(column), fieldBuilder.build());
+            builder.field(fieldNamer.fieldNameFor(column), Interner.intern(fieldBuilder.build()));
             if (LOGGER.isDebugEnabled()) {
                 LOGGER.debug("- field '{}' ({}{}) from column {}", column.name(), builder.isOptional() ? "OPTIONAL " : "",
                         fieldBuilder.type(),
@@ -467,7 +469,40 @@ public class TableSchemaBuilder {
      * @return the value conversion function; may not be null
      */
     protected ValueConverter createValueConverterFor(TableId tableId, Column column, Field fieldDefn) {
-        return customConverterRegistry.getValueConverter(tableId, column).orElse(valueConverterProvider.converter(column, fieldDefn));
+        final ValueConverter converter = valueConverterProvider.converter(column, fieldDefn);
+        final Optional<ValueConverter> custom = customConverterRegistry.getValueConverter(tableId, column);
+        if (converter == null || custom.isPresent()) {
+            return custom.orElse(converter);
+        }
+        if (!Interner.isEnabled()) {
+            return converter;
+        }
+        return Interner.intern(new SharedConverter(valueConverterProvider, column, fieldDefn.name(), fieldDefn.schema(), converter));
+    }
+
+    /**
+     * Lets identical columns share a converter; the converter is derived from the other components.
+     */
+    private record SharedConverter(ValueConverterProvider provider, Column column, String fieldName, Schema fieldSchema,
+            ValueConverter delegate)
+            implements
+                ValueConverter {
+
+        @Override
+        public Object convert(Object data) {
+            return delegate.convert(data);
+        }
+
+        @Override
+        public boolean equals(Object o) {
+            return o instanceof SharedConverter other && provider == other.provider && column.equals(other.column)
+                    && fieldName.equals(other.fieldName) && fieldSchema.equals(other.fieldSchema);
+        }
+
+        @Override
+        public int hashCode() {
+            return Objects.hash(System.identityHashCode(provider), column, fieldName, fieldSchema);
+        }
     }
 
     // parse default value of column.

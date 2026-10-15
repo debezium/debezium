@@ -108,6 +108,13 @@ public final class Interner {
     }
 
     /**
+     * Returns whether a pool is active on the current thread, i.e. the mode is {@link Mode#ON} or {@link Mode#SHARED}.
+     */
+    public static boolean isEnabled() {
+        return ACTIVE.get() != null;
+    }
+
+    /**
      * Clears all pools (both the active pool and the shared pool).
      * Primarily intended for testing.
      */
