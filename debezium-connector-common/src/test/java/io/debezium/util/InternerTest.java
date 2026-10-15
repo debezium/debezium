@@ -15,6 +15,7 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
+import io.debezium.doc.FixFor;
 import io.debezium.relational.history.MemoryOptimizationMode;
 import io.debezium.util.Interner.Mode;
 
@@ -29,6 +30,16 @@ public class InternerTest {
     public void resetInterner() {
         Interner.clear();
         Interner.activate(Mode.OFF);
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2874")
+    public void shouldReportWhetherAPoolIsActive() {
+        assertThat(Interner.isEnabled()).isTrue();
+        Interner.activate(Mode.OFF);
+        assertThat(Interner.isEnabled()).isFalse();
+        Interner.activate(Mode.ON);
+        assertThat(Interner.isEnabled()).isTrue();
     }
 
     @Test
