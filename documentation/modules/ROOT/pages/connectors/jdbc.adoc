@@ -62,6 +62,7 @@ The {prodname} JDBC connector provides the following features:
 * xref:jdbc-schema-evolution[Schema evolution]
 * xref:jdbc-quoting-case-sensitivity[JDBC quoting and case-sensitivity]
 * xref:jdbc-connection-idle-timeouts[Connection idle timeouts]
+* xref:jdbc-sink-batching-and-buffering[Batching and buffering]
 ifdef::community[]
 * xref:jdbc-singlestore-targets[SingleStore sink targets]
 * xref:jdbc-starrocks-targets[StarRocks sink targets]
@@ -341,7 +342,16 @@ Reduction buffering disabled::
 Retain the default value (`false`) of the xref:jdbc-property-use-reduction-buffer[`use.reduction.buffer`] property.
 Reduction by primary key can remove intermediate row states that are required to satisfy secondary unique constraints.
 
-Batch size set to `1`::
+Disable deduplication buffer::
+Disable deduplication buffer by setting xref:jdbc-property-buffer-mode[`buffer.mode`] to `passthrough`.
+Deduplication by primary key can remove intermediate row states that are required to satisfy secondary unique constraints.
+
+[NOTE]
+====
+Deduplication buffer was introduced with the sink framework (as the default) in {prodname} version 3.8.0.Alpha1 and newer versions, or when enabling the sink framework mode (`internal.enable.sces=true`) in older versions of {prodname}.
+====
+
+Batch size set to `1` (does not apply to all dialects)::
 Set the value of the xref:jdbc-property-batch-size[`batch.size`] property to `1` if any batches might contain multiple events for a primary key that is not defined in the destination table.
 +
 Some dialects and driver configurations process a batch in a single pass, rather than validating each row against the effects of the preceding rows in the same batch.
@@ -470,6 +480,38 @@ You can customize the Agroal connection pool by setting properties in the `hiber
 In the preceding example, the setting of the hibernate.agroal.idleValidation property configures the connection pool to perform idle timeout tests every 300 seconds.
 After you apply the configuration, the connection pool begins to assess unused connections every five minutes.
 
+// Type: concept
+// Title: Batching and buffering
+// ModuleID: debezium-jdbc-connector-batching-and-buffering
+[[jdbc-sink-batching-and-buffering]]
+=== Batching and buffering
+
+Starting with {prodname} version 3.8.0.Alpha1, the JDBC sink connector uses a shared sink connector framework that introduces a buffer and batch processing layer.
+The connector buffers incoming records and groups them into batches before writing them to the destination database.
+The xref:jdbc-property-batch-size[`batch.size`] property controls the maximum number of records per batch.
+
+The way records are buffered depends on two factors: whether the connector is configured with a primary key (xref:jdbc-property-primary-key-mode[`primary.key.mode`] is not `none`) and the xref:jdbc-property-buffer-mode[`buffer.mode`] setting.
+
+When a primary key is configured (keyed mode), the connector tracks records by their key within the buffer.
+In `deduplication` mode (the default), if multiple records share the same key within a batch window, the connector keeps only the most recent record for each key (last-write-wins).
+This reduces the number of SQL statements and avoids redundant writes when a row is updated multiple times in rapid succession.
+In `passthrough` mode, the connector preserves all records.
+When a duplicate key is encountered, the connector flushes the current buffer contents into a completed batch before adding the new record, ensuring that each individual batch contains no duplicate keys while still processing every event in `passthrough` mode.
+
+When no primary key is configured (keyless mode), each record receives a unique internal sequence number regardless of the batch mode setting.
+Because no two records share a key, no deduplication or batch splitting occurs, and both modes behave identically.
+Records with a `null` key value are treated as keyless.
+
+Truncate events receive special handling in both modes.
+In `deduplication` mode, a truncate event removes all pending records for the affected table from the buffer before the truncate is enqueued, because the downstream truncate will clear the table anyway.
+In `passthrough` mode, all pending records are flushed into completed batches before the truncate is enqueued, ensuring that pre-truncate data is written to the destination before the table is cleared.
+
+[NOTE]
+====
+This functionality is part of the sink connector framework introduced in {prodname} version 3.8.0.Alpha1.
+====
+
+
 ifdef::community[]
 [[jdbc-singlestore-targets]]
 === SingleStore sink targets
@@ -563,7 +605,7 @@ endif::community[]
 
 When the connector fails to write a record to the target database for a reason that is not transient, for example, because the record violates a constraint, by default the failure stops the connector task.
 
-When the shared change event sink framework is enabled (`internal.enable.sces` is set to `true`), the connector can instead route the failing records to the errant record reporter that the Kafka Connect runtime provides (link:https://cwiki.apache.org/confluence/display/KAFKA/KIP-610%3A+Error+Reporting+in+Sink+Connectors[KIP-610]).
+Starting with {prodname} 3.8.0.Alpha1 where the sink framework is enabled by default, or in {prodname} versions prior 3.8.0.Alpha1 when the shared change event sink framework is enabled (`internal.enable.sces` is set to `true`), the connector can route the failing records to the ErrantRecordReporter that the Kafka Connect runtime provides (see link:https://cwiki.apache.org/confluence/display/KAFKA/KIP-610%3A+Error+Reporting+in+Sink+Connectors[KIP-610]).
 When a batch fails with a non-transient error, the connector retries the records in the batch one at a time to isolate the failing records, routes only those records to the reporter, and continues to process the remaining records.
 Transient failures, such as failures that result from communication problems with the database, are not routed to the reporter; the connector retries them, based on the values of the xref:jdbc-property-flush-max-retries[`flush.max.retries`] and xref:jdbc-property-flush-retry-delay-ms[`flush.retry.delay.ms`] properties.
 
@@ -1936,6 +1978,15 @@ If a batch includes multiple events for the same primary key while `use.reductio
 
 The task then stops.
 
+[NOTE]
+====
+This issue is fixed in the sink connector framework mode (the default) in {prodname} version 3.8.0.Alpha1 and newer versions or when enabling the sink framework mode (`internal.enable.sces=true`) in older versions of {prodname}.
+
+In `deduplication` mode (xref:jdbc-property-buffer-mode[`buffer.mode=deduplication`]) it was working before,
+in `passthrough` mode (xref:jdbc-property-buffer-mode[`buffer.mode=passthrough`]) batches are split on duplicate keys and the issue does not occur.
+====
+
+
 For more information about how the connector's use of the UNNEST function improves write performance for PostgreSQL and CockroachDB databases, see the following resources:
 
 * link:https://www.tigerdata.com/blog/boosting-postgres-insert-performance["Boosting Postgres Insert Performance"^] in the Tiger Data blog.
@@ -1966,6 +2017,27 @@ Note that if you set `_consumer.max.poll.records_` in the Connect worker propert
 You can also configure the connector’s underlying consumer’s `_max.poll.records_` using `_consumer.override.max.poll.records_` in the connector configuration.
 ====
 
+
+|[[jdbc-property-buffer-mode]]<<jdbc-property-buffer-mode, `+buffer.mode+`>>
+|`deduplication`
+|Controls how records with the same key are handled within a batch.
+The following options are available:
+
+`deduplication`:: (Default) Records with the same key are deduplicated within a batch using last-write-wins semantics.
+If multiple events share the same key, only the most recent event is kept.
+When no primary key is configured (xref:jdbc-property-primary-key-mode[`primary.key.mode`] is `none`), each record receives a unique sequence number, so no deduplication occurs.
+`passthrough`:: All events are preserved without deduplication.
+When duplicate keys are encountered, the current batch contents are flushed before the new record is added, ensuring that each batch contains no duplicate keys.
+When no primary key is configured, each record receives a unique sequence number and the buffer behaves identically to `deduplication` mode.
+
+For more details on how batching works, see xref:jdbc-sink-batching-and-buffering[].
+
+[NOTE]
+====
+This property is part of the sink connector framework introduced in {prodname} version 3.8.0.Alpha1.
+====
+
+
 |[[jdbc-property-use-reduction-buffer]]<<jdbc-property-use-reduction-buffer, `+use.reduction.buffer+`>>
 |`false`
 |Specifies whether to enable the {prodname} JDBC connector's reduction buffer.
@@ -1980,6 +2052,23 @@ Do not enable the reduction buffer if destination constraints create dependencie
 Reduction by primary key can remove intermediate row states that are required to satisfy secondary unique constraints.
 
 To optimize query processing in a PostgreSQL sink database when the reduction buffer is enabled, you must also enable the database to execute the batched queries by adding the `reWriteBatchedInserts` parameter to the JDBC connection URL.
+
+[NOTE]
+====
+This property is deprecated and has no effect in {prodname} version 3.8.0.Alpha1 and newer versions or when using the sink framework mode. Replaced by xref:jdbc-property-buffer-mode[`buffer.mode`]
+====
+
+
+|[[jdbc-property-cloud-events-schema-name-pattern]]<<jdbc-property-cloud-events-schema-name-pattern, `+cloud.events.schema.name.pattern+`>>
+|`+.*CloudEvents\\.Envelope$+`
+|A regular expression pattern that the connector uses to identify CloudEvents messages by matching the schema name of incoming records.
+When a record's schema name matches this pattern, the connector treats the record as a CloudEvents envelope and extracts the payload accordingly.
+
+[NOTE]
+====
+This property is part of the sink connector framework introduced in {prodname} version 3.8.0.Alpha1.
+====
+
 
 |[[jdbc-property-field-include-list]]<<jdbc-property-field-include-list, `+field.include.list+`>>
 |_empty string_
