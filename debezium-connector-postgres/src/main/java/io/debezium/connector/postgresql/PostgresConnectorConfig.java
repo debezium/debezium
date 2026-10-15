@@ -11,7 +11,6 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.util.regex.Pattern;
 
 import org.apache.kafka.common.config.ConfigDef;
 import org.apache.kafka.common.config.ConfigDef.Importance;
@@ -51,9 +50,6 @@ import io.debezium.util.Strings;
 public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(PostgresConnectorConfig.class);
-
-    private static final String HEX_PLACEHOLDER_PREFIX = "hex:";
-    private static final Pattern HEX_OCTETS_PATTERN = Pattern.compile("([0-9a-fA-F]{2})*");
 
     /**
      * The set of predefined HStoreHandlingMode options or aliases
@@ -1152,7 +1148,7 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
             .withDescription("Specify the constant that will be provided by Debezium to indicate that " +
                     "the original value is a toasted value not provided by the database. " +
                     "If starts with 'hex:' prefix it is expected that the rest of the string represents hexadecimal encoded octets.")
-            .withValidation(PostgresConnectorConfig::validateUnavailableValuePlaceholder);
+            .withValidation(ConnectorConfigValidationHelper::validateHexPrefixedValue);
 
     public static final Field MONEY_FRACTION_DIGITS = Field.create("money.fraction.digits")
             .withDisplayName("Money fraction digits")
@@ -1536,8 +1532,8 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
     @Override
     public byte[] getUnavailableValuePlaceholder() {
         String placeholder = getConfig().getString(UNAVAILABLE_VALUE_PLACEHOLDER);
-        if (placeholder.startsWith(HEX_PLACEHOLDER_PREFIX)) {
-            return Strings.hexStringToByteArray(placeholder.substring(HEX_PLACEHOLDER_PREFIX.length()));
+        if (placeholder.startsWith(ConnectorConfigValidationHelper.HEX_PREFIX)) {
+            return Strings.hexStringToByteArray(placeholder.substring(ConnectorConfigValidationHelper.HEX_PREFIX.length()));
         }
         return placeholder.getBytes();
     }
@@ -1614,16 +1610,6 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
             }
         }
         return errors;
-    }
-
-    private static int validateUnavailableValuePlaceholder(Configuration config, Field field, Field.ValidationOutput problems) {
-        final String placeholder = config.getString(field);
-        if (placeholder != null && placeholder.startsWith(HEX_PLACEHOLDER_PREFIX)
-                && !HEX_OCTETS_PATTERN.matcher(placeholder.substring(HEX_PLACEHOLDER_PREFIX.length())).matches()) {
-            problems.accept(field, placeholder, "The value after the 'hex:' prefix must consist of an even number of hexadecimal characters");
-            return 1;
-        }
-        return 0;
     }
 
     private static int validateLogicalDecodingMessageExcludeList(Configuration config, Field field, Field.ValidationOutput problems) {
