@@ -97,8 +97,10 @@ public abstract class AbstractChunkQueryBuilder<T extends DataCollectionId>
         String projection = "*";
         if (connectorConfig.isColumnsFiltered()) {
             TableId tableId = table.id();
+            final List<Column> keyColumns = getKeyMapper().getKeyKolumns(table);
             projection = table.columns().stream()
-                    .filter(column -> columnFilter.matches(tableId.catalog(), tableId.schema(), tableId.table(), column.name()))
+                    .filter(column -> keyColumns.contains(column)
+                            || columnFilter.matches(tableId.catalog(), tableId.schema(), tableId.table(), column.name()))
                     .map(column -> jdbcConnection.quoteIdentifier(column.name()))
                     .collect(Collectors.joining(", "));
         }
