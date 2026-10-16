@@ -11,6 +11,10 @@ import java.util.Map;
 import io.debezium.annotation.ConnectorSpecific;
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.connector.mariadb.MariaDbConnector;
+import io.debezium.connector.mariadb.MariaDbConnectorConfig;
+import io.debezium.connector.mariadb.jdbc.MariaDbConnection;
+import io.debezium.connector.mariadb.jdbc.MariaDbConnectionConfiguration;
+import io.debezium.connector.mariadb.jdbc.MariaDbFieldReader;
 import io.debezium.pipeline.ChangeEventSourceCoordinator;
 import io.debezium.pipeline.EventDispatcher;
 import io.debezium.pipeline.signal.actions.SignalAction;
@@ -33,8 +37,11 @@ public class MariaDbSignalActionProvider implements SignalActionProvider {
                                                                             CommonConnectorConfig connectorConfig) {
 
         Map<String, SignalAction<P>> actions = new HashMap<>();
+        final MariaDbConnectorConfig mariaDbConfig = (MariaDbConnectorConfig) connectorConfig;
         actions.put(SetBinlogPositionSignal.NAME,
-                new SetBinlogPositionSignal<>(dispatcher));
+                new SetBinlogPositionSignal<>(dispatcher, () -> new MariaDbConnection(
+                        new MariaDbConnectionConfiguration(mariaDbConfig.getConfig()),
+                        new MariaDbFieldReader(mariaDbConfig))));
         return actions;
     }
 }

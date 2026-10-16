@@ -5,11 +5,15 @@
  */
 package io.debezium.connector.mysql.signal;
 
+import java.sql.SQLException;
+import java.util.function.Supplier;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import io.debezium.DebeziumException;
 import io.debezium.connector.mysql.MySqlOffsetContext;
+import io.debezium.connector.mysql.jdbc.MySqlConnection;
 import io.debezium.document.Document;
 import io.debezium.pipeline.EventDispatcher;
 import io.debezium.pipeline.signal.SignalPayload;
@@ -32,6 +36,9 @@ import io.debezium.util.Strings;
  * 2. For GTID:
  *    {"gtid_set": "server-uuid:1-100,other-uuid:1-50"}
  *
+ * For a binlog file/position the GTID set executed up to that position is resolved on the server and
+ * recorded with it, because in GTID mode the connector resumes from the GTID set alone.
+ *
  * After the signal is processed, the new offset is persisted via a heartbeat event.
  * The connector must be restarted externally for the new position to take effect.
  *
@@ -48,9 +55,11 @@ public class SetBinlogPositionSignal<P extends Partition> implements SignalActio
     private static final String GTID_SET_KEY = "gtid_set";
 
     private final EventDispatcher<P, ? extends DataCollectionId> eventDispatcher;
+    private final Supplier<MySqlConnection> connectionFactory;
 
-    public SetBinlogPositionSignal(EventDispatcher<P, ? extends DataCollectionId> eventDispatcher) {
+    public SetBinlogPositionSignal(EventDispatcher<P, ? extends DataCollectionId> eventDispatcher, Supplier<MySqlConnection> connectionFactory) {
         this.eventDispatcher = eventDispatcher;
+        this.connectionFactory = connectionFactory;
     }
 
     @Override
@@ -85,8 +94,12 @@ public class SetBinlogPositionSignal<P extends Partition> implements SignalActio
                 offsetContext.setCompletedGtidSet(gtidSet);
             }
             else {
-                LOGGER.info("Setting binlog position to file: {}, position: {}", binlogFilename, binlogPosition);
+                final String gtidSetAtPosition = resolveGtidSet(binlogFilename, binlogPosition);
+                LOGGER.info("Setting binlog position to file: {}, position: {}, GTID set: {}", binlogFilename, binlogPosition, gtidSetAtPosition);
                 offsetContext.setBinlogStartPoint(binlogFilename, binlogPosition);
+                // Replace, never keep, the previous GTID set: on restart it takes precedence over the file and position.
+                offsetContext.resetGtidSet();
+                offsetContext.setCompletedGtidSet(gtidSetAtPosition);
             }
 
             // Force a new offset commit to persist the change
@@ -104,6 +117,16 @@ public class SetBinlogPositionSignal<P extends Partition> implements SignalActio
         catch (Exception e) {
             LOGGER.error("Failed to process {} signal", NAME, e);
             throw new DebeziumException("Failed to set binlog position", e);
+        }
+    }
+
+    private String resolveGtidSet(String binlogFilename, long binlogPosition) {
+        try (MySqlConnection connection = connectionFactory.get()) {
+            // Without GTIDs the connector resumes from the file and position, so there is no set to resolve.
+            return connection.isGtidModeEnabled() ? connection.gtidSetAtPosition(binlogFilename, binlogPosition) : "";
+        }
+        catch (SQLException e) {
+            throw new DebeziumException("Failed to resolve the GTID set at the binlog position", e);
         }
     }
 
