@@ -46,6 +46,7 @@ public class AlterTableParserListener extends TableCommonParserListener {
 
     @Override
     public void enterAlterTable(MariaDBParser.AlterTableContext ctx) {
+        parser.binaryLiteralDefaults().clear();
         final TableId tableId = parser.parseQualifiedTableId(ctx.tableName().fullId());
         if (parser.databaseTables().forTable(tableId) == null) {
             LOG.debug("Ignoring ALTER TABLE statement for non-captured table {}", tableId);
@@ -63,6 +64,9 @@ public class AlterTableParserListener extends TableCommonParserListener {
     public void exitAlterTable(MariaDBParser.AlterTableContext ctx) {
         parser.runIfNotNull(() -> {
             listeners.remove(columnDefinitionListener);
+            // The character set of the table is known now, and applies to the columns that do not declare one
+            parser.binaryLiteralDefaults().convert(tableEditor, parser.charsetForTable(tableEditor.tableId()),
+                    DefaultValueParserListener.javaEncodings(parser));
             parser.databaseTables().overwriteTable(tableEditor.create());
             parser.signalAlterTable(tableEditor.tableId(), null, ctx.getParent());
         }, tableEditor);
@@ -182,6 +186,7 @@ public class AlterTableParserListener extends TableCommonParserListener {
             String newColumnName = parser.parseName(ctx.newColumn);
             if (newColumnName != null && !column.name().equals(newColumnName)) {
                 tableEditor.renameColumn(column.name(), newColumnName);
+                parser.binaryLiteralDefaults().rename(column.name(), newColumnName);
             }
 
             if (ctx.FIRST() != null) {
@@ -267,6 +272,7 @@ public class AlterTableParserListener extends TableCommonParserListener {
                 }
                 else if (ctx.DROP() != null) {
                     defaultValueColumnEditor.unsetDefaultValueExpression();
+                    parser.binaryLiteralDefaults().remove(column.name());
                 }
             }
         }, tableEditor);
@@ -343,6 +349,7 @@ public class AlterTableParserListener extends TableCommonParserListener {
             String newColumnName = parser.parseName(ctx.newColumn);
             if (newColumnName != null && !column.name().equals(newColumnName)) {
                 tableEditor.renameColumn(column.name(), newColumnName);
+                parser.binaryLiteralDefaults().rename(column.name(), newColumnName);
             }
             listeners.remove(columnDefinitionListener);
         }, tableEditor, columnDefinitionListener);
