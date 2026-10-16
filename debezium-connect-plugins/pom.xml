@@ -18,6 +18,10 @@
             <groupId>io.debezium</groupId>
             <artifactId>debezium-connector-common</artifactId>
         </dependency>
+        <dependency>
+            <groupId>io.debezium</groupId>
+            <artifactId>debezium-storage-api</artifactId>
+        </dependency>
 
         <!-- Kafka Connect API -->
         <dependency>
