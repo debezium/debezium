@@ -488,6 +488,15 @@ For SingleStore targets, {prodname} maps {prodname} `io.debezium.data.Json` logi
 The connector maps {prodname} `io.debezium.data.geometry.Geometry` and `io.debezium.data.geometry.Geography` logical values to the SingleStore `GEOGRAPHY` column type, and `io.debezium.data.geometry.Point` logical values to the SingleStore `GEOGRAPHYPOINT` column type.
 SingleStore supports a subset of WKT geospatial values.
 The connector writes `POINT`, `LINESTRING`, and `POLYGON` WKB values to SingleStore as WKT strings.
+SingleStore supports multiple polygon regions and interior holes within a single `POLYGON` value.
+The connector uses this capability to write `MULTIPOLYGON` WKB values as SingleStore `POLYGON` WKT strings containing all exterior and interior rings.
+
+SingleStore `GEOGRAPHY` coordinates have a precision of eight decimal places (`1e-8` degrees).
+When a value is inserted, SingleStore truncates additional decimal places rather than rounding them.
+This truncation can cause nearby vertices to coincide or otherwise make a polygon invalid.
+SingleStore validates polygons on insertion and rejects invalid values, including those that were valid before truncation.
+The connector does not repair geometries before writing them to SingleStore.
+For more information about the `GEOGRAPHY` type, see the link:https://docs.singlestore.com/db/v9.0/reference/sql-reference/data-types/geospatial-types/[SingleStore geospatial types documentation^].
 
 [[jdbc-starrocks-targets]]
 === StarRocks sink targets
@@ -989,7 +998,8 @@ For example, the connector uses the following mappings:
 * `io.debezium.data.Xml` logical values are written to `text` columns because CockroachDB has no XML type.
 * Geometry, geography, and point values are written to the built-in CockroachDB `geometry` and `geography` types without a PostGIS extension schema.
 * `io.debezium.data.FloatVector` logical values are written to `vector` columns; sparse double vectors are not supported.
-The SingleStore dialect writes supported `POINT`, `LINESTRING`, and `POLYGON` WKB values as WKT strings.
+The SingleStore dialect writes `POINT`, `LINESTRING`, and `POLYGON` WKB values as WKT strings.
+It also writes `MULTIPOLYGON` WKB values as SingleStore `POLYGON` WKT strings, using SingleStore's support for multiple polygon regions and interior holes in a single `POLYGON` value.
 
 For StarRocks targets, see xref:jdbc-starrocks-targets[] for the dialect-specific type mappings, including the string-based representation that the dialect uses for time types.
 endif::community[]

@@ -19,6 +19,7 @@ import io.debezium.sink.valuebinding.ValueBindDescriptor;
 import io.debezium.spatial.GeometryBytes;
 
 import mil.nga.wkb.geom.LineString;
+import mil.nga.wkb.geom.MultiPolygon;
 import mil.nga.wkb.geom.Point;
 import mil.nga.wkb.geom.Polygon;
 import mil.nga.wkb.io.ByteReader;
@@ -79,12 +80,26 @@ class GeometryType extends AbstractGeometryType {
         if (geometry instanceof Polygon polygon) {
             return toWkt(polygon);
         }
+        if (geometry instanceof MultiPolygon multiPolygon) {
+            if (multiPolygon.getPolygons().isEmpty()) {
+                throw unsupportedGeometry("MULTIPOLYGON EMPTY");
+            }
+            final List<LineString> rings = multiPolygon.getPolygons().stream()
+                    .flatMap(polygon -> {
+                        if (polygon.getRings().isEmpty()) {
+                            throw unsupportedGeometry("POLYGON EMPTY");
+                        }
+                        return polygon.getRings().stream();
+                    })
+                    .collect(Collectors.toList());
+            return "POLYGON (" + rings.stream().map(this::ring).collect(Collectors.joining(", ")) + ")";
+        }
         throw unsupportedGeometry(geometry.getGeometryType().getName());
     }
 
     protected ConnectException unsupportedGeometry(String geometryType) {
         return new ConnectException(String.format(
-                "SingleStore dialect supports only POINT, LINESTRING, and POLYGON geospatial WKB types, but found '%s'.",
+                "SingleStore dialect supports only POINT, LINESTRING, POLYGON, and MULTIPOLYGON geospatial WKB types, but found '%s'.",
                 geometryType));
     }
 

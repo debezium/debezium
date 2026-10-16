@@ -179,6 +179,50 @@ public class JdbcSinkColumnTypeMappingIT extends AbstractJdbcSinkTest {
         });
     }
 
+    @ParameterizedTest
+    @ArgumentsSource(SinkRecordFactoryArgumentsProvider.class)
+    @FixFor("DBZ-2880")
+    public void testShouldWriteMultiPolygon(SinkRecordFactory factory) throws Exception {
+        final Map<String, String> properties = getDefaultSinkConfig();
+        properties.put(JdbcSinkConnectorConfig.SCHEMA_EVOLUTION, JdbcSinkConnectorConfig.SchemaEvolutionMode.NONE.getValue());
+        properties.put(JdbcSinkConnectorConfig.PRIMARY_KEY_MODE, JdbcSinkConnectorConfig.PrimaryKeyMode.RECORD_KEY.getValue());
+        properties.put(JdbcSinkConnectorConfig.INSERT_MODE, JdbcSinkConnectorConfig.InsertMode.UPSERT.getValue());
+        startSinkConnector(properties);
+        assertSinkConnectorIsRunning();
+
+        // Two independent polygons: the first has one hole, and the second has two holes.
+        final byte[] wkb = Base64.getDecoder().decode(
+                "AQYAAAACAAAAAQMAAAACAAAABQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQQAAAAAAAAAAAAAAAAAAAEEAAAAAAAAAQQAAAAAAAAAAAAAAAAAAAEEAAAAAA" +
+                        "AAAAAAAAAAAAAAAABQAAAAAAAAAAAPA/AAAAAAAA8D8AAAAAAADwPwAAAAAAAABAAAAAAAAAAEAAAAAAAAAAQAAAAAAAAABAAAAAAAAA8D8AAAAAAADwPwAA" +
+                        "AAAAAPA/AQMAAAADAAAABQAAAAAAAAAAABhAAAAAAAAAAAAAAAAAAAAoQAAAAAAAAAAAAAAAAAAAKEAAAAAAAAAQQAAAAAAAABhAAAAAAAAAEEAAAAAAAAAY" +
+                        "QAAAAAAAAAAABQAAAAAAAAAAABxAAAAAAAAA8D8AAAAAAAAcQAAAAAAAAABAAAAAAAAAIEAAAAAAAAAAQAAAAAAAACBAAAAAAAAA8D8AAAAAAAAcQAAAAAAA" +
+                        "APA/BQAAAAAAAAAAACJAAAAAAAAAAEAAAAAAAAAiQAAAAAAAAAhAAAAAAAAAJEAAAAAAAAAIQAAAAAAAACRAAAAAAAAAAEAAAAAAAAAiQAAAAAAAAABA");
+        final JdbcKafkaSinkRecord record = factory.createRecordWithSchemaValue(
+                topicName("server2", "schema", randomTableName()), (byte) 1, "geometry_data", Geometry.schema(),
+                Geometry.createValue(Geometry.schema(), wkb, 4326), new JdbcSinkConnectorConfig(properties));
+        final String destinationTable = destinationTableName(record);
+        getSink().execute(String.format(
+                "CREATE ROWSTORE TABLE %s (id tinyint NOT NULL, geometry_data geography, PRIMARY KEY(id))", destinationTable));
+        consume(record);
+        getSink().assertRows(destinationTable, rs -> {
+            assertThat(rs.getObject("geometry_data")).isNotNull();
+            try (var statement = rs.getStatement().getConnection().createStatement();
+                    var checks = statement.executeQuery("SELECT GEOGRAPHY_CONTAINS(geometry_data, 'POINT(3 3)'), " +
+                            "GEOGRAPHY_CONTAINS(geometry_data, 'POINT(11 1)'), " +
+                            "GEOGRAPHY_CONTAINS(geometry_data, 'POINT(1.5 1.5)'), " +
+                            "GEOGRAPHY_CONTAINS(geometry_data, 'POINT(7.5 1.5)'), " +
+                            "GEOGRAPHY_CONTAINS(geometry_data, 'POINT(9.5 2.5)') FROM " + destinationTable)) {
+                assertThat(checks.next()).isTrue();
+                assertThat(checks.getBoolean(1)).isTrue();
+                assertThat(checks.getBoolean(2)).isTrue();
+                assertThat(checks.getBoolean(3)).isFalse();
+                assertThat(checks.getBoolean(4)).isFalse();
+                assertThat(checks.getBoolean(5)).isFalse();
+            }
+            return null;
+        });
+    }
+
     private static String normalizeVector(String value) {
         if (value == null) {
             return null;
