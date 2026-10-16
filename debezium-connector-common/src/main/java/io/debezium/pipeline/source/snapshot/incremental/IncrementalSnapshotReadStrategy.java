@@ -77,6 +77,14 @@ public interface IncrementalSnapshotReadStrategy<P extends Partition, T extends 
     }
 
     /**
+     * Ends a data collection in the snapshot context and closes the snapshot when it was the last one.
+     */
+    @FunctionalInterface
+    interface CollectionCompletion<P extends Partition, T extends DataCollectionId> {
+        void completed(T dataCollectionId, P partition, OffsetContext offsetContext);
+    }
+
+    /**
      * The watermark window a round of chunks is read in.
      */
     interface WatermarkWindow<P extends Partition> {

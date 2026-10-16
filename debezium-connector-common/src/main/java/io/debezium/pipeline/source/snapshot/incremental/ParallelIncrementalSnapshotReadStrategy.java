@@ -47,6 +47,7 @@ public class ParallelIncrementalSnapshotReadStrategy<P extends Partition, T exte
     private final ParallelIncrementalSnapshotCoordinator.WorkerFactory<P, T> workerFactory;
     private final WatermarkWindow<P> watermarkWindow;
     private final WindowSink<P, T> sink;
+    private final CollectionCompletion<P, T> collectionCompletion;
     private final SnapshotProgressListener<P> progressListener;
     private final NotificationService<P, ? extends OffsetContext> notificationService;
     private long lastPoolFailureLogMs;
@@ -55,12 +56,14 @@ public class ParallelIncrementalSnapshotReadStrategy<P extends Partition, T exte
                                                    ParallelIncrementalSnapshotCoordinator.WorkerFactory<P, T> workerFactory,
                                                    WatermarkWindow<P> watermarkWindow,
                                                    WindowSink<P, T> sink,
+                                                   CollectionCompletion<P, T> collectionCompletion,
                                                    SnapshotProgressListener<P> progressListener,
                                                    NotificationService<P, ? extends OffsetContext> notificationService) {
         this.coordinator = coordinator;
         this.workerFactory = workerFactory;
         this.watermarkWindow = watermarkWindow;
         this.sink = sink;
+        this.collectionCompletion = collectionCompletion;
         this.progressListener = progressListener;
         this.notificationService = notificationService;
     }
@@ -184,7 +187,7 @@ public class ParallelIncrementalSnapshotReadStrategy<P extends Partition, T exte
                     .notifyTableScanCompleted(context, partition, offsetContext, rowsRead, SUCCEEDED, tableId);
             coordinator.markTableComplete(tableId);
             coordinator.removeWindowBuffer(tableId);
-            context.nextDataCollection();
+            collectionCompletion.completed(tableId, partition, offsetContext);
         }
 
         if (!coordinator.hasActiveTables()) {

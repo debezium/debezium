@@ -142,7 +142,7 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<P extends Par
                 config.getIncrementalSnapshotPoolReleaseDelayMs());
         LOGGER.info("Incremental snapshot multi-threading enabled with {} threads", threads);
         return new ParallelIncrementalSnapshotReadStrategy<>(coordinator, createWorkerFactory(), watermarkWindow(),
-                this::sendEventForDataCollection, progressListener, notificationService);
+                this::sendEventForDataCollection, this::dataCollectionCompleted, progressListener, notificationService);
     }
 
     private IncrementalSnapshotReadStrategy<P, T> createSequentialReadStrategy() {
@@ -604,6 +604,15 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<P extends Par
 
     private void nextDataCollection(P partition, OffsetContext offsetContext) {
         context.nextDataCollection();
+        completeSnapshotIfDone(partition, offsetContext);
+    }
+
+    private void dataCollectionCompleted(T dataCollectionId, P partition, OffsetContext offsetContext) {
+        context.removeDataCollectionFromSnapshot(dataCollectionId.identifier());
+        completeSnapshotIfDone(partition, offsetContext);
+    }
+
+    private void completeSnapshotIfDone(P partition, OffsetContext offsetContext) {
         if (!context.snapshotRunning()) {
             progressListener.snapshotCompleted(partition);
             notificationService.incrementalSnapshotNotificationService().notifyCompleted(context, partition, offsetContext);
