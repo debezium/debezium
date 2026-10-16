@@ -19,8 +19,13 @@ import org.junit.jupiter.api.Test;
 
 import io.debezium.data.geometry.Geography;
 import io.debezium.data.geometry.Geometry;
+import io.debezium.doc.FixFor;
 
+import mil.nga.wkb.geom.LineString;
 import mil.nga.wkb.geom.MultiPoint;
+import mil.nga.wkb.geom.MultiPolygon;
+import mil.nga.wkb.geom.Point;
+import mil.nga.wkb.geom.Polygon;
 import mil.nga.wkb.io.ByteWriter;
 import mil.nga.wkb.io.WkbGeometryWriter;
 
@@ -96,6 +101,61 @@ class GeometryTypeTest {
         assertThatThrownBy(() -> GeometryType.INSTANCE.bind(1, Geometry.schema(), Geometry.createValue(Geometry.schema(), write(multiPoint), 4326)))
                 .isInstanceOf(ConnectException.class)
                 .hasMessageContaining("MULTIPOINT");
+    }
+
+    @Test
+    @DisplayName("Should bind multipolygon with holes as SingleStore polygon WKT")
+    @FixFor("DBZ-2880")
+    void testBindMultiPolygonWithHoles() throws Exception {
+        final var multiPolygon = new MultiPolygon(false, false);
+        multiPolygon.addPolygon(polygon(
+                new double[][]{ { 0, 0 }, { 4, 0 }, { 4, 4 }, { 0, 4 }, { 0, 0 } },
+                new double[][]{ { 1, 1 }, { 1, 2 }, { 2, 2 }, { 2, 1 }, { 1, 1 } }));
+        multiPolygon.addPolygon(polygon(
+                new double[][]{ { 6, 0 }, { 12, 0 }, { 12, 4 }, { 6, 4 }, { 6, 0 } },
+                new double[][]{ { 7, 1 }, { 7, 2 }, { 8, 2 }, { 8, 1 }, { 7, 1 } },
+                new double[][]{ { 9, 2 }, { 9, 3 }, { 10, 3 }, { 10, 2 }, { 9, 2 } }));
+        assertThat(bind(multiPolygon)).isEqualTo(
+                "POLYGON ((0 0, 4 0, 4 4, 0 4, 0 0), (1 1, 1 2, 2 2, 2 1, 1 1), " +
+                        "(6 0, 12 0, 12 4, 6 4, 6 0), (7 1, 7 2, 8 2, 8 1, 7 1), (9 2, 9 3, 10 3, 10 2, 9 2))");
+    }
+
+    @Test
+    @DisplayName("Should bind a single polygon in multipolygon WKB")
+    @FixFor("DBZ-2880")
+    void testBindSinglePolygonInMultiPolygon() throws Exception {
+        final var multiPolygon = new MultiPolygon(false, false);
+        multiPolygon.addPolygon(polygon(new double[][]{ { 0, 0 }, { 2, 0 }, { 2, 2 }, { 0, 0 } }));
+        assertThat(bind(multiPolygon)).isEqualTo("POLYGON ((0 0, 2 0, 2 2, 0 0))");
+    }
+
+    @Test
+    @DisplayName("Should reject empty multipolygon and polygon components")
+    @FixFor("DBZ-2880")
+    void testRejectEmptyMultiPolygonAndComponents() {
+        final var multiPolygon = new MultiPolygon(false, false);
+        assertThatThrownBy(() -> bind(multiPolygon))
+                .isInstanceOf(ConnectException.class).hasMessageContaining("MULTIPOLYGON EMPTY");
+        multiPolygon.addPolygon(new Polygon(false, false));
+        assertThatThrownBy(() -> bind(multiPolygon))
+                .isInstanceOf(ConnectException.class).hasMessageContaining("POLYGON EMPTY");
+    }
+
+    private static Polygon polygon(double[][]... rings) {
+        final var polygon = new Polygon(false, false);
+        for (var coordinates : rings) {
+            final var ring = new LineString(false, false);
+            for (var coordinate : coordinates) {
+                ring.addPoint(new Point(coordinate[0], coordinate[1]));
+            }
+            polygon.addRing(ring);
+        }
+        return polygon;
+    }
+
+    private static String bind(MultiPolygon multiPolygon) throws IOException {
+        return (String) GeometryType.INSTANCE.bind(1, Geometry.schema(),
+                Geometry.createValue(Geometry.schema(), write(multiPolygon), 4326)).get(0).getValue();
     }
 
     private static byte[] write(mil.nga.wkb.geom.Geometry geometry) throws IOException {
