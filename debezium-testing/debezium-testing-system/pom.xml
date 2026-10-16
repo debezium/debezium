@@ -19,8 +19,7 @@
     <version.strimzi>0.40.0</version.strimzi>
     <version.strimzi.kafka>${version.kafka}</version.strimzi.kafka>
     <version.assertj>3.27.7</version.assertj>
-    <version.apicurio>3.2.5</version.apicurio>
-    <version.apicurio.model>3.2.5</version.apicurio.model>
+    <version.apicurio.model>${version.apicurio}</version.apicurio.model>
     <version.fixture5>0.1.0</version.fixture5>
     <version.debezium.jdbc.tests>2.6.0.Beta1</version.debezium.jdbc.tests>
 
@@ -71,7 +70,7 @@
     <!--Strimzi configuration-->
     <strimzi.operator.channel>stable</strimzi.operator.channel>
     <strimzi.operator.connectors>true</strimzi.operator.connectors>
-    <strimzi.operator.version>0.51.0</strimzi.operator.version>
+    <strimzi.operator.version>1.3.0</strimzi.operator.version>
     <strimzi.kc.build>true</strimzi.kc.build>
     <strimzi.kc.log.level.dbz>DEBUG</strimzi.kc.log.level.dbz>
     <force.kraft>true</force.kraft>
