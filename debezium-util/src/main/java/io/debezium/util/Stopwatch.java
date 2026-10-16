@@ -425,32 +425,40 @@ public abstract class Stopwatch {
 
             @Override
             public Stopwatch start() {
-                started.getAndUpdate(existing -> {
-                    if (existing == 0L) {
-                        // Has not yet been started ...
-                        existing = System.nanoTime();
+                while (true) {
+                    final long existing = started.get();
+                    if (existing != 0L) {
+                        break;
+                    }
+                    long now = System.nanoTime();
+                    if (now == 0L) {
+                        now = 1L;
+                    }
+                    if (started.compareAndSet(0L, now)) {
                         if (uponStart != null) {
                             uponStart.run();
                         }
+                        break;
                     }
-                    return existing;
-                });
+                }
                 return this;
             }
 
             @Override
             public Stopwatch stop() {
-                started.getAndUpdate(existing -> {
-                    if (existing != 0L) {
-                        // Is running but has not yet been stopped ...
+                while (true) {
+                    final long existing = started.get();
+                    if (existing == 0L) {
+                        break;
+                    }
+                    if (started.compareAndSet(existing, 0L)) {
                         duration.add(Duration.ofNanos(System.nanoTime() - existing));
                         if (uponStop != null) {
                             uponStop.run();
                         }
-                        return 0L;
+                        break;
                     }
-                    return existing;
-                });
+                }
                 return this;
             }
 
