@@ -9,11 +9,13 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.CALLS_REAL_METHODS;
 import static org.mockito.Mockito.mock;
 
+import java.lang.reflect.Field;
 import java.util.Set;
 
 import org.junit.jupiter.api.Test;
 
 import io.debezium.doc.FixFor;
+import io.debezium.function.BlockingConsumer;
 import io.debezium.relational.RelationalSnapshotChangeEventSource.RelationalSnapshotContext;
 import io.debezium.relational.Table;
 import io.debezium.relational.TableId;
@@ -32,6 +34,28 @@ public class BinlogSnapshotChangeEventSourceTest {
         ctx.capturedSchemaTables = Set.of(id);
 
         source.completed(ctx);
+
+        assertThat(ctx.tables.size()).isZero();
+        assertThat(ctx.capturedTables).isEmpty();
+        assertThat(ctx.capturedSchemaTables).isEmpty();
+    }
+
+    @SuppressWarnings({ "unchecked", "rawtypes" })
+    @Test
+    @FixFor("debezium/dbz#2874")
+    public void shouldReleaseTablesWhenSnapshotAborts() throws Exception {
+        final BinlogSnapshotChangeEventSource source = mock(BinlogSnapshotChangeEventSource.class, CALLS_REAL_METHODS);
+        final Field lastEventProcessor = BinlogSnapshotChangeEventSource.class.getDeclaredField("lastEventProcessor");
+        lastEventProcessor.setAccessible(true);
+        lastEventProcessor.set(source, (BlockingConsumer) processor -> {
+        });
+        final RelationalSnapshotContext ctx = (RelationalSnapshotContext) source.prepare(mock(BinlogPartition.class), false);
+        final TableId id = new TableId("db", null, "t");
+        ctx.tables.overwriteTable(Table.editor().tableId(id).create());
+        ctx.capturedTables = Set.of(id);
+        ctx.capturedSchemaTables = Set.of(id);
+
+        source.aborted(ctx);
 
         assertThat(ctx.tables.size()).isZero();
         assertThat(ctx.capturedTables).isEmpty();
