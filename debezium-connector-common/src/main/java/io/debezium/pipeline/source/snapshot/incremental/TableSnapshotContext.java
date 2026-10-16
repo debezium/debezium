@@ -174,6 +174,11 @@ public class TableSnapshotContext<T extends DataCollectionId> implements Increme
         return !completed;
     }
 
+    /**
+     * No-op: a worker does not track the key of each dispatched row. Its restart point is
+     * {@link #safeResumePosition()}, advanced by {@link #markChunkDrained()} once the table's window buffer
+     * has been fully dispatched, and this context is never persisted through {@link #store}.
+     */
     @Override
     public void sendEvent(Object[] keyFromRow) {
     }
