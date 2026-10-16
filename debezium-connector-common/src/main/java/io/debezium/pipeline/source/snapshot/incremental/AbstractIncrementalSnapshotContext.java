@@ -24,6 +24,7 @@ import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Function;
 import java.util.stream.Collectors;
+import java.util.function.Supplier;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -37,6 +38,7 @@ import io.debezium.annotation.NotThreadSafe;
 import io.debezium.pipeline.signal.actions.snapshotting.AdditionalCondition;
 import io.debezium.relational.Table;
 import io.debezium.relational.TableId;
+import io.debezium.spi.schema.DataCollectionId;
 import io.debezium.util.HexConverter;
 import io.debezium.util.Strings;
 
@@ -121,7 +123,11 @@ public class AbstractIncrementalSnapshotContext<T> implements IncrementalSnapsho
     private final AtomicBoolean paused = new AtomicBoolean(false);
     private final LinkedBlockingQueue<String> dataCollectionsToStop = new LinkedBlockingQueue<>();
 
-    private volatile ParallelIncrementalSnapshotCoordinator<?, ?> parallelCoordinator;
+    /**
+     * Supplies the resume state of the tables a parallel snapshot is reading, registered by the read strategy;
+     * {@code null} while the snapshot reads sequentially.
+     */
+    private volatile Supplier<Map<T, PerTableStateSnapshot>> perTableStateSource;
     private Map<T, PerTableStateSnapshot> restoredPerTableState = Map.of();
 
     public AbstractIncrementalSnapshotContext(boolean useCatalogBeforeSchema) {
@@ -237,9 +243,9 @@ public class AbstractIncrementalSnapshotContext<T> implements IncrementalSnapsho
         }
         offset.put(SnapshotDataCollection.DATA_COLLECTIONS_TO_SNAPSHOT_KEY, snapshotDataCollection.dataCollectionsAsJsonString());
         offset.put(CORRELATION_ID, correlationId);
-        final var coordinator = parallelCoordinator;
-        if (coordinator != null) {
-            final Map<?, PerTableStateSnapshot> perTableState = coordinator.snapshotPerTableState();
+        final var source = perTableStateSource;
+        if (source != null) {
+            final Map<T, PerTableStateSnapshot> perTableState = source.get();
             if (!perTableState.isEmpty()) {
                 offset.put(PER_TABLE_STATE_KEY, perTableStateAsJsonString(perTableState));
             }
@@ -461,8 +467,11 @@ public class AbstractIncrementalSnapshotContext<T> implements IncrementalSnapsho
         }
     }
 
-    public void setParallelCoordinator(ParallelIncrementalSnapshotCoordinator<?, ?> coordinator) {
-        this.parallelCoordinator = coordinator;
+    /**
+     * Registers the source of the per-table resume state that {@link #store} persists alongside the collection list.
+     */
+    public void perTableStateSource(Supplier<Map<T, PerTableStateSnapshot>> source) {
+        this.perTableStateSource = source;
     }
 
     public Map<T, PerTableStateSnapshot> consumeRestoredPerTableState() {
@@ -471,12 +480,12 @@ public class AbstractIncrementalSnapshotContext<T> implements IncrementalSnapsho
         return restored;
     }
 
-    private String perTableStateAsJsonString(Map<?, PerTableStateSnapshot> state) {
+    private String perTableStateAsJsonString(Map<T, PerTableStateSnapshot> state) {
         try {
             final List<LinkedHashMap<String, String>> list = new ArrayList<>(state.size());
-            for (Map.Entry<?, PerTableStateSnapshot> entry : state.entrySet()) {
+            for (Map.Entry<T, PerTableStateSnapshot> entry : state.entrySet()) {
                 final LinkedHashMap<String, String> item = new LinkedHashMap<>();
-                item.put(PER_TABLE_STATE_FIELD_ID, ((TableId) entry.getKey()).toString());
+                item.put(PER_TABLE_STATE_FIELD_ID, ((DataCollectionId) entry.getKey()).identifier());
                 item.put(PER_TABLE_STATE_FIELD_CHUNK_POS,
                         entry.getValue().chunkPosition() != null
                                 ? arrayToSerializedString(entry.getValue().chunkPosition())
@@ -503,7 +512,7 @@ public class AbstractIncrementalSnapshotContext<T> implements IncrementalSnapsho
                 final String id = item.get(PER_TABLE_STATE_FIELD_ID);
                 final String chunkPos = item.get(PER_TABLE_STATE_FIELD_CHUNK_POS);
                 final String maxKey = item.get(PER_TABLE_STATE_FIELD_MAX_KEY);
-                final T key = (T) TableId.parse(id, useCatalogBeforeSchema);
+                final T key = (T) getPredicateBasedTableIdForString(id);
                 final Object[] chunk = chunkPos != null
                         ? serializedStringToArray(PER_TABLE_STATE_FIELD_CHUNK_POS, chunkPos)
                         : null;

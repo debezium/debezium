@@ -46,6 +46,7 @@ public class ParallelIncrementalSnapshotReadStrategy<P extends Partition, T exte
     private final CollectionCompletion<P, T> collectionCompletion;
     private final SnapshotProgressListener<P> progressListener;
     private final NotificationService<P, ? extends OffsetContext> notificationService;
+    private IncrementalSnapshotContext<T> stateSourceContext;
 
     public ParallelIncrementalSnapshotReadStrategy(ParallelIncrementalSnapshotCoordinator<P, T> coordinator,
                                                    ParallelIncrementalSnapshotCoordinator.WorkerFactory<P, T> workerFactory,
@@ -104,8 +105,9 @@ public class ParallelIncrementalSnapshotReadStrategy<P extends Partition, T exte
     @Override
     @SuppressWarnings("unchecked")
     public boolean readRound(IncrementalSnapshotContext<T> context, P partition, OffsetContext offsetContext) throws InterruptedException {
-        if (context instanceof AbstractIncrementalSnapshotContext<?>) {
-            ((AbstractIncrementalSnapshotContext<T>) context).setParallelCoordinator(coordinator);
+        if (context != stateSourceContext && context instanceof AbstractIncrementalSnapshotContext<?>) {
+            ((AbstractIncrementalSnapshotContext<T>) context).perTableStateSource(coordinator::snapshotPerTableState);
+            stateSourceContext = context;
         }
         try {
             coordinator.ensureInitializedFromContext(context, workerFactory);
