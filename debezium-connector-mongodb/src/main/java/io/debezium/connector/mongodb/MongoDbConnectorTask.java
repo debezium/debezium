@@ -39,7 +39,6 @@ import io.debezium.connector.common.CdcSourceTaskContext;
 import io.debezium.connector.common.DebeziumHeaderProducer;
 import io.debezium.connector.mongodb.MongoDbConnectorConfig.CaptureScope;
 import io.debezium.connector.mongodb.MongoDbConnectorConfig.CursorPipelineOrder;
-import io.debezium.connector.mongodb.MongoDbConnectorConfig.FiltersMatchMode;
 import io.debezium.connector.mongodb.connection.ConnectionStrings;
 import io.debezium.connector.mongodb.connection.MongoDbConnection;
 import io.debezium.connector.mongodb.connection.MongoDbConnectionContext;
@@ -138,14 +137,14 @@ public final class MongoDbConnectorTask extends BaseSourceTask<MongoDbPartition,
             final var captureScope = connectorConfig.getCaptureScope();
             if ((connectorConfig.getCaptureModePreImage().isRequired() || connectorConfig.getCaptureModePostImage().isRequired())
                     && (captureScope == CaptureScope.DEPLOYMENT || captureScope == CaptureScope.DATABASE)
-                    && connectorConfig.getFiltersMatchMode() == FiltersMatchMode.REGEX
-                    && connectorConfig.getCursorPipelineOrder() != CursorPipelineOrder.USER_ONLY) {
-                // Regex namespace filters reshape events before matching them. MongoDB can check required images
-                // before these filters remove excluded events, including when validating a saved resume token.
-                LOGGER.warn("Required images are enabled with regex namespace filters and capture.scope={}. "
-                        + "Events excluded by these filters can still cause missing-image errors. "
+                    && connectorConfig.getCursorPipelineOrder() == CursorPipelineOrder.USER_FIRST
+                    && !taskContext.getFilters().getConfig().getUserPipeline().getStages().isEmpty()) {
+                // User stages run before the namespace filters. MongoDB can check required images before these
+                // filters remove excluded events, including when validating a saved resume token.
+                LOGGER.warn("Required images are enabled with cursor.pipeline.order=user_first and capture.scope={}. "
+                        + "Events excluded by the namespace filters can still cause missing-image errors. "
                         + "Ensure that required images are recorded and retained within the change stream scope, "
-                        + "or consider capture.scope=collection or filters.match.mode=literal.", captureScope.getValue());
+                        + "or consider capture.scope=collection or cursor.pipeline.order=internal_first.", captureScope.getValue());
             }
 
             // Service providers

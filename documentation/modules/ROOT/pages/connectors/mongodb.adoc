@@ -1885,11 +1885,11 @@ Re-enabling image recording does not restore missing images for earlier changes.
 Restarting from the same saved offset with unchanged required-image settings can fail again on the same historical event, during resume token validation or subsequent streaming.
 An image error during resume token validation does not trigger a new snapshot, including in `when_needed` mode.
 
-With either required-image policy, `deployment` or `database` capture scope and regex filtering can cause missing-image errors for events from collections excluded by database or collection filters.
-MongoDB can check image availability before these filters remove the event.
-The connector warns about this combination at startup when its internal filters are enabled, but does not reject the configuration.
-If exact namespace matching is sufficient, xref:mongodb-property-filters-match-mode[`filters.match.mode=literal`] can avoid this interaction.
-Custom xref:mongodb-property-cursor-pipeline[`cursor.pipeline`] stages and their xref:mongodb-property-cursor-pipeline-order[order] can affect filtering behavior, so literal filters do not guarantee isolation with arbitrary user pipelines.
+With either required-image policy and `deployment` or `database` capture scope, the connector filters events from collections excluded by database or collection filters before MongoDB checks image availability, so only captured collections must record images.
+Custom xref:mongodb-property-cursor-pipeline[`cursor.pipeline`] stages can change this.
+With xref:mongodb-property-cursor-pipeline-order[`cursor.pipeline.order=user_first`], MongoDB can check image availability for excluded events before the connector's filters remove them, and report missing-image errors.
+The connector warns about this combination at startup, but does not reject the configuration.
+With `user_only`, the connector's filters are not applied in the change stream, so the custom stages must exclude such events.
 For single-collection capture, xref:mongodb-property-capture-scope[`capture.scope=collection`] excludes events from other collections at the change stream level; see that property's signaling and incremental snapshot limitations.
 
 Insert events and snapshot records do not have pre-images and are unaffected by this requirement.
