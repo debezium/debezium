@@ -2021,7 +2021,9 @@ public abstract class CommonConnectorConfig {
         props.put(MULTI_PARTITION_MODE, multiPartitionMode);
         String strategyName = config.getString(topicNamingStrategyField);
         TopicNamingStrategy topicNamingStrategy = serviceRegistry.getService(InstanceResolver.class)
-                .getInstance(config, topicNamingStrategyField, TopicNamingStrategy.class, props, strategy -> strategy.configure(props));
+                .resolve(TopicNamingStrategy.class, topicNamingStrategyField.name(),
+                        () -> config.getInstance(topicNamingStrategyField, TopicNamingStrategy.class, props),
+                        strategy -> strategy.configure(props));
         if (topicNamingStrategy == null) {
             throw new ConnectException("Unable to instantiate the topic naming strategy class " + strategyName);
         }
