@@ -479,7 +479,7 @@ public class WALPositionLocatorTest {
     @FixFor("debezium/dbz#1554")
     void whenLsnEventsProcessedIsOneShouldUseNormalResumeLogic() {
         // Normal case: single event at each LSN, counter is 1.
-        // Should NOT trigger skip logic, should use existing "next different LSN" behavior.
+        // With no further event at the stored LSN, resume from the next different LSN.
         final Lsn lastCommitStoredLsn = Lsn.valueOf(100L);
         final Lsn lastEventStoredLsn = Lsn.valueOf(140L);
         final var locator = new WalPositionLocator(lastCommitStoredLsn, lastEventStoredLsn,
@@ -504,8 +504,7 @@ public class WALPositionLocatorTest {
     @Test
     @FixFor("debezium/dbz#1554")
     void whenExactlyTwoEventsShareSameLsnShouldSkipCorrectly() {
-        // Boundary case: lsnEventsProcessed=2 is the minimum value that triggers
-        // the same-LSN skip logic (threshold is > 1).
+        // Two events processed at an LSN that carries three.
         final Lsn lastCommitStoredLsn = Lsn.valueOf(100L);
         final Lsn lastEventStoredLsn = Lsn.valueOf(140L);
         final var locator = new WalPositionLocator(lastCommitStoredLsn, lastEventStoredLsn,
@@ -601,6 +600,98 @@ public class WALPositionLocatorTest {
         assertThat(locator.skipMessage(sameLsn)).isFalse();
         assertThat(locator.skipMessage(sameLsn)).isFalse();
         assertThat(locator.skipMessage(commitLsn)).isFalse();
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2889")
+    void whenOneOfSeveralEventsAtSameLsnWasProcessedShouldResumeAfterIt() {
+        // A COPY page: three events at LSN 140, the stop came after the first
+        final Lsn lastCommitStoredLsn = Lsn.valueOf(100L);
+        final Lsn lastEventStoredLsn = Lsn.valueOf(140L);
+        final var locator = new WalPositionLocator(lastCommitStoredLsn, lastEventStoredLsn,
+                ReplicationMessage.Operation.INSERT, 1);
+
+        final Lsn beginLsn = Lsn.valueOf(110L);
+        final Lsn sameLsn = Lsn.valueOf(140L);
+        final Lsn commitLsn = Lsn.valueOf(150L);
+
+        final var beginMessage = createBeginMessage(1L);
+        final var insertMessage = createInsertMessage(1L);
+
+        assertThat(locator.resumeFromLsn(beginLsn, beginMessage)).isEmpty();
+        assertThat(locator.resumeFromLsn(sameLsn, insertMessage)).isEmpty(); // event #1 (matches count)
+
+        final Optional<Lsn> result = locator.resumeFromLsn(sameLsn, insertMessage);
+        assertThat(result).isPresent();
+        assertThat(result.get()).isEqualTo(sameLsn);
+
+        locator.enableFiltering();
+        assertThat(locator.skipMessage(beginLsn)).isTrue();
+        assertThat(locator.skipMessage(sameLsn)).isTrue(); // event #1, already processed
+        assertThat(locator.skipMessage(sameLsn)).isFalse(); // event #2
+        assertThat(locator.skipMessage(sameLsn)).isFalse(); // event #3
+        assertThat(locator.skipMessage(commitLsn)).isFalse();
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2889")
+    void whenTransactionalLogicalMessageOffsetCarriesCountOfEarlierRowsShouldSkipOnlyThatMessage() {
+        // Ten rows at LSN 110, then a transactional message reported at 120, where the
+        // next INSERT also begins. The offset stored at the message keeps the rows' count.
+        final Lsn lastCommitStoredLsn = Lsn.valueOf(100L);
+        final Lsn rowsLsn = Lsn.valueOf(110L);
+        final Lsn messageLsn = Lsn.valueOf(120L);
+        final var locator = new WalPositionLocator(lastCommitStoredLsn, messageLsn,
+                ReplicationMessage.Operation.MESSAGE, 10);
+
+        final var beginMessage = createBeginMessage(1L);
+        final var insertMessage = createInsertMessage(1L);
+        final var logicalMessage = createLogicalMessage(1L);
+
+        assertThat(locator.resumeFromLsn(Lsn.valueOf(105L), beginMessage)).isEmpty();
+        for (int i = 0; i < 10; i++) {
+            assertThat(locator.resumeFromLsn(rowsLsn, insertMessage)).isEmpty();
+        }
+
+        assertThat(locator.resumeFromLsn(messageLsn, logicalMessage)).isEmpty();
+
+        final Optional<Lsn> result = locator.resumeFromLsn(messageLsn, insertMessage);
+        assertThat(result).isPresent();
+        assertThat(result.get()).isEqualTo(messageLsn);
+
+        locator.enableFiltering();
+        // The already-processed MESSAGE is skipped.
+        assertThat(locator.skipProcessedLogicalMessage(messageLsn)).isTrue();
+        // The INSERT that follows it at the same LSN is emitted.
+        assertThat(locator.skipMessage(messageLsn)).isFalse();
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2889")
+    void whenBeginSharesStoredLsnItShouldNotStandForAProcessedEvent() {
+        // The first page of a transaction: BEGIN and four rows at LSN 140, two rows processed
+        final Lsn lastCommitStoredLsn = Lsn.valueOf(100L);
+        final Lsn sameLsn = Lsn.valueOf(140L);
+        final var locator = new WalPositionLocator(lastCommitStoredLsn, sameLsn,
+                ReplicationMessage.Operation.INSERT, 2);
+
+        final var beginMessage = createBeginMessage(1L);
+        final var insertMessage = createInsertMessage(1L);
+
+        assertThat(locator.resumeFromLsn(sameLsn, beginMessage)).isEmpty();
+        assertThat(locator.resumeFromLsn(sameLsn, insertMessage)).isEmpty(); // event #1
+        assertThat(locator.resumeFromLsn(sameLsn, insertMessage)).isEmpty(); // event #2 (matches count)
+
+        final Optional<Lsn> result = locator.resumeFromLsn(sameLsn, insertMessage);
+        assertThat(result).isPresent();
+        assertThat(result.get()).isEqualTo(sameLsn);
+
+        locator.enableFiltering();
+        // BEGIN is filtered but uses up none of the skips meant for rows
+        assertThat(locator.skipMessage(sameLsn, false)).isTrue();
+        assertThat(locator.skipMessage(sameLsn)).isTrue(); // event #1, already processed
+        assertThat(locator.skipMessage(sameLsn)).isTrue(); // event #2, already processed
+        assertThat(locator.skipMessage(sameLsn)).isFalse(); // event #3
     }
 
     // =============================================================================
