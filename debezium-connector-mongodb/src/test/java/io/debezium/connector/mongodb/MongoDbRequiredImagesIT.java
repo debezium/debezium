@@ -290,11 +290,12 @@ public class MongoDbRequiredImagesIT extends AbstractMongoConnectorIT {
             "deployment, off, post_image_required",
             "database, required, post_image_required"
     })
-    void shouldFailOnExcludedCollectionWithoutImages(String scope, String preImage, String postImage) throws Exception {
+    void shouldFailOnExcludedCollectionWithoutImagesWhenUserStagesRunFirst(String scope, String preImage, String postImage) throws Exception {
         config = imageConfiguration(preImage, postImage).edit()
                 .with(MongoDbConnectorConfig.CAPTURE_SCOPE, scope)
                 .with(MongoDbConnectorConfig.CAPTURE_TARGET, DATABASE)
-                .with(MongoDbConnectorConfig.FILTERS_MATCH_MODE, "regex")
+                .with(MongoDbConnectorConfig.CURSOR_PIPELINE_ORDER, "user_first")
+                .with(MongoDbConnectorConfig.CURSOR_PIPELINE, "[{\"$replaceRoot\": {\"newRoot\": \"$$ROOT\"}}]")
                 .with(MongoDbConnectorConfig.SNAPSHOT_MODE, "when_needed")
                 .build();
         try (var client = connect()) {
@@ -314,14 +315,71 @@ public class MongoDbRequiredImagesIT extends AbstractMongoConnectorIT {
             assertMissingImageFailure(failure.get(30, TimeUnit.SECONDS));
             stopConnector();
             assertNoRecordsToConsume();
-            final var offset = readLastCommittedOffset(config, insert.sourcePartition());
-            assertThat(offset).containsEntry(SourceInfo.RESUME_TOKEN, insert.sourceOffset().get(SourceInfo.RESUME_TOKEN));
+            assertThat(readLastCommittedOffset(config, insert.sourcePartition()))
+                    .containsEntry(SourceInfo.RESUME_TOKEN, insert.sourceOffset().get(SourceInfo.RESUME_TOKEN));
+        }
+    }
 
-            final var failureAfterRestart = startExpectingFailure();
-            assertMissingImageFailure(failureAfterRestart.get(30, TimeUnit.SECONDS));
+    @ParameterizedTest
+    @CsvSource({
+            "deployment, collection.include.list, excludedImages, excluded, required, off, false",
+            "deployment, collection.include.list, excludedImages, excluded, off, post_image_required, false",
+            "database, collection.include.list, requiredImages, excluded, required, post_image_required, false",
+            "database, collection.include.list, requiredImages, documents_old, required, post_image_required, false",
+            "deployment, collection.exclude.list, excludedImages, excluded, required, post_image_required, false",
+            "deployment, database.include.list, excludedImages, excluded, required, post_image_required, false",
+            "deployment, database.exclude.list, excludedImages, excluded, required, post_image_required, false",
+            "deployment, collection.include.list, excludedImages, excluded, required, post_image_required, true"
+    })
+    void shouldFilterExcludedCollectionWithoutImagesWithRegexFilters(String scope, String filter, String excludedDatabase, String excludedCollection,
+                                                                     String preImage, String postImage, boolean inTransaction)
+            throws Exception {
+        final var filterValue = switch (filter) {
+            case "collection.include.list" -> DATABASE + "." + COLLECTION;
+            case "collection.exclude.list" -> excludedDatabase + "." + excludedCollection;
+            case "database.include.list" -> DATABASE;
+            default -> excludedDatabase;
+        };
+        config = TestHelper.getConfiguration(mongo).edit()
+                .with(CommonConnectorConfig.TOPIC_PREFIX, "mongo")
+                .with(filter, filterValue)
+                .with(MongoDbConnectorConfig.CAPTURE_MODE_PRE_IMAGE, preImage)
+                .with(MongoDbConnectorConfig.CAPTURE_MODE_POST_IMAGE, postImage)
+                .with(MongoDbConnectorConfig.CAPTURE_SCOPE, scope)
+                .with(MongoDbConnectorConfig.CAPTURE_TARGET, DATABASE)
+                .with(MongoDbConnectorConfig.FILTERS_MATCH_MODE, "regex")
+                .with(MongoDbConnectorConfig.POLL_INTERVAL_MS, 10)
+                .build();
+        try (var client = connect()) {
+            createCollection(client.getDatabase(DATABASE), true);
+            final var collection = client.getDatabase(DATABASE).getCollection(COLLECTION).withWriteConcern(WriteConcern.MAJORITY);
+            final var excluded = createExcludedCollection(client.getDatabase(excludedDatabase), excludedCollection);
+            start(MongoDbConnector.class, config);
+            waitForStreamingRunning("mongodb", "mongo");
+            collection.insertOne(document(1, 0));
+            consumeRecordsByTopic(1);
+
+            final var filterById = new Document("_id", 1);
+            final var update = new Document("$set", new Document("value", 1));
+            if (inTransaction) {
+                try (var session = client.startSession()) {
+                    session.withTransaction(() -> {
+                        excluded.updateOne(session, filterById, update);
+                        return collection.updateOne(session, filterById, update);
+                    });
+                }
+            }
+            else {
+                excluded.updateOne(filterById, update);
+                collection.updateOne(filterById, update);
+            }
+            final var record = consumeRecordsByTopic(1).allRecordsInOrder().get(0);
+            assertThat(record.topic()).isEqualTo(TOPIC);
+            assertImage(record, Envelope.Operation.UPDATE,
+                    preImage.equals("required") ? document(1, 0) : null,
+                    postImage.equals("post_image_required") ? document(1, 1) : null);
             stopConnector();
             assertNoRecordsToConsume();
-            assertThat(readLastCommittedOffset(config, insert.sourcePartition())).isEqualTo(offset);
         }
     }
 
@@ -329,7 +387,8 @@ public class MongoDbRequiredImagesIT extends AbstractMongoConnectorIT {
     @CsvSource({
             "collection, regex, required, post_image_required",
             "deployment, literal, required, post_image_required",
-            "deployment, regex, when_available, post_image"
+            "deployment, regex, when_available, post_image",
+            "deployment, regex, required, post_image_required"
     })
     void shouldFilterExcludedCollectionWithoutImages(String scope, String matchMode, String preImage, String postImage) throws Exception {
         config = imageConfiguration(preImage, postImage).edit()
@@ -363,7 +422,7 @@ public class MongoDbRequiredImagesIT extends AbstractMongoConnectorIT {
             "database, required, off",
             "database, off, post_image_required"
     })
-    void shouldFailOnHistoricalExcludedImageAndResumeWithLiteralFilter(String scope, String preImage, String postImage) throws Exception {
+    void shouldResumePastHistoricalExcludedUpdateWithRegexFilter(String scope, String preImage, String postImage) throws Exception {
         config = imageConfiguration(preImage, postImage).edit()
                 .with(MongoDbConnectorConfig.CAPTURE_SCOPE, scope)
                 .with(MongoDbConnectorConfig.CAPTURE_TARGET, DATABASE)
@@ -379,29 +438,12 @@ public class MongoDbRequiredImagesIT extends AbstractMongoConnectorIT {
             collection.insertOne(document(1, 0));
             final var insert = consumeRecordsByTopic(1).allRecordsInOrder().get(0);
             stopConnector();
-            final var offset = readLastCommittedOffset(config, insert.sourcePartition());
-            assertThat(offset).containsEntry(SourceInfo.RESUME_TOKEN, insert.sourceOffset().get(SourceInfo.RESUME_TOKEN));
+            assertThat(readLastCommittedOffset(config, insert.sourcePartition()))
+                    .containsEntry(SourceInfo.RESUME_TOKEN, insert.sourceOffset().get(SourceInfo.RESUME_TOKEN));
 
+            // The saved resume token is before the excluded update, so MongoDB reads it again when resuming.
             excluded.updateOne(new Document("_id", 1), new Document("$set", new Document("value", 1)));
             collection.updateOne(new Document("_id", 1), new Document("$set", new Document("value", 1)));
-            final var failure = startExpectingFailure();
-            assertMissingImageFailure(failure.get(30, TimeUnit.SECONDS));
-            stopConnector();
-            assertNoRecordsToConsume();
-            assertThat(readLastCommittedOffset(config, insert.sourcePartition())).isEqualTo(offset);
-
-            // Enabling images now cannot provide the missing image for the earlier excluded update.
-            client.getDatabase(excluded.getNamespace().getDatabaseName())
-                    .runCommand(new Document("collMod", EXCLUDED_COLLECTION)
-                            .append("changeStreamPreAndPostImages", new Document("enabled", true)));
-            final var failureAfterEnablingImages = startExpectingFailure();
-            assertMissingImageFailure(failureAfterEnablingImages.get(30, TimeUnit.SECONDS));
-            stopConnector();
-            assertNoRecordsToConsume();
-            assertThat(readLastCommittedOffset(config, insert.sourcePartition())).isEqualTo(offset);
-
-            // Keep the scope, required policy and saved offset; only change how the namespace filter is applied.
-            config = config.edit().with(MongoDbConnectorConfig.FILTERS_MATCH_MODE, "literal").build();
             start(MongoDbConnector.class, config);
             final var update = consumeRecordsByTopic(1).allRecordsInOrder().get(0);
             assertThat(update.topic()).isEqualTo(TOPIC);
@@ -410,26 +452,24 @@ public class MongoDbRequiredImagesIT extends AbstractMongoConnectorIT {
                     postImage.equals("post_image_required") ? document(1, 1) : null);
             stopConnector();
             assertNoRecordsToConsume();
-            assertThat(readLastCommittedOffset(config, update.sourcePartition()))
-                    .containsEntry(SourceInfo.RESUME_TOKEN, update.sourceOffset().get(SourceInfo.RESUME_TOKEN));
         }
     }
 
     @ParameterizedTest
     @CsvSource({
-            "deployment, regex, internal_first, required, off, , 1",
-            "database, regex, user_first, off, post_image_required, , 1",
-            "deployment, regex, internal_first, required, post_image_required, , 1",
-            "deployment, regex, internal_first, , , post_image_required, 1",
-            "deployment, regex, internal_first, , off, post_image_required, 0",
-            "collection, regex, internal_first, required, post_image_required, , 0",
-            "deployment, literal, internal_first, required, post_image_required, , 0",
-            "deployment, regex, internal_first, when_available, post_image, , 0",
-            "deployment, regex, internal_first, , , , 0",
-            "deployment, regex, user_only, required, post_image_required, , 0"
+            "deployment, regex, user_first, true, required, off, , 1",
+            "database, literal, user_first, true, off, post_image_required, , 1",
+            "deployment, regex, user_first, true, , , post_image_required, 1",
+            "deployment, regex, user_first, true, , off, post_image_required, 0",
+            "deployment, regex, user_first, false, required, post_image_required, , 0",
+            "deployment, regex, internal_first, true, required, post_image_required, , 0",
+            "collection, regex, user_first, true, required, post_image_required, , 0",
+            "deployment, regex, user_first, true, when_available, post_image, , 0",
+            "deployment, regex, user_first, true, , , , 0",
+            "deployment, regex, user_only, true, required, post_image_required, , 0"
     })
-    void shouldWarnAtEachStartForRequiredImagesWithRegexFilters(String scope, String matchMode, String pipelineOrder,
-                                                                String preImage, String postImage, String legacyPostImage, int warningsPerStart)
+    void shouldWarnAtEachStartForRequiredImagesWithUserStagesFirst(String scope, String matchMode, String pipelineOrder, boolean userPipeline,
+                                                                   String preImage, String postImage, String legacyPostImage, int warningsPerStart)
             throws Exception {
         final var builder = TestHelper.getConfiguration(mongo).edit()
                 .with(CommonConnectorConfig.TOPIC_PREFIX, "mongo")
@@ -439,6 +479,9 @@ public class MongoDbRequiredImagesIT extends AbstractMongoConnectorIT {
                 .with(MongoDbConnectorConfig.FILTERS_MATCH_MODE, matchMode)
                 .with(MongoDbConnectorConfig.CURSOR_PIPELINE_ORDER, pipelineOrder)
                 .with(MongoDbConnectorConfig.POLL_INTERVAL_MS, 10);
+        if (userPipeline) {
+            builder.with(MongoDbConnectorConfig.CURSOR_PIPELINE, "[{\"$match\": {\"ns.coll\": \"" + COLLECTION + "\"}}]");
+        }
         if (preImage != null) {
             builder.with(MongoDbConnectorConfig.CAPTURE_MODE_PRE_IMAGE, preImage);
         }
@@ -461,7 +504,7 @@ public class MongoDbRequiredImagesIT extends AbstractMongoConnectorIT {
                 assertImage(consumeRecordsByTopic(1).allRecordsInOrder().get(0), Envelope.Operation.CREATE, null, document(starts, 0));
                 stopConnector();
 
-                assertThat(interceptor.getLoggingEvents("Required images are enabled with regex namespace filters"))
+                assertThat(interceptor.getLoggingEvents("Required images are enabled with cursor.pipeline.order=user_first"))
                         .hasSize(starts * warningsPerStart)
                         .allSatisfy(event -> {
                             assertThat(event.getLevel()).isEqualTo(Level.WARN);
@@ -579,10 +622,13 @@ public class MongoDbRequiredImagesIT extends AbstractMongoConnectorIT {
 
     private static MongoCollection<Document> createExcludedCollection(MongoClient client, String scope) {
         // A database-scoped stream must see the excluded collection; use another database only for deployment scope.
-        final var database = client.getDatabase(scope.equals("deployment") ? "excludedImages" : DATABASE);
-        database.createCollection(EXCLUDED_COLLECTION, new CreateCollectionOptions()
+        return createExcludedCollection(client.getDatabase(scope.equals("deployment") ? "excludedImages" : DATABASE), EXCLUDED_COLLECTION);
+    }
+
+    private static MongoCollection<Document> createExcludedCollection(MongoDatabase database, String name) {
+        database.createCollection(name, new CreateCollectionOptions()
                 .changeStreamPreAndPostImagesOptions(new ChangeStreamPreAndPostImagesOptions(false)));
-        final var collection = database.getCollection(EXCLUDED_COLLECTION).withWriteConcern(WriteConcern.MAJORITY);
+        final var collection = database.getCollection(name).withWriteConcern(WriteConcern.MAJORITY);
         collection.insertOne(document(1, 0));
         return collection;
     }
