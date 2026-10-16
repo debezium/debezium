@@ -148,7 +148,7 @@ public class ParallelIncrementalSnapshotReadStrategy<P extends Partition, T exte
 
     @Override
     public void snapshotCompleted() {
-        coordinator.scheduleReleaseIfNotPending();
+        coordinator.getConnectionPool().releaseWhenIdle();
     }
 
     @Override
@@ -216,7 +216,7 @@ public class ParallelIncrementalSnapshotReadStrategy<P extends Partition, T exte
                 executor.submit(() -> {
                     final JdbcConnection conn;
                     try {
-                        conn = coordinator.borrowConnection();
+                        conn = coordinator.getConnectionPool().borrow();
                     }
                     catch (SQLException borrowFailure) {
                         throw new DebeziumException(
@@ -240,10 +240,10 @@ public class ParallelIncrementalSnapshotReadStrategy<P extends Partition, T exte
                     }
                     finally {
                         if (discardConnection) {
-                            coordinator.discardConnection(conn);
+                            coordinator.getConnectionPool().discard(conn);
                         }
                         else {
-                            coordinator.returnConnection(conn);
+                            coordinator.getConnectionPool().giveBack(conn);
                         }
                     }
                     return null;

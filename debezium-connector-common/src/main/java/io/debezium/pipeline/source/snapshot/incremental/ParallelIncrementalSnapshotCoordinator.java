@@ -17,29 +17,21 @@ import java.util.Queue;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
-import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.ExecutorService;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicLong;
-import java.util.concurrent.atomic.AtomicReference;
-import java.util.concurrent.locks.ReentrantLock;
 
 import org.apache.kafka.connect.data.Struct;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import io.debezium.annotation.VisibleForTesting;
-import io.debezium.jdbc.JdbcConnection;
 import io.debezium.pipeline.spi.Partition;
 import io.debezium.spi.schema.DataCollectionId;
 import io.debezium.util.Threads;
 
 /**
- * Manages the JDBC connection pool, per-table window buffers, and per-table
- * snapshot state for parallel incremental snapshots.
+ * Tracks the tables a parallel incremental snapshot is reading, their window buffers and their restart state, and
+ * owns the worker executor and the {@link SnapshotConnectionPool} the workers read on.
  *
  * @author Ivan Senyk
  * @param <P> the type of partition
@@ -51,40 +43,16 @@ public class ParallelIncrementalSnapshotCoordinator<P extends Partition, T exten
 
     private static final long EXECUTOR_TERMINATION_TIMEOUT_SECONDS = 10L;
 
-    public enum PoolLifecycleState {
-        CLOSED,
-        OPEN
-    }
-
     private final int threadCount;
-    private final ConnectionFactory connectionFactory;
-    private final long releaseDelayMs;
-    private final ConcurrentHashMap<T, Map<Struct, Object[]>> windowBuffers;
-    private final Queue<JdbcConnection> connectionPool;
-    private final List<JdbcConnection> allConnections;
-    private final Map<T, TableSnapshotWorker<P, T>> activeWorkers;
-    private final Queue<DataCollection<T>> pendingTables;
-    private final List<T> completedTables;
-    private final ExecutorService executor;
-    private final ScheduledExecutorService releaseScheduler;
-    private final AtomicReference<PoolLifecycleState> poolState = new AtomicReference<>(PoolLifecycleState.CLOSED);
-    private final ReentrantLock lifecycleLock = new ReentrantLock();
-    /**
-     * Incremented on every (re)open. A scheduled release captures the value at
-     * schedule time and bails out when it finds a newer one, closing the race
-     * with an ensurePoolOpen that runs while the release task is already
-     * blocked on lifecycleLock.
-     */
-    private final AtomicLong releaseGeneration = new AtomicLong(0);
-    private final AtomicBoolean shutdown = new AtomicBoolean(false);
+    private final SnapshotConnectionPool connectionPool;
+    private final ConcurrentHashMap<T, Map<Struct, Object[]>> windowBuffers = new ConcurrentHashMap<>();
+    private final Map<T, TableSnapshotWorker<P, T>> activeWorkers = new ConcurrentHashMap<>();
+    private final Queue<DataCollection<T>> pendingTables = new ConcurrentLinkedQueue<>();
+    private final List<T> completedTables = new ArrayList<>();
     private final Map<T, AbstractIncrementalSnapshotContext.PerTableStateSnapshot> pendingRestoredState = new HashMap<>();
-    private volatile ScheduledFuture<?> pendingReleaseFuture;
+    private final ExecutorService executor;
+    private final AtomicBoolean shutdown = new AtomicBoolean(false);
     private volatile WorkerFactory<P, T> workerFactory;
-
-    @FunctionalInterface
-    public interface ConnectionFactory {
-        JdbcConnection createConnection() throws SQLException;
-    }
 
     @FunctionalInterface
     public interface WorkerFactory<P extends Partition, T extends DataCollectionId> {
@@ -92,109 +60,31 @@ public class ParallelIncrementalSnapshotCoordinator<P extends Partition, T exten
     }
 
     public ParallelIncrementalSnapshotCoordinator(int threadCount,
-                                                  ConnectionFactory connectionFactory,
+                                                  SnapshotConnectionPool.ConnectionFactory connectionFactory,
                                                   String connectorName,
                                                   long releaseDelayMs) {
         if (threadCount < 1) {
             throw new IllegalArgumentException("Thread count must be at least 1, got: " + threadCount);
         }
-        if (releaseDelayMs < 0) {
-            throw new IllegalArgumentException("Release delay must be non-negative, got: " + releaseDelayMs);
-        }
-
         this.threadCount = threadCount;
-        this.connectionFactory = connectionFactory;
-        this.releaseDelayMs = releaseDelayMs;
-        this.windowBuffers = new ConcurrentHashMap<>();
-        this.activeWorkers = new ConcurrentHashMap<>();
-        this.pendingTables = new ConcurrentLinkedQueue<>();
-        this.completedTables = new ArrayList<>();
-        this.connectionPool = new ConcurrentLinkedQueue<>();
-        this.allConnections = new CopyOnWriteArrayList<>();
+        this.connectionPool = new SnapshotConnectionPool(threadCount, connectionFactory, this::isIdle, connectorName, releaseDelayMs);
         this.executor = Threads.newFixedThreadPool(
                 ParallelIncrementalSnapshotCoordinator.class, connectorName, "snapshot-worker", threadCount);
-        this.releaseScheduler = Threads.newSingleThreadScheduledExecutor(
-                ParallelIncrementalSnapshotCoordinator.class, connectorName, "pool-release", true);
 
         LOGGER.info("Initialized parallel incremental snapshot coordinator with capacity for {} worker threads, pool release delay {} ms",
                 threadCount, releaseDelayMs);
     }
 
-    public void ensurePoolOpen() throws SQLException {
-        lifecycleLock.lock();
-        try {
-            releaseGeneration.incrementAndGet();
-            cancelPendingReleaseLocked();
-
-            if (poolState.get() == PoolLifecycleState.OPEN) {
-                return;
-            }
-            try {
-                for (int i = 0; i < threadCount; i++) {
-                    final JdbcConnection conn = connectionFactory.createConnection();
-                    connectionPool.add(conn);
-                    allConnections.add(conn);
-                }
-                poolState.set(PoolLifecycleState.OPEN);
-                LOGGER.info("Parallel snapshot connection pool opened ({} connections)", threadCount);
-            }
-            catch (SQLException | RuntimeException e) {
-                drainConnectionsQuietly();
-                throw e;
-            }
-        }
-        finally {
-            lifecycleLock.unlock();
-        }
+    private boolean isIdle() {
+        return activeWorkers.isEmpty() && pendingTables.isEmpty();
     }
 
-    private void releasePoolIfIdle() {
-        releasePoolIfIdleAtGeneration(releaseGeneration.get());
-    }
-
-    private void releasePoolIfIdleAtGeneration(long expectedGeneration) {
-        lifecycleLock.lock();
-        try {
-            if (releaseGeneration.get() != expectedGeneration) {
-                return;
-            }
-            if (poolState.get() != PoolLifecycleState.OPEN) {
-                return;
-            }
-            if (!activeWorkers.isEmpty() || !pendingTables.isEmpty()) {
-                return;
-            }
-            drainConnectionsQuietly();
-            poolState.set(PoolLifecycleState.CLOSED);
-            LOGGER.info("Parallel snapshot connection pool released (no active or pending tables)");
-        }
-        finally {
-            lifecycleLock.unlock();
-        }
-    }
-
-    private void drainConnectionsQuietly() {
-        for (JdbcConnection conn : allConnections) {
-            closeQuietly(conn, "pool drain");
-        }
-        allConnections.clear();
-        connectionPool.clear();
-    }
-
-    private static void closeQuietly(JdbcConnection conn, String context) {
-        if (conn == null) {
-            return;
-        }
-        try {
-            conn.close();
-        }
-        catch (SQLException e) {
-            LOGGER.trace("Failed to close snapshot connection during {}", context, e);
-        }
+    public SnapshotConnectionPool getConnectionPool() {
+        return connectionPool;
     }
 
     public synchronized void initializeTables(List<DataCollection<T>> tables, WorkerFactory<P, T> workerFactory) throws SQLException {
-        ensurePoolOpen();
+        connectionPool.open();
         this.workerFactory = workerFactory;
         final Set<T> known = new HashSet<>(activeWorkers.keySet());
         for (DataCollection<T> dc : pendingTables) {
@@ -213,7 +103,7 @@ public class ParallelIncrementalSnapshotCoordinator<P extends Partition, T exten
     public synchronized void ensureInitializedFromContext(IncrementalSnapshotContext<T> context,
                                                           WorkerFactory<P, T> workerFactory)
             throws SQLException {
-        if (!activeWorkers.isEmpty() || !pendingTables.isEmpty()) {
+        if (!isIdle()) {
             return;
         }
         final List<DataCollection<T>> remaining = context.getDataCollections();
@@ -270,8 +160,8 @@ public class ParallelIncrementalSnapshotCoordinator<P extends Partition, T exten
     public synchronized void markTableComplete(T tableId) {
         activeWorkers.remove(tableId);
         activateNextTables();
-        if (activeWorkers.isEmpty() && pendingTables.isEmpty()) {
-            scheduleReleaseIfNotPending();
+        if (isIdle()) {
+            connectionPool.releaseWhenIdle();
         }
     }
 
@@ -319,43 +209,10 @@ public class ParallelIncrementalSnapshotCoordinator<P extends Partition, T exten
         if (removedActive) {
             activateNextTables();
         }
-        if (activeWorkers.isEmpty() && pendingTables.isEmpty()) {
-            scheduleReleaseIfNotPending();
+        if (isIdle()) {
+            connectionPool.releaseWhenIdle();
         }
         return removedPending || removedActive;
-    }
-
-    public void scheduleReleaseIfNotPending() {
-        if (poolState.get() != PoolLifecycleState.OPEN) {
-            return;
-        }
-        lifecycleLock.lock();
-        try {
-            if (poolState.get() != PoolLifecycleState.OPEN) {
-                return;
-            }
-            if (releaseDelayMs == 0) {
-                releasePoolIfIdle();
-                return;
-            }
-            if (pendingReleaseFuture != null && !pendingReleaseFuture.isDone()) {
-                return;
-            }
-            final long generation = releaseGeneration.get();
-            pendingReleaseFuture = releaseScheduler.schedule(
-                    () -> releasePoolIfIdleAtGeneration(generation),
-                    releaseDelayMs, TimeUnit.MILLISECONDS);
-        }
-        finally {
-            lifecycleLock.unlock();
-        }
-    }
-
-    private void cancelPendingReleaseLocked() {
-        if (pendingReleaseFuture != null) {
-            pendingReleaseFuture.cancel(false);
-            pendingReleaseFuture = null;
-        }
     }
 
     public boolean hasActiveTables() {
@@ -377,81 +234,6 @@ public class ParallelIncrementalSnapshotCoordinator<P extends Partition, T exten
 
     public ExecutorService getExecutor() {
         return executor;
-    }
-
-    /**
-     * Returns a usable connection from the pool, or {@code null} when the
-     * coordinator is shutting down or the pool is currently empty. Throws only
-     * when reallocating a replacement for a stale connection fails on the
-     * database side.
-     */
-    public JdbcConnection borrowConnection() throws SQLException {
-        if (shutdown.get()) {
-            return null;
-        }
-        final JdbcConnection conn = connectionPool.poll();
-        if (conn == null) {
-            return null;
-        }
-        try {
-            if (conn.isValid()) {
-                return conn;
-            }
-        }
-        catch (SQLException e) {
-            LOGGER.trace("Pooled snapshot connection failed validation, will be evicted", e);
-        }
-        allConnections.remove(conn);
-        closeQuietly(conn, "stale connection eviction");
-
-        final JdbcConnection fresh = connectionFactory.createConnection();
-        // Recheck shutdown before publishing the new connection so a concurrent
-        // shutdown that already iterated allConnections cannot leak it.
-        if (shutdown.get()) {
-            closeQuietly(fresh, "shutdown-coincident borrow");
-            return null;
-        }
-        allConnections.add(fresh);
-        if (shutdown.get()) {
-            allConnections.remove(fresh);
-            closeQuietly(fresh, "shutdown-coincident borrow");
-            return null;
-        }
-        return fresh;
-    }
-
-    public void returnConnection(JdbcConnection connection) {
-        if (connection != null) {
-            connectionPool.add(connection);
-        }
-    }
-
-    /**
-     * Drops a connection that failed with a non-transient connection error: it is closed instead of being returned to
-     * the pool, and a replacement is opened so the pool keeps its size. If the replacement cannot be opened the pool
-     * shrinks by one; borrowers already cope with an empty pool.
-     */
-    public void discardConnection(JdbcConnection connection) {
-        if (connection == null) {
-            return;
-        }
-        allConnections.remove(connection);
-        closeQuietly(connection, "non-transient connection failure");
-        if (shutdown.get()) {
-            return;
-        }
-        try {
-            final JdbcConnection fresh = connectionFactory.createConnection();
-            if (shutdown.get()) {
-                closeQuietly(fresh, "shutdown-coincident replacement");
-                return;
-            }
-            allConnections.add(fresh);
-            connectionPool.add(fresh);
-        }
-        catch (SQLException e) {
-            LOGGER.warn("Failed to replace a discarded snapshot connection, the pool shrinks by one", e);
-        }
     }
 
     public Map<Struct, Object[]> getWindowBuffer(T dataCollectionId) {
@@ -489,29 +271,8 @@ public class ParallelIncrementalSnapshotCoordinator<P extends Partition, T exten
         }
 
         LOGGER.info("Shutting down parallel incremental snapshot coordinator");
-        releaseScheduler.shutdownNow();
         executor.shutdownNow();
-
-        lifecycleLock.lock();
-        try {
-            cancelPendingReleaseLocked();
-            for (JdbcConnection conn : allConnections) {
-                try {
-                    if (conn != null && conn.isConnected()) {
-                        conn.close();
-                    }
-                }
-                catch (SQLException e) {
-                    LOGGER.warn("Error closing snapshot connection during shutdown", e);
-                }
-            }
-            allConnections.clear();
-            connectionPool.clear();
-            poolState.set(PoolLifecycleState.CLOSED);
-        }
-        finally {
-            lifecycleLock.unlock();
-        }
+        connectionPool.close();
 
         activeWorkers.clear();
         pendingTables.clear();
@@ -520,38 +281,20 @@ public class ParallelIncrementalSnapshotCoordinator<P extends Partition, T exten
             pendingRestoredState.clear();
         }
 
-        awaitExecutorTerminationQuietly(executor, "snapshot worker executor");
-        awaitExecutorTerminationQuietly(releaseScheduler, "release scheduler");
-
-        LOGGER.info("Parallel incremental snapshot coordinator shutdown complete");
-    }
-
-    private static void awaitExecutorTerminationQuietly(ExecutorService es, String name) {
         try {
-            if (!es.awaitTermination(EXECUTOR_TERMINATION_TIMEOUT_SECONDS, TimeUnit.SECONDS)) {
-                LOGGER.warn("{} did not terminate within {} seconds of shutdownNow", name, EXECUTOR_TERMINATION_TIMEOUT_SECONDS);
+            if (!executor.awaitTermination(EXECUTOR_TERMINATION_TIMEOUT_SECONDS, TimeUnit.SECONDS)) {
+                LOGGER.warn("Snapshot worker executor did not terminate within {} seconds of shutdownNow", EXECUTOR_TERMINATION_TIMEOUT_SECONDS);
             }
         }
         catch (InterruptedException e) {
             Thread.currentThread().interrupt();
-            LOGGER.warn("Interrupted while waiting for {} to terminate", name);
+            LOGGER.warn("Interrupted while waiting for the snapshot worker executor to terminate");
         }
+
+        LOGGER.info("Parallel incremental snapshot coordinator shutdown complete");
     }
 
     public int getThreadCount() {
         return threadCount;
-    }
-
-    public int getConnectionPoolSize() {
-        return allConnections.size();
-    }
-
-    public boolean isShutdown() {
-        return shutdown.get();
-    }
-
-    @VisibleForTesting
-    PoolLifecycleState getPoolState() {
-        return poolState.get();
     }
 }
