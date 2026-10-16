@@ -129,6 +129,20 @@ public interface Column extends Comparable<Column> {
     boolean isGenerated();
 
     /**
+     * Determine whether this column is invisible to clients. An invisible column is part of the table definition
+     * but is omitted from {@code SELECT *} projections and from change event payloads. Examples include Oracle
+     * {@code INVISIBLE} columns and MySQL {@code INVISIBLE} columns.
+     *
+     * <p>This is declared as a default method returning {@code false} to preserve binary compatibility with custom
+     * {@link Column} implementations.</p>
+     *
+     * @return {@code true} if the column is invisible, or {@code false} otherwise
+     */
+    default boolean isInvisible() {
+        return false;
+    }
+
+    /**
      * Get the database-specific complete expression defining the column's default value.
      *
      * @return the complete type expression
