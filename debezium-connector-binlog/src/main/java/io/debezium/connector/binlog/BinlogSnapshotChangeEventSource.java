@@ -613,7 +613,11 @@ public abstract class BinlogSnapshotChangeEventSource<P extends BinlogPartition,
 
     @Override
     protected void completed(SnapshotContext<P, O> snapshotContext) {
-        // the bean registry keeps the context for the connector's lifetime
+        releaseSnapshotState(snapshotContext);
+    }
+
+    // the bean registry keeps the context for the connector's lifetime
+    private void releaseSnapshotState(SnapshotContext<P, O> snapshotContext) {
         final RelationalSnapshotContext<P, O> ctx = (RelationalSnapshotContext<P, O>) snapshotContext;
         ctx.tables.clear();
         ctx.capturedTables = Set.of();
@@ -688,6 +692,7 @@ public abstract class BinlogSnapshotChangeEventSource<P extends BinlogPartition,
         lastEventProcessor.accept(Function.identity());
 
         super.aborted(snapshotContext);
+        releaseSnapshotState(snapshotContext);
     }
 
     @Override
