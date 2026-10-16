@@ -36,7 +36,7 @@ public final class ConfigProperties {
     public static final String DOCKER_IMAGE_MONGO = System.getProperty("test.docker.image.mongo", "quay.io/debezium/example-mongodb:2.6");
     public static final String DOCKER_IMAGE_MONGO_SHARDED = System.getProperty("test.docker.image.mongo.sharded", "quay.io/debezium/example-mongodb:2.6");
     public static final String DOCKER_IMAGE_SQLSERVER = System.getProperty("test.docker.image.sqlserver", "mcr.microsoft.com/mssql/server:2019-latest");
-    public static final String DOCKER_IMAGE_DB2 = System.getProperty("test.docker.image.db2", "quay.io/debezium/db2-cdc:latest");
+    public static final String DOCKER_IMAGE_DB2 = System.getProperty("test.docker.image.db2", "quay.io/rh_integration/dbz-db2-cdc:latest");
     public static final String DOCKER_IMAGE_ORACLE = System.getProperty("test.docker.image.oracle", "quay.io/rh_integration/dbz-oracle:19.3.0");
     public static final String DOCKER_IMAGE_INFORMIX = System.getProperty("test.docker.image.informix", "quay.io/rh_integration/dbz-informix:14");
 
@@ -60,9 +60,9 @@ public final class ConfigProperties {
 
     // Strimzi configuration
     public static final String STRIMZI_OPERATOR_CHANNEL = System.getProperty("test.strimzi.operator.channel", "stable");
-    public static final String STRIMZI_OPERATOR_VERSION = System.getProperty("test.strimzi.operator.version", "0.51.0");
+    public static final String STRIMZI_OPERATOR_VERSION = System.getProperty("test.strimzi.operator.version", "1.3.0");
     public static final boolean STRIMZI_OPERATOR_CONNECTORS = booleanProperty("test.strimzi.operator.connectors", true);
-    public static final String STRIMZI_VERSION_KAFKA = System.getProperty("test.strimzi.version.kafka", "4.1.0");
+    public static final String STRIMZI_VERSION_KAFKA = System.getProperty("test.strimzi.version.kafka", "4.3.1");
     public static final boolean FORCE_KRAFT = booleanProperty("test.force.kraft", true);
 
     // Apicurio Registry configuration
@@ -81,8 +81,8 @@ public final class ConfigProperties {
     public static final String DATABASE_MYSQL_DBZ_PASSWORD = System.getProperty("test.database.mysql.dbz.password", "dbz");
     public static final int DATABASE_MYSQL_PORT = Integer.parseInt(System.getProperty("test.database.mysql.port", "3306"));
 
-    public static final String DATABASE_MARIADB_USERNAME = System.getProperty("test.database.mariadb.username", "mysqluser");
-    public static final String DATABASE_MARIADB_PASSWORD = System.getProperty("test.database.mariadb.password", "mysqlpw");
+    public static final String DATABASE_MARIADB_USERNAME = System.getProperty("test.database.mariadb.username", "mariadbuser");
+    public static final String DATABASE_MARIADB_PASSWORD = System.getProperty("test.database.mariadb.password", "mariadbpw");
     public static final String DATABASE_MARIADB_DBZ_USERNAME = System.getProperty("test.database.mariadb.dbz.username", "debezium");
     public static final String DATABASE_MARIADB_DBZ_PASSWORD = System.getProperty("test.database.mariadb.dbz.password", "dbz");
     public static final int DATABASE_MARIADB_PORT = Integer.parseInt(System.getProperty("test.database.mariadb.port", "3306"));
