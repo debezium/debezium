@@ -255,20 +255,8 @@ public class PostgresReadOnlyIncrementalSnapshotChangeEventSource<P extends Post
     }
 
     @Override
-    protected JdbcConnection createSnapshotConnection() throws SQLException {
-        LOGGER.debug("[{}] Creating new snapshot connection in NORMAL mode (not replication)",
-                Thread.currentThread().getName());
-
-        PostgresConnectorConfig postgresConfig = (PostgresConnectorConfig) connectorConfig;
-        TypeRegistry typeRegistry = PostgresConnection.createTypeRegistry(postgresConfig.getJdbcConfig());
-
-        PostgresConnection snapshotConnection = new PostgresConnection(
-                postgresConfig,
-                typeRegistry,
-                "Debezium Parallel Snapshot Worker");
-
-        LOGGER.debug("[{}] Snapshot connection created successfully with TypeRegistry", Thread.currentThread().getName());
-        return snapshotConnection;
+    protected JdbcConnection createSnapshotConnection() {
+        return new PostgresConnection((PostgresConnectorConfig) connectorConfig, jdbcConnection.getTypeRegistry(), "Debezium Parallel Snapshot Worker");
     }
 
 }
