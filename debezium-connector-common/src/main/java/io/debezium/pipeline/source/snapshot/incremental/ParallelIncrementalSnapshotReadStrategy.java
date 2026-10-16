@@ -65,7 +65,7 @@ public class ParallelIncrementalSnapshotReadStrategy<P extends Partition, T exte
 
     @Override
     public Map<Struct, Object[]> windowFor(T dataCollectionId) {
-        return coordinator.getWindowBuffer(dataCollectionId);
+        return coordinator.windowBufferFor(dataCollectionId);
     }
 
     @Override
@@ -75,7 +75,7 @@ public class ParallelIncrementalSnapshotReadStrategy<P extends Partition, T exte
 
     @Override
     public boolean buffersEventsFor(IncrementalSnapshotContext<T> context, DataCollectionId dataCollectionId) {
-        return true;
+        return coordinator.getActiveWorkers().containsKey(dataCollectionId);
     }
 
     @Override

@@ -240,8 +240,19 @@ public class ParallelIncrementalSnapshotCoordinator<P extends Partition, T exten
         return executor;
     }
 
+    /**
+     * Returns the window buffer of an active table, creating it on first use. Tables without a worker get no buffer,
+     * see {@link #windowBufferFor}.
+     */
     public Map<Struct, Object[]> getWindowBuffer(T dataCollectionId) {
         return windowBuffers.computeIfAbsent(dataCollectionId, k -> new LinkedHashMap<>());
+    }
+
+    /**
+     * Returns the window buffer of a table, or an empty map when the table has none.
+     */
+    public Map<Struct, Object[]> windowBufferFor(T dataCollectionId) {
+        return windowBuffers.getOrDefault(dataCollectionId, Collections.emptyMap());
     }
 
     public Map<T, Map<Struct, Object[]>> getAllWindowBuffers() {
