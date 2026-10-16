@@ -43,7 +43,6 @@ public class TableSnapshotContext<T extends DataCollectionId> implements Increme
      */
     private volatile Object[] safeResumePosition;
     private int currentChunkId = 0;
-    private boolean completed = false;
     private Table schema;
     private volatile OptionalLong totalRows = OptionalLong.empty();
 
@@ -124,14 +123,6 @@ public class TableSnapshotContext<T extends DataCollectionId> implements Increme
         this.schema = schema;
     }
 
-    public boolean isCompleted() {
-        return completed;
-    }
-
-    public void markCompleted() {
-        this.completed = true;
-    }
-
     // Methods below are unsupported because the worker only needs the chunk-reading subset.
 
     @Override
@@ -177,7 +168,7 @@ public class TableSnapshotContext<T extends DataCollectionId> implements Increme
 
     @Override
     public boolean snapshotRunning() {
-        return !completed;
+        return true;
     }
 
     /**
@@ -215,7 +206,6 @@ public class TableSnapshotContext<T extends DataCollectionId> implements Increme
 
     @Override
     public void requestSnapshotStop(List<String> dataCollectionIds) {
-        this.completed = true;
     }
 
     @Override

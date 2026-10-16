@@ -126,7 +126,6 @@ public class TableSnapshotWorker<P extends Partition, T extends DataCollectionId
         }
 
         conn.commit();
-        context.startNewChunk();
 
         final String selectStatement = chunkQueryBuilder.buildChunkQuery(
                 context, currentTable, context.currentDataCollectionId().getAdditionalCondition());
@@ -242,10 +241,6 @@ public class TableSnapshotWorker<P extends Partition, T extends DataCollectionId
 
     public TableSnapshotContext<T> getContext() {
         return context;
-    }
-
-    public T getDataCollectionId() {
-        return context.currentDataCollectionId().getId();
     }
 
     public long getTotalRowsRead() {

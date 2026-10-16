@@ -70,8 +70,8 @@ import io.debezium.util.Threads.Timer;
 /**
  * An incremental snapshot change event source that emits events from a DB log interleaved with snapshot events.
  *
- * <p>Public methods are invoked from the connector task thread only; how the chunks
- * are read and buffered is delegated to an {@link IncrementalSnapshotReadStrategy}.
+ * <p>How the chunks are read and buffered is delegated to an {@link IncrementalSnapshotReadStrategy}; the source
+ * itself is not thread-safe and expects to be driven by one thread at a time, as the signal processing does.
  */
 @NotThreadSafe
 public abstract class AbstractIncrementalSnapshotChangeEventSource<P extends Partition, T extends DataCollectionId>

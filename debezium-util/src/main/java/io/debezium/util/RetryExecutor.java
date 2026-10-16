@@ -39,7 +39,7 @@ public class RetryExecutor {
         this.backoffMultiplier = backoffMultiplier;
         this.clock = clock;
 
-        LOGGER.info("Retry executor initialized: maxAttempts={}, initialDelay={}ms, " +
+        LOGGER.debug("Retry executor initialized: maxAttempts={}, initialDelay={}ms, " +
                 "maxDelay={}ms, backoffMultiplier={}",
                 maxAttempts < 0 ? "unlimited" : maxAttempts,
                 initialDelayMs, maxDelayMs, backoffMultiplier);
@@ -52,15 +52,13 @@ public class RetryExecutor {
         while (shouldRetry(attempt)) {
             try {
                 if (attempt > 0) {
-                    LOGGER.info("[{}] Retrying {} (attempt {} of {})",
-                            Thread.currentThread().getName(), operationName, attempt + 1, formatMaxAttempts());
+                    LOGGER.info("Retrying {} (attempt {} of {})", operationName, attempt + 1, formatMaxAttempts());
                 }
 
                 T result = operation.execute();
 
                 if (attempt > 0) {
-                    LOGGER.info("[{}] Successfully completed {} after {} retry attempt(s)",
-                            Thread.currentThread().getName(), operationName, attempt);
+                    LOGGER.info("Successfully completed {} after {} retry attempt(s)", operationName, attempt);
                 }
 
                 return result;
@@ -71,70 +69,22 @@ public class RetryExecutor {
                 attempt++;
 
                 if (!shouldRetry(attempt)) {
-                    LOGGER.error("[{}] Failed to execute {} after {} attempt(s). Giving up.",
-                            Thread.currentThread().getName(), operationName, attempt, e);
+                    LOGGER.error("Failed to execute {} after {} attempt(s). Giving up.", operationName, attempt, e);
                     throw e;
                 }
 
                 long delayMs = calculateDelay(attempt);
-                LOGGER.warn("[{}] Database error during {}: {}. Will retry in {}ms (attempt {} of {})",
-                        Thread.currentThread().getName(), operationName, e.getMessage(), delayMs, attempt, formatMaxAttempts());
+                LOGGER.warn("Database error during {}: {}. Will retry in {}ms (attempt {} of {})",
+                        operationName, e.getMessage(), delayMs, attempt, formatMaxAttempts());
 
                 try {
                     waitWithBackoff(delayMs);
                 }
                 catch (InterruptedException ie) {
                     Thread.currentThread().interrupt();
-                    LOGGER.error("[{}] Retry wait interrupted for {}", Thread.currentThread().getName(), operationName);
+                    LOGGER.error("Retry wait interrupted for {}", operationName);
                     throw new SQLException("Retry interrupted", ie);
                 }
-            }
-        }
-
-        throw lastException != null ? lastException
-                : new SQLException("Operation failed without exception: " + operationName);
-    }
-
-    public <T> T executeWithRetryInterruptible(
-                                               RetryableOperationInterruptible<T> operation,
-                                               String operationName)
-            throws SQLException, InterruptedException {
-
-        int attempt = 0;
-        SQLException lastException = null;
-
-        while (shouldRetry(attempt)) {
-            try {
-                if (attempt > 0) {
-                    LOGGER.info("[{}] Retrying {} (attempt {} of {})",
-                            Thread.currentThread().getName(), operationName, attempt + 1, formatMaxAttempts());
-                }
-
-                T result = operation.execute();
-
-                if (attempt > 0) {
-                    LOGGER.info("[{}] Successfully completed {} after {} retry attempt(s)",
-                            Thread.currentThread().getName(), operationName, attempt);
-                }
-
-                return result;
-
-            }
-            catch (SQLException e) {
-                lastException = e;
-                attempt++;
-
-                if (!shouldRetry(attempt)) {
-                    LOGGER.error("[{}] Failed to execute {} after {} attempt(s). Giving up.",
-                            Thread.currentThread().getName(), operationName, attempt, e);
-                    throw e;
-                }
-
-                long delayMs = calculateDelay(attempt);
-                LOGGER.warn("[{}] Database error during {}: {}. Will retry in {}ms (attempt {} of {})",
-                        Thread.currentThread().getName(), operationName, e.getMessage(), delayMs, attempt, formatMaxAttempts());
-
-                waitWithBackoff(delayMs);
             }
         }
 
@@ -174,8 +124,4 @@ public class RetryExecutor {
         T execute() throws SQLException;
     }
 
-    @FunctionalInterface
-    public interface RetryableOperationInterruptible<T> {
-        T execute() throws SQLException, InterruptedException;
-    }
 }
