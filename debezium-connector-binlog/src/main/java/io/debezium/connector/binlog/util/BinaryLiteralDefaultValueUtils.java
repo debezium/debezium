@@ -58,37 +58,44 @@ public final class BinaryLiteralDefaultValueUtils {
     }
 
     /**
-     * Converts the bytes of a literal to the default value expression of the column.
+     * Converts a literal to the default value expression of the column.
      *
      * @param column the column; never null
-     * @param bytes the bytes of the literal; never null
-     * @param number whether the literal is a number in a numeric context, as {@code 0x41} is; a literal with a character
-     *            set introducer is always a string
-     * @param introducer the character set introducer of the literal, such as {@code _latin1}; may be null
-     * @param databaseCharsetName the character set of the database, used when the column has no known character set;
+     * @param literal the literal; never null
+     * @param defaultCharsetName the character set to use if neither the column nor its table character set is known;
      *            may be null
      * @param javaEncodings returns the Java encoding of a database character set, or null if it is unknown
      * @return the default value expression, or null if the bytes are not valid in the character set of the value
      */
-    public static String toDefaultValueExpression(ColumnEditor column, byte[] bytes, boolean number, String introducer,
-                                                  String databaseCharsetName, UnaryOperator<String> javaEncodings) {
-        if (number && introducer == null && NUMERIC_TYPES.contains(column.jdbcType())) {
-            return new BigInteger(1, bytes).toString();
+    public static String toDefaultValueExpression(ColumnEditor column, BinaryLiteral literal, String defaultCharsetName,
+                                                  UnaryOperator<String> javaEncodings) {
+        if (literal.number() && literal.introducer() == null && NUMERIC_TYPES.contains(column.jdbcType())) {
+            return new BigInteger(1, literal.bytes()).toString();
         }
         if (BINARY_TYPES.contains(column.jdbcType())) {
             // The bytes are stored as they are, and the default value of a binary column is converted from a UTF-8 string
-            return decode(bytes, StandardCharsets.UTF_8);
+            return decode(literal.bytes(), StandardCharsets.UTF_8);
         }
-        if (introducer != null && !BINARY_INTRODUCER.equalsIgnoreCase(introducer)) {
-            return decode(bytes, charset(introducer.substring(1), javaEncodings));
+        if (literal.introducer() != null && !BINARY_INTRODUCER.equalsIgnoreCase(literal.introducer())) {
+            return decode(literal.bytes(), charset(literal.introducer().substring(1), javaEncodings));
         }
-        // Without an introducer, the bytes are interpreted in the character set of the column. The character set of the
-        // table is not known yet for a column of a CREATE TABLE statement, which declares it after the columns.
+        // Without an introducer, the bytes are interpreted in the character set of the column
         String charsetName = column.charsetName() != null ? column.charsetName() : column.charsetNameOfTable();
         if (charsetName == null) {
-            charsetName = databaseCharsetName;
+            charsetName = defaultCharsetName;
         }
-        return decode(bytes, charset(charsetName, javaEncodings));
+        return decode(literal.bytes(), charset(charsetName, javaEncodings));
+    }
+
+    /**
+     * A hexadecimal or bit-value literal that is the default of a column.
+     *
+     * @param bytes the bytes of the literal; never null
+     * @param number whether the literal is a number in a numeric context, as {@code 0x41} is; a literal with a character
+     *            set introducer is always a string
+     * @param introducer the character set introducer of the literal, such as {@code _latin1}; may be null
+     */
+    public record BinaryLiteral(byte[] bytes, boolean number, String introducer) {
     }
 
     private static Charset charset(String charsetName, UnaryOperator<String> javaEncodings) {
