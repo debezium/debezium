@@ -587,6 +587,8 @@
             </activation>
             <properties>
                 <skipTests>true</skipTests>
+                <format.skip>true</format.skip>
+                <checkstyle.skip>true</checkstyle.skip>
             </properties>
         </profile>
         <profile>
