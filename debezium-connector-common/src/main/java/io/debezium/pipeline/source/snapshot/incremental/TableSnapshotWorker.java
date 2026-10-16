@@ -58,6 +58,7 @@ public class TableSnapshotWorker<P extends Partition, T extends DataCollectionId
     private final RetryExecutor retryPolicy;
 
     private Table currentTable;
+    private List<Column> keyColumns;
     private long totalRowsRead = 0;
 
     public TableSnapshotWorker(
@@ -89,10 +90,10 @@ public class TableSnapshotWorker<P extends Partition, T extends DataCollectionId
                 return false;
             }
             currentTable = chunkQueryBuilder.prepareTable(context, currentTable);
+            keyColumns = chunkQueryBuilder.getQueryColumns(context, currentTable);
         }
 
-        final List<Column> keyColumns = chunkQueryBuilder.getQueryColumns(context, currentTable);
-        if (keyColumns == null || keyColumns.isEmpty()) {
+        if (keyColumns.isEmpty()) {
             throw new DebeziumException(
                     "Table '" + tableId + "' has no primary key; incremental snapshot requires a key "
                             + "for the DBLog watermark window. Restrict this table to initial snapshot, "
@@ -196,12 +197,7 @@ public class TableSnapshotWorker<P extends Partition, T extends DataCollectionId
     }
 
     private Object[] keyFromRow(Object[] row) {
-        final int numKeys = currentTable.primaryKeyColumnNames().size();
-        final Object[] key = new Object[numKeys];
-        for (int i = 0; i < numKeys; i++) {
-            key[i] = AbstractIncrementalSnapshotChangeEventSource.unwrapKeyValue(row[i]);
-        }
-        return key;
+        return AbstractIncrementalSnapshotChangeEventSource.keyFromRow(row, keyColumns);
     }
 
     private boolean isComplete() {
@@ -220,6 +216,7 @@ public class TableSnapshotWorker<P extends Partition, T extends DataCollectionId
 
     public void invalidateSchemaCache() {
         this.currentTable = null;
+        this.keyColumns = null;
     }
 
     public TableSnapshotContext<T> getContext() {

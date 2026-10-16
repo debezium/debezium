@@ -995,10 +995,17 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<P extends Par
     }
 
     private Object[] keyFromRow(Object[] row) {
+        return keyFromRow(row, chunkQueryBuilder.getQueryColumns(context, currentTable));
+    }
+
+    /**
+     * Extracts the chunk key of a row: the values of the query columns (primary key, message key columns or
+     * surrogate key) in query order.
+     */
+    static Object[] keyFromRow(Object[] row, List<Column> keyColumns) {
         if (row == null) {
             return null;
         }
-        final List<Column> keyColumns = chunkQueryBuilder.getQueryColumns(context, currentTable);
         final Object[] key = new Object[keyColumns.size()];
         for (int i = 0; i < keyColumns.size(); i++) {
             key[i] = unwrapKeyValue(row[keyColumns.get(i).position() - 1]);
