@@ -563,10 +563,10 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
             .withWidth(Width.SHORT)
             .withImportance(Importance.LOW)
             .withDescription("Specifies how in-progress transactions are to be handled when resolving the snapshot SCN. " + System.lineSeparator() +
-                    "all - Captures in-progress transactions from both V$TRANSACTION and starting a LogMiner session near the snapshot SCN." + System.lineSeparator() +
-                    "transaction_view_only - Captures in-progress transactions based on data in V$TRANSACTION only. " +
-                    "Recently committed transactions near the flashback query SCN won't be included in the snapshot nor streaming." + System.lineSeparator() +
-                    "skip - Skips gathering any in-progress transactions.");
+                    "all - Captures transactions that are in progress when the snapshot is taken, by starting to mine where the oldest of them started." +
+                    System.lineSeparator() +
+                    "skip - Skips gathering any in-progress transactions, mining starts after the snapshot SCN. " +
+                    "Changes made before the snapshot SCN by transactions that commit after it are not captured.");
 
     public static final Field LOG_MINING_QUERY_FILTER_MODE = Field.create("log.mining.query.filter.mode")
             .withDisplayName("Specifies how the filter configuration is applied to the LogMiner database query")
@@ -1340,18 +1340,8 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
         SKIP("skip"),
 
         /**
-         * Specifies that in-progress transactions that are available in the {@code V$TRANSACTION}
-         * table will be captured and emitted when streaming begins. If a transaction is not in
-         * this view, and its changes were not captured by Oracle Flashback query based on the
-         * snapshot SCN, that transaction will not be captured.
-         */
-        TRANSACTION_VIEW_ONLY("transaction_view_only"),
-
-        /**
-         * Specifies that in-progress transactions identified in the {@code V$TRANSACTION} table as
-         * well as any in-progress transactions as of the current SCN that may have been committed
-         * immediately prior to or at the snapshot SCN will be captured. This is done by starting a
-         * special LogMiner session to gather these transactions prior to starting the snapshot.
+         * Specifies that transactions in progress when the snapshot is taken will be captured, by
+         * starting to mine where the oldest of them started.
          */
         ALL("all");
 
@@ -1369,7 +1359,7 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
         /**
          * Determine if the supplied value is one of the predefined options.
          *
-         * @param value the configuration property value; may not be {@code null}
+         * @param value the configuration property value; may be {@code null}
          * @return the matching option, or null if no match is found
          */
         public static TransactionSnapshotBoundaryMode parse(String value) {
@@ -1383,21 +1373,6 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
                 }
             }
             return null;
-        }
-
-        /**
-         * Determine if the supplied value is one of the predefined options.
-         *
-         * @param value the configuration property value; may not be {@code null}
-         * @param defaultValue the default value; may be {@code null}
-         * @return the matching option, or null if no match is found and the non-null default is invalid
-         */
-        public static TransactionSnapshotBoundaryMode parse(String value, String defaultValue) {
-            TransactionSnapshotBoundaryMode mode = parse(value);
-            if (mode == null && defaultValue != null) {
-                mode = parse(defaultValue);
-            }
-            return mode;
         }
     }
 
@@ -1990,7 +1965,7 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
     }
 
     /**
-     * @return how in-progress transactions are the snapshot boundary are to be handled.
+     * @return how in-progress transactions at the snapshot boundary are to be handled
      */
     public TransactionSnapshotBoundaryMode getLogMiningTransactionSnapshotBoundaryMode() {
         return logMiningTransactionSnapshotBoundaryMode;

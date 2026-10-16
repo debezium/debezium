@@ -184,10 +184,9 @@ public class OracleSnapshotChangeEventSource extends RelationalSnapshotChangeEve
     @Override
     protected String enhanceOverriddenSelect(RelationalSnapshotContext<OraclePartition, OracleOffsetContext> snapshotContext,
                                              String overriddenSelect, TableId tableId) {
-        String snapshotOffset = (String) snapshotContext.offset.getOffset().get(SourceInfo.SCN_KEY);
         String token = connectorConfig.getTokenToReplaceInSnapshotPredicate();
         if (token != null) {
-            return overriddenSelect.replaceAll(token, " AS OF SCN " + snapshotOffset);
+            return overriddenSelect.replaceAll(token, " AS OF SCN " + snapshotContext.offset.getSnapshotAsOfScn());
         }
         return overriddenSelect;
     }
@@ -215,7 +214,7 @@ public class OracleSnapshotChangeEventSource extends RelationalSnapshotChangeEve
     protected Instant getSnapshotSourceTimestamp(JdbcConnection jdbcConnection, OracleOffsetContext offset, TableId tableId) {
         try {
             final OracleConnection oracleConnection = (OracleConnection) jdbcConnection;
-            return oracleConnection.getScnToTimestamp(offset.getScn())
+            return oracleConnection.getScnToTimestamp(offset.getSnapshotAsOfScn())
                     .orElseThrow(() -> new ConnectException("Failed reading SCN timestamp from database"))
                     // Database host timezone adjustment
                     .minusSeconds(oracleConnection.getDatabaseSystemTime().getOffset().getTotalSeconds())
