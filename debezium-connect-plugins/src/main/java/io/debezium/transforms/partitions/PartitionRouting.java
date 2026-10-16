@@ -52,6 +52,7 @@ public class PartitionRouting<R extends ConnectRecord<R>> implements Transformat
     public static final String FIELD_PAYLOAD_FIELD_CONF = "partition.payload.fields";
     public static final String FIELD_TOPIC_PARTITION_NUM_CONF = "partition.topic.num";
     public static final String FIELD_HASH_FUNCTION = "partition.hash.function";
+    public static final String FIELD_PAYLOAD_FIELDS_FROM_KEY_CONF = "partition.payload.fields.from.key";
 
     public enum HashFunction implements EnumeratedValue {
         /**
@@ -121,10 +122,19 @@ public class PartitionRouting<R extends ConnectRecord<R>> implements Transformat
             .withDefault("java")
             .optional();
 
+    static final Field PARTITION_PAYLOAD_FIELDS_FROM_KEY_FIELD = Field.create(FIELD_PAYLOAD_FIELDS_FROM_KEY_CONF)
+            .withDisplayName("Read payload fields from the record key")
+            .withType(ConfigDef.Type.BOOLEAN)
+            .withImportance(ConfigDef.Importance.LOW)
+            .withDescription("When true, the fields in '" + FIELD_PAYLOAD_FIELD_CONF + "' are read from the record key instead of the value.")
+            .withDefault(false)
+            .optional();
+
     private SmtManager<R> smtManager;
     private List<String> payloadFields;
     private int partitionNumber;
     private HashFunction hashFc;
+    private boolean fieldsFromKey;
 
     @Override
     public ConfigDef config() {
@@ -132,7 +142,7 @@ public class PartitionRouting<R extends ConnectRecord<R>> implements Transformat
         ConfigDef config = new ConfigDef();
         // group does not manage validator definition. Validation will not work here.
         return Field.group(config, "partitions",
-                PARTITION_PAYLOAD_FIELDS_FIELD, TOPIC_PARTITION_NUM_FIELD, HASH_FUNCTION_FIELD);
+                PARTITION_PAYLOAD_FIELDS_FIELD, TOPIC_PARTITION_NUM_FIELD, HASH_FUNCTION_FIELD, PARTITION_PAYLOAD_FIELDS_FROM_KEY_FIELD);
     }
 
     @Override
@@ -147,6 +157,7 @@ public class PartitionRouting<R extends ConnectRecord<R>> implements Transformat
         payloadFields = config.getList(PARTITION_PAYLOAD_FIELDS_FIELD);
         partitionNumber = config.getInteger(TOPIC_PARTITION_NUM_FIELD);
         hashFc = HashFunction.parse(config.getString(HASH_FUNCTION_FIELD));
+        fieldsFromKey = config.getBoolean(PARTITION_PAYLOAD_FIELDS_FROM_KEY_FIELD);
     }
 
     @Override
@@ -154,26 +165,47 @@ public class PartitionRouting<R extends ConnectRecord<R>> implements Transformat
 
         LOGGER.trace("Starting PartitionRouting SMT with conf: {} {}", payloadFields, partitionNumber);
 
-        if (originalRecord.value() == null || !smtManager.isValidEnvelope(originalRecord)) {
+        /*
+         * fields option is on:
+         * it's a tombstone: process(key)
+         * it's a record:
+         * is valid envelope: process(key)
+         * is invalid envelope(notification, other events): skip
+         * fields option is off:
+         * it's a tombstone: skip
+         * it's a record:
+         * is valid envelope: process(its value)
+         * is invalid envelope(notification, other events): skip
+         */
+        final boolean isEnvelope = originalRecord.value() != null && smtManager.isValidEnvelope(originalRecord);
+
+        if (fieldsFromKey) {
+            if (!(originalRecord.key() instanceof Struct) || (originalRecord.value() != null && !isEnvelope)) {
+                LOGGER.trace("Skipping message without a struct key or envelope");
+                return originalRecord;
+            }
+        }
+        else if (!isEnvelope) {
             LOGGER.trace("Skipping tombstone or message without envelope");
             return originalRecord;
         }
 
         final Struct envelope = (Struct) originalRecord.value();
+        final Struct fieldsSource = fieldsFromKey ? (Struct) originalRecord.key() : envelope;
         try {
 
-            if (SmtManager.isGenericOrTruncateMessage((SourceRecord) originalRecord)) {
+            if (isEnvelope && SmtManager.isGenericOrTruncateMessage((SourceRecord) originalRecord)) {
                 return originalRecord;
             }
 
             List<Object> fieldsValue = payloadFields.stream()
-                    .map(fieldName -> toValue(fieldName, envelope))
+                    .map(fieldName -> toValue(fieldName, fieldsSource))
                     .filter(Optional::isPresent)
                     .map(Optional::get)
                     .collect(Collectors.toList());
 
             if (fieldsValue.isEmpty()) {
-                LOGGER.trace("None of the configured fields found on record {}. Skipping it.", maybeRedactSensitiveData(envelope));
+                LOGGER.trace("None of the configured fields found on record {}. Skipping it.", maybeRedactSensitiveData(fieldsSource));
                 return originalRecord;
             }
 
@@ -183,20 +215,20 @@ public class PartitionRouting<R extends ConnectRecord<R>> implements Transformat
 
         }
         catch (Exception e) {
-            throw new DebeziumException(String.format("Unprocessable message %s", envelope), e);
+            throw new DebeziumException(String.format("Unprocessable message %s", fieldsSource), e);
         }
     }
 
-    private Optional<Object> toValue(String fieldName, Struct envelope) {
+    private Optional<Object> toValue(String fieldName, Struct fieldsSource) {
 
         try {
             String[] subFields = Arrays.stream(fieldName.split(NESTING_SEPARATOR)).map(String::trim).toArray(String[]::new);
 
             if (subFields.length == 1) {
-                return Optional.ofNullable(envelope.get(subFields[0]));
+                return Optional.ofNullable(fieldsSource.get(subFields[0]));
             }
 
-            Struct lastStruct = getLastStruct(envelope, subFields);
+            Struct lastStruct = getLastStruct(fieldsSource, subFields);
             if (lastStruct == null) {
                 return Optional.empty();
             }
@@ -204,7 +236,7 @@ public class PartitionRouting<R extends ConnectRecord<R>> implements Transformat
             return Optional.ofNullable(lastStruct.get(subFields[subFields.length - 1]));
         }
         catch (DataException e) {
-            LOGGER.trace("Field {} not found on payload {}. It will not be considered", fieldName, maybeRedactSensitiveData(envelope));
+            LOGGER.trace("Field {} not found on payload {}. It will not be considered", fieldName, maybeRedactSensitiveData(fieldsSource));
             return Optional.empty();
         }
 
@@ -267,6 +299,6 @@ public class PartitionRouting<R extends ConnectRecord<R>> implements Transformat
 
     @Override
     public Field.Set getConfigFields() {
-        return Field.setOf(PARTITION_PAYLOAD_FIELDS_FIELD, TOPIC_PARTITION_NUM_FIELD, HASH_FUNCTION_FIELD);
+        return Field.setOf(PARTITION_PAYLOAD_FIELDS_FIELD, TOPIC_PARTITION_NUM_FIELD, HASH_FUNCTION_FIELD, PARTITION_PAYLOAD_FIELDS_FROM_KEY_FIELD);
     }
 }
