@@ -372,6 +372,7 @@ sondn,Đỗ Ngọc Sơn
 spicy-sauce,Yossi Shirizli
 ssouris,Stathis Souris
 Steviep,Stephen Powis
+stt-bakr,Barnabas Kralik
 subkanthi,Kanthi Subramanian
 subodh,Subodh Kant Chaturvedi
 sullis,Sean C. Sullivan
