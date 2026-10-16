@@ -77,7 +77,7 @@ public class RelationalTableFilters implements DataCollectionFilters {
                 }
             }
         }
-        this.tableFilter = TableFilter.cached(finalTablePredicate::test);
+        this.tableFilter = TableFilter.cached(finalTablePredicate::test, config.getInteger(RelationalDatabaseConnectorConfig.TABLE_FILTER_EXCLUDED_CACHE_SIZE));
 
         // Define the database filter using the include and exclude lists for database names ...
         this.databaseFilter = Selectors.databaseSelector()

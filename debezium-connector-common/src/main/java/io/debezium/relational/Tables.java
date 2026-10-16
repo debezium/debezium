@@ -38,6 +38,9 @@ public final class Tables {
     @FunctionalInterface
     public interface TableFilter extends DataCollectionFilter<TableId> {
 
+        /** How many excluded decisions a caching filter keeps unless configured otherwise. */
+        int DEFAULT_MAX_EXCLUDED = 10_000;
+
         /**
          * Determines whether the given table should be included in the current {@link DatabaseSchema}.
          */
@@ -65,7 +68,19 @@ public final class Tables {
          * @return a caching filter
          */
         static TableFilter cached(TableFilter filter) {
-            return new CachingTableFilter(filter);
+            return cached(filter, DEFAULT_MAX_EXCLUDED);
+        }
+
+        /**
+         * Creates a {@link TableFilter} that caches the results of the given filter, keeping at most the given
+         * number of excluded decisions.
+         *
+         * @param filter the filter to wrap; may not be null
+         * @param maxExcluded how many excluded decisions to keep before the cache of them is emptied
+         * @return a caching filter
+         */
+        static TableFilter cached(TableFilter filter, int maxExcluded) {
+            return new CachingTableFilter(filter, maxExcluded);
         }
     }
 
@@ -85,15 +100,15 @@ public final class Tables {
             }
         }
 
-        // a snapshot asks about every table on the server, so excluded decisions are kept only up to a bound
-        private static final int MAX_EXCLUDED = 10_000;
-
         private final TableFilter delegate;
+        // a snapshot asks about every table on the server, so excluded decisions are kept only up to a bound
+        private final int maxExcluded;
         private final Set<CacheKey> included = ConcurrentHashMap.newKeySet();
         private final Set<CacheKey> excluded = ConcurrentHashMap.newKeySet();
 
-        CachingTableFilter(TableFilter delegate) {
+        CachingTableFilter(TableFilter delegate, int maxExcluded) {
             this.delegate = Objects.requireNonNull(delegate);
+            this.maxExcluded = maxExcluded;
         }
 
         @Override
@@ -110,7 +125,7 @@ public final class Tables {
                 included.add(new CacheKey(Interner.intern(tableId)));
             }
             else {
-                if (excluded.size() >= MAX_EXCLUDED) {
+                if (excluded.size() >= maxExcluded) {
                     excluded.clear();
                 }
                 excluded.add(key);
