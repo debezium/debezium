@@ -455,7 +455,7 @@ public class ParallelIncrementalSnapshotCoordinator<P extends Partition, T exten
     }
 
     public Map<Struct, Object[]> getWindowBuffer(T dataCollectionId) {
-        return windowBuffers.computeIfAbsent(dataCollectionId, k -> new ConcurrentHashMap<>());
+        return windowBuffers.computeIfAbsent(dataCollectionId, k -> new LinkedHashMap<>());
     }
 
     public Map<T, Map<Struct, Object[]>> getAllWindowBuffers() {
