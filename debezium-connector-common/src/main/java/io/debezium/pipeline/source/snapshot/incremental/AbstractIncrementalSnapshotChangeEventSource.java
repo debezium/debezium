@@ -139,7 +139,8 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<P extends Par
         final ParallelIncrementalSnapshotCoordinator<P, T> coordinator = new ParallelIncrementalSnapshotCoordinator<>(
                 threads, this::createSnapshotConnection,
                 config.getLogicalName(),
-                config.getIncrementalSnapshotPoolReleaseDelayMs());
+                config.getIncrementalSnapshotPoolReleaseDelayMs(),
+                retryPolicy);
         LOGGER.info("Incremental snapshot multi-threading enabled with {} threads", threads);
         return new ParallelIncrementalSnapshotReadStrategy<>(coordinator, createWorkerFactory(), watermarkWindow(),
                 this::sendEventForDataCollection, this::dataCollectionCompleted, progressListener, notificationService);

@@ -27,6 +27,7 @@ import org.slf4j.LoggerFactory;
 
 import io.debezium.pipeline.spi.Partition;
 import io.debezium.spi.schema.DataCollectionId;
+import io.debezium.util.RetryExecutor;
 import io.debezium.util.Threads;
 
 /**
@@ -62,12 +63,13 @@ public class ParallelIncrementalSnapshotCoordinator<P extends Partition, T exten
     public ParallelIncrementalSnapshotCoordinator(int threadCount,
                                                   SnapshotConnectionPool.ConnectionFactory connectionFactory,
                                                   String connectorName,
-                                                  long releaseDelayMs) {
+                                                  long releaseDelayMs,
+                                                  RetryExecutor retryPolicy) {
         if (threadCount < 1) {
             throw new IllegalArgumentException("Thread count must be at least 1, got: " + threadCount);
         }
         this.threadCount = threadCount;
-        this.connectionPool = new SnapshotConnectionPool(threadCount, connectionFactory, this::isIdle, connectorName, releaseDelayMs);
+        this.connectionPool = new SnapshotConnectionPool(threadCount, connectionFactory, this::isIdle, connectorName, releaseDelayMs, retryPolicy);
         this.executor = Threads.newFixedThreadPool(
                 ParallelIncrementalSnapshotCoordinator.class, connectorName, "snapshot-worker", threadCount);
 

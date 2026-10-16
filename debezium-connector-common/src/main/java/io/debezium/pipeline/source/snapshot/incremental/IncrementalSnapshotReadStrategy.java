@@ -48,8 +48,8 @@ public interface IncrementalSnapshotReadStrategy<P extends Partition, T extends 
     void drainWindows(IncrementalSnapshotContext<T> context, P partition, OffsetContext offsetContext) throws InterruptedException;
 
     /**
-     * Reads one round of chunks. Returns {@code false} when the caller must read the next chunk of the current
-     * data collection on the streaming connection instead.
+     * Reads one round of chunks. Returns {@code false} when the strategy does not read chunks itself and the caller
+     * must read the next chunk of the current data collection on the streaming connection.
      */
     boolean readRound(IncrementalSnapshotContext<T> context, P partition, OffsetContext offsetContext) throws InterruptedException;
 

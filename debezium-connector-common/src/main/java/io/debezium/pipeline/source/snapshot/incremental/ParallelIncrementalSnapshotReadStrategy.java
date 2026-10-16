@@ -31,15 +31,13 @@ import io.debezium.spi.schema.DataCollectionId;
  * Reads one chunk per active table in every watermark window, each on a dedicated pooled connection, and buffers the
  * rows per table. Memory is bounded to {@code threadCount x chunkSize} regardless of the number of tables.
  *
- * <p>The connection pool is opened when tables are added and released when the snapshot completes. While it cannot
- * be opened the round is handed back to the caller, which reads the current chunk on the streaming connection, and
- * the pool is retried on the next round.
+ * <p>The connection pool is opened when tables are added and released when the snapshot completes. A pool that
+ * cannot be opened after the configured retries fails the snapshot like any other unrecoverable database error.
  */
 public class ParallelIncrementalSnapshotReadStrategy<P extends Partition, T extends DataCollectionId>
         implements IncrementalSnapshotReadStrategy<P, T> {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(ParallelIncrementalSnapshotReadStrategy.class);
-    private static final long POOL_FAILURE_LOG_THROTTLE_MS = 60_000L;
 
     private final ParallelIncrementalSnapshotCoordinator<P, T> coordinator;
     private final ParallelIncrementalSnapshotCoordinator.WorkerFactory<P, T> workerFactory;
@@ -48,7 +46,6 @@ public class ParallelIncrementalSnapshotReadStrategy<P extends Partition, T exte
     private final CollectionCompletion<P, T> collectionCompletion;
     private final SnapshotProgressListener<P> progressListener;
     private final NotificationService<P, ? extends OffsetContext> notificationService;
-    private long lastPoolFailureLogMs;
 
     public ParallelIncrementalSnapshotReadStrategy(ParallelIncrementalSnapshotCoordinator<P, T> coordinator,
                                                    ParallelIncrementalSnapshotCoordinator.WorkerFactory<P, T> workerFactory,
@@ -114,11 +111,7 @@ public class ParallelIncrementalSnapshotReadStrategy<P extends Partition, T exte
             coordinator.ensureInitializedFromContext(context, workerFactory);
         }
         catch (SQLException e) {
-            logPoolUnavailable(e);
-            return false;
-        }
-        if (!coordinator.hasActiveTables()) {
-            return false;
+            throw new DebeziumException("Failed to open the parallel snapshot connection pool", e);
         }
         readParallelRound(context, partition, offsetContext);
         return true;
@@ -132,7 +125,7 @@ public class ParallelIncrementalSnapshotReadStrategy<P extends Partition, T exte
             coordinator.initializeTables(tables, workerFactory);
         }
         catch (SQLException e) {
-            logPoolUnavailable(e);
+            throw new DebeziumException("Failed to open the parallel snapshot connection pool", e);
         }
     }
 
@@ -154,16 +147,6 @@ public class ParallelIncrementalSnapshotReadStrategy<P extends Partition, T exte
     @Override
     public void close() {
         coordinator.shutdown();
-    }
-
-    private void logPoolUnavailable(SQLException e) {
-        final long now = System.currentTimeMillis();
-        if (now - lastPoolFailureLogMs < POOL_FAILURE_LOG_THROTTLE_MS) {
-            return;
-        }
-        lastPoolFailureLogMs = now;
-        LOGGER.error("Parallel snapshot connection pool unavailable ({} threads), reading on the streaming connection until it can be opened",
-                coordinator.getThreadCount(), e);
     }
 
     /**

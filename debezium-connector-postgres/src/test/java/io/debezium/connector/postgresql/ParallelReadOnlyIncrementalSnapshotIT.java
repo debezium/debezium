@@ -80,7 +80,7 @@ public class ParallelReadOnlyIncrementalSnapshotIT extends ReadOnlyIncrementalSn
             }
         }
 
-        // The rows must have been read by the parallel strategy, not by the sequential fallback.
+        // The rows must have been read by the parallel strategy.
         assertThat(sourceLog.containsMessage("Incremental snapshot multi-threading enabled with " + SNAPSHOT_THREADS + " threads")).isTrue();
         assertThat(strategyLog.containsMessage(
                 "Adding " + tableNames().size() + " tables to the parallel incremental snapshot (" + SNAPSHOT_THREADS + " worker threads)")).isTrue();
@@ -88,7 +88,6 @@ public class ParallelReadOnlyIncrementalSnapshotIT extends ReadOnlyIncrementalSn
         for (String table : tableNames()) {
             assertThat(strategyLog.containsMessage("Parallel snapshot of table '" + table + "' completed")).as(table).isTrue();
         }
-        assertThat(strategyLog.containsMessage("reading on the streaming connection")).isFalse();
     }
 
     @Test

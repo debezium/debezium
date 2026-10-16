@@ -24,6 +24,7 @@ import org.slf4j.LoggerFactory;
 
 import io.debezium.annotation.VisibleForTesting;
 import io.debezium.jdbc.JdbcConnection;
+import io.debezium.util.RetryExecutor;
 import io.debezium.util.Threads;
 
 /**
@@ -53,6 +54,7 @@ public class SnapshotConnectionPool implements AutoCloseable {
     private final ConnectionFactory connectionFactory;
     private final BooleanSupplier idle;
     private final long releaseDelayMs;
+    private final RetryExecutor retryPolicy;
     private final Queue<JdbcConnection> available = new ConcurrentLinkedQueue<>();
     private final List<JdbcConnection> all = new CopyOnWriteArrayList<>();
     private final ScheduledExecutorService releaseScheduler;
@@ -74,8 +76,10 @@ public class SnapshotConnectionPool implements AutoCloseable {
      * @param connectorName logical name of the connector, used to name the release thread
      * @param releaseDelayMs how long to wait after the owner became idle before closing the connections; zero
      *            releases immediately
+     * @param retryPolicy retries the opening of the connections on transient failures
      */
-    public SnapshotConnectionPool(int size, ConnectionFactory connectionFactory, BooleanSupplier idle, String connectorName, long releaseDelayMs) {
+    public SnapshotConnectionPool(int size, ConnectionFactory connectionFactory, BooleanSupplier idle, String connectorName, long releaseDelayMs,
+                                  RetryExecutor retryPolicy) {
         if (size < 1) {
             throw new IllegalArgumentException("Pool size must be at least 1, got: " + size);
         }
@@ -86,11 +90,13 @@ public class SnapshotConnectionPool implements AutoCloseable {
         this.connectionFactory = connectionFactory;
         this.idle = idle;
         this.releaseDelayMs = releaseDelayMs;
+        this.retryPolicy = retryPolicy;
         this.releaseScheduler = Threads.newSingleThreadScheduledExecutor(SnapshotConnectionPool.class, connectorName, "pool-release", true);
     }
 
     /**
-     * Opens the connections unless the pool is already open, and cancels a pending release either way.
+     * Opens the connections unless the pool is already open, and cancels a pending release either way. Opening is
+     * retried through the retry policy; the exception of the last attempt is rethrown.
      */
     public void open() throws SQLException {
         lifecycleLock.lock();
@@ -100,7 +106,10 @@ public class SnapshotConnectionPool implements AutoCloseable {
             if (state.get() == State.OPEN) {
                 return;
             }
-            openConnections();
+            retryPolicy.executeWithRetry(() -> {
+                openConnections();
+                return null;
+            }, "open the parallel snapshot connection pool");
             state.set(State.OPEN);
             LOGGER.info("Parallel snapshot connection pool opened ({} connections)", size);
         }
