@@ -234,7 +234,7 @@ public class ParallelIncrementalSnapshotReadStrategy<P extends Partition, T exte
             }
 
             try {
-                executor.awaitCompletion();
+                executor.awaitAll();
             }
             catch (InterruptedException e) {
                 Thread.currentThread().interrupt();

@@ -51,6 +51,31 @@ public class ThreadedSnapshotExecutor implements AutoCloseable {
         }
     }
 
+    /**
+     * Waits for every submitted task, unlike {@link #awaitCompletion()} which stops at the first failure, then
+     * rethrows the first failure with the others suppressed. For callers whose tasks share state that must not be
+     * touched once this method returns.
+     */
+    public void awaitAll() throws InterruptedException, ExecutionException {
+        ExecutionException failure = null;
+        for (int i = 0; i < submittedTasks; i++) {
+            try {
+                completionService.take().get();
+            }
+            catch (ExecutionException e) {
+                if (failure == null) {
+                    failure = e;
+                }
+                else {
+                    failure.addSuppressed(e);
+                }
+            }
+        }
+        if (failure != null) {
+            throw failure;
+        }
+    }
+
     @Override
     public void close() {
         if (ownsExecutorService) {

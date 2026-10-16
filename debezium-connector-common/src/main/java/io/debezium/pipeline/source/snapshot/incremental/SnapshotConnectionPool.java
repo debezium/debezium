@@ -215,9 +215,20 @@ public class SnapshotConnectionPool implements AutoCloseable {
         return fresh;
     }
 
+    /**
+     * Returns a borrowed connection to the pool, or closes it when the pool was closed in the meantime.
+     */
     public void giveBack(JdbcConnection connection) {
-        if (connection != null) {
-            available.add(connection);
+        if (connection == null) {
+            return;
+        }
+        if (closed.get()) {
+            closeQuietly(connection, "return after close");
+            return;
+        }
+        available.add(connection);
+        if (closed.get() && available.remove(connection)) {
+            closeQuietly(connection, "return during close");
         }
     }
 
