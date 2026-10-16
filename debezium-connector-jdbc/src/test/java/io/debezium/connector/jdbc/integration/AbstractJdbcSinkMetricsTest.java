@@ -57,7 +57,7 @@ public abstract class AbstractJdbcSinkMetricsTest extends AbstractJdbcSinkTest {
         properties.put(JdbcSinkConnectorConfig.INSERT_MODE, InsertMode.UPSERT.getValue());
         properties.put(JdbcSinkConnectorConfig.DELETE_ENABLED, "true");
         if ("true".equals(properties.get(JdbcSinkConnectorConfig.ENABLE_SHARED_CHANGE_EVENT_SINK_FIELD.name()))) {
-            properties.put(JdbcSinkConnectorConfig.KEYED_MESSAGE_BATCH_MODE, SinkConnectorConfig.KeyedMessageBatchMode.PASSTHROUGH.getValue());
+            properties.put(JdbcSinkConnectorConfig.BUFFER_MODE, SinkConnectorConfig.BufferMode.PASSTHROUGH.getValue());
         }
         startSinkConnector(properties);
         assertSinkConnectorIsRunning();

@@ -327,7 +327,7 @@ public class JdbcSinkConnectorConfig implements SinkConnectorConfig {
                     SQLSERVER_IDENTITY_INSERT_FIELD,
                     STARROCKS_CATALOG_NAME_FIELD,
                     BATCH_SIZE_FIELD,
-                    KEYED_MESSAGE_BATCH_MODE_FIELD,
+                    BUFFER_MODE_FIELD,
                     FIELD_INCLUDE_LIST_FIELD,
                     FIELD_EXCLUDE_LIST_FIELD,
                     FLUSH_MAX_RETRIES_FIELD,
@@ -463,7 +463,7 @@ public class JdbcSinkConnectorConfig implements SinkConnectorConfig {
     private final long flushRetryDelayMs;
     private final int batchSize;
     private final boolean useReductionBuffer;
-    private final KeyedMessageBatchMode keyedMessageBatchMode;
+    private final BufferMode bufferMode;
     private final boolean connectionRestartOnErrors;
     private final boolean timestampClampOutOfRangeValues;
     private final String cloudEventsSchemaNamePattern;
@@ -487,7 +487,7 @@ public class JdbcSinkConnectorConfig implements SinkConnectorConfig {
         this.starRocksCatalogName = config.getString(STARROCKS_CATALOG_NAME_FIELD);
         this.batchSize = config.getInteger(BATCH_SIZE_FIELD);
         this.useReductionBuffer = config.getBoolean(USE_REDUCTION_BUFFER_FIELD);
-        this.keyedMessageBatchMode = KeyedMessageBatchMode.parse(config.getString(KEYED_MESSAGE_BATCH_MODE_FIELD));
+        this.bufferMode = BufferMode.parse(config.getString(BUFFER_MODE_FIELD));
         this.flushMaxRetries = config.getInteger(FLUSH_MAX_RETRIES_FIELD);
         this.flushRetryDelayMs = config.getLong(FLUSH_RETRY_DELAY_MS_FIELD);
         this.connectionRestartOnErrors = config.getBoolean(CONNECTION_RESTART_ON_ERRORS_FIELD);
@@ -582,8 +582,8 @@ public class JdbcSinkConnectorConfig implements SinkConnectorConfig {
     }
 
     @Override
-    public KeyedMessageBatchMode getKeyedMessageBatchMode() {
-        return keyedMessageBatchMode;
+    public BufferMode getBufferMode() {
+        return bufferMode;
     }
 
     @Override

@@ -34,7 +34,7 @@ import io.debezium.sink.SinkConnectorConfig.PrimaryKeyMode;
 
 /**
  * Integration tests for the shared sink framework buffer modes
- * ({@code keyed.message.batch.mode=passthrough|deduplication}).
+ * ({@code buffer.mode=passthrough|deduplication}).
  * <p>
  * These tests require {@code -Denable.sces=true} to run against the shared sink framework.
  *
@@ -219,7 +219,7 @@ public abstract class AbstractJdbcSinkBufferModeTest extends AbstractJdbcSinkTes
         properties.put(JdbcSinkConnectorConfig.SCHEMA_EVOLUTION, SchemaEvolutionMode.BASIC.getValue());
         properties.put(JdbcSinkConnectorConfig.PRIMARY_KEY_MODE, PrimaryKeyMode.RECORD_KEY.getValue());
         properties.put(JdbcSinkConnectorConfig.INSERT_MODE, InsertMode.UPSERT.getValue());
-        properties.put(SinkConnectorConfig.KEYED_MESSAGE_BATCH_MODE, SinkConnectorConfig.KeyedMessageBatchMode.PASSTHROUGH.getValue());
+        properties.put(SinkConnectorConfig.BUFFER_MODE, SinkConnectorConfig.BufferMode.PASSTHROUGH.getValue());
         startSinkConnector(properties);
         assertSinkConnectorIsRunning();
 
@@ -253,7 +253,7 @@ public abstract class AbstractJdbcSinkBufferModeTest extends AbstractJdbcSinkTes
         properties.put(JdbcSinkConnectorConfig.SCHEMA_EVOLUTION, SchemaEvolutionMode.BASIC.getValue());
         properties.put(JdbcSinkConnectorConfig.PRIMARY_KEY_MODE, PrimaryKeyMode.RECORD_KEY.getValue());
         properties.put(JdbcSinkConnectorConfig.INSERT_MODE, InsertMode.UPSERT.getValue());
-        properties.put(SinkConnectorConfig.KEYED_MESSAGE_BATCH_MODE, SinkConnectorConfig.KeyedMessageBatchMode.PASSTHROUGH.getValue());
+        properties.put(SinkConnectorConfig.BUFFER_MODE, SinkConnectorConfig.BufferMode.PASSTHROUGH.getValue());
         startSinkConnector(properties);
         assertSinkConnectorIsRunning();
 
@@ -287,7 +287,7 @@ public abstract class AbstractJdbcSinkBufferModeTest extends AbstractJdbcSinkTes
         properties.put(JdbcSinkConnectorConfig.SCHEMA_EVOLUTION, SchemaEvolutionMode.BASIC.getValue());
         properties.put(JdbcSinkConnectorConfig.PRIMARY_KEY_MODE, PrimaryKeyMode.RECORD_KEY.getValue());
         properties.put(JdbcSinkConnectorConfig.INSERT_MODE, InsertMode.INSERT.getValue());
-        properties.put(SinkConnectorConfig.KEYED_MESSAGE_BATCH_MODE, SinkConnectorConfig.KeyedMessageBatchMode.PASSTHROUGH.getValue());
+        properties.put(SinkConnectorConfig.BUFFER_MODE, SinkConnectorConfig.BufferMode.PASSTHROUGH.getValue());
         startSinkConnector(properties);
         assertSinkConnectorIsRunning();
 
@@ -318,7 +318,7 @@ public abstract class AbstractJdbcSinkBufferModeTest extends AbstractJdbcSinkTes
         properties.put(JdbcSinkConnectorConfig.SCHEMA_EVOLUTION, SchemaEvolutionMode.BASIC.getValue());
         properties.put(JdbcSinkConnectorConfig.PRIMARY_KEY_MODE, PrimaryKeyMode.RECORD_KEY.getValue());
         properties.put(JdbcSinkConnectorConfig.INSERT_MODE, InsertMode.UPSERT.getValue());
-        properties.put(SinkConnectorConfig.KEYED_MESSAGE_BATCH_MODE, SinkConnectorConfig.KeyedMessageBatchMode.PASSTHROUGH.getValue());
+        properties.put(SinkConnectorConfig.BUFFER_MODE, SinkConnectorConfig.BufferMode.PASSTHROUGH.getValue());
         startSinkConnector(properties);
         assertSinkConnectorIsRunning();
 
