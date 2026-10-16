@@ -127,7 +127,7 @@ public class ParallelIncrementalSnapshotReadStrategy<P extends Partition, T exte
 
     @Override
     public void tablesAdded(List<DataCollection<T>> tables) {
-        LOGGER.info("Starting PARALLEL incremental snapshot for {} tables with {} worker threads",
+        LOGGER.info("Adding {} tables to the parallel incremental snapshot ({} worker threads)",
                 tables.size(), coordinator.getThreadCount());
         try {
             coordinator.initializeTables(tables, workerFactory);

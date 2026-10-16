@@ -98,7 +98,7 @@ public class ParallelReadOnlyIncrementalSnapshotIT extends ReadOnlyIncrementalSn
         // The rows must have been read by the parallel strategy, not by the sequential fallback.
         assertThat(sourceLog.containsMessage("Incremental snapshot multi-threading enabled with " + SNAPSHOT_THREADS + " threads")).isTrue();
         assertThat(strategyLog.containsMessage(
-                "Starting PARALLEL incremental snapshot for " + tableNames().size() + " tables with " + SNAPSHOT_THREADS + " worker threads")).isTrue();
+                "Adding " + tableNames().size() + " tables to the parallel incremental snapshot (" + SNAPSHOT_THREADS + " worker threads)")).isTrue();
         assertThat(coordinatorLog.containsMessage("Parallel snapshot initialized: " + tableNames().size() + " active, 0 pending")).isTrue();
         for (String table : tableNames()) {
             assertThat(strategyLog.containsMessage("Parallel snapshot of table '" + table + "' completed")).as(table).isTrue();

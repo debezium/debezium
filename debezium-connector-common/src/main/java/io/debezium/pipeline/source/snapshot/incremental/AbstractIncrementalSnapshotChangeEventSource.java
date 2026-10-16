@@ -645,6 +645,8 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<P extends Par
 
         validateSignalTableConfiguration(newDataCollectionIds);
 
+        readStrategy.tablesAdded(newDataCollectionIds);
+
         if (shouldReadChunk) {
 
             List<T> monitoredDataCollections = newDataCollectionIds.stream()
@@ -658,7 +660,6 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<P extends Par
             progressListener.monitoredDataCollectionsDetermined(partition, monitoredDataCollections);
             notificationService.incrementalSnapshotNotificationService().notifyDataCollectionsResolved(context, partition, offsetContext);
 
-            readStrategy.tablesAdded(newDataCollectionIds);
             readChunk(partition, offsetContext);
         }
     }
