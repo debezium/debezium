@@ -334,7 +334,7 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<P extends Par
 
         LOGGER.info("Incremental snapshot resuming from: table={}, chunk position={}",
                 context.currentDataCollectionId() != null ? context.currentDataCollectionId().getId() : "start",
-                context.chunkEndPosititon() != null ? java.util.Arrays.toString(context.chunkEndPosititon()) : "start");
+                context.chunkEndPosititon() != null ? maybeRedactSensitiveData(context.chunkEndPosititon()) : "start");
 
         try {
             preIncrementalSnapshotStart();

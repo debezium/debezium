@@ -5,6 +5,8 @@
  */
 package io.debezium.pipeline.source.snapshot.incremental;
 
+import static io.debezium.util.Loggings.maybeRedactSensitiveData;
+
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -116,7 +118,7 @@ public class TableSnapshotWorker<P extends Partition, T extends DataCollectionId
             }
             context.maximumKey(maximumKey);
             context.totalRows(resolveTotalRowCount(conn, maximumKey));
-            LOGGER.info("Incremental snapshot for table '{}' will end at position {}", tableId, Arrays.toString(maximumKey));
+            LOGGER.info("Incremental snapshot for table '{}' will end at position {}", tableId, maybeRedactSensitiveData(maximumKey));
         }
 
         if (isComplete()) {
