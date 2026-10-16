@@ -12,6 +12,7 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.fail;
+import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
 import java.sql.SQLException;
 import java.time.Duration;
@@ -531,6 +532,43 @@ public class ReplicationConnectionIT {
                     .untilAsserted(() -> assertThat(logInterceptor.containsMessage("Keep-alive thread interrupted, shutting down")).isTrue());
 
             stream.close();
+        }
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2430")
+    void shouldFailFastWhenReplicationSlotIsInvalidated() throws Exception {
+        final String slotName = "invalidated_slot";
+        try (PostgresConnection conn = TestHelper.create()) {
+            // max_slot_wal_keep_size and wal_status exist from PostgreSQL 13
+            assumeTrue(conn.connection().getMetaData().getDatabaseMajorVersion() >= 13);
+        }
+        TestHelper.create().dropReplicationSlot(slotName);
+        startInsertStop(slotName, null); // creates the slot and leaves it inactive
+
+        try (PostgresConnection conn = TestHelper.create()) {
+            conn.execute("ALTER SYSTEM SET max_slot_wal_keep_size = 0", "SELECT pg_reload_conf()");
+
+            // push WAL past the slot's restart_lsn so the checkpoint can remove it
+            Awaitility.await().atMost(Duration.ofSeconds(30)).pollInterval(Duration.ofSeconds(1)).until(() -> {
+                conn.execute("INSERT INTO table_with_pk (b, c) VALUES ('x', now())", "SELECT pg_switch_wal()", "CHECKPOINT");
+                return conn.queryAndMap("SELECT wal_status FROM pg_replication_slots WHERE slot_name = '" + slotName + "'",
+                        rs -> rs.next() && "lost".equals(rs.getString(1)));
+            });
+
+            final var interceptor = new LogInterceptor(PostgresReplicationConnection.class);
+            try (ReplicationConnection connection = TestHelper.createForReplication(slotName, false)) {
+                final var e = assertThrows(DebeziumException.class, () -> connection.startStreaming(new WalPositionLocator()));
+                assertThat(e.getMessage()).contains("invalidated");
+                // default max retries applies, so this proves the retry was skipped
+                assertFalse(interceptor.containsWarnMessage("and retrying, attempt number"));
+            }
+        }
+        finally {
+            try (PostgresConnection conn = TestHelper.create()) {
+                conn.execute("ALTER SYSTEM RESET max_slot_wal_keep_size", "SELECT pg_reload_conf()");
+                conn.dropReplicationSlot(slotName);
+            }
         }
     }
 

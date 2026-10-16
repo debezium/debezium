@@ -98,6 +98,7 @@ import io.debezium.junit.SkipWhenDatabaseVersion;
 import io.debezium.junit.SkipWhenKafkaVersion;
 import io.debezium.junit.SkipWhenKafkaVersion.KafkaVersion;
 import io.debezium.junit.logging.LogInterceptor;
+import io.debezium.pipeline.ErrorHandler;
 import io.debezium.pipeline.txmetadata.TransactionStructMaker;
 import io.debezium.relational.RelationalDatabaseConnectorConfig;
 import io.debezium.relational.RelationalDatabaseSchema;
@@ -4897,4 +4898,66 @@ public class PostgresConnectorIT extends AbstractAsyncEngineConnectorTest {
             TestHelper.dropPublication();
         }
     }
+
+    @Test
+    @FixFor("debezium/dbz#2430")
+    @SkipWhenDatabaseVersion(check = LESS_THAN, major = 13, reason = "max_slot_wal_keep_size and wal_status need PostgreSQL 13")
+    public void testShouldFailTaskWhenReplicationSlotIsInvalidated() throws Exception {
+        TestHelper.dropAllSchemas();
+        TestHelper.dropPublication();
+        TestHelper.dropDefaultReplicationSlot();
+        TestHelper.execute(CREATE_TABLES_STMT);
+
+        final Configuration config = TestHelper.defaultConfig()
+                .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NO_DATA)
+                .with(PostgresConnectorConfig.SLOT_NAME, ReplicationConnection.Builder.DEFAULT_SLOT_NAME)
+                .with(PostgresConnectorConfig.DROP_SLOT_ON_STOP, Boolean.FALSE)
+                .build();
+
+        try {
+            // First run: stream one change so an offset is stored, then stop and keep the slot
+            start(PostgresConnector.class, config);
+            assertConnectorIsRunning();
+            waitForStreamingRunning("postgres", TestHelper.TEST_SERVER);
+            TestHelper.execute("INSERT INTO s2.a (aa) VALUES (1);");
+            consumeRecordsByTopic(1);
+            stopConnector();
+
+            // Push the inactive slot to wal_status = 'lost'
+            try (PostgresConnection conn = TestHelper.create()) {
+                conn.execute("ALTER SYSTEM SET max_slot_wal_keep_size = 0;", "SELECT pg_reload_conf();");
+                Awaitility.await().atMost(Duration.ofSeconds(30)).pollInterval(Duration.ofSeconds(1)).until(() -> {
+                    conn.execute("INSERT INTO s2.a (aa) VALUES (2);", "SELECT pg_switch_wal();", "CHECKPOINT;");
+                    return conn.queryAndMap(
+                            "SELECT wal_status FROM pg_replication_slots WHERE slot_name = '" + ReplicationConnection.Builder.DEFAULT_SLOT_NAME + "'",
+                            rs -> rs.next() && "lost".equals(rs.getString(1)));
+                });
+            }
+
+            // Second run: the task must FAIL, not restart itself in a RUNNING-looking loop
+            final LogInterceptor interceptor = new LogInterceptor(ErrorHandler.class);
+            final CountDownLatch latch = new CountDownLatch(1);
+            final DebeziumEngine.CompletionCallback completionCallback = (success, message, error) -> {
+                if (!success && error != null) {
+                    latch.countDown();
+                }
+            };
+            start(PostgresConnector.class, config, completionCallback);
+
+            if (!latch.await(TestHelper.waitTimeForRecords() * 15L, TimeUnit.SECONDS)) {
+                fail("Connector task did not fail after the replication slot was invalidated");
+            }
+            assertConnectorNotRunning();
+            // ErrorHandler logs this only when it decides to restart on a retriable error
+            assertThat(interceptor.containsMessage("retries will be attempted")).isFalse();
+        }
+        finally {
+            stopConnector();
+            try (PostgresConnection conn = TestHelper.create()) {
+                conn.execute("ALTER SYSTEM RESET max_slot_wal_keep_size;", "SELECT pg_reload_conf();");
+            }
+            TestHelper.dropDefaultReplicationSlot();
+        }
+    }
+
 }

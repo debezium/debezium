@@ -9,6 +9,8 @@ import java.io.IOException;
 import java.sql.SQLException;
 import java.util.Set;
 
+import org.postgresql.util.PSQLException;
+
 import io.debezium.connector.base.ChangeEventQueue;
 import io.debezium.pipeline.ErrorHandler;
 import io.debezium.util.Collect;
@@ -33,7 +35,7 @@ public class PostgresErrorHandler extends ErrorHandler {
      * Returns true if the exception (or any cause in its chain) is a permanent SQL error
      * that should not be retried, such as an authentication or authorization failure.
      */
-    protected static boolean isPermanentError(Throwable t) {
+    public static boolean isPermanentError(Throwable t) {
         for (Throwable cause = t; cause != null; cause = cause.getCause()) {
             if (cause instanceof SQLException) {
                 final String sqlState = ((SQLException) cause).getSQLState();
@@ -49,9 +51,40 @@ public class PostgresErrorHandler extends ErrorHandler {
     @Override
     protected boolean isRetriable(Throwable throwable) {
         // Check for permanent errors first so the task fails immediately instead of retrying forever.
-        if (isPermanentError(throwable)) {
+        if (isPermanentError(throwable) || isSlotInvalidated(throwable)) {
             return false;
         }
         return super.isRetriable(throwable);
     }
+
+    /**
+     * Checks if the exception (or any cause in its chain) indicates that the
+     * PostgreSQL replication slot has been invalidated.
+     */
+    public static boolean isSlotInvalidated(Throwable t) {
+        for (Throwable cause = t; cause != null; cause = cause.getCause()) {
+            if (isSlotInvalidatedSingle(cause)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private static boolean isSlotInvalidatedSingle(Throwable t) {
+        if (t == null) {
+            return false;
+        }
+
+        if (t instanceof PSQLException psql && psql.getServerErrorMessage() != null) {
+            String detail = psql.getServerErrorMessage().getDetail();
+            if (detail != null && detail.contains("has been invalidated")) {
+                return true;
+            }
+        }
+
+        String msg = t.getMessage();
+        return msg != null && (msg.contains("has been invalidated")
+                || msg.contains("can no longer get changes from replication slot"));
+    }
+
 }
