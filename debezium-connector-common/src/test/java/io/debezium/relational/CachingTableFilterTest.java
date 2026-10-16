@@ -17,10 +17,12 @@ import io.debezium.relational.Tables.TableFilter;
 public class CachingTableFilterTest {
 
     private final AtomicInteger evaluations = new AtomicInteger();
+    private static final int MAX_EXCLUDED = 100;
+
     private final TableFilter filter = TableFilter.cached(id -> {
         evaluations.incrementAndGet();
         return id.table().startsWith("in");
-    });
+    }, MAX_EXCLUDED);
 
     @Test
 
@@ -46,7 +48,7 @@ public class CachingTableFilterTest {
         filter.isIncluded(included);
         filter.isIncluded(firstExcluded);
 
-        for (int i = 1; i < 20_000; i++) {
+        for (int i = 1; i < 2 * MAX_EXCLUDED; i++) {
             filter.isIncluded(new TableId("db", null, "out" + i));
         }
         final int before = evaluations.get();
