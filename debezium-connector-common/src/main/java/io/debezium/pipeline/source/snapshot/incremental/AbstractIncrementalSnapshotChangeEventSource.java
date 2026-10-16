@@ -664,13 +664,33 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<P extends Par
     }
 
     private ParallelIncrementalSnapshotCoordinator.WorkerFactory<P, T> createWorkerFactory() {
-        return (dc, buffer) -> new TableSnapshotWorker<>(
-                new TableSnapshotContext<>(dc),
-                connectorConfig,
-                databaseSchema,
-                chunkQueryBuilder,
-                buffer,
-                retryPolicy);
+        return (dc, buffer) -> {
+            refreshSchemaForWorker((TableId) dc.getId());
+            return new TableSnapshotWorker<>(
+                    new TableSnapshotContext<>(dc),
+                    connectorConfig,
+                    databaseSchema,
+                    chunkQueryBuilder,
+                    buffer,
+                    retryPolicy);
+        };
+    }
+
+    /**
+     * Same refresh the sequential reader applies before the maximum key query, done here because the worker is
+     * created on the streaming thread and connectors refresh through the streaming connection.
+     */
+    private void refreshSchemaForWorker(TableId tableId) {
+        final Table table = databaseSchema.tableFor(tableId);
+        if (table == null) {
+            return;
+        }
+        try {
+            refreshTableSchema(table);
+        }
+        catch (SQLException e) {
+            LOGGER.warn("Failed to refresh the schema of table '{}' before its parallel snapshot, using the cached schema", tableId, e);
+        }
     }
 
     /**
