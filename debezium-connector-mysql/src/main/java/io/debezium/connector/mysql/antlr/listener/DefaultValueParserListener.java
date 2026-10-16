@@ -10,6 +10,7 @@ import java.sql.Types;
 import java.util.concurrent.atomic.AtomicReference;
 
 import io.debezium.connector.binlog.util.BinaryLiteralDefaultValueUtils;
+import io.debezium.connector.binlog.util.BinaryLiteralDefaultValueUtils.BinaryLiteral;
 import io.debezium.connector.mysql.antlr.MySqlAntlrDdlParser;
 import io.debezium.ddl.parser.mysql.generated.MySqlParser;
 import io.debezium.ddl.parser.mysql.generated.MySqlParserBaseListener;
@@ -55,6 +56,9 @@ public class DefaultValueParserListener extends MySqlParserBaseListener {
     }
 
     private void handleDefaultValue(MySqlParser.ColumnAttributeContext ctx) {
+        // The last default of a column definition applies
+        parser.binaryLiteralDefaults().remove(getColumnEditor().name());
+
         // Handle expression-based defaults (MySQL 8.0.13+)
         if (ctx.exprWithParentheses() != null) {
             // Default value is calculated/expression - handle as NULL
@@ -173,7 +177,10 @@ public class DefaultValueParserListener extends MySqlParserBaseListener {
                 : BinaryLiteralDefaultValueUtils.parseBitValue(literalCtx.BIN_NUMBER().getText());
         final String introducer = literalCtx.UNDERSCORE_CHARSET() != null ? literalCtx.UNDERSCORE_CHARSET().getText() : null;
         // MySQL treats X'41' like 0x41, as a number in a numeric context
-        return BinaryLiteralDefaultValueUtils.toDefaultValueExpression(columnEditor, bytes, true, introducer, parser.currentDatabaseCharset(),
+        final BinaryLiteral literal = new BinaryLiteral(bytes, true, introducer);
+        // The character set of the column may only be known at the end of the statement, which converts the literal again
+        parser.binaryLiteralDefaults().put(columnEditor.name(), literal);
+        return BinaryLiteralDefaultValueUtils.toDefaultValueExpression(columnEditor, literal, parser.currentDatabaseCharset(),
                 parser::getJavaEncodingForCharSet);
     }
 

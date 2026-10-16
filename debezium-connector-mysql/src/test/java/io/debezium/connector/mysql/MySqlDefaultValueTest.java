@@ -122,6 +122,17 @@ public class MySqlDefaultValueTest extends BinlogDefaultValueTest<MySqlValueConv
         assertBinaryLiteralDefault(type, literal, equivalentLiteral, action);
     }
 
+    @ParameterizedTest
+    @CsvSource(delimiter = '|', value = {
+            "CREATE TABLE t (id INT, v VARCHAR(32) DEFAULT 0xE9 COLLATE latin1_bin)",
+            "CREATE TABLE t (id INT); ALTER TABLE t ADD COLUMN v VARCHAR(32) DEFAULT 0xE9 COLLATE latin1_bin"
+    })
+    @FixFor("debezium/dbz#2765")
+    void shouldDecodeHexadecimalDefaultInCharacterSetOfCollationAfterIt(String ddl) {
+        // The collation of a column can follow its default, and implies the character set of the column
+        assertThat(parseDefaultValueOfColumnV("utf8mb4", ddl)).isEqualTo("é");
+    }
+
     private static Stream<Arguments> quotedHexadecimalDefaults() {
         // MySQL treats X'31' like 0x31, as the number 49 in a numeric context
         return withDdlActions(Stream.of(

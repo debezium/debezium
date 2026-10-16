@@ -904,6 +904,65 @@ public abstract class BinlogDefaultValueTest<V extends BinlogValueConverters, P 
         assertThat(getColumnSchema(tables.forTable(new TableId("latin1_db", null, "latin1_defaults")), "v").defaultValue()).isEqualTo("é");
     }
 
+    @ParameterizedTest(name = "{0}")
+    @MethodSource("binaryLiteralDefaultsInCharacterSetOfColumn")
+    @FixFor("debezium/dbz#2765")
+    void shouldDecodeHexadecimalDefaultsInCharacterSetOfColumn(String description, String databaseCharset, String ddl) {
+        // MySQL and MariaDB store each of these defaults as 'é'
+        assertThat(parseDefaultValueOfColumnV(databaseCharset, ddl)).isEqualTo("é");
+    }
+
+    protected static Stream<Arguments> binaryLiteralDefaultsInCharacterSetOfColumn() {
+        // A column without a character set uses the one of its table as it is at the end of the statement
+        return Stream.of(
+                Arguments.of("CREATE TABLE of a latin1 table", "utf8mb4",
+                        "CREATE TABLE t (id INT, v VARCHAR(32) DEFAULT 0xE9) CHARACTER SET latin1"),
+                Arguments.of("CREATE TABLE of a utf8mb4 table", "latin1",
+                        "CREATE TABLE t (id INT, v VARCHAR(32) DEFAULT 0xC3A9) CHARACTER SET utf8mb4"),
+                Arguments.of("CREATE TABLE with a table collation", "utf8mb4",
+                        "CREATE TABLE t (id INT, v VARCHAR(32) DEFAULT 0xE9) COLLATE latin1_bin"),
+                Arguments.of("CREATE TABLE with a column character set", "latin1",
+                        "CREATE TABLE t (id INT, v VARCHAR(32) CHARACTER SET utf8mb4 DEFAULT 0xC3A9) CHARACTER SET latin1"),
+                Arguments.of("CREATE TABLE in another database", "utf8mb4",
+                        "CREATE DATABASE other_db CHARACTER SET latin1; CREATE TABLE other_db.t (id INT, v VARCHAR(32) DEFAULT 0xE9)"),
+                Arguments.of("ADD COLUMN to a latin1 table", "utf8mb4",
+                        "CREATE TABLE t (id INT) CHARACTER SET latin1; ALTER TABLE t ADD COLUMN v VARCHAR(32) DEFAULT 0xE9"),
+                Arguments.of("ADD COLUMN to a utf8mb4 table", "latin1",
+                        "CREATE TABLE t (id INT) CHARACTER SET utf8mb4; ALTER TABLE t ADD COLUMN v VARCHAR(32) DEFAULT 0xC3A9"),
+                Arguments.of("ADD COLUMN with several columns", "utf8mb4",
+                        "CREATE TABLE t (id INT) CHARACTER SET latin1; ALTER TABLE t ADD COLUMN (v VARCHAR(32) DEFAULT 0xE9, w INT)"),
+                Arguments.of("ADD COLUMN after a table character set", "latin1",
+                        "CREATE TABLE t (id INT) CHARACTER SET latin1; ALTER TABLE t CHARACTER SET utf8mb4, ADD COLUMN v VARCHAR(32) DEFAULT 0xC3A9"),
+                Arguments.of("ADD COLUMN before a table character set", "latin1",
+                        "CREATE TABLE t (id INT) CHARACTER SET latin1; ALTER TABLE t ADD COLUMN v VARCHAR(32) DEFAULT 0xC3A9, CHARACTER SET utf8mb4"),
+                Arguments.of("MODIFY COLUMN", "utf8mb4",
+                        "CREATE TABLE t (id INT, v VARCHAR(32)) CHARACTER SET latin1; ALTER TABLE t MODIFY COLUMN v VARCHAR(32) DEFAULT 0xE9"),
+                Arguments.of("MODIFY COLUMN without its former character set", "utf8mb4",
+                        "CREATE TABLE t (id INT, v VARCHAR(32) CHARACTER SET utf8mb4) CHARACTER SET latin1; "
+                                + "ALTER TABLE t MODIFY COLUMN v VARCHAR(32) DEFAULT 0xE9"),
+                Arguments.of("CHANGE COLUMN with a new name", "utf8mb4",
+                        "CREATE TABLE t (id INT, u VARCHAR(32)) CHARACTER SET latin1; ALTER TABLE t CHANGE COLUMN u v VARCHAR(32) DEFAULT 0xE9"),
+                Arguments.of("SET DEFAULT", "utf8mb4",
+                        "CREATE TABLE t (id INT, v VARCHAR(32)) CHARACTER SET latin1; ALTER TABLE t ALTER COLUMN v SET DEFAULT 0xE9"),
+                Arguments.of("SET DEFAULT of a column with a character set", "latin1",
+                        "CREATE TABLE t (id INT, v VARCHAR(32) CHARACTER SET utf8mb4) CHARACTER SET latin1; ALTER TABLE t ALTER COLUMN v SET DEFAULT 0xC3A9"));
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2765")
+    void shouldUseLastDefaultOfColumnDefinition() {
+        assertThat(parseDefaultValueOfColumnV("utf8mb4", "CREATE TABLE t (id INT, v VARCHAR(32) DEFAULT 0xE9 DEFAULT 'y') CHARACTER SET latin1"))
+                .isEqualTo("y");
+    }
+
+    protected Object parseDefaultValueOfColumnV(String databaseCharset, String ddl) {
+        final var charsetTables = new Tables();
+        parser.parse("CREATE DATABASE charset_db CHARACTER SET " + databaseCharset + "; USE charset_db;", charsetTables);
+        parser.parse(ddl, charsetTables);
+        final TableId tableId = charsetTables.tableIds().stream().filter(id -> id.table().equals("t")).findFirst().orElseThrow();
+        return getColumnSchema(charsetTables.forTable(tableId), "v").defaultValue();
+    }
+
     @ParameterizedTest
     @ValueSource(strings = { "create-table", "add-column", "modify-column", "alter-default" })
     @FixFor("debezium/dbz#2765")

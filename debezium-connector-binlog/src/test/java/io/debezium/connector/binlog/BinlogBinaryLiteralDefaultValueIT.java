@@ -12,6 +12,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
+import java.util.stream.Stream;
 
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceConnector;
@@ -20,7 +21,8 @@ import org.assertj.core.api.SoftAssertions;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.ValueSource;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 
 import io.debezium.connector.binlog.util.TestHelper;
 import io.debezium.connector.binlog.util.UniqueDatabase;
@@ -79,11 +81,23 @@ public abstract class BinlogBinaryLiteralDefaultValueIT<C extends SourceConnecto
         }
     }
 
-    @ParameterizedTest
-    @ValueSource(strings = { "create-table", "add-column", "modify-column", "alter-default" })
+    static Stream<Arguments> actionsAndCharacterSets() {
+        // A column without a character set interprets the literal in the character set of its table, which can differ
+        // from the one of the database
+        return Stream.of("create-table", "add-column", "modify-column", "alter-default").flatMap(action -> Stream.of(
+                Arguments.of(action, "utf8mb4", null),
+                Arguments.of(action, "utf8mb4", "latin1"),
+                Arguments.of(action, "latin1", "utf8mb4")));
+    }
+
+    @ParameterizedTest(name = "{0}, {1} database, {2} table")
+    @MethodSource("actionsAndCharacterSets")
     @FixFor("debezium/dbz#2765")
-    void shouldMatchStoredValuesOfHexadecimalAndBitValueDefaults(String action) throws Exception {
-        executeStatements(database.getDatabaseName(), createTable(), "INSERT INTO " + TABLE + " (id) VALUES (1)");
+    void shouldMatchStoredValuesOfHexadecimalAndBitValueDefaults(String action, String databaseCharset, String tableCharset) throws Exception {
+        executeStatements(database.getDatabaseName(),
+                "ALTER DATABASE " + database.getDatabaseName() + " CHARACTER SET " + databaseCharset,
+                createTable(tableCharset),
+                "INSERT INTO " + TABLE + " (id) VALUES (1)");
         start(getConnectorClass(), database.defaultConfig()
                 .with(BinlogConnectorConfig.SNAPSHOT_MODE, BinlogConnectorConfig.SnapshotMode.INITIAL)
                 .with(BinlogConnectorConfig.TABLE_INCLUDE_LIST, database.qualifiedTableName(TABLE))
@@ -94,7 +108,7 @@ public abstract class BinlogBinaryLiteralDefaultValueIT<C extends SourceConnecto
         assertDefaultsMatchValues(assertions, consumeRecord(1), "snapshot");
         waitForStreamingRunning(getConnectorName(), database.getServerName());
 
-        executeStatements(database.getDatabaseName(), streamingDdl(action).toArray(String[]::new));
+        executeStatements(database.getDatabaseName(), streamingDdl(action, tableCharset).toArray(String[]::new));
         executeStatements(database.getDatabaseName(), "INSERT INTO " + TABLE + " (id) VALUES (2)");
         assertDefaultsMatchValues(assertions, consumeRecord(2), action);
         assertions.assertAll();
@@ -120,9 +134,9 @@ public abstract class BinlogBinaryLiteralDefaultValueIT<C extends SourceConnecto
         }
     }
 
-    private List<String> streamingDdl(String action) {
+    private List<String> streamingDdl(String action, String tableCharset) {
         if ("create-table".equals(action)) {
-            return List.of("DROP TABLE " + TABLE, createTable());
+            return List.of("DROP TABLE " + TABLE, createTable(tableCharset));
         }
         final List<String> statements = new ArrayList<>();
         for (int index = 0; index < COLUMNS.size(); index++) {
@@ -148,11 +162,11 @@ public abstract class BinlogBinaryLiteralDefaultValueIT<C extends SourceConnecto
         return statements;
     }
 
-    private static String createTable() {
+    private static String createTable(String charset) {
         return "CREATE TABLE " + TABLE + " (id INT PRIMARY KEY, "
                 + IntStream.range(0, COLUMNS.size()).mapToObj(index -> columnName(index) + " " + COLUMNS.get(index))
                         .collect(Collectors.joining(", "))
-                + ")";
+                + ")" + (charset != null ? " CHARACTER SET " + charset : "");
     }
 
     private static String columnName(int index) {
