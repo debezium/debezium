@@ -18,8 +18,8 @@ import org.apache.kafka.connect.data.Struct;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import io.debezium.DebeziumException;
 import io.debezium.jdbc.JdbcConnection;
+import io.debezium.pipeline.notification.IncrementalSnapshotNotificationService.TableScanCompletionStatus;
 import io.debezium.pipeline.spi.Partition;
 import io.debezium.relational.Column;
 import io.debezium.relational.RelationalDatabaseConnectorConfig;
@@ -60,6 +60,7 @@ public class TableSnapshotWorker<P extends Partition, T extends DataCollectionId
     private Table currentTable;
     private List<Column> keyColumns;
     private long totalRowsRead = 0;
+    private TableScanCompletionStatus completionStatus = TableScanCompletionStatus.SUCCEEDED;
 
     public TableSnapshotWorker(
                                TableSnapshotContext<T> context,
@@ -86,29 +87,36 @@ public class TableSnapshotWorker<P extends Partition, T extends DataCollectionId
         if (currentTable == null) {
             currentTable = databaseSchema.tableFor(tableId);
             if (currentTable == null) {
-                LOGGER.warn("Table '{}' schema not found, skipping", tableId);
-                return false;
+                return giveUp(TableScanCompletionStatus.UNKNOWN_SCHEMA, "Schema not found for table '{}', skipping its incremental snapshot", tableId, null);
             }
             currentTable = chunkQueryBuilder.prepareTable(context, currentTable);
-            keyColumns = chunkQueryBuilder.getQueryColumns(context, currentTable);
-        }
-
-        if (keyColumns.isEmpty()) {
-            throw new DebeziumException(
-                    "Table '" + tableId + "' has no primary key; incremental snapshot requires a key "
-                            + "for the DBLog watermark window. Restrict this table to initial snapshot, "
-                            + "add a PK, or declare a synthetic key via 'message.key.columns'.");
+            try {
+                keyColumns = chunkQueryBuilder.getQueryColumns(context, currentTable);
+            }
+            catch (IllegalArgumentException e) {
+                return giveUp(TableScanCompletionStatus.SKIPPED, "Incremental snapshot for table '{}' skipped", tableId, e);
+            }
+            if (keyColumns.isEmpty()) {
+                return giveUp(TableScanCompletionStatus.NO_PRIMARY_KEY,
+                        "Incremental snapshot for table '{}' skipped because the table has no primary keys", tableId, null);
+            }
         }
 
         if (context.maximumKey().isEmpty()) {
-            final Object[] maximumKey = readMaximumKey(conn);
+            final Object[] maximumKey;
+            try {
+                maximumKey = readMaximumKey(conn);
+            }
+            catch (SQLException e) {
+                return giveUp(TableScanCompletionStatus.SQL_EXCEPTION, "Failed to read maximum key for table '{}' after retries", tableId, e);
+            }
             if (maximumKey == null) {
-                LOGGER.info("Table '{}' is empty, skipping", tableId);
-                return false;
+                return giveUp(TableScanCompletionStatus.EMPTY,
+                        "No maximum key returned by the query, incremental snapshotting of table '{}' finished as it is empty", tableId, null);
             }
             context.maximumKey(maximumKey);
             context.totalRows(resolveTotalRowCount(conn, maximumKey));
-            LOGGER.info("Table '{}' has data, starting chunk reads (max key set)", tableId);
+            LOGGER.info("Incremental snapshot for table '{}' will end at position {}", tableId, Arrays.toString(maximumKey));
         }
 
         if (isComplete()) {
@@ -153,22 +161,33 @@ public class TableSnapshotWorker<P extends Partition, T extends DataCollectionId
     }
 
     private Object[] readMaximumKey(JdbcConnection conn) throws SQLException {
-        final TableId tableId = (TableId) context.currentDataCollectionId().getId();
-        try {
-            return retryPolicy.executeWithRetry(
-                    () -> conn.queryAndMap(
-                            chunkQueryBuilder.buildMaxPrimaryKeyQuery(context, currentTable,
-                                    context.currentDataCollectionId().getAdditionalCondition()),
-                            rs -> rs.next()
-                                    ? keyFromRow(conn.rowToArray(currentTable, rs,
-                                            ColumnUtils.toArray(rs, currentTable)))
-                                    : null),
-                    "read maximum key for table " + tableId);
+        return retryPolicy.executeWithRetry(
+                () -> conn.queryAndMap(
+                        chunkQueryBuilder.buildMaxPrimaryKeyQuery(context, currentTable,
+                                context.currentDataCollectionId().getAdditionalCondition()),
+                        rs -> rs.next()
+                                ? keyFromRow(conn.rowToArray(currentTable, rs,
+                                        ColumnUtils.toArray(rs, currentTable)))
+                                : null),
+                "read maximum key for table " + context.currentDataCollectionId().getId());
+    }
+
+    private boolean giveUp(TableScanCompletionStatus status, String message, TableId tableId, Throwable t) {
+        completionStatus = status;
+        if (t != null) {
+            LOGGER.warn(message, tableId, t);
         }
-        catch (Exception e) {
-            LOGGER.error("Failed to read maximum key for table {}", tableId, e);
-            return null;
+        else {
+            LOGGER.warn(message, tableId);
         }
+        return false;
+    }
+
+    /**
+     * Why the table left the snapshot: {@code SUCCEEDED} when every chunk was read, otherwise the reason it was skipped.
+     */
+    public TableScanCompletionStatus completionStatus() {
+        return completionStatus;
     }
 
     private boolean executeChunkQuery(String selectStatement, JdbcConnection conn) throws SQLException {
