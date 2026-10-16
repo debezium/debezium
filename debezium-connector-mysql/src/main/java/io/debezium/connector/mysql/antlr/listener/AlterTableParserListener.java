@@ -50,6 +50,7 @@ public class AlterTableParserListener extends TableCommonParserListener {
 
     @Override
     public void enterAlterTable(MySqlParser.AlterTableContext ctx) {
+        parser.binaryLiteralDefaults().clear();
         final TableId tableId = parser.parseQualifiedTableId(ctx.tableRef());
         if (parser.databaseTables().forTable(tableId) == null) {
             LOG.debug("Ignoring ALTER TABLE statement for non-captured table {}", tableId);
@@ -69,6 +70,8 @@ public class AlterTableParserListener extends TableCommonParserListener {
             if (columnDefinitionListener != null) {
                 listeners.remove(columnDefinitionListener);
             }
+            // The character set of the table is known now, and applies to the columns that do not declare one
+            parser.binaryLiteralDefaults().convert(tableEditor, parser.charsetForTable(tableEditor.tableId()), parser::getJavaEncodingForCharSet);
             parser.databaseTables().overwriteTable(tableEditor.create());
             parser.signalAlterTable(tableEditor.tableId(), null, ctx.getParent());
         }, tableEditor);
@@ -325,6 +328,7 @@ public class AlterTableParserListener extends TableCommonParserListener {
         String newColumnName = parser.parseName(ctx.identifier());
         if (newColumnName != null && !column.name().equals(newColumnName)) {
             tableEditor.renameColumn(column.name(), newColumnName);
+            parser.binaryLiteralDefaults().rename(column.name(), newColumnName);
         }
 
         // Check for FIRST or AFTER
@@ -412,6 +416,7 @@ public class AlterTableParserListener extends TableCommonParserListener {
         Column column = tableEditor.columnWithName(columnName);
         if (column != null) {
             defaultValueColumnEditor = column.edit();
+            parser.binaryLiteralDefaults().remove(column.name());
             if (ctx.SET_SYMBOL() != null && ctx.DEFAULT_SYMBOL() != null) {
                 // Extract the default value directly from the context
                 // Grammar: SET DEFAULT (exprWithParentheses | signedLiteralOrNull)
@@ -457,6 +462,9 @@ public class AlterTableParserListener extends TableCommonParserListener {
         if (signed.literal() != null) {
             if (signed.literal().nullLiteral() != null) {
                 return null;
+            }
+            if (signed.literal().HEX_NUMBER() != null || signed.literal().BIN_NUMBER() != null) {
+                return DefaultValueParserListener.parseBinaryLiteral(signed.literal(), defaultValueColumnEditor, parser);
             }
             return sign + extractLiteralValue(signed.literal());
         }
@@ -533,6 +541,7 @@ public class AlterTableParserListener extends TableCommonParserListener {
             String newColumnName = parser.parseName(ctx.identifier());
             if (newColumnName != null && !column.name().equals(newColumnName)) {
                 tableEditor.renameColumn(column.name(), newColumnName);
+                parser.binaryLiteralDefaults().rename(column.name(), newColumnName);
             }
         }
 

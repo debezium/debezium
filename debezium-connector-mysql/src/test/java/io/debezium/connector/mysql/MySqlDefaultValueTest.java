@@ -8,9 +8,11 @@ package io.debezium.connector.mysql;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.util.List;
+import java.util.stream.Stream;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.MethodSource;
 
@@ -111,6 +113,31 @@ public class MySqlDefaultValueTest extends BinlogDefaultValueTest<MySqlValueConv
     @FixFor("debezium/dbz#2751")
     void shouldPreserveNonStrictBitDefaultValues(BitDefaultValueCase testCase) {
         assertBitDefaultValue(testCase);
+    }
+
+    @ParameterizedTest(name = "{0} DEFAULT {1}, {3}")
+    @MethodSource("quotedHexadecimalDefaults")
+    @FixFor("debezium/dbz#2765")
+    void shouldConvertQuotedHexadecimalDefaultsToNumbers(String type, String literal, String equivalentLiteral, String action) {
+        assertBinaryLiteralDefault(type, literal, equivalentLiteral, action);
+    }
+
+    @ParameterizedTest
+    @CsvSource(delimiter = '|', value = {
+            "CREATE TABLE t (id INT, v VARCHAR(32) DEFAULT 0xE9 COLLATE latin1_bin)",
+            "CREATE TABLE t (id INT); ALTER TABLE t ADD COLUMN v VARCHAR(32) DEFAULT 0xE9 COLLATE latin1_bin"
+    })
+    @FixFor("debezium/dbz#2765")
+    void shouldDecodeHexadecimalDefaultInCharacterSetOfCollationAfterIt(String ddl) {
+        // The collation of a column can follow its default, and implies the character set of the column
+        assertThat(parseDefaultValueOfColumnV("utf8mb4", ddl)).isEqualTo("é");
+    }
+
+    private static Stream<Arguments> quotedHexadecimalDefaults() {
+        // MySQL treats X'31' like 0x31, as the number 49 in a numeric context
+        return withDdlActions(Stream.of(
+                Arguments.of("INT", "X'31'", "'49'"),
+                Arguments.of("DOUBLE", "X'312E35'", "'3223093'")));
     }
 
     @Override

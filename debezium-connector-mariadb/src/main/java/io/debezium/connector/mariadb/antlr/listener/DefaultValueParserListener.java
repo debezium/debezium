@@ -7,7 +7,10 @@ package io.debezium.connector.mariadb.antlr.listener;
 
 import java.sql.Types;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.UnaryOperator;
 
+import io.debezium.connector.binlog.util.BinaryLiteralDefaultValueUtils;
+import io.debezium.connector.binlog.util.BinaryLiteralDefaultValueUtils.BinaryLiteral;
 import io.debezium.connector.mariadb.antlr.MariaDbAntlrDdlParser;
 import io.debezium.ddl.parser.mariadb.generated.MariaDBParser.CurrentTimestampContext;
 import io.debezium.ddl.parser.mariadb.generated.MariaDBParser.DefaultValueContext;
@@ -36,6 +39,8 @@ public class DefaultValueParserListener extends MariaDBParserBaseListener {
 
     @Override
     public void enterDefaultValue(DefaultValueContext ctx) {
+        // The last default of a column definition applies
+        parser.binaryLiteralDefaults().remove(columnEditor.name());
         if (columnEditor.jdbcType() == Types.BIT) {
             columnEditor.defaultValueExpression(BitDefaultValueParser.parse(ctx, parser));
             exitDefaultValue(true);
@@ -56,10 +61,17 @@ public class DefaultValueParserListener extends MariaDBParserBaseListener {
             else if (ctx.constant().decimalLiteral() != null) {
                 columnEditor.defaultValueExpression(sign + ctx.constant().decimalLiteral().getText());
             }
+            else if (ctx.constant().hexadecimalLiteral() != null) {
+                final var literal = ctx.constant().hexadecimalLiteral();
+                final var text = literal.HEXADECIMAL_LITERAL().getText();
+                final var introducer = literal.STRING_CHARSET_NAME() != null ? literal.STRING_CHARSET_NAME().getText() : null;
+                // Unlike 0x41, MariaDB treats X'41' as a string, also in a numeric context
+                columnEditor.defaultValueExpression(toDefaultValueExpression(
+                        new BinaryLiteral(BinaryLiteralDefaultValueUtils.parseHexadecimal(text), !text.endsWith("'"), introducer)));
+            }
             else if (ctx.constant().BIT_STRING() != null) {
-                final var literal = ctx.constant().BIT_STRING().getText();
-                // Preserve unknown defaults for 0b literals outside BIT columns until their type-specific conversion is supported.
-                columnEditor.defaultValueExpression(literal.endsWith("'") ? unquoteBinary(literal) : null);
+                columnEditor.defaultValueExpression(toDefaultValueExpression(
+                        new BinaryLiteral(BinaryLiteralDefaultValueUtils.parseBitValue(ctx.constant().BIT_STRING().getText()), true, null)));
             }
             else if (ctx.constant().booleanLiteral() != null) {
                 columnEditor.defaultValueExpression(ctx.constant().booleanLiteral().getText());
@@ -98,7 +110,14 @@ public class DefaultValueParserListener extends MariaDBParserBaseListener {
         }
     }
 
-    private String unquoteBinary(String stringLiteral) {
-        return stringLiteral.substring(2, stringLiteral.length() - 1);
+    private String toDefaultValueExpression(BinaryLiteral literal) {
+        // The character set of the column may only be known at the end of the statement, which converts the literal again
+        parser.binaryLiteralDefaults().put(columnEditor.name(), literal);
+        return BinaryLiteralDefaultValueUtils.toDefaultValueExpression(columnEditor, literal, parser.currentDatabaseCharset(), javaEncodings(parser));
+    }
+
+    static UnaryOperator<String> javaEncodings(MariaDbAntlrDdlParser parser) {
+        final var charsetRegistry = parser.getCharsetRegistry();
+        return charsetName -> charsetRegistry == null ? null : charsetRegistry.getJavaEncodingForCharSet(charsetName);
     }
 }

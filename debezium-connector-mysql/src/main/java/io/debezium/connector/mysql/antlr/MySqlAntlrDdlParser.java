@@ -31,6 +31,7 @@ import io.debezium.antlr.mysql.SqlModes;
 import io.debezium.connector.binlog.BinlogConnectorConfig.RealHandlingMode;
 import io.debezium.connector.binlog.charset.BinlogCharsetRegistry;
 import io.debezium.connector.binlog.jdbc.BinlogSystemVariables;
+import io.debezium.connector.binlog.util.BinaryLiteralDefaults;
 import io.debezium.connector.binlog.util.StringLiteralParser;
 import io.debezium.connector.mysql.antlr.listener.MySqlAntlrDdlParserListener;
 import io.debezium.connector.mysql.charset.MySqlCharsetRegistry;
@@ -80,6 +81,7 @@ public class MySqlAntlrDdlParser extends AntlrDdlParser<MySqlLexer, MySqlParser>
             "_utf8", "_utf8mb3", "_utf8mb4");
 
     private final ConcurrentMap<String, String> charsetNameForDatabase = new ConcurrentHashMap<>();
+    private final BinaryLiteralDefaults binaryLiteralDefaults = new BinaryLiteralDefaults();
     private final TableFilter tableFilter;
     private final BinlogCharsetRegistry charsetRegistry;
     private final DataTypeResolver dataTypeResolver;
@@ -472,6 +474,15 @@ public class MySqlAntlrDdlParser extends AntlrDdlParser<MySqlLexer, MySqlParser>
                     return tableEditor.columnWithName(columnName);
                 })
                 .collect(Collectors.toList());
+    }
+
+    /**
+     * Get the hexadecimal and bit-value literal defaults of the current CREATE TABLE or ALTER TABLE statement.
+     *
+     * @return the literal defaults; never null
+     */
+    public BinaryLiteralDefaults binaryLiteralDefaults() {
+        return binaryLiteralDefaults;
     }
 
     /**

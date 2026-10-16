@@ -25,6 +25,7 @@ import io.debezium.antlr.DataTypeResolver;
 import io.debezium.connector.binlog.BinlogConnectorConfig.RealHandlingMode;
 import io.debezium.connector.binlog.charset.BinlogCharsetRegistry;
 import io.debezium.connector.binlog.jdbc.BinlogSystemVariables;
+import io.debezium.connector.binlog.util.BinaryLiteralDefaults;
 import io.debezium.connector.binlog.util.StringLiteralParser;
 import io.debezium.connector.mariadb.antlr.listener.MariaDbAntlrDdlParserListener;
 import io.debezium.ddl.parser.mariadb.generated.MariaDBLexer;
@@ -48,6 +49,7 @@ import io.debezium.relational.Tables;
 public class MariaDbAntlrDdlParser extends AntlrDdlParser<MariaDBLexer, MariaDBParser> {
 
     private final ConcurrentHashMap<String, String> charsetNameForDatabase = new ConcurrentHashMap<>();
+    private final BinaryLiteralDefaults binaryLiteralDefaults = new BinaryLiteralDefaults();
     private final Tables.TableFilter tableFilter;
     private final BinlogCharsetRegistry charsetRegistry;
     private final DataTypeResolver dataTypeResolver;
@@ -428,6 +430,15 @@ public class MariaDbAntlrDdlParser extends AntlrDdlParser<MariaDBLexer, MariaDBP
                     return tableEditor.columnWithName(columnName);
                 })
                 .collect(Collectors.toList());
+    }
+
+    /**
+     * Get the hexadecimal and bit-value literal defaults of the current CREATE TABLE or ALTER TABLE statement.
+     *
+     * @return the literal defaults; never null
+     */
+    public BinaryLiteralDefaults binaryLiteralDefaults() {
+        return binaryLiteralDefaults;
     }
 
     /**
