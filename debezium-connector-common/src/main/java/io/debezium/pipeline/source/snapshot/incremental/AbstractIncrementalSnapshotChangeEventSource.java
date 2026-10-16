@@ -762,16 +762,16 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<P extends Par
             tableScanCompleted(partition);
             stopped.add(stopCurrentTableId.identifier());
             context.nextDataCollection();
-            // If snapshot has no more collections, abort; otherwise advance to the next collection.
-            if (!context.snapshotRunning()) {
-                LOGGER.info("Incremental snapshot has stopped.");
-                progressListener.snapshotAborted(partition);
-                notificationService.incrementalSnapshotNotificationService().notifyAborted(context, partition, offsetContext, stopped);
-                context.unsetCorrelationId();
-            }
-            else {
-                LOGGER.info("Advancing to next available collection in the incremental snapshot.");
-            }
+        }
+        // The parallel strategy never sets currentTable, so the snapshot can run out of collections through the removal branch too.
+        if (!context.snapshotRunning()) {
+            LOGGER.info("Incremental snapshot has stopped.");
+            progressListener.snapshotAborted(partition);
+            notificationService.incrementalSnapshotNotificationService().notifyAborted(context, partition, offsetContext, stopped);
+            context.unsetCorrelationId();
+        }
+        else if (stopCurrentTableId != null) {
+            LOGGER.info("Advancing to next available collection in the incremental snapshot.");
         }
         LOGGER.info("Removed collections from incremental snapshot: '{}'", stopped);
     }
