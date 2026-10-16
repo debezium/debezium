@@ -109,10 +109,11 @@ public abstract class RelationalSnapshotChangeEventSource<P extends Partition, O
     private final TableId signalDataCollectionTableId;
 
     /**
-     * Remaining whole-snapshot retry budget for retriable table/chunk read failures; shared across all
-     * snapshot units of this snapshot execution (see {@code snapshot.retry.max}).
+     * Running count of retriable table/chunk read failures retried across all snapshot units of this snapshot
+     * execution. Used only to enforce the optional whole-snapshot ceiling {@code snapshot.retry.total.max}; the
+     * per-unit budget {@code snapshot.retry.max} is counted locally within each unit.
      */
-    private final AtomicInteger snapshotRetryBudget;
+    private final AtomicInteger totalSnapshotRetries = new AtomicInteger();
 
     /**
      * Per-unit (table or chunk) resume state, keyed by the unit's identifier. Only populated while a unit
@@ -140,7 +141,6 @@ public abstract class RelationalSnapshotChangeEventSource<P extends Partition, O
         this.clock = clock;
         this.snapshotProgressListener = snapshotProgressListener;
         this.snapshotterService = snapshotterService;
-        this.snapshotRetryBudget = new AtomicInteger(connectorConfig.snapshotRetryMax());
 
         if (!connectorConfig.getSignalingDataCollectionIds().isEmpty()) {
             this.signalDataCollectionTableId = TableId.parse(connectorConfig.getSignalingDataCollectionIds().get(0));
@@ -917,8 +917,9 @@ public abstract class RelationalSnapshotChangeEventSource<P extends Partition, O
     }
 
     /**
-     * Executes a snapshot unit (a whole table or a single chunk), retrying retriable read failures against
-     * the whole-snapshot retry budget configured via {@code snapshot.retry.max}.
+     * Executes a snapshot unit (a whole table or a single chunk), retrying retriable read failures up to the
+     * per-unit budget configured via {@code snapshot.retry.max} and, when configured, within the overall ceiling
+     * {@code snapshot.retry.total.max}.
      * <p>
      * Only failures for which {@link #isSnapshotErrorRetriable(SQLException)} returns {@code true} are
      * retried; a {@link ConnectException} whose cause is a retriable {@link SQLException} (e.g. from
@@ -948,18 +949,23 @@ public abstract class RelationalSnapshotChangeEventSource<P extends Partition, O
         retryStates.put(unitKey, new SnapshotUnitRetryState());
         try {
             final Metronome retryMetronome = Metronome.sleeper(connectorConfig.snapshotRetryDelay(), clock);
-            for (int attempt = 1;; attempt++) {
+            // retries is the number of retries already performed for this unit (0 on the first execution)
+            for (int retries = 0;; retries++) {
                 try {
                     unit.execute();
                     return;
                 }
                 catch (SQLException | ConnectException e) {
                     final SQLException failure = extractRetriableError(e);
-                    if (failure == null || !consumeSnapshotRetryBudget()) {
+                    // Give up when the failure is not retriable, this unit's per-unit budget is spent, or the
+                    // optional whole-snapshot ceiling has been reached. Short-circuiting keeps the overall
+                    // counter from advancing once the per-unit budget alone would already stop the retry.
+                    if (failure == null || retries >= maxRetries || !withinTotalRetryBudget()) {
                         throw e;
                     }
-                    LOGGER.warn("Snapshot of {} failed with a retriable error on attempt {}, retrying ({} of {} whole-snapshot retries remaining)",
-                            unitDescription, attempt, snapshotRetryBudget.get(), maxRetries, failure);
+                    final int attempt = retries + 1;
+                    LOGGER.warn("Snapshot of {} failed with a retriable error, retrying ({} of {} per-unit retries)",
+                            unitDescription, attempt, maxRetries, failure);
                     notificationService.initialSnapshotNotificationService().notifyTableSnapshotRetry(
                             snapshotContext.partition, snapshotContext.offset, tableIdentifier, attempt, maxRetries);
                     retryMetronome.pause();
@@ -976,11 +982,14 @@ public abstract class RelationalSnapshotChangeEventSource<P extends Partition, O
      * Returns whether the given snapshot read failure is transient and eligible for a per-table/per-chunk
      * retry (see {@code snapshot.retry.max}).
      * <p>
-     * Defaults to {@code false} so that retry stays strictly opt-in per connector; connectors override this
-     * with the error classes they know to be transient (e.g. connection resets, or Oracle's ORA-01466).
+     * Defaults to retrying connection exceptions - a {@link SQLException} whose SQLState is in class {@code 08} -
+     * since a dropped or reset connection is transient for every relational source. Connectors override this to
+     * add the source-specific error classes they know to be transient (e.g. Oracle's ORA-01466). Retry still only
+     * happens at all when {@code snapshot.retry.max} is set above its default of 0.
      */
     protected boolean isSnapshotErrorRetriable(SQLException exception) {
-        return false;
+        final String sqlState = exception.getSQLState();
+        return sqlState != null && sqlState.startsWith("08");
     }
 
     /**
@@ -1026,10 +1035,16 @@ public abstract class RelationalSnapshotChangeEventSource<P extends Partition, O
     }
 
     /**
-     * Consumes one retry from the whole-snapshot budget; returns {@code false} when the budget is exhausted.
+     * Counts one retry against the optional whole-snapshot ceiling {@code snapshot.retry.total.max} and returns
+     * whether the snapshot may still retry. A ceiling of {@code 0} disables the ceiling, so the per-unit budget
+     * governs on its own; otherwise the snapshot stops once the total number of retries would exceed the ceiling.
      */
-    private boolean consumeSnapshotRetryBudget() {
-        return snapshotRetryBudget.getAndUpdate(remaining -> remaining > 0 ? remaining - 1 : remaining) > 0;
+    private boolean withinTotalRetryBudget() {
+        final int totalMax = connectorConfig.snapshotRetryTotalMax();
+        if (totalMax <= 0) {
+            return true;
+        }
+        return totalSnapshotRetries.incrementAndGet() <= totalMax;
     }
 
     /**

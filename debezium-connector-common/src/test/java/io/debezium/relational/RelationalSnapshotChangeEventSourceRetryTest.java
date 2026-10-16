@@ -219,10 +219,77 @@ public class RelationalSnapshotChangeEventSourceRetryTest {
                 .isInstanceOf(ConnectException.class);
         verify(sqlConnection, times(1)).prepareStatement(anyString());
 
-        // Succeeds only because the non-retriable failure above left the budget untouched
+        // Succeeds because each unit has its own budget; the first unit's non-retriable failure takes nothing away
         final Table table2 = keyedTable("table2");
         chunkedCallable(source, keyedSingleChunk(table2)).call();
         assertThat(emittedRows).containsExactly(ROW_1);
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2297")
+    public void perUnitBudgetIsNotSharedAcrossUnits() throws Exception {
+        // One retry per unit; two units each fail once with a retriable error and then succeed on their own retry.
+        final TestSnapshotSource source = newSource(1);
+
+        final PreparedStatement firstFail = mock(PreparedStatement.class);
+        when(firstFail.executeQuery()).thenThrow(retriableError());
+        final ResultSet firstRows = mockResultSet(new Object[][]{ ROW_1 }, null, null);
+        final PreparedStatement firstOk = mock(PreparedStatement.class);
+        when(firstOk.executeQuery()).thenReturn(firstRows);
+        final PreparedStatement secondFail = mock(PreparedStatement.class);
+        when(secondFail.executeQuery()).thenThrow(retriableError());
+        final ResultSet secondRows = mockResultSet(new Object[][]{ ROW_2 }, null, null);
+        final PreparedStatement secondOk = mock(PreparedStatement.class);
+        when(secondOk.executeQuery()).thenReturn(secondRows);
+        when(sqlConnection.prepareStatement(anyString())).thenReturn(firstFail, firstOk, secondFail, secondOk);
+
+        chunkedCallable(source, keyedSingleChunk(keyedTable())).call();
+        chunkedCallable(source, keyedSingleChunk(keyedTable("table2"))).call();
+
+        // Both units succeeded: the second kept its own retry even though the first already used one. Under a
+        // single shared whole-snapshot budget of 1 the second unit would have had no retry left and failed.
+        assertThat(emittedRows).containsExactly(ROW_1, ROW_2);
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2297")
+    public void totalCapStopsRetriesAcrossUnits() throws Exception {
+        // Generous per-unit budget, but an overall ceiling of a single retry for the whole snapshot.
+        final TestSnapshotSource source = newSource(5, 1);
+
+        // The first unit spends the one allowed total retry to recover.
+        final PreparedStatement firstFail = mock(PreparedStatement.class);
+        when(firstFail.executeQuery()).thenThrow(retriableError());
+        final ResultSet firstRows = mockResultSet(new Object[][]{ ROW_1 }, null, null);
+        final PreparedStatement firstOk = mock(PreparedStatement.class);
+        when(firstOk.executeQuery()).thenReturn(firstRows);
+        // The second unit would still have per-unit budget, but the overall ceiling is already reached.
+        final PreparedStatement secondFail = mock(PreparedStatement.class);
+        when(secondFail.executeQuery()).thenThrow(retriableError());
+        when(sqlConnection.prepareStatement(anyString())).thenReturn(firstFail, firstOk, secondFail);
+
+        chunkedCallable(source, keyedSingleChunk(keyedTable())).call();
+        assertThat(emittedRows).containsExactly(ROW_1);
+
+        // The whole-snapshot ceiling was spent by the first unit, so the second fails fast without retrying.
+        assertThatThrownBy(chunkedCallable(source, keyedSingleChunk(keyedTable("table2")))::call)
+                .isInstanceOf(ConnectException.class);
+        verify(secondFail, times(1)).executeQuery();
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2297")
+    public void connectionExceptionsAreRetriableByDefault() {
+        final TestSnapshotSource source = newSource(1);
+
+        // SQLState class 08 (connection exceptions) is retriable by the base classification...
+        assertThat(source.isSnapshotErrorRetriable(new SQLException("connection does not exist", "08003"))).isTrue();
+        assertThat(source.isSnapshotErrorRetriable(new SQLException("connection failure", "08006"))).isTrue();
+        assertThat(source.isSnapshotErrorRetriable(new SQLException("connection reset", RETRIABLE_SQL_STATE))).isTrue();
+        // ...while other SQLState classes, or a missing SQLState, are not.
+        assertThat(source.isSnapshotErrorRetriable(new SQLException("access denied", "28000"))).isFalse();
+        assertThat(source.isSnapshotErrorRetriable(new SQLException("syntax error", "42000"))).isFalse();
+        assertThat(source.isSnapshotErrorRetriable(new SQLException("no sql state"))).isFalse();
     }
 
     @Test
@@ -445,6 +512,15 @@ public class RelationalSnapshotChangeEventSourceRetryTest {
                 .build());
     }
 
+    private RelationalDatabaseConnectorConfig config(int maxRetries, int totalMax) {
+        return buildConfig(Configuration.create()
+                .with(RelationalDatabaseConnectorConfig.TOPIC_PREFIX, "test")
+                .with(RelationalDatabaseConnectorConfig.SNAPSHOT_RETRY_MAX, maxRetries)
+                .with(RelationalDatabaseConnectorConfig.SNAPSHOT_RETRY_TOTAL_MAX, totalMax)
+                .with(RelationalDatabaseConnectorConfig.SNAPSHOT_RETRY_DELAY_MS, 1)
+                .build());
+    }
+
     private RelationalDatabaseConnectorConfig buildConfig(Configuration configuration) {
         return new RelationalDatabaseConnectorConfig(configuration, null, null,
                 0, ColumnFilterMode.CATALOG, true) {
@@ -533,8 +609,9 @@ public class RelationalSnapshotChangeEventSourceRetryTest {
     }
 
     /**
-     * Minimal concrete snapshot source: classifies SQLState {@value #RETRIABLE_SQL_STATE} as retriable and
-     * records each emitted row together with the snapshot marker in effect when it was dispatched.
+     * Minimal concrete snapshot source that relies on the base {@link RelationalSnapshotChangeEventSource}
+     * retriable-error classification (connection exceptions, SQLState class {@code 08}) and records each emitted
+     * row together with the snapshot marker in effect when it was dispatched.
      */
     private class TestSnapshotSource extends RelationalSnapshotChangeEventSource<Partition, OffsetContext> {
 
@@ -544,11 +621,6 @@ public class RelationalSnapshotChangeEventSourceRetryTest {
                            NotificationService<Partition, OffsetContext> notificationService) {
             super(connectorConfig, connectionFactory, null, mock(EventDispatcher.class), Clock.SYSTEM,
                     mock(SnapshotProgressListener.class), notificationService, mock(SnapshotterService.class));
-        }
-
-        @Override
-        protected boolean isSnapshotErrorRetriable(SQLException exception) {
-            return RETRIABLE_SQL_STATE.equals(exception.getSQLState());
         }
 
         @Override
@@ -607,6 +679,10 @@ public class RelationalSnapshotChangeEventSourceRetryTest {
 
     private TestSnapshotSource newSource(int maxRetries) {
         return new TestSnapshotSource(config(maxRetries), connectionFactory(), notificationService);
+    }
+
+    private TestSnapshotSource newSource(int maxRetries, int totalMax) {
+        return new TestSnapshotSource(config(maxRetries, totalMax), connectionFactory(), notificationService);
     }
 
     @SuppressWarnings("unchecked")
