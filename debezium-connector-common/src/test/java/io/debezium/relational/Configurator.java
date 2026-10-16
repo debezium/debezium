@@ -52,6 +52,10 @@ public class Configurator {
         return with(RelationalDatabaseConnectorConfig.SIGNAL_DATA_COLLECTION, signalingCollection);
     }
 
+    public Configurator excludedCacheSize(String size) {
+        return with(RelationalDatabaseConnectorConfig.TABLE_FILTER_EXCLUDED_CACHE_SIZE, size);
+    }
+
     public RelationalTableFilters createFilters() {
         return new RelationalTableFilters(configBuilder.build(), t -> true, TableId::toString, false);
     }

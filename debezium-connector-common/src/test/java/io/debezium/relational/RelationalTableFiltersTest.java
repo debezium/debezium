@@ -10,6 +10,10 @@ import static org.assertj.core.api.Assertions.assertThat;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
+import io.debezium.config.Configuration;
+import io.debezium.config.Field;
+import io.debezium.doc.FixFor;
+
 /**
  * @author ggaborg
  */
@@ -223,4 +227,28 @@ public class RelationalTableFiltersTest {
         assertThat(filters.eligibleForSchemaDataCollectionFilter().isIncluded(id)).isTrue();
     }
 
+
+    @Test
+    @FixFor("debezium/dbz#2874")
+    public void shouldKeepFilteringWhenTheExcludedCacheIsSmallerThanTheTablesAsked() {
+        filters = build.includeCollections("db1\\.in.*").excludedCacheSize("2").createFilters();
+
+        for (int round = 0; round < 3; round++) {
+            for (int i = 0; i < 10; i++) {
+                assertThat(filters.dataCollectionFilter().isIncluded(new TableId("db1", null, "out" + i))).isFalse();
+            }
+            assertThat(filters.dataCollectionFilter().isIncluded(new TableId("db1", null, "in1"))).isTrue();
+        }
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2874")
+    public void shouldRejectANonPositiveExcludedCacheSize() {
+        assertThat(RelationalDatabaseConnectorConfig.TABLE_FILTER_EXCLUDED_CACHE_SIZE.defaultValueAsString()).isEqualTo("10000");
+        assertThat(Configuration.create()
+                .with(RelationalDatabaseConnectorConfig.TABLE_FILTER_EXCLUDED_CACHE_SIZE, 0)
+                .build()
+                .validate(Field.setOf(RelationalDatabaseConnectorConfig.TABLE_FILTER_EXCLUDED_CACHE_SIZE))
+                .get(RelationalDatabaseConnectorConfig.TABLE_FILTER_EXCLUDED_CACHE_SIZE.name()).errorMessages()).isNotEmpty();
+    }
 }
