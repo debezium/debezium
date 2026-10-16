@@ -45,12 +45,11 @@ public class SerializerOutputStream extends AbstractSerializerStream {
     /**
      * Writes a {@link TableId} to the stream.
      *
-     * @param tableId the table id, should not be {@code null}
+     * @param tableId the table id, may be {@code null}
      * @throws IOException when a write operation fails
      */
     public void writeTableId(TableId tableId) throws IOException {
-        Objects.requireNonNull(tableId);
-        writeString(tableId.toDoubleQuotedString());
+        writeString(tableId == null ? null : tableId.toDoubleQuotedString());
     }
 
     /**
