@@ -65,6 +65,14 @@ Write permission is unnecessary only for connectors that can be configured to pe
 endif::community[]
 ====
 
+[WARNING]
+====
+When the connector performs a snapshot at startup, for example, when `snapshot.mode` is set to `always`, or when a configuration-based snapshot takes a schema or data snapshot, the startup snapshot replaces the connector offsets, and any pending incremental snapshot that was restored from them is discarded.
+The connector logs a warning when this happens.
+For the `configuration_based` and `custom` snapshot modes you can set `incremental.snapshot.preserve.state` to `true` to carry a pending incremental snapshot across the startup snapshot.
+Use the option at your own risk: the preserved state is consistent only if the startup snapshot does not copy the data ranges that the pending incremental snapshot reads.
+====
+
 Currently, you can use either of the following methods to initiate an incremental snapshot:
 
 * xref:{context}-triggering-an-incremental-snapshot[Send an ad hoc snapshot signal to the signaling {data-collection} on the source database].

@@ -26,13 +26,19 @@ public class MySqlOffsetContext extends BinlogOffsetContext<SourceInfo> {
     }
 
     public static MySqlOffsetContext initial(MySqlConnectorConfig config) {
+        return initial(config, null);
+    }
+
+    public static MySqlOffsetContext initial(MySqlConnectorConfig config, IncrementalSnapshotContext<TableId> incrementalSnapshotContext) {
         final MySqlOffsetContext offset = new MySqlOffsetContext(
                 null,
                 false,
                 new TransactionContext(),
-                config.isReadOnlyConnection()
-                        ? new MySqlReadOnlyIncrementalSnapshotContext<>()
-                        : new SignalBasedIncrementalSnapshotContext<>(),
+                incrementalSnapshotContext != null
+                        ? incrementalSnapshotContext
+                        : (config.isReadOnlyConnection()
+                                ? new MySqlReadOnlyIncrementalSnapshotContext<>()
+                                : new SignalBasedIncrementalSnapshotContext<>()),
                 new SourceInfo(config));
         offset.setBinlogStartPoint("", 0L); // start from the beginning of the binlog
         return offset;
