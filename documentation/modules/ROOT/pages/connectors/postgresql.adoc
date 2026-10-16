@@ -321,6 +321,14 @@ The state of a chunk's window is updated by comparing the transaction ID of writ
 
 To switch to a read-only implementation, set the value of the xref:postgres-property-read-only[`read.only`] property to `true`.
 
+When xref:postgresql-property-snapshot-max-threads[`snapshot.max.threads`] is greater than `1`, the read-only implementation reads incremental snapshots in parallel.
+In every chunk window the connector reads one chunk from each of up to `snapshot.max.threads` tables, each on a dedicated connection that it opens when the snapshot starts and releases after xref:postgresql-property-incremental-snapshot-pool-release-delay-ms[`incremental.snapshot.pool.release.delay.ms`] once no table is left.
+Tables beyond the thread count wait until a slot frees up.
+The connector persists the progress of every table that it is reading in its offsets, so that after a restart it resumes each table from the last chunk that it fully emitted.
+A restart can therefore emit at most one chunk per table a second time, but it never skips rows.
+Parallel incremental snapshots are available only with the read-only implementation.
+With `read.only` set to `false`, or with other connectors, a value of `snapshot.max.threads` greater than `1` applies to the initial snapshot only, and the connector logs a warning and reads incremental snapshots with a single thread.
+
 .Prerequisites
 
 * PostgreSQL version 13 or later.
@@ -4718,6 +4726,7 @@ For example, if the topic prefix is `fulfillment`, the default topic name is `fu
 |Specifies the number of threads that the connector uses when performing an initial snapshot.
 The value must be a positive integer greater than or equal to `1`.
 When set to a value greater than `1`, the connector performs a parallel snapshot by dividing each table into chunks based on primary key ranges and processing the chunks concurrently across all available threads.
+With the xref:postgresql-read-only-incremental-snapshots[read-only incremental snapshot implementation], the same value also sets the number of tables that an incremental snapshot reads in parallel.
 
 ifdef::product[]
 [IMPORTANT]
