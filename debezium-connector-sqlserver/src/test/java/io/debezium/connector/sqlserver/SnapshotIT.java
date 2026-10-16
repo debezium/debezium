@@ -344,6 +344,42 @@ public class SnapshotIT extends AbstractAsyncEngineConnectorTest {
     }
 
     @Test
+    @FixFor("debezium/dbz#488")
+    public void shouldKeepExcludedKeyColumnsInSnapshotKey() throws Exception {
+        // The excluded key column is first in table_a and last in table_b. When it was left out of the
+        // snapshot select, the first case produced a wrong key and the second failed the snapshot.
+        connection.execute(
+                "CREATE TABLE key_exclude_table_a (id int primary key, name varchar(30))",
+                "CREATE TABLE key_exclude_table_b (name varchar(30), acid varchar(20))");
+        connection.execute("INSERT INTO key_exclude_table_a VALUES(10, 'some_name')");
+        connection.execute("INSERT INTO key_exclude_table_b VALUES('some_name', 'A-10')");
+        TestHelper.enableTableCdc(connection, "key_exclude_table_a");
+        TestHelper.enableTableCdc(connection, "key_exclude_table_b");
+
+        final Configuration config = TestHelper.defaultConfig()
+                .with(SqlServerConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL)
+                .with(SqlServerConnectorConfig.COLUMN_EXCLUDE_LIST, "dbo.key_exclude_table_a.id,dbo.key_exclude_table_b.acid")
+                .with(RelationalDatabaseConnectorConfig.MSG_KEY_COLUMNS, "dbo.key_exclude_table_b:acid")
+                .with(SqlServerConnectorConfig.TABLE_INCLUDE_LIST, "dbo.key_exclude_table_a,dbo.key_exclude_table_b")
+                .build();
+
+        start(SqlServerConnector.class, config);
+        assertConnectorIsRunning();
+
+        final SourceRecords records = consumeRecordsByTopic(2);
+        final List<SourceRecord> tableA = records.recordsForTopic("server1.testDB1.dbo.key_exclude_table_a");
+        final List<SourceRecord> tableB = records.recordsForTopic("server1.testDB1.dbo.key_exclude_table_b");
+
+        assertThat(tableA).hasSize(1);
+        assertThat(((Struct) tableA.get(0).key()).get("id")).isEqualTo(10);
+        assertThat(((Struct) tableA.get(0).value()).getStruct("after").schema().field("id")).isNull();
+
+        assertThat(tableB).hasSize(1);
+        assertThat(((Struct) tableB.get(0).key()).get("acid")).isEqualTo("A-10");
+        assertThat(((Struct) tableB.get(0).value()).getStruct("after").schema().field("acid")).isNull();
+    }
+
+    @Test
     @FixFor("DBZ-1067")
     public void testColumnExcludeList() throws Exception {
         connection.execute(
