@@ -71,13 +71,18 @@
     <!--Strimzi configuration-->
     <strimzi.operator.channel>stable</strimzi.operator.channel>
     <strimzi.operator.connectors>true</strimzi.operator.connectors>
+    <strimzi.operator.version>0.51.0</strimzi.operator.version>
     <strimzi.kc.build>true</strimzi.kc.build>
     <strimzi.kc.log.level.dbz>DEBUG</strimzi.kc.log.level.dbz>
+    <force.kraft>true</force.kraft>
 
     <!--Apicurio configuration-->
     <apicurio.crd.version>v1</apicurio.crd.version>
     <apicurio.log.level>INFO</apicurio.log.level>
-    <apicurio.operator.channel>2.x</apicurio.operator.channel>
+    <apicurio.operator.name>apicurio-registry-3</apicurio.operator.name>
+    <apicurio.operator.channel>3.x</apicurio.operator.channel>
+    <apicurio.operator.version>${version.apicurio}</apicurio.operator.version>
+    <apicurio.operator.starting.csv>apicurio-registry-3.v${apicurio.operator.version}</apicurio.operator.starting.csv>
     <apicurio.tls.enabled>false</apicurio.tls.enabled>
 
     <!--MySQL configuration-->
@@ -106,7 +111,7 @@
     <database.postgresql.dbname>debezium</database.postgresql.dbname>
 
     <!--SqlServer configuration-->
-    <database.sqlserver.port>5432</database.sqlserver.port>
+    <database.sqlserver.port>1433</database.sqlserver.port>
     <database.sqlserver.username>sa</database.sqlserver.username>
     <database.sqlserver.password>Debezium1$</database.sqlserver.password>
     <database.sqlserver.dbz.username>${database.sqlserver.username}</database.sqlserver.dbz.username>
@@ -590,7 +595,7 @@
                 <!--Docker Configuration-->
                 <test.docker.image.kc>${docker.image.kc}</test.docker.image.kc>
                 <test.docker.image.mysql>${docker.image.mysql}</test.docker.image.mysql>
-                <test.docker.image.mariabd>${docker.image.mariadb}</test.docker.image.mariabd>
+                <test.docker.image.mariadb>${docker.image.mariadb}</test.docker.image.mariadb>
                 <test.docker.image.mysql.replica>${docker.image.mysql.replica}</test.docker.image.mysql.replica>
                 <test.docker.image.postgresql>${docker.image.postgresql}</test.docker.image.postgresql>
                 <test.docker.image.mongo>${docker.image.mongo}</test.docker.image.mongo>
@@ -615,6 +620,7 @@
                 <test.ocp.project.sqlserver>${ocp.project.sqlserver}</test.ocp.project.sqlserver>
                 <test.ocp.project.db2>${ocp.project.db2}</test.ocp.project.db2>
                 <test.ocp.project.oracle>${ocp.project.oracle}</test.ocp.project.oracle>
+                <test.ocp.project.informix>${ocp.project.informix}</test.ocp.project.informix>
 
                 <!--Strimzi Configuration-->
                 <test.strimzi.operator.channel>${strimzi.operator.channel}</test.strimzi.operator.channel>
@@ -622,12 +628,18 @@
                 <test.strimzi.operator.connectors>${strimzi.operator.connectors}</test.strimzi.operator.connectors>
                 <test.strimzi.kc.build>${strimzi.kc.build}</test.strimzi.kc.build>
                 <test.strimzi.kc.image>${image.kc}</test.strimzi.kc.image>
+                <test.strimzi.operator.version>${strimzi.operator.version}</test.strimzi.operator.version>
                 <test.strimzi.kc.log.level.dbz>${strimzi.kc.log.level.dbz}</test.strimzi.kc.log.level.dbz>
+                <test.force.kraft>${force.kraft}</test.force.kraft>
 
                 <!--Apicurio configuration-->
                 <test.apicurio.crd.version>${apicurio.crd.version}</test.apicurio.crd.version>
                 <test.apicurio.log.level>${apicurio.log.level}</test.apicurio.log.level>
+                <test.apicurio.operator.name>${apicurio.operator.name}</test.apicurio.operator.name>
                 <test.apicurio.operator.channel>${apicurio.operator.channel}</test.apicurio.operator.channel>
+                <test.apicurio.operator.version>${apicurio.operator.version}</test.apicurio.operator.version>
+                <test.version.apicurio>${version.apicurio}</test.version.apicurio>
+                <test.apicurio.operator.starting.csv>${apicurio.operator.starting.csv}</test.apicurio.operator.starting.csv>
                 <test.apicurio.tls.enabled>${apicurio.tls.enabled}</test.apicurio.tls.enabled>
 
                 <!--MySQL configuration-->
@@ -691,7 +703,6 @@
                 <test.database.db2.cdc.schema>${database.db2.cdc.schema}</test.database.db2.cdc.schema>
 
                 <!--Informix configuration-->
-                <test.database.informix.host>${database.informix.host}</test.database.informix.host>
                 <test.database.informix.port>${database.informix.port}</test.database.informix.port>
                 <test.database.informix.username>${database.informix.username}</test.database.informix.username>
                 <test.database.informix.password>${database.informix.password}</test.database.informix.password>
