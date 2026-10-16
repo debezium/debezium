@@ -108,6 +108,7 @@ druud,Ruud H.G. van Tol
 dtseiler,Don Seiler
 dude0001,Mark Lambert
 dutta1kartik3,Kartik Dutta
+EderJCosta,Éder Júlio Costa
 einar-rt,einar-rt
 eizners,Sergey Eizner
 Eliran,Eliran Agranovich
