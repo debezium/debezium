@@ -12,9 +12,6 @@ import java.util.concurrent.ExecutorCompletionService;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 /**
  * Manages threaded execution of snapshot work using a thread pool.
  *
@@ -24,15 +21,13 @@ import org.slf4j.LoggerFactory;
  */
 public class ThreadedSnapshotExecutor implements AutoCloseable {
 
-    private static final Logger LOGGER = LoggerFactory.getLogger(ThreadedSnapshotExecutor.class);
-
     private final ExecutorService executorService;
     private final boolean ownsExecutorService;
     private final CompletionService<Void> completionService;
     private int submittedTasks = 0;
 
-    public ThreadedSnapshotExecutor(int threadCount, String description) {
-        this(createFixedThreadPool(threadCount, description), true);
+    public ThreadedSnapshotExecutor(int threadCount) {
+        this(Executors.newFixedThreadPool(threadCount), true);
     }
 
     public ThreadedSnapshotExecutor(ExecutorService executorService) {
@@ -43,11 +38,6 @@ public class ThreadedSnapshotExecutor implements AutoCloseable {
         this.executorService = executorService;
         this.ownsExecutorService = ownsExecutorService;
         this.completionService = new ExecutorCompletionService<>(executorService);
-    }
-
-    private static ExecutorService createFixedThreadPool(int threadCount, String description) {
-        LOGGER.info("Creating {} worker pool with {} worker thread(s)", description, threadCount);
-        return Executors.newFixedThreadPool(threadCount);
     }
 
     public void submit(Callable<Void> task) {

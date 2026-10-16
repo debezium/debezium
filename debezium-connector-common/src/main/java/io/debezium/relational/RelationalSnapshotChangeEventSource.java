@@ -563,7 +563,8 @@ public abstract class RelationalSnapshotChangeEventSource<P extends Partition, O
                 tableId -> determineSnapshotSelect(snapshotContext, tableId, snapshotSelectOverridesByTable),
                 this::rowCountForTable);
 
-        try (ThreadedSnapshotExecutor executor = new ThreadedSnapshotExecutor(snapshotMaxThreads, "snapshot")) {
+        LOGGER.info("Creating snapshot worker pool with {} worker thread(s)", snapshotMaxThreads);
+        try (ThreadedSnapshotExecutor executor = new ThreadedSnapshotExecutor(snapshotMaxThreads)) {
             final int tableCount = prepared.rowCountTables.size();
             int tableOrder = 1;
             final Set<TableId> rowCountTablesKeySet = Collections.unmodifiableSet(new HashSet<>(prepared.rowCountTables.keySet()));
@@ -643,7 +644,8 @@ public abstract class RelationalSnapshotChangeEventSource<P extends Partition, O
         }
 
         final Stopwatch exportTimer = Stopwatch.accumulating();
-        try (ThreadedSnapshotExecutor executor = new ThreadedSnapshotExecutor(snapshotMaxThreads, "chunked snapshot")) {
+        LOGGER.info("Creating chunked snapshot worker pool with {} worker thread(s)", snapshotMaxThreads);
+        try (ThreadedSnapshotExecutor executor = new ThreadedSnapshotExecutor(snapshotMaxThreads)) {
             for (SnapshotChunk chunk : allChunks) {
                 final Callable<Void> callable = createDataEventsForChunkedTableCallable(sourceContext, snapshotContext, snapshotReceiver,
                         chunk, progressMap, snapshotProgress, connectionPool, offsets);
