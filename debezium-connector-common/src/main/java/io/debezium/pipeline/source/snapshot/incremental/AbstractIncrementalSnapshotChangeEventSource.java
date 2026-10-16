@@ -668,7 +668,7 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<P extends Par
         return (dc, buffer) -> {
             refreshSchemaForWorker((TableId) dc.getId());
             return new TableSnapshotWorker<>(
-                    new TableSnapshotContext<>(dc),
+                    new TableSnapshotContext<>(dc, context),
                     connectorConfig,
                     databaseSchema,
                     chunkQueryBuilder,

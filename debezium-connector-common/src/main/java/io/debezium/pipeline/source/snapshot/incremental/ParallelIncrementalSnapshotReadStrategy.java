@@ -19,7 +19,6 @@ import org.slf4j.LoggerFactory;
 
 import io.debezium.DebeziumException;
 import io.debezium.jdbc.JdbcConnection;
-import io.debezium.pipeline.notification.IncrementalSnapshotNotificationService.TableScanCompletionStatus;
 import io.debezium.pipeline.notification.NotificationService;
 import io.debezium.pipeline.source.snapshot.ThreadedSnapshotExecutor;
 import io.debezium.pipeline.source.spi.SnapshotProgressListener;
@@ -178,13 +177,17 @@ public class ParallelIncrementalSnapshotReadStrategy<P extends Partition, T exte
         // readChunk re-enters here), so buffers can now be released.
         for (T tableId : coordinator.consumeCompletedTables()) {
             final TableSnapshotWorker<P, T> worker = coordinator.getActiveWorkers().get(tableId);
-            final long rowsRead = worker != null ? worker.getTotalRowsRead() : 0;
-            final TableScanCompletionStatus status = worker != null ? worker.completionStatus() : TableScanCompletionStatus.SUCCEEDED;
-            LOGGER.info("Parallel snapshot of table '{}' completed ({} rows, {})", tableId, rowsRead, status);
-            progressListener.rowsScanned(partition, (TableId) tableId, rowsRead);
-            progressListener.dataCollectionSnapshotCompleted(partition, (TableId) tableId, rowsRead);
-            notificationService.incrementalSnapshotNotificationService()
-                    .notifyTableScanCompleted(context, partition, offsetContext, rowsRead, status, tableId);
+            if (worker == null) {
+                LOGGER.warn("Parallel snapshot of table '{}' completed but its worker is gone, the table was removed in the meantime", tableId);
+            }
+            else {
+                final long rowsRead = worker.getTotalRowsRead();
+                LOGGER.info("Parallel snapshot of table '{}' completed ({} rows, {})", tableId, rowsRead, worker.completionStatus());
+                progressListener.rowsScanned(partition, (TableId) tableId, rowsRead);
+                progressListener.dataCollectionSnapshotCompleted(partition, (TableId) tableId, rowsRead);
+                notificationService.incrementalSnapshotNotificationService()
+                        .notifyTableScanCompleted(worker.getContext(), partition, offsetContext, rowsRead, worker.completionStatus());
+            }
             coordinator.markTableComplete(tableId);
             coordinator.removeWindowBuffer(tableId);
             collectionCompletion.completed(tableId, partition, offsetContext);

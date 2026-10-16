@@ -31,6 +31,7 @@ import io.debezium.spi.schema.DataCollectionId;
 public class TableSnapshotContext<T extends DataCollectionId> implements IncrementalSnapshotContext<T> {
 
     private final DataCollection<T> dataCollection;
+    private final IncrementalSnapshotContext<T> snapshotContext;
     private volatile Object[] maximumKey;
     private volatile Object[] chunkEndPosition;
     /**
@@ -46,8 +47,13 @@ public class TableSnapshotContext<T extends DataCollectionId> implements Increme
     private Table schema;
     private volatile OptionalLong totalRows = OptionalLong.empty();
 
-    public TableSnapshotContext(DataCollection<T> dataCollection) {
+    /**
+     * @param dataCollection the table this worker reads
+     * @param snapshotContext the context of the whole snapshot, which owns the signal id and the list of collections
+     */
+    public TableSnapshotContext(DataCollection<T> dataCollection, IncrementalSnapshotContext<T> snapshotContext) {
         this.dataCollection = dataCollection;
+        this.snapshotContext = snapshotContext;
     }
 
     @Override
@@ -141,7 +147,7 @@ public class TableSnapshotContext<T extends DataCollectionId> implements Increme
 
     @Override
     public int dataCollectionsToBeSnapshottedCount() {
-        return 1;
+        return snapshotContext.dataCollectionsToBeSnapshottedCount();
     }
 
     @Override
@@ -222,7 +228,7 @@ public class TableSnapshotContext<T extends DataCollectionId> implements Increme
 
     @Override
     public List<DataCollection<T>> getDataCollections() {
-        return List.of(dataCollection);
+        return snapshotContext.getDataCollections();
     }
 
     @Override
@@ -231,7 +237,7 @@ public class TableSnapshotContext<T extends DataCollectionId> implements Increme
 
     @Override
     public String getCorrelationId() {
-        return null;
+        return snapshotContext.getCorrelationId();
     }
 
     @Override
