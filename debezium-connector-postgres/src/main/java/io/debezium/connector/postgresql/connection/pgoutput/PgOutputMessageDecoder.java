@@ -150,7 +150,13 @@ public class PgOutputMessageDecoder extends AbstractMessageDecoder {
             if (type == MessageType.LOGICAL_DECODING_MESSAGE && walPosition.skipProcessedLogicalMessage(lastReceivedLsn)) {
                 return true;
             }
-            final boolean candidateForSkipping = super.shouldMessageBeSkipped(buffer, lastReceivedLsn, startLsn, walPosition);
+            // BEGIN, COMMIT, RELATION, ORIGIN and logical decoding messages are not events
+            // lsn_events_processed counts, so they must not use up a skip meant for the
+            // already-processed rows at the stored LSN.
+            final boolean candidateForSkipping = type == MessageType.BEGIN || type == MessageType.COMMIT || type == MessageType.RELATION
+                    || type == MessageType.ORIGIN || type == MessageType.LOGICAL_DECODING_MESSAGE
+                            ? walPosition.skipMessage(lastReceivedLsn, false)
+                            : super.shouldMessageBeSkipped(buffer, lastReceivedLsn, startLsn, walPosition);
             switch (type) {
                 case COMMIT:
                 case BEGIN:
