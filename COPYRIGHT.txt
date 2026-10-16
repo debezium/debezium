@@ -264,7 +264,6 @@ Eugene Abramchuk
 Ewen Cheslack-Postava
 exgoya
 Ezer Karavani
-Éder Júlio Costa
 Fabian Aussems
 Fabian Martinez
 Fabio Cantarini
@@ -906,6 +905,7 @@ Zhongqiang Gong
 Zihan Dai
 Zongwen Li
 Zoran Regvart
+Éder Júlio Costa
 Ünal Sürmeli
 Đỗ Ngọc Sơn
 حمود سمبول
