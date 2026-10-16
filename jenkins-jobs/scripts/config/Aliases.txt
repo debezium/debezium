@@ -188,6 +188,8 @@ jiabao.sun,Jiabao Sun
 jiangzzhu,Jiang Zhu
 JLDLaughlin,Jessica Laughlin
 jmks,Jason Schweier
+Joao Almeida,João Almeida
+joaofix,João Almeida
 Jono,Jono Morris
 joontube,Seongjoon Jeong
 jorkzijlstra,JOrk Zijlstra
