@@ -102,7 +102,7 @@ public class TableSnapshotContext<T extends DataCollectionId> implements Increme
 
     @Override
     public boolean isNonInitialChunk() {
-        return currentChunkId > 0;
+        return chunkEndPosition != null;
     }
 
     @Override
@@ -202,9 +202,6 @@ public class TableSnapshotContext<T extends DataCollectionId> implements Increme
     @Override
     public void revertChunk() {
         chunkEndPosition = safeResumePosition;
-        if (currentChunkId > 0) {
-            currentChunkId--;
-        }
     }
 
     @Override

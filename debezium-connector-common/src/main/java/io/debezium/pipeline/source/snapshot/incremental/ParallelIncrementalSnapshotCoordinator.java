@@ -189,15 +189,17 @@ public class ParallelIncrementalSnapshotCoordinator<P extends Partition, T exten
         if (worker == null) {
             return false;
         }
-        final Map<Struct, Object[]> buffer = windowBuffers.get(tableId);
-        if (buffer != null) {
-            buffer.clear();
-        }
-        // The discarded events must be re-read: rewind to the last drained
-        // position, mirroring the sequential rereadChunk revert.
-        worker.getContext().revertChunk();
         worker.invalidateSchemaCache();
-        LOGGER.info("Invalidated schema cache, cleared window buffer and reverted chunk for table {} after schema change", tableId);
+        final Map<Struct, Object[]> buffer = windowBuffers.get(tableId);
+        if (buffer == null || buffer.isEmpty()) {
+            LOGGER.info("Invalidated schema cache of table {} after schema change", tableId);
+            return true;
+        }
+        // Undrained rows were read with the old schema: discard them and re-read the chunk, as the sequential
+        // rereadChunk does.
+        buffer.clear();
+        worker.getContext().revertChunk();
+        LOGGER.info("Invalidated schema cache, discarded the buffered chunk and reverted the position of table {} after schema change", tableId);
         return true;
     }
 
