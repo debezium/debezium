@@ -5,11 +5,13 @@
  */
 package io.debezium.connector.sqlserver;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.Collections;
+import java.util.List;
 
 import org.junit.jupiter.api.Test;
 
@@ -26,6 +28,28 @@ import io.debezium.storage.kafka.history.KafkaSchemaHistory;
  * @author Chris Cranford
  */
 public class SqlServerConnectionTest {
+
+    @Test
+    @FixFor("dbz#1327")
+    void shouldOrderFunctionModeChangesByCommandId() throws Exception {
+        try (SqlServerConnection connection = testConnection(SqlServerConnectorConfig.DataQueryMode.FUNCTION)) {
+            SqlServerChangeTable changeTable = new SqlServerChangeTable(
+                    new TableId("testDB", "dbo", "orders"), "dbo_orders", 1, Lsn.NULL, List.of("id", "name"));
+
+            String query = connection.buildGetAllChangesForTableQuery(changeTable, 0);
+
+            assertThat(query).contains("cdc.[fn_cdc_get_all_changes_dbo_orders](?, ?, N'all update old') AS cdc_data");
+            assertThat(query).contains("LEFT JOIN [testDB].cdc.lsn_time_mapping ltm WITH (NOLOCK) ON ltm.start_lsn = cdc_data.[__$start_lsn]");
+            assertThat(query).contains("LEFT JOIN [testDB].cdc.[dbo_orders_CT] AS ct ON "
+                    + "ct.[__$start_lsn] = cdc_data.[__$start_lsn] AND ct.[__$seqval] = cdc_data.[__$seqval] "
+                    + "AND ct.[__$operation] = cdc_data.[__$operation]");
+            assertThat(query).contains("ct.[__$command_id]");
+            assertThat(query).doesNotContain("fn_cdc_map_lsn_to_time");
+            assertThat(query).endsWith("ORDER BY cdc_data.[__$start_lsn] ASC, ct.[__$command_id] ASC, cdc_data.[__$seqval] ASC, cdc_data.[__$operation] ASC");
+            assertThat(query).startsWith("SELECT cdc_data.[__$start_lsn], cdc_data.[__$seqval], cdc_data.[__$operation], "
+                    + "cdc_data.[__$update_mask], ct.[__$command_id], [cdc_data].[id], [cdc_data].[name], ");
+        }
+    }
 
     @Test
     @FixFor("debezium/dbz#2670")
@@ -63,9 +87,9 @@ public class SqlServerConnectionTest {
             // Now that the function's result set is joined against lsn_time_mapping, its columns must be
             // qualified with the cdc_data alias to avoid the "Ambiguous column name" failures fixed for
             // DIRECT mode by debezium/dbz#2511 (debezium/debezium#7907) - the same risk now applies here.
-            assertTrue(query.contains("SELECT cdc_data.[__$start_lsn], cdc_data.[__$seqval], cdc_data.[__$operation], cdc_data.[__$update_mask]"));
-            assertTrue(query.contains("WHERE (([cdc_data].[__$start_lsn] = ?"));
-            assertTrue(query.endsWith("ORDER BY cdc_data.[__$start_lsn] ASC, cdc_data.[__$seqval] ASC, cdc_data.[__$operation] ASC"));
+            assertTrue(query.contains("SELECT cdc_data.[__$start_lsn], cdc_data.[__$seqval], cdc_data.[__$operation], cdc_data.[__$update_mask], ct.[__$command_id]"));
+            assertTrue(query.contains("WHERE (([cdc_data].[__$start_lsn] = ? AND ct.[__$command_id] = ?"));
+            assertTrue(query.endsWith("ORDER BY cdc_data.[__$start_lsn] ASC, ct.[__$command_id] ASC, cdc_data.[__$seqval] ASC, cdc_data.[__$operation] ASC"));
         }
     }
 
@@ -91,11 +115,16 @@ public class SqlServerConnectionTest {
     }
 
     private SqlServerConnection testConnection() {
+        return testConnection(SqlServerConnectorConfig.DataQueryMode.DIRECT);
+    }
+
+    private SqlServerConnection testConnection(SqlServerConnectorConfig.DataQueryMode dataQueryMode) {
         final Configuration config = Configuration.create()
                 .with(CommonConnectorConfig.TOPIC_PREFIX, "server")
                 .with(SqlServerConnectorConfig.HOSTNAME, "localhost")
                 .with(SqlServerConnectorConfig.USER, "debezium")
                 .with(SqlServerConnectorConfig.DATABASE_NAMES, "testDB")
+                .with(SqlServerConnectorConfig.DATA_QUERY_MODE, dataQueryMode.getValue())
                 .with(KafkaSchemaHistory.BOOTSTRAP_SERVERS, "localhost:9092")
                 .with(KafkaSchemaHistory.TOPIC, "history")
                 .build();

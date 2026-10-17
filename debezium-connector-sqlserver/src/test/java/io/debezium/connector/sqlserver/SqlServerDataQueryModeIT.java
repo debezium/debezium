@@ -39,15 +39,11 @@ import io.debezium.util.Testing;
 
 /**
  * Integration tests for the two values of {@code data.query.mode}, and for the interaction between
- * {@code direct} mode and {@code streaming.fetch.size} after dbz#2012 fix.
+ * {@code direct} mode and {@code streaming.fetch.size} after dbz#2012.
  * <p>
- * SQL Server records a deferred update as a physical delete followed by an insert.
- * It is the one case where the two query modes see the same change differently:
- * <ul>
- * <li>{@code function} mode keeps each row's delete and insert together.</li>
- * <li>{@code direct} mode records all deletes before its inserts.</li>
- * </ul>
- * The record ordering differs between the modes and hence record ordering is not asserted.
+ * SQL Server records a deferred unique-index update as a physical delete followed by an insert.
+ * Both query modes order a single table by {@code __$command_id}, so that table's deletes come
+ * before its inserts. Across tables, order is still the minimum position of each table.
  */
 public class SqlServerDataQueryModeIT extends AbstractAsyncEngineConnectorTest {
     private static final String ID = "id";
@@ -87,8 +83,10 @@ public class SqlServerDataQueryModeIT extends AbstractAsyncEngineConnectorTest {
 
     static Stream<Arguments> modeSwitches() {
         return Stream.of(
+                Arguments.of(DataQueryMode.FUNCTION, DataQueryMode.FUNCTION),
                 Arguments.of(DataQueryMode.FUNCTION, DataQueryMode.DIRECT),
-                Arguments.of(DataQueryMode.DIRECT, DataQueryMode.FUNCTION));
+                Arguments.of(DataQueryMode.DIRECT, DataQueryMode.FUNCTION),
+                Arguments.of(DataQueryMode.DIRECT, DataQueryMode.DIRECT));
     }
 
     @BeforeEach
@@ -123,6 +121,33 @@ public class SqlServerDataQueryModeIT extends AbstractAsyncEngineConnectorTest {
         assertThat(byOperation.get(Operation.DELETE)).hasSize(DEFERRED_COUNT);
         assertThat(byOperation.get(Operation.CREATE)).hasSize(DEFERRED_COUNT);
         assertDeferredUpdate(byOperation, "REF-", "order_ref");
+    }
+
+    @ParameterizedTest(name = "data.query.mode = {0}")
+    @EnumSource(DataQueryMode.class)
+    @FixFor("dbz#1327")
+    void shouldOrderDeferredUniqueIndexUpdateByCommandId(DataQueryMode mode) throws Exception {
+        start(SqlServerConnector.class, config(mode, "dbo.orders", 3));
+        assertConnectorIsRunning();
+        consumeRecordsByTopic(ORDERS_SEED_ROWS);
+
+        connection.execute(DEFERRED_UPDATE);
+
+        List<SourceRecord> records = consumeOrders(DEFERRED_RECORDS);
+        assertThat(records).hasSize(DEFERRED_RECORDS);
+
+        for (int i = 0; i < DEFERRED_COUNT; i++) {
+            SourceRecord delete = records.get(i);
+            int id = DEFERRED_FROM + i;
+            VerifyRecord.isValidDelete(delete, ID, id);
+            assertThat(before(delete).getString("order_ref")).isEqualTo("REF-" + id);
+        }
+        for (int i = 0; i < DEFERRED_COUNT; i++) {
+            SourceRecord insert = records.get(DEFERRED_COUNT + i);
+            int id = DEFERRED_FROM + i;
+            VerifyRecord.isValidInsert(insert, ID, id);
+            assertThat(after(insert).getString("order_ref")).isEqualTo("REF-" + id + "_v2");
+        }
     }
 
     @ParameterizedTest(name = "data.query.mode = {0}")
@@ -165,8 +190,8 @@ public class SqlServerDataQueryModeIT extends AbstractAsyncEngineConnectorTest {
 
     @ParameterizedTest(name = "{0} -> {1}")
     @MethodSource("modeSwitches")
-    @FixFor("dbz#2012")
-    void shouldReReadLastTransactionOnModeSwitch(DataQueryMode from, DataQueryMode to) throws Exception {
+    @FixFor({ "dbz#2012", "dbz#1327" })
+    void shouldNotReReadLastTransactionOnRestart(DataQueryMode from, DataQueryMode to) throws Exception {
         start(SqlServerConnector.class, config(from, "dbo.orders", 3));
         assertConnectorIsRunning();
         consumeRecordsByTopic(ORDERS_SEED_ROWS);
@@ -178,11 +203,12 @@ public class SqlServerDataQueryModeIT extends AbstractAsyncEngineConnectorTest {
 
         stopConnector();
 
+        // Both modes record command_id, so a restart resumes inside the last LSN instead of re-reading it.
         start(SqlServerConnector.class, config(to, "dbo.orders", 3));
         assertConnectorIsRunning();
+        TestHelper.waitForStreamingStarted();
 
-        // The whole transaction is read again from its start, so all of it arrives a second time.
-        assertDeferredUpdate(groupByOperation(consumeOrders(DEFERRED_RECORDS)), "REF-", "order_ref");
+        assertNoRecordsToConsume();
     }
 
     @Test
