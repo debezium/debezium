@@ -24,6 +24,7 @@ import java.util.Date;
 import java.util.HexFormat;
 import java.util.List;
 import java.util.Properties;
+import java.util.TimeZone;
 import java.util.stream.Stream;
 
 import org.apache.kafka.connect.data.Field;
@@ -1078,6 +1079,31 @@ public abstract class BinlogDefaultValueTest<V extends BinlogValueConverters, P 
         parser.parse("CREATE TABLE dt_defaults (id INT, v DATETIME NOT NULL DEFAULT '2026-09-28 12:34:56')", tables);
         final Object expected = getColumnSchema(parseDatetimeTableWithoutTimeZone(), "v").defaultValue();
         assertThat(getColumnSchema(tables.forTable(new TableId(null, null, "dt_defaults")), "v").defaultValue()).isEqualTo(expected);
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2866")
+    void shouldInterpretTimestampDefaultsWithOffsetRegardlessOfSessionTimeZone() {
+        // MySQL 8.0.19 and later accept a datetime literal with an offset, which does not depend on the session time zone
+        parser.parse("SET time_zone='-05:00'", tables);
+        parser.parse("CREATE TABLE ts_defaults (id INT, v TIMESTAMP NOT NULL DEFAULT '2026-09-28 12:34:56+09:00')", tables);
+        assertThat(timestampDefault("ts_defaults", "v")).isEqualTo("2026-09-28T03:34:56Z");
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2866")
+    void shouldNotShiftTimestampDefaultsInDaylightSavingTimeGapOfJvmTimeZone() {
+        final TimeZone jvmTimeZone = TimeZone.getDefault();
+        try {
+            // 02:30 does not exist on 2026-03-08 in New York, but it does in the session time zone
+            TimeZone.setDefault(TimeZone.getTimeZone("America/New_York"));
+            parser.parse("SET time_zone='+00:00'", tables);
+            parser.parse("CREATE TABLE ts_defaults (id INT, v TIMESTAMP NOT NULL DEFAULT '2026-03-08 02:30:00')", tables);
+            assertThat(timestampDefault("ts_defaults", "v")).isEqualTo("2026-03-08T02:30:00Z");
+        }
+        finally {
+            TimeZone.setDefault(jvmTimeZone);
+        }
     }
 
     private Table parseDatetimeTableWithoutTimeZone() {
