@@ -13,8 +13,8 @@ import io.debezium.connector.Nullable;
  * The sequence number is monotonically increasing in transaction but it is not guaranteed across multiple
  * transactions so the combination is necessary to get total order.
  * <p>
- * The command id is only available when the change table is read directly
- * ({@code data.query.mode=direct}). In function mode it is therefore always {@code null}
+ * The command id is recorded in both query modes. Older function-mode offsets may still
+ * have a {@code null} command id.
  *
  * @author Jiri Pechanec
  *
