@@ -136,6 +136,23 @@ public class MariaDbOnlyAntlrDdlParserTest {
     }
 
     @Test
+    @FixFor("debezium/dbz#2891")
+    public void shouldUseColumnCollationAfterOtherColumnAttributes() {
+        parser.parse("create database db1 character set utf8mb4;", tables);
+        parser.parse("create table db1.collate_test (id int primary key, " +
+                "before_attr varchar(32) collate latin1_bin not null, " +
+                "after_attr varchar(32) not null collate latin1_bin, " +
+                "without_prefix varchar(32) not null collate uca1400_ai_ci) character set utf8mb4;", tables);
+        parser.parse("alter table db1.collate_test add column added varchar(32) not null collate latin1_bin;", tables);
+
+        final var table = tables.forTable(new TableId("db1", null, "collate_test"));
+        assertThat(table.columnWithName("before_attr").charsetName()).isEqualTo("latin1");
+        assertThat(table.columnWithName("after_attr").charsetName()).isEqualTo("latin1");
+        assertThat(table.columnWithName("without_prefix").charsetName()).isEqualTo("utf8mb4");
+        assertThat(table.columnWithName("added").charsetName()).isEqualTo("latin1");
+    }
+
+    @Test
     @FixFor("DBZ-4661")
     public void shouldSupportCreateTableWithEncryption() {
         parser.parse(
