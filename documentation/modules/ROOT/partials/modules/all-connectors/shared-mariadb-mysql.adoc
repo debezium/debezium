@@ -2119,7 +2119,12 @@ Like the database, {connector-name} interprets a default value literal in the ti
 * For a DDL statement in the binlog, the session time zone that the binlog records for the statement.
 
 When the session uses the time zone of the server (`SYSTEM`), the connector uses the time zone that is configured for the JDBC driver (`connectionTimeZone` for MySQL, `timezone` for MariaDB), or otherwise the `system_time_zone` of the server.
-If neither is a time zone that the connector can resolve, for example an abbreviation such as `KST`, the connector logs a warning and interprets the literal in the time zone of the JVM.
+As for the `TIMESTAMP` values that the JDBC driver reads during a snapshot, the connector assumes that a configured time zone is the time zone of the server.
+
+Unlike the other conversions, the time zone of the JVM determines a `TIMESTAMP` default value in the following cases:
+
+* The connector cannot resolve the time zone of the server, for example because `system_time_zone` is an abbreviation such as `KST`. The connector logs a warning when it starts.
+* An earlier version of {prodname} recorded the table definition in the schema history without the session time zone.
 
 More details about properties related to temporal values are in the documentation for xref:{context}-connector-properties[{connector-name} connector configuration properties].
 
