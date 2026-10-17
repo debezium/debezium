@@ -227,7 +227,6 @@ public class RelationalTableFiltersTest {
         assertThat(filters.eligibleForSchemaDataCollectionFilter().isIncluded(id)).isTrue();
     }
 
-
     @Test
     @FixFor("debezium/dbz#2874")
     public void shouldKeepFilteringWhenTheExcludedCacheIsSmallerThanTheTablesAsked() {
