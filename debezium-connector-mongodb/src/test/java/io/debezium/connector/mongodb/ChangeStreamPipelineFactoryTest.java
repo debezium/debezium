@@ -7,6 +7,7 @@ package io.debezium.connector.mongodb;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.lenient;
 
 import java.io.IOException;
 import java.util.Collection;
@@ -17,16 +18,22 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import org.bson.conversions.Bson;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 
+import io.debezium.config.Configuration;
 import io.debezium.connector.mongodb.Filters.FilterConfig;
 import io.debezium.connector.mongodb.MongoDbConnectorConfig.CursorPipelineOrder;
+import io.debezium.connector.mongodb.MongoDbConnectorConfig.PostImageMode;
+import io.debezium.connector.mongodb.MongoDbConnectorConfig.PreImageMode;
 import io.debezium.data.Envelope;
 
 @ExtendWith(MockitoExtension.class)
@@ -114,6 +121,100 @@ public class ChangeStreamPipelineFactoryTest {
     private MongoDbConnectorConfig connectorConfig;
     @Mock
     private FilterConfig filterConfig;
+
+    @BeforeEach
+    void setUp() {
+        lenient().when(connectorConfig.getCaptureModePreImage()).thenReturn(PreImageMode.OFF);
+        lenient().when(connectorConfig.getCaptureModePostImage()).thenReturn(PostImageMode.LOOKUP);
+    }
+
+    @ParameterizedTest
+    @CsvSource({
+            "required, lookup, ",
+            "off, post_image_required, ",
+            ", , post_image_required"
+    })
+    void testCreateWithRequiredImagesMatchesRegexesOnOriginalEvent(String preImage, String postImage, String legacyPostImage) {
+        var builder = TestHelper.getConfiguration().edit()
+                .with(MongoDbConnectorConfig.COLLECTION_INCLUDE_LIST, "dbit.col1,dbit.col2")
+                .with(MongoDbConnectorConfig.SIGNAL_DATA_COLLECTION, "signal.col");
+        if (preImage != null) {
+            builder.with(MongoDbConnectorConfig.CAPTURE_MODE_PRE_IMAGE, preImage);
+        }
+        if (postImage != null) {
+            builder.with(MongoDbConnectorConfig.CAPTURE_MODE_POST_IMAGE, postImage);
+        }
+        if (legacyPostImage != null) {
+            builder.with(MongoDbConnectorConfig.CAPTURE_MODE, "change_streams_update_full")
+                    .with(MongoDbConnectorConfig.CAPTURE_MODE_FULL_UPDATE_TYPE, legacyPostImage);
+        }
+
+        var pipeline = create(builder.build());
+
+        assertPipelineStagesEquals(pipeline.getStages(), List.of(
+                "" +
+                        "{\n" +
+                        "  \"$match\": {\n" +
+                        "    \"$and\": [{\n" +
+                        "        \"$or\": [\n" +
+                        "          { \"$expr\": { \"$regexMatch\": {\n" +
+                        "              \"input\": { \"$concat\": [ \"$ns.db\", \".\", \"$ns.coll\" ] },\n" +
+                        "              \"regex\": \"^(?:dbit.col1|dbit.col2)$\",\n" +
+                        "              \"options\": \"i\" } } },\n" +
+                        "          { \"ns\": { \"db\": \"signal\", \"coll\": \"col\" } }\n" +
+                        "        ]\n" +
+                        "      }, {\n" +
+                        "        \"operationType\": {\n" +
+                        "          \"$in\": [\"insert\", \"update\", \"replace\", \"delete\" ]\n" +
+                        "        }\n" +
+                        "      }]\n" +
+                        "  }\n" +
+                        "}"));
+    }
+
+    @Test
+    void testCreateWithRequiredImagesAnchorsExcludeListsAndDatabaseFilters() {
+        var config = TestHelper.getConfiguration().edit()
+                .with(MongoDbConnectorConfig.DATABASE_INCLUDE_LIST, "db1, db2")
+                .with(MongoDbConnectorConfig.COLLECTION_EXCLUDE_LIST, "db1.a\\,b, db1.c")
+                .with(MongoDbConnectorConfig.CAPTURE_MODE_PRE_IMAGE, "required")
+                .build();
+
+        var pipeline = create(config);
+
+        assertPipelineStagesEquals(pipeline.getStages(), List.of(
+                "" +
+                        "{\n" +
+                        "  \"$match\": {\n" +
+                        "    \"$and\": [{\n" +
+                        "        \"$and\": [\n" +
+                        "          { \"ns.db\": { \"$regularExpression\": { \"pattern\": \"^(?:db1|db2)$\", \"options\": \"i\" } } },\n" +
+                        "          { \"$expr\": { \"$regexMatch\": {\n" +
+                        "              \"input\": { \"$concat\": [ \"$ns.db\", \".\", \"$ns.coll\" ] },\n" +
+                        "              \"regex\": \"^(?!(?:db1.a,b|db1.c)$)\",\n" +
+                        "              \"options\": \"i\" } } }\n" +
+                        "        ]\n" +
+                        "      }, {\n" +
+                        "        \"operationType\": {\n" +
+                        "          \"$in\": [\"insert\", \"update\", \"replace\", \"delete\" ]\n" +
+                        "        }\n" +
+                        "      }]\n" +
+                        "  }\n" +
+                        "}"));
+    }
+
+    @Test
+    void testCreateWithAvailableImagesKeepsRegexPipeline() {
+        var config = TestHelper.getConfiguration().edit()
+                .with(MongoDbConnectorConfig.COLLECTION_INCLUDE_LIST, "dbit.*")
+                .with(MongoDbConnectorConfig.CAPTURE_MODE_PRE_IMAGE, "when_available")
+                .with(MongoDbConnectorConfig.CAPTURE_MODE_POST_IMAGE, "post_image")
+                .build();
+
+        var pipeline = create(config);
+
+        assertPipelineStagesEquals(pipeline.getStages(), INTERNAL_PIPELINE);
+    }
 
     @Test
     void testCreateWithInternalFirstAndOversizeHandlingFail() {
@@ -271,6 +372,10 @@ public class ChangeStreamPipelineFactoryTest {
         var pipelineJson = pipelineToString(pipeline);
         assertThat(pipelineJson).contains("\"pattern\"");
         assertThat(pipelineJson).contains("(?!db1|db2|db3)");
+    }
+
+    private static ChangeStreamPipeline create(Configuration config) {
+        return new ChangeStreamPipelineFactory(new MongoDbConnectorConfig(config), new FilterConfig(config)).create();
     }
 
     @SafeVarargs
