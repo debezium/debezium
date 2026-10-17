@@ -85,16 +85,20 @@ public class SqlServerConnection extends JdbcConnection {
     private static final String LOCK_TABLE = "SELECT * FROM #table WITH (TABLOCKX)";
     private static final String INCREMENT_LSN = "SELECT #db.sys.fn_cdc_increment_lsn(?)";
     private static final String LSN_TIMESTAMP_SELECT_STATEMENT_JOIN = "TODATETIMEOFFSET(ltm.tran_end_time, DATEPART(TZOFFSET, SYSDATETIMEOFFSET()))";
-    private static final String GET_ALL_CHANGES_FOR_TABLE_SELECT = "SELECT cdc_data.[__$start_lsn], cdc_data.[__$seqval], cdc_data.[__$operation], cdc_data.[__$update_mask], #, "
+    // fn_cdc_get_all_changes does not return __$command_id; join the change table for it.
+    private static final String GET_ALL_CHANGES_FOR_TABLE_SELECT = "SELECT cdc_data.[__$start_lsn], cdc_data.[__$seqval], cdc_data.[__$operation], cdc_data.[__$update_mask], ct.[__$command_id], #, "
             + LSN_TIMESTAMP_SELECT_STATEMENT_JOIN;
     private static final String GET_ALL_CHANGES_FOR_TABLE_SELECT_DIRECT = "SELECT cdc_data.[__$start_lsn], cdc_data.[__$seqval], cdc_data.[__$operation], cdc_data.[__$update_mask], cdc_data.[__$command_id], #, "
             + LSN_TIMESTAMP_SELECT_STATEMENT_JOIN;
     // FUNCTION mode's table-valued function already bounds its output to the requested LSN range internally, so
     // joining it against lsn_time_mapping here only changes how the commit timestamp is computed, not which rows
     // are returned - consistent with the same rewrite already applied to DIRECT mode (see debezium/dbz#1915).
-    private static final String GET_ALL_CHANGES_FOR_TABLE_FROM_FUNCTION = "FROM #db.cdc.#function(?, ?, N'all update old') AS cdc_data LEFT JOIN #db.cdc.lsn_time_mapping ltm WITH (NOLOCK) ON ltm.start_lsn = cdc_data.[__$start_lsn]";
+    // The change-table join supplies __$command_id, which the function does not return.
+    private static final String GET_ALL_CHANGES_FOR_TABLE_FROM_FUNCTION = "FROM #db.cdc.#function(?, ?, N'all update old') AS cdc_data "
+            + "LEFT JOIN #db.cdc.lsn_time_mapping ltm WITH (NOLOCK) ON ltm.start_lsn = cdc_data.[__$start_lsn] "
+            + "LEFT JOIN #db.cdc.#table AS ct ON ct.[__$start_lsn] = cdc_data.[__$start_lsn] AND ct.[__$seqval] = cdc_data.[__$seqval] AND ct.[__$operation] = cdc_data.[__$operation]";
     private static final String GET_ALL_CHANGES_FOR_TABLE_FROM_DIRECT = "FROM #db.cdc.#table AS cdc_data WITH (NOLOCK) LEFT JOIN #db.cdc.lsn_time_mapping ltm WITH (NOLOCK) ON ltm.start_lsn = cdc_data.[__$start_lsn]";
-    private static final String GET_ALL_CHANGES_FOR_TABLE_FROM_FUNCTION_ORDER_BY = "ORDER BY cdc_data.[__$start_lsn] ASC, cdc_data.[__$seqval] ASC, cdc_data.[__$operation] ASC";
+    private static final String GET_ALL_CHANGES_FOR_TABLE_FROM_FUNCTION_ORDER_BY = "ORDER BY cdc_data.[__$start_lsn] ASC, ct.[__$command_id] ASC, cdc_data.[__$seqval] ASC, cdc_data.[__$operation] ASC";
     private static final String GET_ALL_CHANGES_FOR_TABLE_FROM_DIRECT_ORDER_BY = "ORDER BY cdc_data.[__$start_lsn] ASC, cdc_data.[__$command_id] ASC, cdc_data.[__$seqval] ASC, cdc_data.[__$operation] ASC";
     private static final String GET_CDC_JOB_INFO = "{call sys.sp_cdc_help_jobs}";
     private static final String CDC_JOB_INFO_JOB_TYPE_COLUMN_NAME = "job_type";
@@ -227,8 +231,9 @@ public class SqlServerConnection extends JdbcConnection {
             where.add("[cdc_data].[__$start_lsn] >= ?");
         }
         else {
-            where.add("(([cdc_data].[__$start_lsn] = ? AND [cdc_data].[__$seqval] = ? AND [cdc_data].[__$operation] > ?) " +
-                    "OR ([cdc_data].[__$start_lsn] = ? AND [cdc_data].[__$seqval] > ?) " +
+            where.add("(([cdc_data].[__$start_lsn] = ? AND ct.[__$command_id] = ? AND [cdc_data].[__$seqval] = ? AND [cdc_data].[__$operation] > ?) " +
+                    "OR ([cdc_data].[__$start_lsn] = ? AND ct.[__$command_id] = ? AND [cdc_data].[__$seqval] > ?) " +
+                    "OR ([cdc_data].[__$start_lsn] = ? AND ct.[__$command_id] > ?) " +
                     "OR ([cdc_data].[__$start_lsn] > ?))");
             where.add("[cdc_data].[__$start_lsn] <= ?");
         }
@@ -430,7 +435,8 @@ public class SqlServerConnection extends JdbcConnection {
      * @param intervalFromLsn - closed lower bound of interval of changes to be provided
      * @param seqvalFromLsn - in-transaction sequence value to start after, pass {@link Lsn#ZERO} to fetch all sequence values
      * @param operationFrom - operation number to start after, pass 0 to fetch all operations
-     * @param commandIdFrom - in-transaction command id to start after. Only used in {@code direct} mode;
+     * @param commandIdFrom - in-transaction command id to start after. Required in {@code direct} mode.
+     *                        {@code null} is accepted in {@code function} mode for older offsets.
      * @param intervalToLsn  - closed upper bound of interval  of changes to be provided
      * @param maxRows - the max number of rows to return, pass 0 for no limit
      * @throws SQLException
@@ -438,26 +444,7 @@ public class SqlServerConnection extends JdbcConnection {
     public ResultSet getChangesForTable(SqlServerChangeTable changeTable, Lsn intervalFromLsn, Lsn seqvalFromLsn, int operationFrom,
                                         Integer commandIdFrom, Lsn intervalToLsn, int maxRows)
             throws SQLException {
-        String databaseName = changeTable.getSourceTableId().catalog();
-        // Both modes now alias their result set as cdc_data (FUNCTION mode joins lsn_time_mapping the same way
-        // DIRECT mode does), so captured columns are qualified the same way regardless of query mode.
-        String capturedColumns = changeTable.getCapturedColumns().stream().map(this::quoteIdentifier)
-                .map(column -> PREFIX_CDC_DATA + column)
-                .collect(Collectors.joining(", "));
-
-        String query = replaceDatabaseNamePlaceholder(getAllChangesForTable, databaseName)
-                .replaceFirst(STATEMENTS_PLACEHOLDER, Matcher.quoteReplacement(capturedColumns));
-
-        query = switch (config.getDataQueryMode()) {
-            case FUNCTION ->
-                query.replace(FUNCTION_NAME_PLACEHOLDER, quoteIdentifier(GET_ALL_CHANGES_FUNCTION_PREFIX.concat(changeTable.getCaptureInstance())));
-            case DIRECT ->
-                query.replace(TABLE_NAME_PLACEHOLDER, quoteIdentifier(changeTable.getChangeTableId().table()));
-        };
-
-        if (maxRows > 0) {
-            query = query.replace("SELECT ", String.format("SELECT TOP %d ", maxRows));
-        }
+        String query = buildGetAllChangesForTableQuery(changeTable, maxRows);
 
         // If the table was added in the middle of queried buffer we need
         // to adjust from to the first LSN available
@@ -474,13 +461,23 @@ public class SqlServerConnection extends JdbcConnection {
 
         int paramIndex = 1;
         if (config.getDataQueryMode() == SqlServerConnectorConfig.DataQueryMode.FUNCTION) {
+            // Older function-mode offsets have no command id; -1 is below every real command id.
+            int commandId = commandIdFrom == null ? -1 : commandIdFrom;
             statement.setBytes(paramIndex++, fromLsn.getBinary());
             statement.setBytes(paramIndex++, intervalToLsn.getBinary());
+            // (start_lsn = ? AND command_id = ? AND seqval = ? AND operation > ?)
             statement.setBytes(paramIndex++, fromLsn.getBinary());
+            statement.setInt(paramIndex++, commandId);
             statement.setBytes(paramIndex++, seqvalFromLsn.getBinary());
             statement.setInt(paramIndex++, operationFrom);
+            // OR (start_lsn = ? AND command_id = ? AND seqval > ?)
             statement.setBytes(paramIndex++, fromLsn.getBinary());
+            statement.setInt(paramIndex++, commandId);
             statement.setBytes(paramIndex++, seqvalFromLsn.getBinary());
+            // OR (start_lsn = ? AND command_id > ?)
+            statement.setBytes(paramIndex++, fromLsn.getBinary());
+            statement.setInt(paramIndex++, commandId);
+            // OR (start_lsn > ?) AND start_lsn <= ?
             statement.setBytes(paramIndex++, fromLsn.getBinary());
             statement.setBytes(paramIndex++, intervalToLsn.getBinary());
         }
@@ -511,14 +508,32 @@ public class SqlServerConnection extends JdbcConnection {
         return statement.executeQuery();
     }
 
-    public ResultSet getChangesForTable(SqlServerChangeTable changeTable, Lsn intervalFromLsn, Lsn seqvalFromLsn, int operationFrom,
-                                        Lsn intervalToLsn, int maxRows)
-            throws SQLException {
-        return getChangesForTable(changeTable, intervalFromLsn, seqvalFromLsn, operationFrom, null, intervalToLsn, maxRows);
-    }
+    /**
+     * Fills table-specific placeholders in the CDC change query template.
+     */
+    @VisibleForTesting
+    String buildGetAllChangesForTableQuery(SqlServerChangeTable changeTable, int maxRows) {
+        String databaseName = changeTable.getSourceTableId().catalog();
+        // Both modes alias their result set as cdc_data, so captured columns are qualified the same way.
+        String capturedColumns = changeTable.getCapturedColumns().stream().map(this::quoteIdentifier)
+                .map(column -> PREFIX_CDC_DATA + column)
+                .collect(Collectors.joining(", "));
 
-    public ResultSet getChangesForTable(SqlServerChangeTable changeTable, Lsn intervalFromLsn, Lsn intervalToLsn, int maxRows) throws SQLException {
-        return getChangesForTable(changeTable, intervalFromLsn, Lsn.ZERO, 0, null, intervalToLsn, maxRows);
+        String query = replaceDatabaseNamePlaceholder(getAllChangesForTable, databaseName)
+                .replaceFirst(STATEMENTS_PLACEHOLDER, Matcher.quoteReplacement(capturedColumns));
+
+        query = switch (config.getDataQueryMode()) {
+            case FUNCTION -> query
+                    .replace(FUNCTION_NAME_PLACEHOLDER, quoteIdentifier(GET_ALL_CHANGES_FUNCTION_PREFIX.concat(changeTable.getCaptureInstance())))
+                    .replace(TABLE_NAME_PLACEHOLDER, quoteIdentifier(changeTable.getChangeTableId().table()));
+            case DIRECT ->
+                query.replace(TABLE_NAME_PLACEHOLDER, quoteIdentifier(changeTable.getChangeTableId().table()));
+        };
+
+        if (maxRows > 0) {
+            query = query.replace("SELECT ", String.format("SELECT TOP %d ", maxRows));
+        }
+        return query;
     }
 
     private Lsn getFromLsn(SqlServerChangeTable changeTable, Lsn intervalFromLsn) throws SQLException {

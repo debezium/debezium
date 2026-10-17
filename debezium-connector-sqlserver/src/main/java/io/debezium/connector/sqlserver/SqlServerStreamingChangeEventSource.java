@@ -152,20 +152,6 @@ public class SqlServerStreamingChangeEventSource implements StreamingChangeEvent
         throw new UnsupportedOperationException("Currently unsupported by the SQL Server connector");
     }
 
-    private TxLogPosition resumePosition(TxLogPosition position) {
-        final boolean commandIdExists = position.getCommandId() != null;
-
-        // direct and function mode orders change events differently hence a mode change contains a risk of data loss.
-        // To prevent data loss, we re-read the last transaction in full if the mode changes.
-        if ((directMode && commandIdExists) || (!directMode && !commandIdExists)) {
-            return position;
-        }
-
-        LOGGER.info("Offset {} and query mode {} indicates a change in mode, so the last transaction is streamed again", position,
-                connectorConfig.getDataQueryMode());
-        return TxLogPosition.valueOf(position.getCommitLsn(), directMode ? -1 : null);
-    }
-
     @Override
     public boolean executeIteration(ChangeEventSourceContext context, SqlServerPartition partition, SqlServerOffsetContext offsetContext) {
 
@@ -194,7 +180,6 @@ public class SqlServerStreamingChangeEventSource implements StreamingChangeEvent
             if (!streamingExecutionContexts.containsKey(partition)) {
                 streamingExecutionContexts.put(partition, streamingExecutionContext);
                 LOGGER.info("Last position recorded in offsets is {}[{}]", offsetContext.getChangePosition(), offsetContext.getEventSerialNo());
-                lastProcessedPositionOnStart = resumePosition(lastProcessedPositionOnStart);
             }
 
             final Queue<SqlServerChangeTable> schemaChangeCheckpoints = streamingExecutionContext.getSchemaChangeCheckpoints();
@@ -390,11 +375,11 @@ public class SqlServerStreamingChangeEventSource implements StreamingChangeEvent
                                                 connectorConfig));
                         tableWithSmallestLsn.next();
                     }
-                    streamingExecutionContext.setLastProcessedPosition(TxLogPosition.valueOf(toLsn, directMode ? -1 : null));
+                    streamingExecutionContext.setLastProcessedPosition(TxLogPosition.valueOf(toLsn, -1));
                     // Terminate the transaction otherwise CDC could not be disabled for tables
                     dataConnection.rollback();
                     if (!anyData) {
-                        offsetContext.setChangePosition(TxLogPosition.valueOf(toLsn, directMode ? -1 : null), 0);
+                        offsetContext.setChangePosition(TxLogPosition.valueOf(toLsn, -1), 0);
                         dispatcher.dispatchHeartbeatEvent(partition, offsetContext);
                     }
                 }
