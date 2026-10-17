@@ -23,6 +23,7 @@ import java.util.Arrays;
 import java.util.Date;
 import java.util.List;
 import java.util.Properties;
+import java.util.TimeZone;
 import java.util.stream.Stream;
 
 import org.apache.kafka.connect.data.Field;
@@ -838,6 +839,77 @@ public abstract class BinlogDefaultValueTest<V extends BinlogValueConverters, P 
                 .isEqualTo(new byte[]{ (byte) 0xE9, (byte) 0xA9, (byte) 0xC3, 0, 0, 0, 0, 0 });
         assertThat(getColumnSchema(table, "introduced_value").defaultValue())
                 .isEqualTo(new byte[]{ (byte) 0xE9, (byte) 0xA9, (byte) 0xC3, 0, 0, 0, 0, 0 });
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2866")
+    void shouldInterpretTimestampDefaultsInSessionTimeZone() {
+        // MySQL and MariaDB interpret the literal in the time zone of the session that runs the statement
+        parser.parse("SET time_zone='+09:00'", tables);
+        parser.parse("CREATE TABLE ts_defaults (id INT, v TIMESTAMP NOT NULL DEFAULT '2026-09-28 12:34:56', "
+                + "m TIMESTAMP NOT NULL DEFAULT '2026-09-28 12:34:56')", tables);
+        assertThat(timestampDefault("ts_defaults", "v")).isEqualTo("2026-09-28T03:34:56Z");
+
+        parser.parse("SET time_zone='America/New_York'", tables);
+        parser.parse("ALTER TABLE ts_defaults ALTER COLUMN v SET DEFAULT '2026-01-15 08:00:00.123'", tables);
+        assertThat(timestampDefault("ts_defaults", "v")).isEqualTo("2026-01-15T13:00:00.123Z");
+        parser.parse("ALTER TABLE ts_defaults ADD COLUMN w TIMESTAMP NOT NULL DEFAULT '2026-07-15 08:00:00'", tables);
+        assertThat(timestampDefault("ts_defaults", "w")).isEqualTo("2026-07-15T12:00:00Z");
+        parser.parse("ALTER TABLE ts_defaults MODIFY COLUMN m TIMESTAMP NOT NULL DEFAULT '2026-07-15 08:00:00'", tables);
+        assertThat(timestampDefault("ts_defaults", "m")).isEqualTo("2026-07-15T12:00:00Z");
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2866")
+    void shouldInterpretTimestampDefaultsOfSystemTimeZoneInServerTimeZone() {
+        parser.systemVariables().setVariable(BinlogScope.GLOBAL, "system_time_zone", "Pacific/Samoa");
+        parser.parse("SET time_zone='SYSTEM'", tables);
+        parser.parse("CREATE TABLE ts_defaults (id INT, v TIMESTAMP NOT NULL DEFAULT '2026-09-28 12:34:56')", tables);
+        assertThat(timestampDefault("ts_defaults", "v")).isEqualTo("2026-09-28T23:34:56Z");
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2866")
+    void shouldNotApplySessionTimeZoneToDatetimeDefaults() {
+        parser.parse("SET time_zone='+09:00'", tables);
+        parser.parse("CREATE TABLE dt_defaults (id INT, v DATETIME NOT NULL DEFAULT '2026-09-28 12:34:56')", tables);
+        final Object expected = getColumnSchema(parseDatetimeTableWithoutTimeZone(), "v").defaultValue();
+        assertThat(getColumnSchema(tables.forTable(new TableId(null, null, "dt_defaults")), "v").defaultValue()).isEqualTo(expected);
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2866")
+    void shouldInterpretTimestampDefaultsWithOffsetRegardlessOfSessionTimeZone() {
+        // MySQL 8.0.19 and later accept a datetime literal with an offset, which does not depend on the session time zone
+        parser.parse("SET time_zone='-05:00'", tables);
+        parser.parse("CREATE TABLE ts_defaults (id INT, v TIMESTAMP NOT NULL DEFAULT '2026-09-28 12:34:56+09:00')", tables);
+        assertThat(timestampDefault("ts_defaults", "v")).isEqualTo("2026-09-28T03:34:56Z");
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2866")
+    void shouldNotShiftTimestampDefaultsInDaylightSavingTimeGapOfJvmTimeZone() {
+        final TimeZone jvmTimeZone = TimeZone.getDefault();
+        try {
+            // 02:30 does not exist on 2026-03-08 in New York, but it does in the session time zone
+            TimeZone.setDefault(TimeZone.getTimeZone("America/New_York"));
+            parser.parse("SET time_zone='+00:00'", tables);
+            parser.parse("CREATE TABLE ts_defaults (id INT, v TIMESTAMP NOT NULL DEFAULT '2026-03-08 02:30:00')", tables);
+            assertThat(timestampDefault("ts_defaults", "v")).isEqualTo("2026-03-08T02:30:00Z");
+        }
+        finally {
+            TimeZone.setDefault(jvmTimeZone);
+        }
+    }
+
+    private Table parseDatetimeTableWithoutTimeZone() {
+        final var otherTables = new Tables();
+        getDdlParser().parse("CREATE TABLE dt_defaults (id INT, v DATETIME NOT NULL DEFAULT '2026-09-28 12:34:56')", otherTables);
+        return otherTables.forTable(new TableId(null, null, "dt_defaults"));
+    }
+
+    private Object timestampDefault(String table, String column) {
+        return getColumnSchema(tables.forTable(new TableId(null, null, table)), column).defaultValue();
     }
 
     private static Object expectedBitDefault(BitDefaultValueCase testCase) {

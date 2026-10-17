@@ -9,6 +9,7 @@ package io.debezium.connector.mysql.antlr.listener;
 import java.sql.Types;
 import java.util.concurrent.atomic.AtomicReference;
 
+import io.debezium.connector.binlog.util.BinlogTimeZones;
 import io.debezium.connector.mysql.antlr.MySqlAntlrDdlParser;
 import io.debezium.ddl.parser.mysql.generated.MySqlParser;
 import io.debezium.ddl.parser.mysql.generated.MySqlParserBaseListener;
@@ -125,7 +126,9 @@ public class DefaultValueParserListener extends MySqlParserBaseListener {
     private void handleLiteral(MySqlParser.LiteralContext literalCtx, String sign) {
         // Text literal
         if (literalCtx.textLiteral() != null) {
-            getColumnEditor().defaultValueExpression(sign + parser.parseTextLiteral(literalCtx.textLiteral()));
+            // A TIMESTAMP literal is interpreted in the time zone of the session
+            getColumnEditor().defaultValueExpression(BinlogTimeZones.toDefaultValueExpression(getColumnEditor(),
+                    sign + parser.parseTextLiteral(literalCtx.textLiteral()), parser.systemVariables()));
             return;
         }
 
