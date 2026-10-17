@@ -21,6 +21,7 @@ import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
 import java.util.Arrays;
 import java.util.Date;
+import java.util.HexFormat;
 import java.util.List;
 import java.util.Properties;
 import java.util.stream.Stream;
@@ -992,6 +993,55 @@ public abstract class BinlogDefaultValueTest<V extends BinlogValueConverters, P 
             default -> throw new IllegalArgumentException("Unexpected DDL action: " + action);
         }
         return getColumnSchema(literalTables.forTable(new TableId(null, null, "literal_defaults")), "v").defaultValue();
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2766")
+    void shouldPadBinaryDefaultsWithZeroBytes() {
+        // SHOW CREATE TABLE returns the default with the padding that MySQL and MariaDB store
+        parser.parse("CREATE TABLE binary_defaults (id INT, "
+                + "bin_escaped BINARY(8) NOT NULL DEFAULT 'abc\\0\\0\\0\\0\\0', "
+                + "bin_literal BINARY(8) NOT NULL DEFAULT 'abc', "
+                + "bin_blank BINARY(4) NOT NULL DEFAULT 'a', "
+                + "bin_spaced BINARY(6) NOT NULL DEFAULT 'a ', "
+                + "varbin VARBINARY(8) NOT NULL DEFAULT 'abc')", tables);
+        parser.parse("ALTER TABLE binary_defaults ALTER COLUMN bin_blank SET DEFAULT ''", tables);
+        parser.parse("ALTER TABLE binary_defaults MODIFY COLUMN bin_literal BINARY(8) NOT NULL DEFAULT 'abc'", tables);
+        parser.parse("ALTER TABLE binary_defaults ADD COLUMN bin_added BINARY(4) NOT NULL DEFAULT 'ab'", tables);
+
+        final Table table = tables.forTable(new TableId(null, null, "binary_defaults"));
+        assertThat(hex(getColumnSchema(table, "bin_escaped").defaultValue())).isEqualTo("6162630000000000");
+        assertThat(hex(getColumnSchema(table, "bin_literal").defaultValue())).isEqualTo("6162630000000000");
+        assertThat(hex(getColumnSchema(table, "bin_blank").defaultValue())).isEqualTo("00000000");
+        assertThat(hex(getColumnSchema(table, "bin_spaced").defaultValue())).isEqualTo("612000000000");
+        assertThat(hex(getColumnSchema(table, "bin_added").defaultValue())).isEqualTo("61620000");
+        assertThat(hex(getColumnSchema(table, "varbin").defaultValue())).isEqualTo("616263");
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2766")
+    void shouldPadBinaryDefaultsInHexBinaryHandlingMode() {
+        final V converters = getValueConverter(JdbcValueConverters.DecimalMode.DOUBLE,
+                TemporalPrecisionMode.CONNECT,
+                JdbcValueConverters.BigIntUnsignedMode.LONG,
+                BinaryHandlingMode.HEX);
+        final TableSchemaBuilder tableSchemaBuilder = new TableSchemaBuilder(
+                converters,
+                getDefaultValueConverter(converters),
+                SchemaNameAdjuster.NO_OP, new CustomConverterRegistry(null), SchemaBuilder.struct().build(),
+                FieldNameSelector.defaultSelector(SchemaNameAdjuster.NO_OP), false,
+                EventConvertingFailureHandlingMode.WARN);
+        parser.parse("CREATE TABLE binary_defaults (id INT, bin_literal BINARY(8) NOT NULL DEFAULT 'abc')", tables);
+
+        final Table table = tables.forTable(new TableId(null, null, "binary_defaults"));
+        assertThat(getColumnSchema(table, "bin_literal", tableSchemaBuilder).defaultValue()).isEqualTo("6162630000000000");
+    }
+
+    private static String hex(Object bytes) {
+        final ByteBuffer buffer = ((ByteBuffer) bytes).duplicate();
+        final byte[] array = new byte[buffer.remaining()];
+        buffer.get(array);
+        return HexFormat.of().formatHex(array);
     }
 
     private static Object expectedBitDefault(BitDefaultValueCase testCase) {

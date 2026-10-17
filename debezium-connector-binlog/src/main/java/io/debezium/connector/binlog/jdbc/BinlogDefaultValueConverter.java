@@ -7,6 +7,7 @@ package io.debezium.connector.binlog.jdbc;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.nio.charset.StandardCharsets;
 import java.sql.Timestamp;
 import java.sql.Types;
 import java.time.Duration;
@@ -157,6 +158,9 @@ public abstract class BinlogDefaultValueConverter implements DefaultValueConvert
             case Types.DOUBLE:
             case Types.REAL:
                 return convertToDouble(value);
+            case Types.BINARY:
+                // The value converter pads bytes, unlike a string, to the length of the column, as it pads the values
+                return value.getBytes(StandardCharsets.UTF_8);
         }
         return value;
     }
