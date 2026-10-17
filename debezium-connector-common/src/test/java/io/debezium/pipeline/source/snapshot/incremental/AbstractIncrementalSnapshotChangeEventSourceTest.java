@@ -20,6 +20,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
+import org.apache.kafka.connect.data.Schema;
+import org.apache.kafka.connect.data.SchemaBuilder;
+import org.apache.kafka.connect.data.Struct;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -202,6 +205,59 @@ public class AbstractIncrementalSnapshotChangeEventSourceTest {
         source.readChunk(null, offsetContext);
 
         assertThat(context.snapshotRunning()).isFalse();
+    }
+
+    /**
+     * With case-insensitive table ids, streamed events use the id of the table schema. The snapshot can have been
+     * requested with another case, e.g. for a table the schema did not know when the signal arrived, or in an offset
+     * stored by an earlier version. An event of the table must still remove its row from the window.
+     */
+    @Test
+    @FixFor("debezium/dbz#125")
+    public void shouldDeduplicateWindowForTableRequestedInOtherCaseWhenTableIdsAreCaseInsensitive() throws Exception {
+        source = newSource(schemaFilteredBy(tableId -> true, true, new TableId("testdb", null, "MyTable"), new TableId("testdb", null, "Other")));
+        openWindowOfSnapshotOf("testdb.mytable");
+        final Struct key = keyOf(1);
+        source.window.put(key, new Object[]{ 1 });
+
+        source.processMessage(null, new TableId("testdb", null, "Other"), key, offsetContext);
+        assertThat(source.window).containsKey(key);
+
+        source.processMessage(null, new TableId("testdb", null, "MyTable"), key, offsetContext);
+        assertThat(source.window).isEmpty();
+    }
+
+    /**
+     * With case-sensitive table ids, a table whose name differs only in case is another table, so its events do not
+     * remove rows from the window.
+     */
+    @Test
+    @FixFor("debezium/dbz#125")
+    public void shouldNotDeduplicateWindowForTableInOtherCaseWhenTableIdsAreCaseSensitive() throws Exception {
+        source = newSource(schemaFilteredBy(tableId -> true, false, new TableId("testdb", null, "MyTable"), new TableId("testdb", null, "mytable")));
+        openWindowOfSnapshotOf("testdb.mytable");
+        final Struct key = keyOf(1);
+        source.window.put(key, new Object[]{ 1 });
+
+        source.processMessage(null, new TableId("testdb", null, "MyTable"), key, offsetContext);
+        assertThat(source.window).containsKey(key);
+
+        source.processMessage(null, new TableId("testdb", null, "mytable"), key, offsetContext);
+        assertThat(source.window).isEmpty();
+    }
+
+    /**
+     * Puts a snapshot of the given data collection on {@link #offsetContext}, with the window of its first chunk open.
+     */
+    private void openWindowOfSnapshotOf(String dataCollectionId) {
+        final SignalBasedIncrementalSnapshotContext<TableId> context = snapshotInProgressOf(dataCollectionId);
+        context.startNewChunk();
+        assertThat(context.openWindow(context.currentChunkId())).isTrue();
+    }
+
+    private static Struct keyOf(int id) {
+        final Schema keySchema = SchemaBuilder.struct().field("id", Schema.INT32_SCHEMA).build();
+        return new Struct(keySchema).put("id", id);
     }
 
     /**

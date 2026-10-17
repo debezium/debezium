@@ -146,8 +146,7 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<P extends Par
     @Override
     public void processSchemaChange(P partition, OffsetContext offsetContext, DataCollectionId dataCollectionId) throws InterruptedException {
         context = (IncrementalSnapshotContext<T>) offsetContext.getIncrementalSnapshotContext();
-        if (dataCollectionId != null && (context.currentDataCollectionId() != null) &&
-                dataCollectionId.equals(context.currentDataCollectionId().getId())) {
+        if (isCurrentDataCollection(dataCollectionId)) {
             rereadChunk(partition, offsetContext);
         }
     }
@@ -182,10 +181,11 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<P extends Par
     }
 
     protected void sendEvent(P partition, EventDispatcher<P, T> dispatcher, OffsetContext offsetContext, Object[] row) throws InterruptedException {
+        final T dataCollectionId = currentDataCollectionSchemaId();
         context.sendEvent(keyFromRow(row));
-        offsetContext.event(context.currentDataCollectionId().getId(), clock.currentTimeAsInstant());
-        dispatcher.dispatchSnapshotEvent(partition, context.currentDataCollectionId().getId(),
-                getChangeRecordEmitter(partition, context.currentDataCollectionId().getId(), offsetContext, row),
+        offsetContext.event(dataCollectionId, clock.currentTimeAsInstant());
+        dispatcher.dispatchSnapshotEvent(partition, dataCollectionId,
+                getChangeRecordEmitter(partition, dataCollectionId, offsetContext, row),
                 dispatcher.getIncrementalSnapshotChangeEventReceiver(dataListener));
     }
 
@@ -199,7 +199,7 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<P extends Par
     }
 
     protected void deduplicateWindow(DataCollectionId dataCollectionId, Object key) {
-        if (context.currentDataCollectionId() == null || !context.currentDataCollectionId().getId().equals(dataCollectionId)) {
+        if (!isCurrentDataCollection(dataCollectionId)) {
             return;
         }
         if (key instanceof Struct) {
@@ -207,6 +207,34 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<P extends Par
                 LOGGER.info("Removed '{}' from window", maybeRedactSensitiveData(key));
             }
         }
+    }
+
+    /**
+     * Checks whether a streamed event belongs to the data collection being snapshotted. When table identifiers are
+     * case-insensitive, the event uses the identifier of the table schema, which can differ in case from the requested
+     * data collection.
+     */
+    private boolean isCurrentDataCollection(DataCollectionId dataCollectionId) {
+        if (dataCollectionId == null || context.currentDataCollectionId() == null) {
+            return false;
+        }
+        return context.currentDataCollectionId().getId().equals(dataCollectionId) || currentDataCollectionSchemaId().equals(dataCollectionId);
+    }
+
+    /**
+     * Returns the identifier of the table schema for the data collection being snapshotted, so that snapshot events use the
+     * same name as streamed events. It can differ in case from the requested data collection when table identifiers are
+     * case-insensitive.
+     */
+    @SuppressWarnings("unchecked")
+    private T currentDataCollectionSchemaId() {
+        final T dataCollectionId = context.currentDataCollectionId().getId();
+        if (!databaseSchema.isTableIdCaseInsensitive()) {
+            // The table schema is found by the identical identifier
+            return dataCollectionId;
+        }
+        final Table table = databaseSchema.tableFor((TableId) dataCollectionId);
+        return table != null ? (T) table.id() : dataCollectionId;
     }
 
     /**
@@ -654,7 +682,6 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<P extends Par
      * all matching explicit data collection ids.
      */
     private List<String> expandAndDedupeDataCollectionIds(List<String> dataCollectionIds) {
-
         return dataCollectionIds
                 .stream()
                 .flatMap(this::expandDataCollectionId)
@@ -670,7 +697,8 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<P extends Par
      */
     private Stream<String> expandDataCollectionId(String dataCollectionId) {
 
-        final Pattern pattern = Pattern.compile(dataCollectionId);
+        // Ignore case if the database compares table identifiers that way
+        final Pattern pattern = Pattern.compile(dataCollectionId, databaseSchema.isTableIdCaseInsensitive() ? Pattern.CASE_INSENSITIVE : 0);
         final List<String> ids = databaseSchema
                 .tableIds()
                 .stream()
