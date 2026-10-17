@@ -50,11 +50,15 @@ import io.debezium.config.Field;
 import io.debezium.data.Envelope;
 import io.debezium.jdbc.JdbcConfiguration;
 import io.debezium.jdbc.JdbcConnection;
+import io.debezium.pipeline.source.snapshot.incremental.ChunkQueryBuilder;
+import io.debezium.pipeline.source.snapshot.incremental.DefaultChunkQueryBuilder;
 import io.debezium.pipeline.spi.OffsetContext;
 import io.debezium.pipeline.spi.Partition;
 import io.debezium.relational.Column;
+import io.debezium.relational.RelationalDatabaseConnectorConfig;
 import io.debezium.relational.Table;
 import io.debezium.relational.TableId;
+import io.debezium.spi.schema.DataCollectionId;
 
 /**
  * {@link JdbcConnection} extension to be used with Microsoft SQL Server
@@ -956,6 +960,20 @@ public class SqlServerConnection extends JdbcConnection {
 
     public <T> T singleOptionalValue(String query, ResultSetExtractor<T> extractor) throws SQLException {
         return queryAndMap(query, rs -> rs.next() ? extractor.apply(rs) : null);
+    }
+
+    @Override
+    public <T extends DataCollectionId> ChunkQueryBuilder<T> chunkQueryBuilder(RelationalDatabaseConnectorConfig connectorConfig) {
+        // datetime is 1/300s ticks; JDBC binds millisecond values as datetime2 (dbz#2871).
+        return new DefaultChunkQueryBuilder<T>(connectorConfig, this) {
+            @Override
+            protected String boundPlaceholder(Column column) {
+                if ("datetime".equalsIgnoreCase(column.typeName())) {
+                    return "CAST(? AS datetime)";
+                }
+                return super.boundPlaceholder(column);
+            }
+        };
     }
 
     public Duration getCdcCapturePollingInterval() {
