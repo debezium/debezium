@@ -136,6 +136,15 @@ public class ColumnDefinitionParserListener extends MariaDBParserBaseListener {
     }
 
     @Override
+    public void enterCollateColumnConstraint(MariaDBParser.CollateColumnConstraintContext ctx) {
+        String charsetName = parser.extractCharset(null, ctx.collationName());
+        if (charsetName != null) {
+            columnEditor.charsetName(charsetName);
+        }
+        super.enterCollateColumnConstraint(ctx);
+    }
+
+    @Override
     public void enterAutoIncrementColumnConstraint(MariaDBParser.AutoIncrementColumnConstraintContext ctx) {
         columnEditor.autoIncremented(true);
         columnEditor.generated(true);
