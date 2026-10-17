@@ -16,12 +16,14 @@ import org.apache.kafka.connect.source.SourceRecord;
 import org.assertj.core.api.SoftAssertions;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 
 import io.debezium.config.Configuration;
 import io.debezium.connector.binlog.util.TestHelper;
 import io.debezium.connector.binlog.util.UniqueDatabase;
 import io.debezium.doc.FixFor;
+import io.debezium.relational.history.SchemaHistory;
 import io.debezium.util.Testing;
 
 /**
@@ -59,13 +61,16 @@ public abstract class BinlogTimestampDefaultTimeZoneIT<C extends SourceConnector
         }
     }
 
-    @Test
+    @ParameterizedTest(name = "prefer.ddl={0}")
+    @ValueSource(booleans = { false, true })
     @FixFor("debezium/dbz#2866")
-    void shouldMatchStoredValuesOfTimestampDefaults() throws Exception {
+    void shouldMatchStoredValuesOfTimestampDefaults(boolean preferDdl) throws Exception {
         final Configuration config = database.defaultConfig()
                 .with(BinlogConnectorConfig.SNAPSHOT_MODE, BinlogConnectorConfig.SnapshotMode.INITIAL)
                 .with(BinlogConnectorConfig.TABLE_INCLUDE_LIST, database.qualifiedTableName(TABLE))
                 .with(BinlogConnectorConfig.INCLUDE_SCHEMA_CHANGES, false)
+                // The schema history is recovered from the recorded table changes, or else by parsing the DDL statements
+                .with(SchemaHistory.INTERNAL_PREFER_DDL, preferDdl)
                 .build();
         executeStatements(database.getDatabaseName(),
                 "SET time_zone='+09:00'",
@@ -83,11 +88,18 @@ public abstract class BinlogTimestampDefaultTimeZoneIT<C extends SourceConnector
                 "INSERT INTO " + TABLE + " (id) VALUES (2)");
         assertDefaultMatchesValue(assertions, consumeRecord(2), "v", "streamed SET DEFAULT");
 
+        // A statement of another session time zone that does not depend on it
+        executeStatements(database.getDatabaseName(),
+                "SET time_zone='+09:00'",
+                "ALTER TABLE " + TABLE + " ADD COLUMN n INT",
+                "INSERT INTO " + TABLE + " (id) VALUES (3)");
+        assertDefaultMatchesValue(assertions, consumeRecord(3), "v", "streamed ADD COLUMN without TIMESTAMP literal");
+
         // A session with the time zone of the server
         executeStatements(database.getDatabaseName(),
                 "ALTER TABLE " + TABLE + " ADD COLUMN w TIMESTAMP NOT NULL DEFAULT '2026-11-01 00:00:00'",
-                "INSERT INTO " + TABLE + " (id) VALUES (3)");
-        final SourceRecord added = consumeRecord(3);
+                "INSERT INTO " + TABLE + " (id) VALUES (4)");
+        final SourceRecord added = consumeRecord(4);
         assertDefaultMatchesValue(assertions, added, "v", "streamed ADD COLUMN");
         assertDefaultMatchesValue(assertions, added, "w", "streamed ADD COLUMN");
 
@@ -95,8 +107,8 @@ public abstract class BinlogTimestampDefaultTimeZoneIT<C extends SourceConnector
         stopConnector();
         start(getConnectorClass(), config);
         waitForStreamingRunning(getConnectorName(), database.getServerName());
-        executeStatements(database.getDatabaseName(), "INSERT INTO " + TABLE + " (id) VALUES (4)");
-        final SourceRecord afterRestart = consumeRecord(4);
+        executeStatements(database.getDatabaseName(), "INSERT INTO " + TABLE + " (id) VALUES (5)");
+        final SourceRecord afterRestart = consumeRecord(5);
         assertDefaultMatchesValue(assertions, afterRestart, "v", "after restart");
         assertDefaultMatchesValue(assertions, afterRestart, "w", "after restart");
         assertions.assertAll();
