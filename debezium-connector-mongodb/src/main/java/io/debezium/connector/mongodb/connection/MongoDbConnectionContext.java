@@ -104,6 +104,8 @@ public class MongoDbConnectionContext implements AutoCloseable {
     }
 
     public void forEachCollectionNameInDatabase(MongoClient client, String databaseName, Consumer<String> operation) {
+        // Remove this internal API workaround once the driver supports explicit read preference for collection enumeration:
+        // https://jira.mongodb.org/browse/DRIVERS-1186
         var nativeClient = nativeClient(client);
         var listCollections = new ListCollectionsOperation<>(
                 databaseName,
