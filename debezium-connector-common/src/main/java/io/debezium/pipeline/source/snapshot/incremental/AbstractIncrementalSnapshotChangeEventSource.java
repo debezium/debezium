@@ -229,6 +229,10 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<P extends Par
     @SuppressWarnings("unchecked")
     private T currentDataCollectionSchemaId() {
         final T dataCollectionId = context.currentDataCollectionId().getId();
+        if (!databaseSchema.isTableIdCaseInsensitive()) {
+            // The table schema is found by the identical identifier
+            return dataCollectionId;
+        }
         final Table table = databaseSchema.tableFor((TableId) dataCollectionId);
         return table != null ? (T) table.id() : dataCollectionId;
     }
