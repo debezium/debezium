@@ -276,19 +276,14 @@ public abstract class BinlogConnectorConnection extends JdbcConnection {
     }
 
     /**
-     * Resolve the time zone of the server, which applies to sessions with the time zone {@code SYSTEM}. As for the
-     * conversions of the JDBC driver, a time zone configured for the driver takes precedence over the system time zone of
-     * the server, which may be an abbreviation such as {@code KST} that cannot be resolved.
+     * Resolve the time zone of the server, which applies to sessions with the time zone {@code SYSTEM}.
      *
      * @return the time zone of the server, or null if it cannot be resolved
+     * @see BinlogTimeZones#serverTimeZone(String, String)
      */
     public ZoneId readServerTimeZone() {
-        final ZoneId configured = BinlogTimeZones.parse(connectionConfig.connectionTimeZone());
-        if (configured != null) {
-            return configured;
-        }
         final String systemTimeZone = querySystemVariables(SQL_SHOW_GLOBAL_VARIABLE_SYSTEM_TIME_ZONE).get(BinlogTimeZones.SYSTEM_TIME_ZONE);
-        final ZoneId timeZone = BinlogTimeZones.parse(systemTimeZone);
+        final ZoneId timeZone = BinlogTimeZones.serverTimeZone(connectionConfig.connectionTimeZone(), systemTimeZone);
         if (timeZone == null) {
             LOGGER.warn("The system time zone '{}' of the server cannot be resolved, so TIMESTAMP defaults of DDL statements of sessions "
                     + "with the SYSTEM time zone are interpreted in the time zone of the connector. Configure the time zone of the server "

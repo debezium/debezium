@@ -310,8 +310,9 @@ public abstract class BinlogDefaultValueConverter implements DefaultValueConvert
         }
         final Matcher withOffset = TIMESTAMP_WITH_OFFSET_PATTERN.matcher(value);
         if (withOffset.matches()) {
-            // An absolute literal, e.g. one that the DDL parser converted from the time zone of the DDL session
-            final LocalDateTime local = Timestamp.valueOf(cleanTimestamp(withOffset.group(1))).toLocalDateTime();
+            // An absolute literal, e.g. one that the DDL parser converted from the time zone of the DDL session.
+            // It is not parsed with java.sql.Timestamp, which shifts a time in a DST gap of the JVM time zone.
+            final LocalDateTime local = LocalDateTime.parse(cleanTimestamp(withOffset.group(1)), ISO_LOCAL_DATE_WITH_OPTIONAL_TIME);
             return local.atOffset(ZoneOffset.of(withOffset.group(2))).atZoneSameInstant(ZoneOffset.UTC);
         }
         // The time zone of the DDL session is not known
