@@ -80,6 +80,8 @@ import io.debezium.config.CommonConnectorConfig.EventProcessingFailureHandlingMo
 import io.debezium.config.Configuration;
 import io.debezium.connector.binlog.BinlogConnectorConfig.SecureConnectionMode;
 import io.debezium.connector.binlog.event.EventDataDeserializationExceptionData;
+import io.debezium.connector.binlog.event.QueryEventDataWithTimeZone;
+import io.debezium.connector.binlog.event.QueryEventDataWithTimeZoneDeserializer;
 import io.debezium.connector.binlog.event.RowDeserializers;
 import io.debezium.connector.binlog.event.StopEventDataDeserializer;
 import io.debezium.connector.binlog.event.TransactionPayloadDeserializer;
@@ -584,6 +586,7 @@ public abstract class BinlogStreamingChangeEventSource<P extends BinlogPartition
         };
 
         eventDeserializer.setEventDataDeserializer(EventType.STOP, new StopEventDataDeserializer());
+        eventDeserializer.setEventDataDeserializer(EventType.QUERY, new QueryEventDataWithTimeZoneDeserializer());
         eventDeserializer.setEventDataDeserializer(EventType.GTID, new GtidEventDataDeserializer());
         final boolean preserveInvalidTemporalValues = connectorConfig.getTemporalPrecisionMode() == TemporalPrecisionMode.STRUCTURED;
         eventDeserializer.setEventDataDeserializer(EventType.WRITE_ROWS,
@@ -849,6 +852,8 @@ public abstract class BinlogStreamingChangeEventSource<P extends BinlogPartition
                     BinlogConnectorConfig.BUFFER_SIZE_FOR_BINLOG_READER.name());
         }
 
+        applySessionTimeZone(partition, offsetContext, command, eventTime);
+
         List<SchemaChangeEvent> schemaChangeEvents = schema.parseStreamingDdl(partition, sql,
                 command.getDatabase(), offsetContext, eventTime);
 
@@ -887,6 +892,23 @@ public abstract class BinlogStreamingChangeEventSource<P extends BinlogPartition
         }
         catch (InterruptedException e) {
             LOGGER.info("Processing interrupted");
+        }
+    }
+
+    /**
+     * Sets the time zone of the session that ran the statement, in which MySQL and MariaDB interpret its {@code TIMESTAMP}
+     * literals, if it differs from the current one. The {@code SET} statement is recorded in the schema history, so that
+     * the statement is interpreted the same way when the history is recovered, but it is not a schema change to emit.
+     */
+    private void applySessionTimeZone(P partition, O offsetContext, QueryEventData command, Instant eventTime) {
+        if (!(command instanceof QueryEventDataWithTimeZone withTimeZone) || withTimeZone.getTimeZone() == null
+                || withTimeZone.getTimeZone().equals(schema.sessionTimeZone())) {
+            return;
+        }
+        final List<SchemaChangeEvent> timeZoneChanges = schema.parseStreamingDdl(partition,
+                "SET @@session.time_zone='" + withTimeZone.getTimeZone() + "'", "", offsetContext, eventTime);
+        for (SchemaChangeEvent timeZoneChange : timeZoneChanges) {
+            schema.applySchemaChange(timeZoneChange);
         }
     }
 

@@ -123,6 +123,8 @@ public class MySqlConnectorTask extends BinlogSourceTask<MySqlPartition, MySqlOf
 
         this.schema = new MySqlDatabaseSchema(connectorConfig, valueConverters, topicNamingStrategy, schemaNameAdjuster, tableIdCaseInsensitive, converterRegistry,
                 taskContext);
+        // Before recovering the schema history, whose DDL statements may refer to it
+        schema.setServerTimeZone(connection.readServerTimeZone());
 
         // Manual Bean Registration
         beanRegistryJdbcConnection = connectionFactory.newConnection();

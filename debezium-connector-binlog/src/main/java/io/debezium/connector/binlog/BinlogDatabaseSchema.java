@@ -6,6 +6,7 @@
 package io.debezium.connector.binlog;
 
 import java.time.Instant;
+import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.BitSet;
@@ -28,6 +29,7 @@ import io.debezium.config.CommonConnectorConfig;
 import io.debezium.connector.binlog.charset.BinlogCharsetRegistry;
 import io.debezium.connector.binlog.jdbc.BinlogSystemVariables;
 import io.debezium.connector.binlog.metadata.BinlogMetadataTableBuilder;
+import io.debezium.connector.binlog.util.BinlogTimeZones;
 import io.debezium.connector.common.CdcSourceTaskContext;
 import io.debezium.relational.Column;
 import io.debezium.relational.CustomConverterRegistry;
@@ -136,6 +138,7 @@ public abstract class BinlogDatabaseSchema<P extends BinlogPartition, O extends 
         final DdlParser parser = createDdlParser(connectorConfig, valueConverter);
         final Tables parsedTables = new Tables(tableIdCaseInsensitive);
         systemVariables.forEach((name, value) -> parser.systemVariables().setVariable(BinlogSystemVariables.BinlogScope.SESSION, name, value));
+        setServerTimeZone(parser, BinlogTimeZones.parse(ddlParser.systemVariables().getVariable(BinlogTimeZones.SYSTEM_TIME_ZONE)));
         parser.setCurrentDatabase(tableId.catalog());
         parser.parse(createTableDdl, parsedTables);
         return parsedTables.forTable(tableId);
@@ -201,6 +204,30 @@ public abstract class BinlogDatabaseSchema<P extends BinlogPartition, O extends 
      */
     public void setSystemVariables(Scope scope, Map<String, String> variables) {
         variables.forEach((name, value) -> ddlParser.systemVariables().setVariable(scope, name, value));
+    }
+
+    /**
+     * Sets the time zone of the server, which applies to DDL statements of sessions with the time zone {@code SYSTEM}.
+     *
+     * @param timeZone the time zone of the server; may be null if it is not known
+     */
+    public void setServerTimeZone(ZoneId timeZone) {
+        setServerTimeZone(ddlParser, timeZone);
+    }
+
+    private static void setServerTimeZone(DdlParser parser, ZoneId timeZone) {
+        if (timeZone != null) {
+            parser.systemVariables().setVariable(BinlogSystemVariables.BinlogScope.GLOBAL, BinlogTimeZones.SYSTEM_TIME_ZONE, timeZone.getId());
+        }
+    }
+
+    /**
+     * Returns the time zone of the session of the DDL statements being parsed, as MySQL and MariaDB name it.
+     *
+     * @return the time zone, such as {@code SYSTEM} or {@code +09:00}; may be null if it is not known
+     */
+    public String sessionTimeZone() {
+        return ddlParser.systemVariables().getVariable(BinlogTimeZones.TIME_ZONE);
     }
 
     /**

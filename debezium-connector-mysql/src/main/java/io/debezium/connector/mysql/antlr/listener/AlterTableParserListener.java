@@ -15,6 +15,7 @@ import java.util.stream.Collectors;
 
 import org.antlr.v4.runtime.tree.ParseTreeListener;
 
+import io.debezium.connector.binlog.util.BinlogTimeZones;
 import io.debezium.connector.mysql.antlr.MySqlAntlrDdlParser;
 import io.debezium.ddl.parser.mysql.generated.MySqlParser;
 import io.debezium.relational.Column;
@@ -461,7 +462,9 @@ public class AlterTableParserListener extends TableCommonParserListener {
             if (signed.literal().HEX_NUMBER() != null || signed.literal().BIN_NUMBER() != null) {
                 return DefaultValueParserListener.parseBinaryLiteral(signed.literal(), defaultValueColumnEditor, parser);
             }
-            return sign + extractLiteralValue(signed.literal());
+            // A TIMESTAMP literal is interpreted in the time zone of the session
+            return BinlogTimeZones.toDefaultValueExpression(defaultValueColumnEditor, sign + extractLiteralValue(signed.literal()),
+                    parser.systemVariables());
         }
 
         return null;

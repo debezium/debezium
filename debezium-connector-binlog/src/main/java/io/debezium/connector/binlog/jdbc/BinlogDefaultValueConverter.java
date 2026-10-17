@@ -15,6 +15,7 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
+import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeFormatterBuilder;
 import java.time.temporal.ChronoField;
@@ -56,6 +57,7 @@ public abstract class BinlogDefaultValueConverter implements DefaultValueConvert
     private static final Pattern TIMESTAMP_PATTERN = Pattern.compile("([0-9]*-[0-9]*-[0-9]*) ([0-9]*:[0-9]*:[0-9]*(\\.([0-9]*))?)");
     private static final Pattern COMPACT_TIMESTAMP_PATTERN = Pattern.compile("([0-9]{6}|[0-9]{8})|([0-9]{12}|[0-9]{14})(\\.[0-9]+)?");
     private static final Pattern COMPACT_TIME_PATTERN = Pattern.compile("(-?)([0-9]+)(\\.[0-9]+)?");
+    private static final Pattern TIMESTAMP_WITH_OFFSET_PATTERN = Pattern.compile("(.*[0-9])([+-][0-9]{2}:[0-9]{2})");
     private static final Pattern CHARSET_INTRODUCER_PATTERN = Pattern.compile("^_[A-Za-z0-9]+'(.*)'$");
 
     // Default values of these data types and number data types need to be trimmed.
@@ -306,6 +308,13 @@ public abstract class BinlogDefaultValueConverter implements DefaultValueConvert
             }
             return Timestamp.from(Instant.EPOCH);
         }
+        final Matcher withOffset = TIMESTAMP_WITH_OFFSET_PATTERN.matcher(value);
+        if (withOffset.matches()) {
+            // An absolute literal, e.g. one that the DDL parser converted from the time zone of the DDL session
+            final LocalDateTime local = Timestamp.valueOf(cleanTimestamp(withOffset.group(1))).toLocalDateTime();
+            return local.atOffset(ZoneOffset.of(withOffset.group(2))).atZoneSameInstant(ZoneOffset.UTC);
+        }
+        // The time zone of the DDL session is not known
         value = cleanTimestamp(value);
         return Timestamp.valueOf(value).toInstant().atZone(ZoneId.systemDefault());
     }
