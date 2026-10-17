@@ -41,4 +41,12 @@ public interface ConnectionConfiguration {
     char[] sslTrustStorePassword();
 
     String getUrlPattern();
+
+    /**
+     * Returns the time zone that the JDBC driver is configured to assume for the server, such as {@code UTC} or
+     * {@code Asia/Seoul}, or a value that lets the driver determine it, such as {@code SERVER} or {@code auto}.
+     *
+     * @return the configured time zone; may be null
+     */
+    String connectionTimeZone();
 }
