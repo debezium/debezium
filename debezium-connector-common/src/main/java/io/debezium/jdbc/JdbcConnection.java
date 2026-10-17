@@ -29,6 +29,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
@@ -1122,6 +1123,25 @@ public class JdbcConnection implements AutoCloseable {
             }
         }
         return tableIds;
+    }
+
+    /**
+     * Returns the given table's columns mapped to their declared sizes, in ordinal order, for use by
+     * signal.data.collection validation.
+     *
+     * @param tableId the table to inspect
+     * @return an ordered map of column name to declared size
+     * @throws SQLException if an error occurs while accessing the database metadata
+     */
+    public Map<String, Integer> getColumnSizes(TableId tableId) throws SQLException {
+        DatabaseMetaData metadata = connection().getMetaData();
+        try (ResultSet rs = metadata.getColumns(tableId.catalog(), tableId.schema(), tableId.table(), null)) {
+            Map<String, Integer> columnSizes = new LinkedHashMap<>();
+            while (rs.next()) {
+                columnSizes.put(rs.getString(4), rs.getInt(7));
+            }
+            return columnSizes;
+        }
     }
 
     /**
