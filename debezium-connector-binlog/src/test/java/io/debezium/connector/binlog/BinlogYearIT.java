@@ -17,6 +17,8 @@ import org.apache.kafka.connect.source.SourceRecord;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 
 import io.debezium.config.Configuration;
 import io.debezium.connector.binlog.util.TestHelper;
@@ -32,10 +34,100 @@ public abstract class BinlogYearIT<C extends SourceConnector> extends AbstractBi
 
     private static final Path SCHEMA_HISTORY_PATH = Files.createTestingPath("file-schema-history-year.txt")
             .toAbsolutePath();
-    private final UniqueDatabase DATABASE = TestHelper.getUniqueDatabase("yearit", "year_test")
+    protected final UniqueDatabase DATABASE = TestHelper.getUniqueDatabase("yearit", "year_test")
             .withDbHistoryPath(SCHEMA_HISTORY_PATH);
 
     private Configuration config;
+
+    @ParameterizedTest
+    @ValueSource(booleans = { true, false })
+    @FixFor("debezium/dbz#2757")
+    void shouldPreserveZeroYearsAndDefaults(boolean timeAdjusterEnabled) throws Exception {
+        executeStatements(DATABASE.getDatabaseName(),
+                "CREATE TABLE zero_year (id INT PRIMARY KEY, y YEAR NULL DEFAULT 0, quoted_year YEAR DEFAULT '0')",
+                "INSERT INTO zero_year (id, y) VALUES (1, 0), (2, '0'), (3, 1901), (4, 2155), (5, NULL)");
+        config = DATABASE.defaultConfig()
+                .with(BinlogConnectorConfig.SNAPSHOT_MODE, BinlogConnectorConfig.SnapshotMode.INITIAL)
+                .with(BinlogConnectorConfig.ENABLE_TIME_ADJUSTER, timeAdjusterEnabled)
+                .with(BinlogConnectorConfig.TABLE_INCLUDE_LIST, DATABASE.qualifiedTableName("zero_year"))
+                .with(BinlogConnectorConfig.INCLUDE_SCHEMA_CHANGES, false)
+                .with(BinlogConnectorConfig.TOMBSTONES_ON_DELETE, false)
+                .build();
+        start(getConnectorClass(), config);
+
+        final Integer[] expected = { 0, 2000, 1901, 2155, null };
+        for (int i = 0; i < expected.length; i++) {
+            assertYearInsert(i + 1, "r", expected[i], 0);
+        }
+        waitForStreamingRunning(getConnectorName(), DATABASE.getServerName());
+        executeStatements(DATABASE.getDatabaseName(),
+                "INSERT INTO zero_year (id) VALUES (6)");
+        assertYearInsert(6, "c", 0, 0);
+
+        executeStatements(DATABASE.getDatabaseName(), "UPDATE zero_year SET y = 2026 WHERE id = 6");
+        final var update = consumeYearEnvelope(6, "u");
+        assertThat(update.getStruct("before").getWithoutDefault("y")).isEqualTo(0);
+        assertThat(update.getStruct("after").getWithoutDefault("y")).isEqualTo(2026);
+        executeStatements(DATABASE.getDatabaseName(), "UPDATE zero_year SET y = 0 WHERE id = 6");
+        final var reset = consumeYearEnvelope(6, "u");
+        assertThat(reset.getStruct("before").getWithoutDefault("y")).isEqualTo(2026);
+        assertThat(reset.getStruct("after").getWithoutDefault("y")).isEqualTo(0);
+        executeStatements(DATABASE.getDatabaseName(), "DELETE FROM zero_year WHERE id = 6");
+        assertThat(consumeYearEnvelope(6, "d").getStruct("before").getWithoutDefault("y")).isEqualTo(0);
+
+        final String[] literals = { "0", "'0'", "'00'", "'0000'", "69", "70" };
+        final int[] years = { 0, 2000, 2000, 0, 2069, 1970 };
+        int id = 7;
+        for (String alteration : new String[]{ "MODIFY COLUMN y YEAR NULL DEFAULT ", "ALTER COLUMN y SET DEFAULT " }) {
+            for (int i = 0; i < literals.length; i++) {
+                executeStatements(DATABASE.getDatabaseName(),
+                        "ALTER TABLE zero_year " + alteration + literals[i],
+                        "INSERT INTO zero_year (id) VALUES (" + id + ")");
+                assertYearInsert(id++, "c", years[i], years[i]);
+            }
+        }
+        executeStatements(DATABASE.getDatabaseName(),
+                "ALTER TABLE zero_year MODIFY COLUMN y YEAR NULL DEFAULT NULL",
+                "INSERT INTO zero_year (id) VALUES (" + id + ")");
+        assertYearInsert(id++, "c", null, null);
+
+        executeStatements(DATABASE.getDatabaseName(),
+                "ALTER TABLE zero_year ALTER COLUMN y SET DEFAULT 0",
+                "INSERT INTO zero_year (id) VALUES (" + id + ")");
+        assertYearInsert(id++, "c", 0, 0);
+        stopConnector();
+        executeStatements(DATABASE.getDatabaseName(), "INSERT INTO zero_year (id) VALUES (" + id + ")");
+        start(getConnectorClass(), config);
+        assertYearInsert(id, "c", 0, 0);
+    }
+
+    private Struct consumeYearEnvelope(int id, String operation) throws InterruptedException {
+        final var records = consumeRecordsByTopic(1).recordsForTopic(DATABASE.topicForTable("zero_year"));
+        assertThat(records).hasSize(1);
+        final var envelope = (Struct) records.get(0).value();
+        assertThat(envelope.getString("op")).isEqualTo(operation);
+        final var row = envelope.getStruct("d".equals(operation) ? "before" : "after");
+        assertThat(row.getInt32("id")).isEqualTo(id);
+        return envelope;
+    }
+
+    private void assertYearInsert(int id, String operation, Integer expected, Integer defaultValue) throws Exception {
+        final var row = consumeYearEnvelope(id, operation).getStruct("after");
+        assertThat(row.schema().field("y").schema().name()).isEqualTo("io.debezium.time.Year");
+        assertThat(row.schema().field("y").schema().defaultValue()).isEqualTo(defaultValue);
+        assertThat(row.getWithoutDefault("y")).isEqualTo(expected);
+        assertThat(row.get("y")).isEqualTo(expected == null ? defaultValue : expected);
+        assertThat(row.schema().field("quoted_year").schema().defaultValue()).isEqualTo(2000);
+        assertThat(row.getWithoutDefault("quoted_year")).isEqualTo(2000);
+
+        try (var connection = getTestDatabaseConnection(DATABASE.getDatabaseName())) {
+            connection.query("SELECT CAST(y AS SIGNED) FROM zero_year WHERE id = " + id, result -> {
+                assertThat(result.next()).isTrue();
+                final Integer year = result.getObject(1) == null ? null : result.getInt(1);
+                assertThat(year).isEqualTo(expected);
+            });
+        }
+    }
 
     @BeforeEach
     void beforeEach() {
