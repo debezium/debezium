@@ -277,8 +277,9 @@ public final class JdbcSchemaHistory extends AbstractSchemaHistory {
                     if (tableExists.next()) {
                         return;
                     }
+                    String tableDdl = config.getTableCreate(dbMeta);
                     LOG.info("Creating table {} to store database history", config.getTableName());
-                    try (var ps = conn.prepareStatement(config.getTableCreate())) {
+                    try (var ps = conn.prepareStatement(tableDdl)) {
                         ps.execute();
                         LOG.info("Created table in given database...");
                     }

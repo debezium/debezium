@@ -383,6 +383,13 @@ DELETE FROM %s
 |[[jdbc-history-schema-history-table-ddl]]<<jdbc-history-schema-history-table-ddl, `schema.history.internal.jdbc.table.ddl`>>
 |xref:jdbc-history-schema-history-table-ddl-default[Create Query]
 |The DDL statement used to create a table to store the internal schema history.
+When this property is not set, {prodname} selects the `history_data` column type from the connected database.
+MySQL, MariaDB, and SingleStore use `MEDIUMTEXT`.
+PostgreSQL, CockroachDB, and SQLite use `TEXT`.
+SQL Server uses `VARCHAR(MAX)`.
+Oracle and Db2 use `CLOB`.
+Other databases use the default `VARCHAR(65000)` statement.
+Set this property to override that selection.
 
 |[[jdbc-history-schema-history-table-select]]<<jdbc-history-schema-history-table-select, `schema.history.internal.jdbc.table.select`>>
 |xref:jdbc-history-schema-history-table-select-default[Select query]
@@ -459,7 +466,7 @@ DELETE FROM %s
 ----
 CREATE TABLE %s (
     id VARCHAR(36) NOT NULL,
-    history_data MEDIUMTEXT,
+    history_data VARCHAR(65000),
     history_data_seq INTEGER,
     record_insert_ts TIMESTAMP NOT NULL,
     record_insert_seq INTEGER NOT NULL,

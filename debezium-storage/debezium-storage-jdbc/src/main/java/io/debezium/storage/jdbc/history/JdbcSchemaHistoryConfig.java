@@ -5,7 +5,10 @@
  */
 package io.debezium.storage.jdbc.history;
 
+import java.sql.DatabaseMetaData;
+import java.sql.SQLException;
 import java.util.List;
+import java.util.Locale;
 
 import io.debezium.config.Configuration;
 import io.debezium.config.Field;
@@ -38,7 +41,7 @@ public class JdbcSchemaHistoryConfig extends JdbcCommonConfig {
     private static final String DEFAULT_TABLE_DDL = "CREATE TABLE %s" +
             "(" +
             "id VARCHAR(36) NOT NULL," +
-            "history_data MEDIUMTEXT," +
+            "history_data VARCHAR(65000)," +
             "history_data_seq INTEGER," +
             "record_insert_ts TIMESTAMP NOT NULL," +
             "record_insert_seq INTEGER NOT NULL," +
@@ -83,6 +86,7 @@ public class JdbcSchemaHistoryConfig extends JdbcCommonConfig {
 
     private String tableName;
     private String tableCreate;
+    private boolean tableDdlOverridden;
     private String tableSelect;
     private String tableDataExistsSelect;
     private String tableInsert;
@@ -96,6 +100,7 @@ public class JdbcSchemaHistoryConfig extends JdbcCommonConfig {
     protected void init(Configuration config) {
         super.init(config);
         splitDatabaseAndTableName(config.getString(PROP_TABLE_NAME));
+        this.tableDdlOverridden = isTableDdlOverridden(config);
         this.tableCreate = String.format(config.getString(PROP_TABLE_DDL), tableName);
         this.tableSelect = String.format(config.getString(PROP_TABLE_SELECT), tableName);
         this.tableDataExistsSelect = String.format(config.getString(PROP_TABLE_DATA_EXISTS_SELECT), tableName);
@@ -120,6 +125,66 @@ public class JdbcSchemaHistoryConfig extends JdbcCommonConfig {
 
     public String getTableCreate() {
         return tableCreate;
+    }
+
+    /**
+     * Returns the create-table statement to use for the connected database.
+     * <p>
+     * An explicit {@code schema.history.internal.jdbc.table.ddl} value is used as-is.
+     * Otherwise the {@code history_data} column type is chosen from
+     * {@link DatabaseMetaData#getDatabaseProductName()} so the default statement can be
+     * executed on databases that reject {@code VARCHAR(65000)}.
+     *
+     * @param metadata connected database metadata
+     * @return create-table statement, never {@code null}
+     */
+    public String getTableCreate(DatabaseMetaData metadata) {
+        if (tableDdlOverridden || metadata == null) {
+            return tableCreate;
+        }
+        try {
+            return createTableDdl(tableName, historyDataType(metadata.getDatabaseProductName()));
+        }
+        catch (SQLException e) {
+            return tableCreate;
+        }
+    }
+
+    static String historyDataType(String databaseProductName) {
+        if (databaseProductName == null) {
+            return "VARCHAR(65000)";
+        }
+        String product = databaseProductName.toLowerCase(Locale.ROOT);
+        if (product.contains("mysql") || product.contains("mariadb") || product.contains("singlestore")) {
+            return "MEDIUMTEXT";
+        }
+        if (product.contains("postgresql") || product.contains("cockroach") || product.contains("sqlite")) {
+            return "TEXT";
+        }
+        if (product.contains("microsoft sql server") || product.contains("sql server")) {
+            return "VARCHAR(MAX)";
+        }
+        if (product.contains("oracle") || product.contains("db2")) {
+            return "CLOB";
+        }
+        return "VARCHAR(65000)";
+    }
+
+    static String createTableDdl(String tableName, String historyDataType) {
+        return "CREATE TABLE " + tableName +
+                "(" +
+                "id VARCHAR(36) NOT NULL," +
+                "history_data " + historyDataType + "," +
+                "history_data_seq INTEGER," +
+                "record_insert_ts TIMESTAMP NOT NULL," +
+                "record_insert_seq INTEGER NOT NULL," +
+                "PRIMARY KEY (id, history_data_seq)" +
+                ")";
+    }
+
+    private static boolean isTableDdlOverridden(Configuration config) {
+        // config is already subset by schema.history.internal., so keys are relative to that prefix.
+        return config.hasKey("jdbc.table.ddl") || config.hasKey("jdbc.schema.history.table.ddl");
     }
 
     public String getTableSelect() {

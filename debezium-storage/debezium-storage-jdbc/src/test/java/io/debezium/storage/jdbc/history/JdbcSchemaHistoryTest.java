@@ -163,6 +163,36 @@ public class JdbcSchemaHistoryTest {
     }
 
     @Test
+    @FixFor("debezium/dbz#70")
+    public void shouldResolveHistoryDataTypeFromDatabaseProduct() {
+        assertEquals("MEDIUMTEXT", JdbcSchemaHistoryConfig.historyDataType("MySQL"));
+        assertEquals("MEDIUMTEXT", JdbcSchemaHistoryConfig.historyDataType("MariaDB"));
+        assertEquals("MEDIUMTEXT", JdbcSchemaHistoryConfig.historyDataType("SingleStore"));
+        assertEquals("TEXT", JdbcSchemaHistoryConfig.historyDataType("PostgreSQL"));
+        assertEquals("TEXT", JdbcSchemaHistoryConfig.historyDataType("CockroachDB"));
+        assertEquals("TEXT", JdbcSchemaHistoryConfig.historyDataType("SQLite"));
+        assertEquals("VARCHAR(MAX)", JdbcSchemaHistoryConfig.historyDataType("Microsoft SQL Server"));
+        assertEquals("CLOB", JdbcSchemaHistoryConfig.historyDataType("Oracle"));
+        assertEquals("CLOB", JdbcSchemaHistoryConfig.historyDataType("Db2"));
+        assertEquals("VARCHAR(65000)", JdbcSchemaHistoryConfig.historyDataType("Unknown"));
+        assertEquals("VARCHAR(65000)", JdbcSchemaHistoryConfig.historyDataType(null));
+    }
+
+    @Test
+    @FixFor("debezium/dbz#70")
+    public void shouldKeepExplicitTableDdlOverride() {
+        String override = "CREATE TABLE %s (id VARCHAR(36) NOT NULL, history_data TEXT, history_data_seq INTEGER, "
+                + "record_insert_ts TIMESTAMP NOT NULL, record_insert_seq INTEGER NOT NULL, PRIMARY KEY (id, history_data_seq))";
+        JdbcSchemaHistory schemaHistory = new JdbcSchemaHistory();
+        schemaHistory.configure(Configuration.create()
+                .with(SchemaHistory.CONFIGURATION_FIELD_PREFIX_STRING + JdbcSchemaHistoryConfig.PROP_JDBC_URL.name(), "jdbc:sqlite:" + dbFile)
+                .with(SchemaHistory.CONFIGURATION_FIELD_PREFIX_STRING + JdbcSchemaHistoryConfig.PROP_TABLE_DDL.name(), override)
+                .build(), null, SchemaHistoryMetrics.NOOP, true);
+        assertTrue(schemaHistory.getConfig().getTableCreate().contains("history_data TEXT"));
+        assertFalse(schemaHistory.getConfig().getTableCreate().contains("MEDIUMTEXT"));
+    }
+
+    @Test
     public void shouldSplitDatabaseAndTableName() {
         JdbcSchemaHistory schemaHistory = new JdbcSchemaHistory();
         schemaHistory.configure(Configuration.create()
