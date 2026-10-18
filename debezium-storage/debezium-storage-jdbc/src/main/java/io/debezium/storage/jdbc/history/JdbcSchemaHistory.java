@@ -277,7 +277,12 @@ public final class JdbcSchemaHistory extends AbstractSchemaHistory {
                     if (tableExists.next()) {
                         return;
                     }
-                    String tableDdl = config.getTableCreate(dbMeta);
+                    String databaseProductName = dbMeta.getDatabaseProductName();
+                    if (!config.isTableDdlOverridden() && !SchemaHistoryDialect.isKnown(databaseProductName)) {
+                        LOG.warn("No JDBC schema history dialect for database product '{}'; using the default CREATE TABLE statement. "
+                                + "Set schema.history.internal.jdbc.table.ddl to override it.", databaseProductName);
+                    }
+                    String tableDdl = config.getTableCreate(databaseProductName);
                     LOG.info("Creating table {} to store database history", config.getTableName());
                     try (var ps = conn.prepareStatement(tableDdl)) {
                         ps.execute();

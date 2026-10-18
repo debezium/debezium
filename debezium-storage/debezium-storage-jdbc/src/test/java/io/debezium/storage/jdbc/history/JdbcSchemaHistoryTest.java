@@ -164,18 +164,31 @@ public class JdbcSchemaHistoryTest {
 
     @Test
     @FixFor("debezium/dbz#70")
-    public void shouldResolveHistoryDataTypeFromDatabaseProduct() {
-        assertEquals("MEDIUMTEXT", JdbcSchemaHistoryConfig.historyDataType("MySQL"));
-        assertEquals("MEDIUMTEXT", JdbcSchemaHistoryConfig.historyDataType("MariaDB"));
-        assertEquals("MEDIUMTEXT", JdbcSchemaHistoryConfig.historyDataType("SingleStore"));
-        assertEquals("TEXT", JdbcSchemaHistoryConfig.historyDataType("PostgreSQL"));
-        assertEquals("TEXT", JdbcSchemaHistoryConfig.historyDataType("CockroachDB"));
-        assertEquals("TEXT", JdbcSchemaHistoryConfig.historyDataType("SQLite"));
-        assertEquals("VARCHAR(MAX)", JdbcSchemaHistoryConfig.historyDataType("Microsoft SQL Server"));
-        assertEquals("CLOB", JdbcSchemaHistoryConfig.historyDataType("Oracle"));
-        assertEquals("CLOB", JdbcSchemaHistoryConfig.historyDataType("Db2"));
-        assertEquals("VARCHAR(65000)", JdbcSchemaHistoryConfig.historyDataType("Unknown"));
-        assertEquals("VARCHAR(65000)", JdbcSchemaHistoryConfig.historyDataType(null));
+    public void shouldResolveDialectFromDatabaseProduct() {
+        assertTrue(SchemaHistoryDialect.resolve("MySQL").createTable("history").contains("history_data MEDIUMTEXT"));
+        assertTrue(SchemaHistoryDialect.resolve("MariaDB").createTable("history").contains("history_data MEDIUMTEXT"));
+        assertTrue(SchemaHistoryDialect.resolve("SingleStore").createTable("history").contains("history_data MEDIUMTEXT"));
+        assertTrue(SchemaHistoryDialect.resolve("PostgreSQL").createTable("history").contains("history_data TEXT"));
+        assertTrue(SchemaHistoryDialect.resolve("CockroachDB").createTable("history").contains("history_data TEXT"));
+        assertTrue(SchemaHistoryDialect.resolve("SQLite").createTable("history").contains("history_data TEXT"));
+        assertTrue(SchemaHistoryDialect.resolve("Microsoft SQL Server").createTable("history").contains("history_data VARCHAR(MAX)"));
+        assertTrue(SchemaHistoryDialect.resolve("Microsoft SQL Server").createTable("history").contains("record_insert_ts DATETIME2 NOT NULL"));
+        assertTrue(SchemaHistoryDialect.resolve("SQL Server").createTable("history").contains("record_insert_ts DATETIME2 NOT NULL"));
+        assertTrue(SchemaHistoryDialect.resolve("Azure SQL Edge").createTable("history").contains("record_insert_ts DATETIME2 NOT NULL"));
+        assertTrue(SchemaHistoryDialect.resolve("MemSQL").createTable("history").contains("history_data MEDIUMTEXT"));
+        assertTrue(SchemaHistoryDialect.resolve("Oracle MySQL").createTable("history").contains("history_data MEDIUMTEXT"));
+        assertFalse(SchemaHistoryDialect.resolve("Oracle MySQL").createTable("history").contains("CLOB"));
+        assertFalse(SchemaHistoryDialect.resolve("MySQL").createTable("history").contains("DATETIME2"));
+        assertTrue(SchemaHistoryDialect.resolve("Oracle").createTable("history").contains("history_data CLOB"));
+        assertTrue(SchemaHistoryDialect.resolve("DB2/LINUXX8664").createTable("history").contains("history_data CLOB"));
+        assertTrue(SchemaHistoryDialect.resolve("DB2/AIX64").createTable("history").contains("history_data CLOB"));
+        assertTrue(SchemaHistoryDialect.resolve("mydb2extra").createTable("history").contains("history_data VARCHAR(65000)"));
+        assertFalse(SchemaHistoryDialect.isKnown("mydb2extra"));
+        assertFalse(SchemaHistoryDialect.isKnown("Unknown"));
+        assertTrue(SchemaHistoryDialect.isKnown("DB2/LINUXX8664"));
+        assertTrue(SchemaHistoryDialect.resolve("Unknown").createTable("history").contains("history_data VARCHAR(65000)"));
+        assertTrue(SchemaHistoryDialect.resolve((String) null).createTable("history").contains("history_data VARCHAR(65000)"));
+        assertTrue(SchemaHistoryDialect.resolve("MySQL").createTable("debezium_database_history").startsWith("CREATE TABLE debezium_database_history"));
     }
 
     @Test
@@ -188,8 +201,19 @@ public class JdbcSchemaHistoryTest {
                 .with(SchemaHistory.CONFIGURATION_FIELD_PREFIX_STRING + JdbcSchemaHistoryConfig.PROP_JDBC_URL.name(), "jdbc:sqlite:" + dbFile)
                 .with(SchemaHistory.CONFIGURATION_FIELD_PREFIX_STRING + JdbcSchemaHistoryConfig.PROP_TABLE_DDL.name(), override)
                 .build(), null, SchemaHistoryMetrics.NOOP, true);
-        assertTrue(schemaHistory.getConfig().getTableCreate().contains("history_data TEXT"));
-        assertFalse(schemaHistory.getConfig().getTableCreate().contains("MEDIUMTEXT"));
+
+        String tableDdl = schemaHistory.getConfig().getTableCreate("MySQL");
+
+        assertTrue(tableDdl.contains("history_data TEXT"));
+        assertFalse(tableDdl.contains("MEDIUMTEXT"));
+    }
+
+    @Test
+    @FixFor("debezium/dbz#70")
+    public void shouldUseDialectWhenTableDdlIsNotSet() {
+        JdbcSchemaHistory schemaHistory = (JdbcSchemaHistory) history;
+        assertTrue(schemaHistory.getConfig().getTableCreate("MySQL").contains("history_data MEDIUMTEXT"));
+        assertTrue(schemaHistory.getConfig().getTableCreate((String) null).contains("history_data VARCHAR(65000)"));
     }
 
     @Test
@@ -203,6 +227,7 @@ public class JdbcSchemaHistoryTest {
                 .build(), null, SchemaHistoryMetrics.NOOP, true);
         assertTrue(schemaHistory.getConfig().getDatabaseName().equalsIgnoreCase("public"));
         assertTrue(schemaHistory.getConfig().getTableName().equalsIgnoreCase("employee"));
+        assertTrue(schemaHistory.getConfig().getTableCreate("PostgreSQL").startsWith("CREATE TABLE public.employee"));
     }
 
     @Test
