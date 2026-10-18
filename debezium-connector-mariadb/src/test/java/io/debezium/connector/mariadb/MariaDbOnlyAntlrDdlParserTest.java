@@ -142,14 +142,21 @@ public class MariaDbOnlyAntlrDdlParserTest {
         parser.parse("create table db1.collate_test (id int primary key, " +
                 "before_attr varchar(32) collate latin1_bin not null, " +
                 "after_attr varchar(32) not null collate latin1_bin, " +
-                "without_prefix varchar(32) not null collate uca1400_ai_ci) character set utf8mb4;", tables);
+                "without_prefix varchar(32) not null collate uca1400_ai_ci, " +
+                "to_modify varchar(32) not null, " +
+                "to_change varchar(32) not null) character set utf8mb4;", tables);
         parser.parse("alter table db1.collate_test add column added varchar(32) not null collate latin1_bin;", tables);
+        parser.parse("alter table db1.collate_test modify column to_modify varchar(32) not null collate latin1_bin;", tables);
+        parser.parse("alter table db1.collate_test change column to_change renamed varchar(32) not null collate latin1_bin;", tables);
 
         final var table = tables.forTable(new TableId("db1", null, "collate_test"));
         assertThat(table.columnWithName("before_attr").charsetName()).isEqualTo("latin1");
         assertThat(table.columnWithName("after_attr").charsetName()).isEqualTo("latin1");
         assertThat(table.columnWithName("without_prefix").charsetName()).isEqualTo("utf8mb4");
         assertThat(table.columnWithName("added").charsetName()).isEqualTo("latin1");
+        assertThat(table.columnWithName("to_modify").charsetName()).isEqualTo("latin1");
+        assertThat(table.columnWithName("renamed").charsetName()).isEqualTo("latin1");
+        assertThat(table.columnWithName("to_change")).isNull();
     }
 
     @Test
