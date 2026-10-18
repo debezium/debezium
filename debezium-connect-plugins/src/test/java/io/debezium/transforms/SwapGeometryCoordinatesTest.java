@@ -252,6 +252,33 @@ public class SwapGeometryCoordinatesTest {
         assertNotSwapped(3557, wkbHex);
     }
 
+    @Test
+    @FixFor("debezium/dbz#2896")
+    public void testMapWithNullValues() {
+        final Schema schema = SchemaBuilder.struct()
+                .field("id", Schema.INT8_SCHEMA)
+                .field("geo", Geometry.schema())
+                .field("attrs", SchemaBuilder.map(Schema.STRING_SCHEMA, Schema.OPTIONAL_STRING_SCHEMA).optional().build())
+                .build();
+
+        final Map<String, String> attrs = new HashMap<>();
+        attrs.put("a", "1");
+        attrs.put("b", null);
+
+        final Struct value = new Struct(schema);
+        value.put("id", (byte) 1);
+        value.put("geo", Geometry.createValue(Geometry.schema(), HexConverter.convertFromHex("010100000000000000000020400000000000003340"), 4326));
+        value.put("attrs", attrs);
+
+        converter.configure(new HashMap<>());
+        final SourceRecord transformedRecord = converter.apply(new SourceRecord(new HashMap<>(), new HashMap<>(), "db.server1.table1", schema, value));
+        final Struct transformedValue = requireStruct(transformedRecord.value(), "value should be a struct");
+
+        assertThat(transformedValue.getMap("attrs")).isEqualTo(attrs);
+        assertThat(HexConverter.convertToHexString(transformedValue.getStruct("geo").getBytes(Geometry.WKB_FIELD)))
+                .isEqualTo("010100000000000000000033400000000000002040");
+    }
+
     private void assertSwapped(Integer srid, String wkb, String expectedWkb) {
         applyTransformEnvelopePayload(srid, wkb, expectedWkb);
         applyTransformFlattenedPayload(srid, wkb, expectedWkb);
