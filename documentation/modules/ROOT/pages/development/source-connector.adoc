@@ -850,7 +850,9 @@ xref:{link-debezium-server}[{prodname} Server] runs the same connector without a
 . Add the connector JAR to the {prodname} Server `lib` directory.
 
 . Configure the source and a sink in `config/application.properties`.
-Connector options keep their names, prefixed with `debezium.source.`:
+Connector options keep their names, prefixed with `debezium.source.`.
+The example below uses the HTTP sink to post each event to link:https://webhook.site/[webhook.site], which gives you a unique URL and shows every request it receives in the browser, so you can inspect events without running any other infrastructure.
+Open webhook.site, copy the URL it generates for you, and use it as the sink URL:
 +
 [source,properties]
 ----
@@ -860,8 +862,8 @@ debezium.source.acmedb.property=value
 debezium.source.offset.storage.file.filename=data/offsets.dat
 debezium.source.offset.flush.interval.ms=1000
 
-debezium.sink.type=file
-debezium.sink.file.path=data/cdc-output.jsonl
+debezium.sink.type=http
+debezium.sink.http.url=https://webhook.site/<your-unique-id>
 ----
 
 . Start the server with `./run.sh`.
@@ -871,7 +873,7 @@ Offsets are stored in the configured file (or another offset store) instead of a
 === Verifying the connector
 
 Verification exercises the four behaviors that every source connector must get right: snapshotting, streaming, offset persistence, and (if supported) schema evolution.
-The steps below use {prodname} Server with the file sink, but the same checks apply on Kafka Connect with `kafka-console-consumer` or a Kafka UI.
+The steps below use {prodname} Server with the HTTP sink configured above, so each event appears as a request on your webhook.site page, but the same checks apply on Kafka Connect with `kafka-console-consumer` or a Kafka UI.
 
 . *Verify the snapshot.*
 Start the runtime with existing data in the source.
