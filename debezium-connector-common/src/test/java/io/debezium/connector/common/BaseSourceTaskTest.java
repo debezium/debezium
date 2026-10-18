@@ -146,7 +146,7 @@ class BaseSourceTaskTest {
         assertEquals(DebeziumTaskState.STOPPED, baseSourceTask.getTaskState());
 
         assertEquals(4, baseSourceTask.startCount.get());
-        assertEquals(2, baseSourceTask.stopCount.get());
+        assertEquals(4, baseSourceTask.stopCount.get());
         verify(baseSourceTask.coordinator, times(1)).stop();
     }
 
@@ -212,6 +212,9 @@ class BaseSourceTaskTest {
         assertEquals(DebeziumTaskState.RESTARTING, baseSourceTask.getTaskState());
         sleep(1);
         baseSourceTask.poll(); // restart attempt 1
+        assertEquals(DebeziumTaskState.RESTARTING, baseSourceTask.getTaskState());
+        sleep(1);
+        baseSourceTask.poll(); // restart attempt 2
         assertEquals(DebeziumTaskState.RESTARTING, baseSourceTask.getTaskState());
         sleep(1);
         assertThrows(ConnectException.class, () -> baseSourceTask.poll()); // restart attempt 2, max reached
