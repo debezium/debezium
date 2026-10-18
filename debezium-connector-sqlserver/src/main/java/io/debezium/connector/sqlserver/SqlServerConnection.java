@@ -93,10 +93,13 @@ public class SqlServerConnection extends JdbcConnection {
     // FUNCTION mode's table-valued function already bounds its output to the requested LSN range internally, so
     // joining it against lsn_time_mapping here only changes how the commit timestamp is computed, not which rows
     // are returned - consistent with the same rewrite already applied to DIRECT mode (see debezium/dbz#1915).
-    // The change-table join supplies __$command_id, which the function does not return.
+    // The change-table join supplies __$command_id, which the function does not return. The same from and to
+    // LSN are repeated on the join so the change table is limited to the requested range. The bounds stay in
+    // the ON clause so a missing change-table row does not drop the function row.
     private static final String GET_ALL_CHANGES_FOR_TABLE_FROM_FUNCTION = "FROM #db.cdc.#function(?, ?, N'all update old') AS cdc_data "
             + "LEFT JOIN #db.cdc.lsn_time_mapping ltm WITH (NOLOCK) ON ltm.start_lsn = cdc_data.[__$start_lsn] "
-            + "LEFT JOIN #db.cdc.#table AS ct ON ct.[__$start_lsn] = cdc_data.[__$start_lsn] AND ct.[__$seqval] = cdc_data.[__$seqval] AND ct.[__$operation] = cdc_data.[__$operation]";
+            + "LEFT JOIN #db.cdc.#table AS ct ON ct.[__$start_lsn] = cdc_data.[__$start_lsn] AND ct.[__$seqval] = cdc_data.[__$seqval] "
+            + "AND ct.[__$operation] = cdc_data.[__$operation] AND ct.[__$start_lsn] >= ? AND ct.[__$start_lsn] <= ?";
     private static final String GET_ALL_CHANGES_FOR_TABLE_FROM_DIRECT = "FROM #db.cdc.#table AS cdc_data WITH (NOLOCK) LEFT JOIN #db.cdc.lsn_time_mapping ltm WITH (NOLOCK) ON ltm.start_lsn = cdc_data.[__$start_lsn]";
     private static final String GET_ALL_CHANGES_FOR_TABLE_FROM_FUNCTION_ORDER_BY = "ORDER BY cdc_data.[__$start_lsn] ASC, ct.[__$command_id] ASC, cdc_data.[__$seqval] ASC, cdc_data.[__$operation] ASC";
     private static final String GET_ALL_CHANGES_FOR_TABLE_FROM_DIRECT_ORDER_BY = "ORDER BY cdc_data.[__$start_lsn] ASC, cdc_data.[__$command_id] ASC, cdc_data.[__$seqval] ASC, cdc_data.[__$operation] ASC";
@@ -463,6 +466,10 @@ public class SqlServerConnection extends JdbcConnection {
         if (config.getDataQueryMode() == SqlServerConnectorConfig.DataQueryMode.FUNCTION) {
             // Older function-mode offsets have no command id; -1 is below every real command id.
             int commandId = commandIdFrom == null ? -1 : commandIdFrom;
+            // fn_cdc_get_all_changes(from, to)
+            statement.setBytes(paramIndex++, fromLsn.getBinary());
+            statement.setBytes(paramIndex++, intervalToLsn.getBinary());
+            // Same bounds on the change-table join.
             statement.setBytes(paramIndex++, fromLsn.getBinary());
             statement.setBytes(paramIndex++, intervalToLsn.getBinary());
             // (start_lsn = ? AND command_id = ? AND seqval = ? AND operation > ?)

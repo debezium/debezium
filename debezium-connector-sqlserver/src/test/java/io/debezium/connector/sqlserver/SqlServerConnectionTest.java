@@ -42,7 +42,7 @@ public class SqlServerConnectionTest {
             assertThat(query).contains("LEFT JOIN [testDB].cdc.lsn_time_mapping ltm WITH (NOLOCK) ON ltm.start_lsn = cdc_data.[__$start_lsn]");
             assertThat(query).contains("LEFT JOIN [testDB].cdc.[dbo_orders_CT] AS ct ON "
                     + "ct.[__$start_lsn] = cdc_data.[__$start_lsn] AND ct.[__$seqval] = cdc_data.[__$seqval] "
-                    + "AND ct.[__$operation] = cdc_data.[__$operation]");
+                    + "AND ct.[__$operation] = cdc_data.[__$operation] AND ct.[__$start_lsn] >= ? AND ct.[__$start_lsn] <= ?");
             assertThat(query).contains("ct.[__$command_id]");
             assertThat(query).doesNotContain("fn_cdc_map_lsn_to_time");
             assertThat(query).endsWith("ORDER BY cdc_data.[__$start_lsn] ASC, ct.[__$command_id] ASC, cdc_data.[__$seqval] ASC, cdc_data.[__$operation] ASC");
