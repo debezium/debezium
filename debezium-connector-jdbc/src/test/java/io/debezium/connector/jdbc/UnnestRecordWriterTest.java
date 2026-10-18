@@ -51,7 +51,7 @@ class UnnestRecordWriterTest extends AbstractBaseJdbcSinkTest {
                 JdbcSinkConnectorConfig.POSTGRES_UNNEST_INSERT, "true"));
 
         UnnestRecordWriter writer = spy(new UnnestRecordWriter(
-                session, new QueryBinderResolver(), config, dialect, SinkProgressListener.NO_OP()));
+                session, null, new QueryBinderResolver(), config, dialect, SinkProgressListener.NO_OP()));
 
         Connection conn = mock(Connection.class);
         PreparedStatement ps = mock(PreparedStatement.class);
@@ -84,7 +84,7 @@ class UnnestRecordWriterTest extends AbstractBaseJdbcSinkTest {
                 JdbcSinkConnectorConfig.POSTGRES_UNNEST_INSERT, "true"));
 
         UnnestRecordWriter writer = spy(new UnnestRecordWriter(
-                session, new QueryBinderResolver(), config, dialect, SinkProgressListener.NO_OP()));
+                session, null, new QueryBinderResolver(), config, dialect, SinkProgressListener.NO_OP()));
 
         Connection conn = mock(Connection.class);
         PreparedStatement ps = mock(PreparedStatement.class);
@@ -117,7 +117,7 @@ class UnnestRecordWriterTest extends AbstractBaseJdbcSinkTest {
                 JdbcSinkConnectorConfig.POSTGRES_UNNEST_INSERT, "true"));
 
         UnnestRecordWriter writer = new UnnestRecordWriter(
-                session, new QueryBinderResolver(), config, dialect, SinkProgressListener.NO_OP());
+                session, null, new QueryBinderResolver(), config, dialect, SinkProgressListener.NO_OP());
 
         Connection conn = mock(Connection.class);
         PreparedStatement ps = mock(PreparedStatement.class);
@@ -191,7 +191,7 @@ class UnnestRecordWriterTest extends AbstractBaseJdbcSinkTest {
                 JdbcSinkConnectorConfig.POSTGRES_UNNEST_INSERT, "true"));
 
         UnnestRecordWriter writer = new UnnestRecordWriter(
-                session, new QueryBinderResolver(), config, dialect, SinkProgressListener.NO_OP());
+                session, null, new QueryBinderResolver(), config, dialect, SinkProgressListener.NO_OP());
 
         Connection conn = mock(Connection.class);
         PreparedStatement ps = mock(PreparedStatement.class);

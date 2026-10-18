@@ -18,6 +18,7 @@ import java.util.Set;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.errors.ConnectException;
+import org.hibernate.SessionFactory;
 import org.hibernate.SharedSessionContract;
 import org.hibernate.Transaction;
 import org.hibernate.jdbc.Work;
@@ -48,9 +49,9 @@ public class UnnestRecordWriter extends DefaultRecordWriter {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(UnnestRecordWriter.class);
 
-    public UnnestRecordWriter(SharedSessionContract session, QueryBinderResolver queryBinderResolver,
+    public UnnestRecordWriter(SharedSessionContract session, SessionFactory sessionFactory, QueryBinderResolver queryBinderResolver,
                               JdbcSinkConnectorConfig config, DatabaseDialect dialect, SinkProgressListener progressListener) {
-        super(session, queryBinderResolver, config, dialect, progressListener);
+        super(session, sessionFactory, queryBinderResolver, config, dialect, progressListener);
     }
 
     @Override

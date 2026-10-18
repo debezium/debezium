@@ -25,7 +25,9 @@ import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.errors.ConnectException;
 import org.apache.kafka.connect.errors.DataException;
 import org.hibernate.JDBCException;
+import org.hibernate.SessionFactory;
 import org.hibernate.SharedSessionContract;
+import org.hibernate.StatelessSession;
 import org.hibernate.Transaction;
 import org.hibernate.jdbc.Work;
 import org.hibernate.query.NativeQuery;
@@ -57,6 +59,7 @@ public class DefaultRecordWriter implements RecordWriter {
     private static final Logger LOGGER = LoggerFactory.getLogger(DefaultRecordWriter.class);
 
     private final SharedSessionContract session;
+    private final SessionFactory sessionFactory;
     private final QueryBinderResolver queryBinderResolver;
     private final JdbcSinkConnectorConfig config;
     private final DatabaseDialect dialect;
@@ -64,9 +67,10 @@ public class DefaultRecordWriter implements RecordWriter {
     private final Duration flushRetryDelay;
     private final SinkProgressListener progressListener;
 
-    protected DefaultRecordWriter(SharedSessionContract session, QueryBinderResolver queryBinderResolver,
+    protected DefaultRecordWriter(SharedSessionContract session, SessionFactory sessionFactory, QueryBinderResolver queryBinderResolver,
                                   JdbcSinkConnectorConfig config, DatabaseDialect dialect, SinkProgressListener progressListener) {
         this.session = session;
+        this.sessionFactory = sessionFactory;
         this.queryBinderResolver = queryBinderResolver;
         this.config = config;
         this.dialect = dialect;
@@ -139,6 +143,17 @@ public class DefaultRecordWriter implements RecordWriter {
         return session.doReturningWork((connection) -> dialect.readTable(connection, collectionId));
     }
 
+    private TableDescriptor readTableOnNewConnection(CollectionId collectionId) {
+        try (StatelessSession metadataSession = sessionFactory.openStatelessSession()) {
+            return metadataSession.doReturningWork((connection) -> dialect.readTable(connection, collectionId));
+        }
+    }
+
+    private boolean hasTable(CollectionId collectionId) {
+        return this.executeWithRetries("check for existence of table",
+                () -> session.doReturningWork((connection) -> dialect.tableExists(connection, collectionId)));
+    }
+
     private TableDescriptor createTable(CollectionId collectionId, JdbcSinkRecord record) throws SQLException {
         LOGGER.debug("Attempting to create table '{}'.", collectionId.toFullIdentiferString());
 
@@ -163,12 +178,11 @@ public class DefaultRecordWriter implements RecordWriter {
         return readTable(collectionId);
     }
 
-    private boolean hasTable(CollectionId collectionId) {
-        return this.executeWithRetries("check for existence of table",
-                () -> session.doReturningWork((connection) -> dialect.tableExists(connection, collectionId)));
+    private TableDescriptor alterTableIfNeeded(CollectionId collectionId, JdbcSinkRecord record) throws SQLException {
+        return alterTableIfNeeded(collectionId, record, true);
     }
 
-    private TableDescriptor alterTableIfNeeded(CollectionId collectionId, JdbcSinkRecord record) throws SQLException {
+    private TableDescriptor alterTableIfNeeded(CollectionId collectionId, JdbcSinkRecord record, boolean retryOnFailure) throws SQLException {
         LOGGER.debug("Attempting to alter table '{}'.", collectionId.toFullIdentiferString());
 
         if (!hasTable(collectionId)) {
@@ -211,7 +225,15 @@ public class DefaultRecordWriter implements RecordWriter {
         }
         catch (Exception e) {
             transaction.rollback();
-            throw e;
+            if (!retryOnFailure) {
+                throw e;
+            }
+            LOGGER.warn("Alter of table '{}' failed, rechecking schema before failing", collectionId.toFullIdentiferString(), e);
+            final TableDescriptor currentTable = readTableOnNewConnection(collectionId);
+            if (dialect.resolveMissingFields(record, currentTable).isEmpty()) {
+                return currentTable;
+            }
+            return alterTableIfNeeded(collectionId, record, false);
         }
         progressListener().tableAltered();
 
