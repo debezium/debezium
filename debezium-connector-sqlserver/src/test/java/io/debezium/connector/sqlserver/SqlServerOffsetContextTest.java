@@ -75,6 +75,46 @@ public class SqlServerOffsetContextTest {
     }
 
     @Test
+    @FixFor("dbz#1327")
+    void shouldRewindAMissingCommandIdWhenResumingInDirectMode() {
+        SqlServerOffsetContext loaded = new SqlServerOffsetContext.Loader(connectorConfig).load(baseOffset());
+
+        TxLogPosition resumed = loaded.getResumePosition(true);
+
+        assertThat(resumed.getCommandId()).isEqualTo(-1);
+        assertThat(resumed.getCommitLsn()).isEqualTo(Lsn.valueOf(COMMIT_LSN));
+        // The old seqval must not survive. 3.6 ordered this transaction by seqval; this build orders it by
+        // command id, so a not-yet-emitted row can have a smaller seqval than the one stored in the offset.
+        assertThat(resumed.getInTxLsn().isAvailable()).isFalse();
+        assertThat(loaded.getChangePosition().getCommandId()).isNull();
+        assertThat(loaded.getChangePosition().getInTxLsn()).isEqualTo(Lsn.valueOf(CHANGE_LSN));
+    }
+
+    @Test
+    @FixFor("dbz#1327")
+    void shouldKeepAMissingCommandIdWhenResumingInFunctionMode() {
+        SqlServerOffsetContext loaded = new SqlServerOffsetContext.Loader(connectorConfig).load(baseOffset());
+
+        TxLogPosition resumed = loaded.getResumePosition(false);
+
+        assertThat(resumed.getCommandId()).isNull();
+        assertThat(resumed.getCommitLsn()).isEqualTo(Lsn.valueOf(COMMIT_LSN));
+        assertThat(resumed.getInTxLsn()).isEqualTo(Lsn.valueOf(CHANGE_LSN));
+    }
+
+    @Test
+    @FixFor("dbz#1327")
+    void shouldResumeAStoredCommandIdAsIsInEitherMode() {
+        SqlServerOffsetContext loaded = new SqlServerOffsetContext.Loader(connectorConfig)
+                .load(offsetContextWithCommandId(7).getOffset());
+
+        assertThat(loaded.getResumePosition(true).getCommandId()).isEqualTo(7);
+        assertThat(loaded.getResumePosition(true).getInTxLsn()).isEqualTo(Lsn.valueOf(CHANGE_LSN));
+        assertThat(loaded.getResumePosition(false).getCommandId()).isEqualTo(7);
+        assertThat(loaded.getResumePosition(false).getInTxLsn()).isEqualTo(Lsn.valueOf(CHANGE_LSN));
+    }
+
+    @Test
     @FixFor("dbz#2012")
     void shouldLoadCommandIdWhateverNumericTypeTheOffsetStoreReturns() {
         Map<String, Object> withInteger = baseOffset();
