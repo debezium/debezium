@@ -7,6 +7,7 @@ package io.debezium.connector.binlog.jdbc;
 
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -26,6 +27,7 @@ import io.debezium.config.CommonConnectorConfig;
 import io.debezium.connector.binlog.BinlogConnectorConfig;
 import io.debezium.connector.binlog.BinlogOffsetContext;
 import io.debezium.connector.binlog.gtid.GtidSet;
+import io.debezium.connector.binlog.util.BinlogTimeZones;
 import io.debezium.jdbc.JdbcConnection;
 import io.debezium.pipeline.spi.OffsetContext;
 import io.debezium.pipeline.spi.Partition;
@@ -48,6 +50,8 @@ public abstract class BinlogConnectorConnection extends JdbcConnection {
     private static final String SQL_SHOW_SYSTEM_VARIABLES = "SHOW VARIABLES";
     private static final String SQL_SHOW_SYSTEM_VARIABLES_CHARACTER_SET = "SHOW VARIABLES WHERE Variable_name IN ('character_set_server','collation_server')";
     private static final String SQL_SHOW_SYSTEM_VARIABLES_SQL_MODE = "SHOW VARIABLES WHERE Variable_name = 'sql_mode'";
+    private static final String SQL_SHOW_SESSION_VARIABLE_TIME_ZONE = "SHOW SESSION VARIABLES WHERE Variable_name = 'time_zone'";
+    private static final String SQL_SHOW_GLOBAL_VARIABLE_SYSTEM_TIME_ZONE = "SHOW GLOBAL VARIABLES WHERE Variable_name = 'system_time_zone'";
     private static final String SQL_SHOW_SESSION_VARIABLE_SSL_VERSION = "SHOW SESSION STATUS LIKE 'Ssl_version'";
     private static final String QUOTED_CHARACTER = "`";
     public static final String MASTER_STATUS_STATEMENT = "SHOW MASTER STATUS";
@@ -259,6 +263,33 @@ public abstract class BinlogConnectorConnection extends JdbcConnection {
         // Read the system variables from the MySQL instance and get the current database name ...
         LOGGER.debug("Reading charset-related system variables before parsing DDL history.");
         return querySystemVariables(SQL_SHOW_SYSTEM_VARIABLES_CHARACTER_SET);
+    }
+
+    /**
+     * Read the time zone of the session, in which the server interprets the TIMESTAMP literals of DDL statements, such as
+     * the defaults that SHOW CREATE TABLE returns.
+     *
+     * @return a map containing the time_zone variable; never null
+     */
+    public Map<String, String> readTimeZoneSystemVariable() {
+        return querySystemVariables(SQL_SHOW_SESSION_VARIABLE_TIME_ZONE);
+    }
+
+    /**
+     * Resolve the time zone of the server, which applies to sessions with the time zone {@code SYSTEM}.
+     *
+     * @return the time zone of the server, or null if it cannot be resolved
+     * @see BinlogTimeZones#serverTimeZone(String, String)
+     */
+    public ZoneId readServerTimeZone() {
+        final String systemTimeZone = querySystemVariables(SQL_SHOW_GLOBAL_VARIABLE_SYSTEM_TIME_ZONE).get(BinlogTimeZones.SYSTEM_TIME_ZONE);
+        final ZoneId timeZone = BinlogTimeZones.serverTimeZone(connectionConfig.connectionTimeZone(), systemTimeZone);
+        if (timeZone == null) {
+            LOGGER.warn("The system time zone '{}' of the server cannot be resolved, so TIMESTAMP defaults of DDL statements of sessions "
+                    + "with the SYSTEM time zone are interpreted in the time zone of the connector. Configure the time zone of the server "
+                    + "for the JDBC driver to resolve it.", systemTimeZone);
+        }
+        return timeZone;
     }
 
     /**

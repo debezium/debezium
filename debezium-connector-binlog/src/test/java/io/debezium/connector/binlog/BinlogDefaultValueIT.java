@@ -20,7 +20,6 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
-import java.time.ZoneId;
 import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
@@ -749,10 +748,7 @@ public abstract class BinlogDefaultValueIT<C extends SourceConnector> extends Ab
         // Number of days since epoch for date 1976-08-23
         assertThat(schemaA.defaultValue()).isEqualTo(2426);
 
-        String value1 = "1970-01-01 00:00:01";
-        ZonedDateTime t = java.sql.Timestamp.valueOf(value1).toInstant().atZone(ZoneId.systemDefault());
-        String isoString = getZonedDateTimeIsoString(t);
-        assertThat(schemaB.defaultValue()).isEqualTo(isoString);
+        assertThat(schemaB.defaultValue()).isEqualTo(timestampDefaultIsoString("1970-01-01 00:00:01"));
 
         String value2 = "2018-01-03 00:00:10";
         long toEpochMillis1 = Timestamp.toEpochMillis(LocalDateTime.from(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss").parse(value2)),
@@ -817,10 +813,7 @@ public abstract class BinlogDefaultValueIT<C extends SourceConnector> extends Ab
         Instant instant = LocalDate.from(accessor).atStartOfDay().toInstant(ZoneOffset.UTC);
         assertThat(schemaA.defaultValue()).isEqualTo(java.util.Date.from(instant));
 
-        String value1 = "1970-01-01 00:00:01";
-        ZonedDateTime t = java.sql.Timestamp.valueOf(value1).toInstant().atZone(ZoneId.systemDefault());
-        String isoString = getZonedDateTimeIsoString(t);
-        assertThat(schemaB.defaultValue()).isEqualTo(isoString);
+        assertThat(schemaB.defaultValue()).isEqualTo(timestampDefaultIsoString("1970-01-01 00:00:01"));
 
         LocalDateTime localDateTimeC = LocalDateTime.from(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss").parse("2018-01-03 00:00:10"));
         assertThat(schemaC.defaultValue()).isEqualTo(new java.util.Date(Timestamp.toEpochMillis(localDateTimeC, BinlogValueConverters::adjustTemporal)));
@@ -1118,8 +1111,13 @@ public abstract class BinlogDefaultValueIT<C extends SourceConnector> extends Ab
         assertThat(value.schema().field(fieldName).schema().defaultValue()).isEqualTo(defaultValue);
     }
 
-    private String getZonedDateTimeIsoString(ZonedDateTime zdt) {
-        return ZonedTimestamp.toIsoString(zdt, ZoneId.systemDefault(), BinlogValueConverters::adjustTemporal, null);
+    /**
+     * Returns the default of a TIMESTAMP column, which the server interprets in the time zone of the session that created
+     * the table, the one of the database, and which is emitted in UTC like the values.
+     */
+    private String timestampDefaultIsoString(String value) {
+        final ZonedDateTime timestamp = LocalDateTime.parse(value.replace(' ', 'T')).atZone(DATABASE.getTimezone());
+        return ZonedTimestamp.toIsoString(timestamp.withZoneSameInstant(ZoneOffset.UTC), ZoneOffset.UTC, BinlogValueConverters::adjustTemporal, null);
     }
 
 }
