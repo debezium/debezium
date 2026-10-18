@@ -5,6 +5,7 @@
  */
 package io.debezium.connector.postgresql.connection;
 
+import java.util.EnumSet;
 import java.util.HashSet;
 import java.util.Optional;
 import java.util.Set;
@@ -36,6 +37,14 @@ public class WalPositionLocator {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(WalPositionLocator.class);
 
+    /**
+     * The operations PostgresStreamingChangeEventSource counts toward lsn_events_processed:
+     * the operations of its branch for changes, which excludes BEGIN, COMMIT, logical decoding
+     * messages, ORIGIN and NOOP. A null operation, as in an offset stored without a message
+     * type, is not contained.
+     */
+    private static final Set<Operation> COUNTED_OPERATIONS = EnumSet.of(Operation.INSERT, Operation.UPDATE, Operation.DELETE, Operation.TRUNCATE);
+
     private final Lsn lastCommitStoredLsn;
     private final Lsn lastEventStoredLsn;
     private final Operation lastProcessedMessageType;
@@ -63,7 +72,7 @@ public class WalPositionLocator {
         // event is one the count counts. An offset stored at a transactional logical
         // message still carries the count of the rows before it, at another LSN, and
         // applying it at the message's LSN would skip that many rows after it.
-        this.lastEventStoredLsnEventsProcessed = isCountedOperation(lastProcessedMessageType) ? lsnEventsProcessed : 0;
+        this.lastEventStoredLsnEventsProcessed = COUNTED_OPERATIONS.contains(lastProcessedMessageType) ? lsnEventsProcessed : 0;
 
         LOGGER.info("Looking for WAL restart position for last commit LSN '{}' and last change LSN '{}', events processed at LSN '{}'",
                 lastCommitStoredLsn, lastEventStoredLsn, lsnEventsProcessed);
@@ -99,7 +108,7 @@ public class WalPositionLocator {
                 // Count events at this LSN to find the precise resume point.
                 // Only the events lsn_events_processed counts are counted, so a BEGIN
                 // or a logical message sharing this LSN with a row does not stand for one.
-                if (isCountedOperation(message.getOperation())) {
+                if (COUNTED_OPERATIONS.contains(message.getOperation())) {
                     currentLsnEventCount++;
                 }
 
@@ -167,7 +176,7 @@ public class WalPositionLocator {
 
             storeLsnAfterLastEventStoredLsn = true;
             // Start counting events at this LSN
-            currentLsnEventCount = isCountedOperation(message.getOperation()) ? 1 : 0;
+            currentLsnEventCount = COUNTED_OPERATIONS.contains(message.getOperation()) ? 1 : 0;
 
             // If we have a counter and this is not the last event at this LSN, stay in searching mode
             if (lastEventStoredLsnEventsProcessed > 0) {
@@ -307,16 +316,6 @@ public class WalPositionLocator {
 
     public Lsn getLastCommitStoredLsn() {
         return lastCommitStoredLsn;
-    }
-
-    /**
-     * Whether an operation is one PostgresStreamingChangeEventSource counts
-     * toward lsn_events_processed: the operations of its branch for changes, which
-     * excludes BEGIN, COMMIT, logical decoding messages, ORIGIN and NOOP.
-     */
-    static boolean isCountedOperation(Operation operation) {
-        return operation == Operation.INSERT || operation == Operation.UPDATE || operation == Operation.DELETE
-                || operation == Operation.TRUNCATE;
     }
 
     @Override
