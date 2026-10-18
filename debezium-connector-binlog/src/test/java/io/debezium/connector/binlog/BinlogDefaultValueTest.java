@@ -1055,12 +1055,6 @@ public abstract class BinlogDefaultValueTest<V extends BinlogValueConverters, P 
                 Arguments.of("TIME(3)", "123456.789", "'12:34:56.789'")));
     }
 
-    protected static Stream<Arguments> withDdlActions(Stream<Arguments> cases) {
-        final List<Arguments> list = cases.toList();
-        return Stream.of("create-table", "add-column", "modify-column", "alter-default")
-                .flatMap(action -> list.stream().map(arguments -> Arguments.of(arguments.get()[0], arguments.get()[1], arguments.get()[2], action)));
-    }
-
     private Table parseTable(String type, String literal, String action) {
         final var literalTables = new Tables();
         final String column = "v " + type + " DEFAULT " + literal;
