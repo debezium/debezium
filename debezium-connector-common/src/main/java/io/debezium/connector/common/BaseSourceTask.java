@@ -504,12 +504,14 @@ public abstract class BaseSourceTask<P extends Partition, O extends OffsetContex
                     }
                     catch (RetriableException e) {
                         restartRetries++;
-                        if (maxRestartRetries != ErrorHandler.RETRIES_UNLIMITED && restartRetries >= maxRestartRetries) {
+                        if (maxRestartRetries != ErrorHandler.RETRIES_UNLIMITED && restartRetries > maxRestartRetries) {
                             LOGGER.error("The maximum number of {} restart retries has been reached. Failing the connector.", maxRestartRetries);
+                            stop(false);
                             throw new ConnectException("The maximum number of restart retries has been reached", e);
                         }
                         LOGGER.warn("Failed to restart connector (attempt {} of {}), will re-attempt during next polling.",
                                 restartRetries, maxRestartRetries == ErrorHandler.RETRIES_UNLIMITED ? "unlimited" : maxRestartRetries, e);
+                        stop(true);
                     }
                 }
                 else {
@@ -547,7 +549,7 @@ public abstract class BaseSourceTask<P extends Partition, O extends OffsetContex
                 LOGGER.warn("Going to restart connector after {} sec. after a retriable exception", retriableRestartWait.getSeconds());
             }
             else {
-                LOGGER.info("Stopping down connector");
+                LOGGER.info("Stopping connector");
             }
 
             Throwable shutdownFailure = null;
