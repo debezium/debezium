@@ -165,11 +165,15 @@ public class SqlServerStreamingChangeEventSource implements StreamingChangeEvent
         this.effectiveOffset = offsetContext;
 
         try {
+            final boolean firstPoll = !streamingExecutionContexts.containsKey(partition);
+            final TxLogPosition resumePosition = firstPoll
+                    ? offsetContext.getResumePosition(directMode)
+                    : offsetContext.getChangePosition();
             final SqlServerStreamingExecutionContext streamingExecutionContext = streamingExecutionContexts.getOrDefault(partition,
                     new SqlServerStreamingExecutionContext(
                             new PriorityQueue<>(Comparator.comparing(SqlServerChangeTable::getStopLsn)),
                             new AtomicReference<>(),
-                            offsetContext.getChangePosition(),
+                            resumePosition,
                             new AtomicBoolean(false),
                             // LSN should be increased for the first run only immediately after snapshot completion
                             // otherwise we might skip an incomplete transaction after restart
@@ -177,9 +181,14 @@ public class SqlServerStreamingChangeEventSource implements StreamingChangeEvent
 
             TxLogPosition lastProcessedPositionOnStart = offsetContext.getChangePosition();
 
-            if (!streamingExecutionContexts.containsKey(partition)) {
+            if (firstPoll) {
                 streamingExecutionContexts.put(partition, streamingExecutionContext);
                 LOGGER.info("Last position recorded in offsets is {}[{}]", offsetContext.getChangePosition(), offsetContext.getEventSerialNo());
+                lastProcessedPositionOnStart = resumePosition;
+                if (directMode && offsetContext.getChangePosition().getCommandId() == null) {
+                    LOGGER.info("Offset {} has no command id; re-reading the last transaction from {}",
+                            offsetContext.getChangePosition(), resumePosition);
+                }
             }
 
             final Queue<SqlServerChangeTable> schemaChangeCheckpoints = streamingExecutionContext.getSchemaChangeCheckpoints();
