@@ -16,6 +16,7 @@ public class DefaultDatasetNamespaceResolverFactory implements DatasetNamespaceR
         return switch (dataStore) {
             case DATABASE -> resolveDatabase(connectorName);
             case KAFKA -> new KafkaDatasetNamespaceResolver();
+            case SINK_PROVIDED -> DatasetNamespaceResolverProviders.get(connectorName);
         };
     }
 
