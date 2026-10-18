@@ -45,7 +45,7 @@ final class DatasetNamespaceResolverProviders {
                 loaded = providers;
                 if (loaded == null) {
                     loaded = new ArrayList<>();
-                    ServiceLoader.load(DatasetNamespaceResolverProvider.class, DatasetNamespaceResolverProviders.class.getClassLoader())
+                    ServiceLoader.load(DatasetNamespaceResolverProvider.class)
                             .stream()
                             .map(ServiceLoader.Provider::get)
                             .forEach(loaded::add);
