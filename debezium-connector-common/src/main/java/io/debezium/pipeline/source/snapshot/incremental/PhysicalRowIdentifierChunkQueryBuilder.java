@@ -184,7 +184,7 @@ public class PhysicalRowIdentifierChunkQueryBuilder<T extends DataCollectionId> 
     @Override
     protected List<Column> getOrderByColumns(IncrementalSnapshotContext<T> context, Table table) {
         if (usesPhysicalIdentifier(context)) {
-            List<Column> pkColumns = getKeyMapper().getKeyKolumns(table);
+            List<Column> pkColumns = getKeyMapper().getKeyColumns(table);
             if (!pkColumns.isEmpty()) {
                 return pkColumns;
             }

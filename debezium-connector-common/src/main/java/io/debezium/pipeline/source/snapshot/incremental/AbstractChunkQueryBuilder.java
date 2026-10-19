@@ -97,7 +97,7 @@ public abstract class AbstractChunkQueryBuilder<T extends DataCollectionId>
         String projection = "*";
         if (connectorConfig.isColumnsFiltered()) {
             TableId tableId = table.id();
-            final List<Column> keyColumns = getKeyMapper().getKeyKolumns(table);
+            final List<Column> keyColumns = getKeyMapper().getKeyColumns(table);
             projection = table.columns().stream()
                     .filter(column -> keyColumns.contains(column)
                             || columnFilter.matches(tableId.catalog(), tableId.schema(), tableId.table(), column.name()))
@@ -369,6 +369,6 @@ public abstract class AbstractChunkQueryBuilder<T extends DataCollectionId>
                 return Collections.singletonList(column);
             }
         }
-        return getKeyMapper().getKeyKolumns(table);
+        return getKeyMapper().getKeyColumns(table);
     }
 }
