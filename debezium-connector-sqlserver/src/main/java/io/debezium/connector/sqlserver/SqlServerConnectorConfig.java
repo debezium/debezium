@@ -724,8 +724,13 @@ public class SqlServerConnectorConfig extends HistorizedRelationalDatabaseConnec
         return new HistoryRecordComparator() {
             @Override
             protected boolean isPositionAtOrBefore(Document recorded, Document desired) {
-                return Lsn.valueOf(recorded.getString(SourceInfo.CHANGE_LSN_KEY))
-                        .compareTo(Lsn.valueOf(desired.getString(SourceInfo.CHANGE_LSN_KEY))) < 1;
+                final Lsn recordedChangeLsn = Lsn.valueOf(recorded.getString(SourceInfo.CHANGE_LSN_KEY));
+                final Lsn desiredChangeLsn = Lsn.valueOf(desired.getString(SourceInfo.CHANGE_LSN_KEY));
+                if (!recordedChangeLsn.isAvailable() || !desiredChangeLsn.isAvailable()) {
+                    return Lsn.valueOf(recorded.getString(SourceInfo.COMMIT_LSN_KEY))
+                            .compareTo(Lsn.valueOf(desired.getString(SourceInfo.COMMIT_LSN_KEY))) < 1;
+                }
+                return recordedChangeLsn.compareTo(desiredChangeLsn) < 1;
             }
         };
     }
