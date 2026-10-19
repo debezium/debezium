@@ -177,6 +177,45 @@ public class StopwatchTest {
         }
     }
 
+    @Test
+    @FixFor("debezium/dbz#2887")
+    public void shouldNotDeadlockMultipleStopwatchAwaitUnderConcurrentStartAndStop() throws Exception {
+        final int iterations = 10_000;
+        final ExecutorService executor = Executors.newFixedThreadPool(3);
+
+        try {
+            for (int i = 0; i < iterations; i++) {
+                final Stopwatch.StopwatchSet set = Stopwatch.multiple();
+                final Stopwatch stopwatch = set.create();
+                final CyclicBarrier barrier = new CyclicBarrier(2);
+
+                final Future<?> starter = executor.submit(() -> {
+                    barrier.await();
+                    return stopwatch.start();
+                });
+                final Future<?> stopper = executor.submit(() -> {
+                    barrier.await();
+                    return stopwatch.stop();
+                });
+                starter.get(10, TimeUnit.SECONDS);
+                stopper.get(10, TimeUnit.SECONDS);
+
+                // The stopwatch may still be running if stop() won the race, so stop it
+                stopwatch.stop();
+
+                final Future<?> awaitFuture = executor.submit(() -> {
+                    set.await();
+                    return null;
+                });
+                awaitFuture.get(5, TimeUnit.SECONDS);
+                assertThat(set.statistics().getCount()).isEqualTo(1);
+            }
+        }
+        finally {
+            executor.shutdownNow();
+        }
+    }
+
     private static final class TestDurations extends Stopwatch.BaseDurations {
         private final AtomicInteger count = new AtomicInteger();
 
