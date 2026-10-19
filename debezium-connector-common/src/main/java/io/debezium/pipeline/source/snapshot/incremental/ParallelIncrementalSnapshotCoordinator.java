@@ -146,10 +146,9 @@ public class ParallelIncrementalSnapshotCoordinator<P extends Partition, T exten
         }
         if (state.chunkPosition() != null) {
             ctx.nextChunkPosition(state.chunkPosition());
-            // The restored position came from the offset, so it is a proven-safe
-            // restart point; seed it as such or a store() before the first drain
-            // would regress the persisted position to null.
-            ctx.markChunkDrained();
+            // The restored position is the last key emitted before the restart; seed it as such or a store() before
+            // the first drain would regress the persisted position to null.
+            ctx.sendEvent(state.chunkPosition());
         }
         LOGGER.info("Injected restored per-table state for {} on activation: chunkPos={}, maxKey={}",
                 tableId, state.chunkPosition() != null, state.maximumKey() != null);
@@ -175,7 +174,7 @@ public class ParallelIncrementalSnapshotCoordinator<P extends Partition, T exten
         for (Map.Entry<T, TableSnapshotWorker<P, T>> entry : activeWorkers.entrySet()) {
             final TableSnapshotContext<T> ctx = entry.getValue().getContext();
             state.put(entry.getKey(), new AbstractIncrementalSnapshotContext.PerTableStateSnapshot(
-                    ctx.safeResumePosition(),
+                    ctx.lastEventKeySent(),
                     ctx.maximumKey().orElse(null)));
         }
         // Restored state for tables still awaiting activation must survive the

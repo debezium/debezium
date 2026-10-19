@@ -167,7 +167,7 @@ public class TableSnapshotWorker<P extends Partition, T extends DataCollectionId
                         chunkQueryBuilder.buildMaxPrimaryKeyQuery(context, currentTable,
                                 context.currentDataCollectionId().getAdditionalCondition()),
                         rs -> rs.next()
-                                ? keyFromRow(conn.rowToArray(currentTable, rs,
+                                ? keyOf(conn.rowToArray(currentTable, rs,
                                         ColumnUtils.toArray(rs, currentTable)))
                                 : null),
                 "read maximum key for table " + context.currentDataCollectionId().getId());
@@ -203,7 +203,7 @@ public class TableSnapshotWorker<P extends Partition, T extends DataCollectionId
             while (rs.next()) {
                 hasData = true;
                 final Object[] row = conn.rowToArray(currentTable, rs, columnArray);
-                lastKey = keyFromRow(row);
+                lastKey = keyOf(row);
                 final Struct keyStruct = tableSchema.keyFromColumnData(row);
                 windowBuffer.put(keyStruct, row);
                 totalRowsRead++;
@@ -216,7 +216,10 @@ public class TableSnapshotWorker<P extends Partition, T extends DataCollectionId
         return hasData;
     }
 
-    private Object[] keyFromRow(Object[] row) {
+    /**
+     * The chunk key of a row of this table, in query column order.
+     */
+    public Object[] keyOf(Object[] row) {
         return AbstractIncrementalSnapshotChangeEventSource.keyFromRow(row, keyColumns);
     }
 

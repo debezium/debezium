@@ -35,13 +35,11 @@ public class TableSnapshotContext<T extends DataCollectionId> implements Increme
     private volatile Object[] maximumKey;
     private volatile Object[] chunkEndPosition;
     /**
-     * Last chunk end whose window buffer has been fully drained to the
-     * dispatcher. Unlike {@code chunkEndPosition}, which advances as soon as
-     * the chunk is read into the buffer, this is a safe restart point: a
-     * resume from here can duplicate at most one chunk but never skips
-     * undelivered events.
+     * Key of the last row dispatched for this table. Unlike {@code chunkEndPosition}, which advances as soon as a
+     * chunk is read into the window buffer, this is the restart point persisted in the offsets: it is set before
+     * each row is dispatched, so the offset of every record names that record's own key.
      */
-    private volatile Object[] safeResumePosition;
+    private volatile Object[] lastEventKeySent;
     private int currentChunkId = 0;
     private Table schema;
     private volatile OptionalLong totalRows = OptionalLong.empty();
@@ -91,12 +89,8 @@ public class TableSnapshotContext<T extends DataCollectionId> implements Increme
         this.currentChunkId++;
     }
 
-    public void markChunkDrained() {
-        this.safeResumePosition = chunkEndPosition;
-    }
-
-    public Object[] safeResumePosition() {
-        return safeResumePosition;
+    public Object[] lastEventKeySent() {
+        return lastEventKeySent;
     }
 
     @Override
@@ -171,13 +165,9 @@ public class TableSnapshotContext<T extends DataCollectionId> implements Increme
         return true;
     }
 
-    /**
-     * No-op: a worker does not track the key of each dispatched row. Its restart point is
-     * {@link #safeResumePosition()}, advanced by {@link #markChunkDrained()} once the table's window buffer
-     * has been fully dispatched, and this context is never persisted through {@link #store}.
-     */
     @Override
     public void sendEvent(Object[] keyFromRow) {
+        lastEventKeySent = keyFromRow;
     }
 
     @Override
@@ -192,7 +182,7 @@ public class TableSnapshotContext<T extends DataCollectionId> implements Increme
 
     @Override
     public void revertChunk() {
-        chunkEndPosition = safeResumePosition;
+        chunkEndPosition = lastEventKeySent;
     }
 
     @Override
