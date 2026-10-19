@@ -2367,6 +2367,11 @@ Most common data types are supported, including the following:
 * Temporal types (`DATE`, `TIME`, `INTERVAL`, `TIMESTAMP`, `TIMESTAMPTZ`)
 * `JSON`, `JSONB`, `XML`
 * `UUID`
+* `TEXT[]` and `VARCHAR[]` (plain array literals only, see below)
+
+For `TEXT[]` and `VARCHAR[]` columns, only a plain array literal such as `'{}'` or `'{a,b}'` is propagated; defaults written in the `ARRAY[...]` form, or literals that contain quoted, escaped, nested, or `NULL` elements, are not propagated.
+An empty array default becomes a regular Avro field default.
+A non-empty array default is kept only as the `connect.default` schema parameter, because Avro drops it as a field default (link:https://issues.apache.org/jira/browse/AVRO-3649[AVRO-3649]), so a schema registry with `BACKWARD` compatibility can still reject such a schema change, and the default is not restored correctly when the schema is read back through the Avro converter.
 
 Note that for temporal types, parsing of the default value is provided by PostgreSQL libraries; therefore, any string representation which is normally supported by PostgreSQL should also be supported by the connector.
 

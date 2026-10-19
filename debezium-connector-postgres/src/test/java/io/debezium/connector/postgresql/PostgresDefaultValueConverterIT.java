@@ -169,6 +169,48 @@ public class PostgresDefaultValueConverterIT extends AbstractAsyncEngineConnecto
     }
 
     @Test
+    @FixFor("debezium/dbz#1269")
+    public void shouldPropagateEmptyTextArrayDefaultToSchema() throws Exception {
+        assertTextArrayDefaultInSchema("'{}'", List.of());
+    }
+
+    @Test
+    @FixFor("debezium/dbz#1269")
+    public void shouldPropagateNonEmptyTextArrayDefaultToSchema() throws Exception {
+        // The Avro converter does not restore a non-empty default of an array with optional items (AVRO-3649)
+        skipAvroValidation();
+        assertTextArrayDefaultInSchema("'{a,b}'", List.of("a", "b"));
+    }
+
+    private void assertTextArrayDefaultInSchema(String defaultExpression, List<String> expectedDefault) throws Exception {
+        final String ddl = "DROP SCHEMA IF EXISTS s1 CASCADE;"
+                + "CREATE SCHEMA s1;"
+                + "CREATE TABLE s1.dbz1269 (pk SERIAL, arr text[] NOT NULL DEFAULT " + defaultExpression + ", PRIMARY KEY(pk));"
+                + "INSERT INTO s1.dbz1269 default values;";
+
+        // Test Snapshot
+        TestHelper.execute(ddl);
+
+        Configuration config = TestHelper.defaultConfig().build();
+        start(PostgresConnector.class, config);
+
+        waitForStreamingRunning("postgres", TestHelper.TEST_SERVER);
+
+        // Test Streaming
+        TestHelper.execute("INSERT INTO s1.dbz1269 default values;");
+
+        final int expectedRecords = 2;
+        final SourceRecords records = consumeRecordsByTopic(expectedRecords);
+        final List<SourceRecord> recordsForTopic = records.recordsForTopic(topicName("s1.dbz1269"));
+        assertThat(recordsForTopic).hasSize(expectedRecords);
+
+        for (SourceRecord record : recordsForTopic) {
+            final Struct after = ((Struct) record.value()).getStruct(Envelope.FieldName.AFTER);
+            assertThat(after.schema().field("arr").schema().defaultValue()).isEqualTo(expectedDefault);
+        }
+    }
+
+    @Test
     @FixFor("DBZ-7582")
     public void shouldSerializeHstoreDefaultAsJsonStringWhenUnavailable() throws Exception {
         final String data = RandomStringUtils.randomAlphanumeric(16384);
