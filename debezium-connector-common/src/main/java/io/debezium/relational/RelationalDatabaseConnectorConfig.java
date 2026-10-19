@@ -298,10 +298,10 @@ public abstract class RelationalDatabaseConnectorConfig extends CommonConnectorC
             .withWidth(Width.SHORT)
             .withImportance(Importance.LOW)
             .withDefault(Tables.TableFilter.DEFAULT_MAX_EXCLUDED)
-            .withValidation(Field::isPositiveInteger)
-            .withDescription("The maximum number of excluded tables whose filter decision is cached. A snapshot asks about every table on the server, "
-                    + "so the cache is emptied when it reaches this size. Raise it for servers with many more excluded tables than the default, "
-                    + "to avoid evaluating the filter again for each of them.");
+            .withValidation(Field::isNonNegativeInteger)
+            .withDescription("The maximum number of excluded tables whose filter decision is cached. Beyond it the oldest decisions are evicted "
+                    + "and evaluated again when asked for. The default of 0 keeps every decision, which is fastest, but takes memory in proportion to "
+                    + "the number of excluded tables on the server.");
 
     /**
      * A comma-separated list of regular expressions that match fully-qualified names of columns to be excluded from monitoring

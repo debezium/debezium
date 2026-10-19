@@ -613,6 +613,7 @@ public abstract class BinlogSnapshotChangeEventSource<P extends BinlogPartition,
 
     @Override
     protected void completed(SnapshotContext<P, O> snapshotContext) {
+        super.completed(snapshotContext);
         releaseSnapshotState(snapshotContext);
     }
 

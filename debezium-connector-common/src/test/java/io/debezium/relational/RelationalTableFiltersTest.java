@@ -7,6 +7,8 @@ package io.debezium.relational;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import java.util.List;
+
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -242,12 +244,14 @@ public class RelationalTableFiltersTest {
 
     @Test
     @FixFor("debezium/dbz#2874")
-    public void shouldRejectANonPositiveExcludedCacheSize() {
-        assertThat(RelationalDatabaseConnectorConfig.TABLE_FILTER_EXCLUDED_CACHE_SIZE.defaultValueAsString()).isEqualTo("10000");
-        assertThat(Configuration.create()
-                .with(RelationalDatabaseConnectorConfig.TABLE_FILTER_EXCLUDED_CACHE_SIZE, 0)
-                .build()
-                .validate(Field.setOf(RelationalDatabaseConnectorConfig.TABLE_FILTER_EXCLUDED_CACHE_SIZE))
-                .get(RelationalDatabaseConnectorConfig.TABLE_FILTER_EXCLUDED_CACHE_SIZE.name()).errorMessages()).isNotEmpty();
+    public void shouldNotBoundTheExcludedCacheByDefaultAndRejectNegativeSizes() {
+        final Field field = RelationalDatabaseConnectorConfig.TABLE_FILTER_EXCLUDED_CACHE_SIZE;
+        assertThat(field.defaultValueAsString()).isEqualTo("0");
+        assertThat(validationErrors(field, 0)).isEmpty();
+        assertThat(validationErrors(field, -1)).isNotEmpty();
+    }
+
+    private static List<String> validationErrors(Field field, int value) {
+        return Configuration.create().with(field, value).build().validate(Field.setOf(field)).get(field.name()).errorMessages();
     }
 }

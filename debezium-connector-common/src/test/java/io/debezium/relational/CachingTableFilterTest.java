@@ -40,13 +40,13 @@ public class CachingTableFilterTest {
     }
 
     @Test
-
     @FixFor("debezium/dbz#2874")
-    public void shouldBoundExcludedDecisionsAndKeepIncludedOnes() {
+    public void shouldEvictTheOldestExcludedDecisionsAndKeepIncludedOnes() {
         final TableId included = new TableId("db", null, "in1");
-        final TableId firstExcluded = new TableId("db", null, "out0");
+        final TableId oldest = new TableId("db", null, "out0");
+        final TableId newest = new TableId("db", null, "out" + (2 * MAX_EXCLUDED - 1));
         filter.isIncluded(included);
-        filter.isIncluded(firstExcluded);
+        filter.isIncluded(oldest);
 
         for (int i = 1; i < 2 * MAX_EXCLUDED; i++) {
             filter.isIncluded(new TableId("db", null, "out" + i));
@@ -54,8 +54,27 @@ public class CachingTableFilterTest {
         final int before = evaluations.get();
 
         assertThat(filter.isIncluded(included)).isTrue();
+        assertThat(filter.isIncluded(newest)).isFalse();
         assertThat(evaluations).hasValue(before);
-        assertThat(filter.isIncluded(firstExcluded)).isFalse();
+        assertThat(filter.isIncluded(oldest)).isFalse();
         assertThat(evaluations).hasValue(before + 1);
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2874")
+    public void shouldKeepEveryExcludedDecisionWhenNotBounded() {
+        final AtomicInteger calls = new AtomicInteger();
+        final TableFilter unbounded = TableFilter.cached(id -> {
+            calls.incrementAndGet();
+            return false;
+        }, 0);
+
+        for (int round = 0; round < 2; round++) {
+            for (int i = 0; i < 3 * MAX_EXCLUDED; i++) {
+                unbounded.isIncluded(new TableId("db", null, "out" + i));
+            }
+        }
+
+        assertThat(calls).hasValue(3 * MAX_EXCLUDED);
     }
 }

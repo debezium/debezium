@@ -5,8 +5,11 @@
  */
 package io.debezium.relational;
 
+import java.util.Collections;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
@@ -38,8 +41,8 @@ public final class Tables {
     @FunctionalInterface
     public interface TableFilter extends DataCollectionFilter<TableId> {
 
-        /** How many excluded decisions a caching filter keeps unless configured otherwise. */
-        int DEFAULT_MAX_EXCLUDED = 10_000;
+        /** The excluded decisions a caching filter keeps unless configured otherwise: 0 means all of them. */
+        int DEFAULT_MAX_EXCLUDED = 0;
 
         /**
          * Determines whether the given table should be included in the current {@link DatabaseSchema}.
@@ -76,7 +79,8 @@ public final class Tables {
          * number of excluded decisions.
          *
          * @param filter the filter to wrap; may not be null
-         * @param maxExcluded how many excluded decisions to keep before the cache of them is emptied
+         * @param maxExcluded how many excluded decisions to keep, the oldest one is evicted beyond that;
+         *            0 keeps them all
          * @return a caching filter
          */
         static TableFilter cached(TableFilter filter, int maxExcluded) {
@@ -101,14 +105,22 @@ public final class Tables {
         }
 
         private final TableFilter delegate;
-        // a snapshot asks about every table on the server, so excluded decisions are kept only up to a bound
-        private final int maxExcluded;
         private final Set<CacheKey> included = ConcurrentHashMap.newKeySet();
-        private final Set<CacheKey> excluded = ConcurrentHashMap.newKeySet();
+        private final Set<CacheKey> excluded;
 
         CachingTableFilter(TableFilter delegate, int maxExcluded) {
             this.delegate = Objects.requireNonNull(delegate);
-            this.maxExcluded = maxExcluded;
+            // a snapshot asks about every table on the server, so the excluded decisions can be bounded
+            this.excluded = maxExcluded > 0 ? Collections.synchronizedSet(newLruSet(maxExcluded)) : ConcurrentHashMap.newKeySet();
+        }
+
+        private static Set<CacheKey> newLruSet(int maxSize) {
+            return Collections.newSetFromMap(new LinkedHashMap<>() {
+                @Override
+                protected boolean removeEldestEntry(Map.Entry<CacheKey, Boolean> eldest) {
+                    return size() > maxSize;
+                }
+            });
         }
 
         @Override
@@ -125,9 +137,6 @@ public final class Tables {
                 included.add(new CacheKey(Interner.intern(tableId)));
             }
             else {
-                if (excluded.size() >= maxExcluded) {
-                    excluded.clear();
-                }
                 excluded.add(key);
             }
             return result;

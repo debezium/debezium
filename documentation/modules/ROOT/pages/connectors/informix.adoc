@@ -2799,6 +2799,13 @@ The following example shows how to configure the `snapshot.select-statement` pro
 Set the value to `true` if you want the connector to perform these actions.
 For more information, see xref:informix-transaction-metadata[Transaction metadata] .
 
+|[[informix-property-table-filter-excluded-cache-size]]<<informix-property-table-filter-excluded-cache-size, `+table.filter.excluded.cache.size+`>>
+|`0`
+|The maximum number of excluded tables whose filter decision the connector caches.
+The connector asks the table filter about every table on the server, for example during a snapshot, and by default remembers all of the answers, which takes memory in proportion to the number of excluded tables.
+Set a positive value to bound the cache: beyond it, the oldest decisions are evicted and evaluated again when needed.
+The default value `0` does not evict anything.
+
 |[[informix-property-skipped-operations]]<<informix-property-skipped-operations, `+skipped.operations+`>>
 |`t`
 |A comma-separated list of operation types that the connector skips during streaming.

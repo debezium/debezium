@@ -580,6 +580,17 @@ endif::community[]
 
 
 
+[id="{context}-property-table-filter-excluded-cache-size"]
+xref:{context}-property-table-filter-excluded-cache-size[`table.filter.excluded.cache.size`]::
+
+Default value::: `0`
+
+Description:::
+The maximum number of excluded tables whose filter decision the connector caches.
+The connector asks the table filter about every table on the server, for example during a snapshot, and by default remembers all of the answers, which takes memory in proportion to the number of excluded tables.
+Set a positive value to bound the cache: beyond it, the oldest decisions are evicted and evaluated again when needed.
+The default value `0` does not evict anything.
+
 [id="{context}-property-skipped-operations"]
 xref:{context}-property-skipped-operations[`skipped.operations`]::
 
