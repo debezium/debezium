@@ -375,7 +375,7 @@ Elasticsearch holds current state, so intermediate states of a document within o
 The reduction is keyed on the index as well as the `_id`, so two topics that resolve to different indices never reduce against each other even when they carry identical `_id` values.
 A `c`, `u`, `d` sequence for one document reduces to the `d`, never to nothing, because the index might still hold a document for that `_id` from an earlier run.
 +
-This reduction is part of the correctness argument, not an optimization, so the shared `keyed.message.batch.mode` property is fixed to `deduplication` and an explicit `passthrough` value is rejected at startup.
+This reduction is part of the correctness argument, not an optimization, so the shared `buffer.mode` property is fixed to `deduplication` and an explicit `passthrough` value is rejected at startup.
 
 One bulk request spans every index in the batch::
 The bulk API takes the target index per item, so a batch that touches many indices is issued as a single request.

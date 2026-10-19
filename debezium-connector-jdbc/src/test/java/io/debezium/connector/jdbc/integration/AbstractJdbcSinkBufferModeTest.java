@@ -48,7 +48,7 @@ public abstract class AbstractJdbcSinkBufferModeTest extends AbstractJdbcSinkTes
 
     @BeforeEach
     public void requireSharedSinkFramework() {
-        Assumptions.assumeTrue("true".equals(System.getProperty("enable.sces")),
+        Assumptions.assumeTrue("true".equals(System.getProperty("enable.sces", "true")),
                 "Buffer mode tests require -Denable.sces=true");
     }
 

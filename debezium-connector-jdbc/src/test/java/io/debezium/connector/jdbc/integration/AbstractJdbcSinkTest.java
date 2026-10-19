@@ -79,6 +79,8 @@ public abstract class AbstractJdbcSinkTest extends AbstractBaseJdbcSinkTest {
         config.put(JdbcSinkConnectorConfig.CONNECTION_URL, sink.getJdbcUrl());
         config.put(JdbcSinkConnectorConfig.CONNECTION_USER, sink.getUsername());
         config.put(JdbcSinkConnectorConfig.CONNECTION_PASSWORD, sink.getPassword());
+        config.put(JdbcSinkConnectorConfig.ENABLE_SHARED_CHANGE_EVENT_SINK,
+                System.getProperty(JdbcSinkConnectorConfig.ENABLE_SHARED_CHANGE_EVENT_SINK_FIELD.name(), "true"));
         return config;
     }
 

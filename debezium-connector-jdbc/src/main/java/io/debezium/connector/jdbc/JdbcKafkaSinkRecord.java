@@ -86,7 +86,7 @@ public class JdbcKafkaSinkRecord extends KafkaDebeziumSinkRecord implements Jdbc
             else {
                 nonKeyFieldNames = filteredPayload.schema().fields().stream().map(field -> {
                     String fieldName = field.name();
-                    if (allFields.containsKey(fieldName) || keyFieldNames.contains(fieldName)) {
+                    if (allFields.containsKey(fieldName) || keyFieldNames().contains(fieldName)) {
                         return null;
                     }
                     FieldDescriptor descriptor = new FieldDescriptor(field.schema(), fieldName, false);
