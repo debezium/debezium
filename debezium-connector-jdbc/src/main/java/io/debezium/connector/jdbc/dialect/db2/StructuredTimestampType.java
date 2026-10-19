@@ -6,13 +6,16 @@
 package io.debezium.connector.jdbc.dialect.db2;
 
 import java.sql.Types;
+import java.time.LocalDateTime;
 import java.util.List;
 
 import org.apache.kafka.connect.data.Schema;
 
+import io.debezium.connector.jdbc.JdbcSinkConnectorConfig.TemporalPrecisionLossHandlingMode;
 import io.debezium.connector.jdbc.type.debezium.StructuredTemporalSupport;
 import io.debezium.sink.column.ColumnDescriptor;
 import io.debezium.sink.valuebinding.ValueBindDescriptor;
+import io.debezium.time.StructuredTimestamp;
 
 /**
  * Db2 binding for structured timestamps, using a server-side cast so fractional precision up to picoseconds is not
@@ -36,6 +39,10 @@ public class StructuredTimestampType extends io.debezium.connector.jdbc.type.deb
         if (value == null) {
             return List.of(new ValueBindDescriptor(index, null));
         }
+        final LocalDateTime clamped = clampIfOutOfRange(requireStruct(value));
+        if (clamped != null) {
+            return List.of(new ValueBindDescriptor(index, toLiteral(clamped), Types.VARCHAR));
+        }
         return List.of(new ValueBindDescriptor(index, toLiteral(schema, requireStruct(value)), Types.VARCHAR));
     }
 
@@ -43,6 +50,10 @@ public class StructuredTimestampType extends io.debezium.connector.jdbc.type.deb
     public List<ValueBindDescriptor> bind(int index, ColumnDescriptor column, Schema schema, Object value) {
         if (value == null) {
             return List.of(new ValueBindDescriptor(index, null));
+        }
+        final LocalDateTime clamped = clampIfOutOfRange(requireStruct(value));
+        if (clamped != null) {
+            return List.of(new ValueBindDescriptor(index, toLiteral(clamped), Types.VARCHAR));
         }
         validate(column, schema, value);
         final int precision = getDialect().getTargetTemporalCapabilities().targetTimestampPrecision(column);
@@ -52,6 +63,11 @@ public class StructuredTimestampType extends io.debezium.connector.jdbc.type.deb
                         getDialect().getTargetTemporalCapabilities().targetTimestampRange(column), getRangeLossHandlingMode(),
                         targetDescription(column)),
                 Types.VARCHAR));
+    }
+
+    private static String toLiteral(LocalDateTime value) {
+        return StructuredTemporalSupport.toLocalDateTimeLiteral(
+                StructuredTimestamp.from(value), 12, TemporalPrecisionLossHandlingMode.FAIL);
     }
 
     protected String toLiteral(Schema schema, org.apache.kafka.connect.data.Struct value) {

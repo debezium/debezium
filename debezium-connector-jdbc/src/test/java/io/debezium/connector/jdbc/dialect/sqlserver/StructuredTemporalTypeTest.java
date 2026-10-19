@@ -152,7 +152,7 @@ class StructuredTemporalTypeTest {
     void shouldFailStructuredZonedTimestampInfinity() {
         final var schema = StructuredZonedTimestamp.schema();
 
-        assertThatThrownBy(() -> StructuredZonedTimestampType.INSTANCE.bind(3, schema, StructuredZonedTimestamp.positiveInfinity(schema)))
+        assertThatThrownBy(() -> new StructuredZonedTimestampType().bind(3, schema, StructuredZonedTimestamp.positiveInfinity(schema)))
                 .isInstanceOf(ConnectException.class)
                 .hasMessageContaining("Non-finite structured temporal values require dialect-specific handling");
     }

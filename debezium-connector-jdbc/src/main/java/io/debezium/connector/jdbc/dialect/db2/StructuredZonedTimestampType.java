@@ -25,7 +25,7 @@ public class StructuredZonedTimestampType extends StructuredTimestampType {
 
     @Override
     public void validate(ColumnDescriptor column, Schema schema, Object value) {
-        if (value != null) {
+        if (value != null && clampIfOutOfRange(requireStruct(value)) == null) {
             final Struct struct = requireStruct(value);
             StructuredTemporalPreflightValidator.validateZonedTimestamp(struct, getDialect().getTargetTemporalCapabilities());
         }

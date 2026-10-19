@@ -165,7 +165,7 @@ class StructuredTemporalTypeTest {
     void shouldFailStructuredTimestampInfinity() {
         final var schema = StructuredTimestamp.schema();
 
-        assertThatThrownBy(() -> StructuredTimestampType.INSTANCE.bind(3, schema, StructuredTimestamp.positiveInfinity(schema)))
+        assertThatThrownBy(() -> new StructuredTimestampType().bind(3, schema, StructuredTimestamp.positiveInfinity(schema)))
                 .isInstanceOf(ConnectException.class)
                 .hasMessageContaining("Non-finite structured temporal values require dialect-specific handling");
     }
@@ -175,7 +175,7 @@ class StructuredTemporalTypeTest {
     void shouldFailStructuredZonedTimestampInfinity() {
         final var schema = StructuredZonedTimestamp.schema();
 
-        assertThatThrownBy(() -> StructuredZonedTimestampType.INSTANCE.bind(4, schema, StructuredZonedTimestamp.negativeInfinity(schema)))
+        assertThatThrownBy(() -> new StructuredZonedTimestampType().bind(4, schema, StructuredZonedTimestamp.negativeInfinity(schema)))
                 .isInstanceOf(ConnectException.class)
                 .hasMessageContaining("Non-finite structured temporal values require dialect-specific handling");
     }
