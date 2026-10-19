@@ -31,6 +31,7 @@ import java.util.stream.Collectors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import io.debezium.function.BlockingRunnable;
 import io.debezium.pipeline.ErrorHandler;
 import io.debezium.pipeline.EventDispatcher;
 import io.debezium.pipeline.monitor.OffsetActivityMonitor;
@@ -259,10 +260,15 @@ public class SqlServerStreamingChangeEventSource implements StreamingChangeEvent
                 while (!schemaChangeCheckpoints.isEmpty()) {
                     migrateTable(partition, schemaChangeCheckpoints, offsetContext);
                 }
-                if (!dataConnection.getNewChangeTables(databaseName, fromLsn, toLsn).isEmpty()) {
+                final List<SqlServerChangeTable> newChangeTables = dataConnection.getNewChangeTables(databaseName, fromLsn, toLsn);
+                if (!newChangeTables.isEmpty()) {
                     final SqlServerChangeTable[] tables = getChangeTablesToQuery(partition, offsetContext, toLsn);
                     tablesSlot.set(tables);
-                    for (SqlServerChangeTable table : tables) {
+                    for (SqlServerChangeTable detected : newChangeTables) {
+                        final SqlServerChangeTable table = matchingChangeTable(tables, detected);
+                        if (table == null || table.getSourceTableId() == null) {
+                            continue;
+                        }
                         if (table.getStartLsn().isBetween(fromLsn, toLsn)) {
                             LOGGER.info("Schema will be changed for {}", table);
                             schemaChangeCheckpoints.add(table);
@@ -479,6 +485,16 @@ public class SqlServerStreamingChangeEventSource implements StreamingChangeEvent
                 !dataValid, !metadataValid, databaseName);
     }
 
+    private static SqlServerChangeTable matchingChangeTable(SqlServerChangeTable[] tables, SqlServerChangeTable detected) {
+        for (SqlServerChangeTable table : tables) {
+            if (table.getCaptureInstance().equals(detected.getCaptureInstance())
+                    && table.getChangeTableObjectId() == detected.getChangeTableObjectId()) {
+                return table;
+            }
+        }
+        return null;
+    }
+
     private void migrateTable(SqlServerPartition partition, final Queue<SqlServerChangeTable> schemaChangeCheckpoints, SqlServerOffsetContext offsetContext)
             throws InterruptedException, SQLException {
         final SqlServerChangeTable newTable = schemaChangeCheckpoints.poll();
@@ -489,10 +505,24 @@ public class SqlServerStreamingChangeEventSource implements StreamingChangeEvent
             LOGGER.info("Migration skipped, no table schema changes detected.");
             return;
         }
-        dispatcher.dispatchSchemaChangeEvent(partition, offsetContext, newTable.getSourceTableId(),
-                new SqlServerSchemaChangeEventEmitter(partition, offsetContext, newTable, tableSchema, schema,
-                        SchemaChangeEventType.ALTER));
+        withCaptureStartPosition(offsetContext, newTable,
+                () -> dispatcher.dispatchSchemaChangeEvent(partition, offsetContext, newTable.getSourceTableId(),
+                        new SqlServerSchemaChangeEventEmitter(partition, offsetContext, newTable, tableSchema, schema,
+                                SchemaChangeEventType.ALTER)));
         newTable.setSourceTable(tableSchema);
+    }
+
+    static void withCaptureStartPosition(SqlServerOffsetContext offsetContext, SqlServerChangeTable newTable, BlockingRunnable action)
+            throws InterruptedException {
+        final TxLogPosition currentPosition = offsetContext.getChangePosition();
+        final long eventSerialNo = offsetContext.getEventSerialNo();
+        offsetContext.setChangePosition(TxLogPosition.valueOf(newTable.getStartLsn(), newTable.getStartLsn(), currentPosition.getCommandId()), 0);
+        try {
+            action.run();
+        }
+        finally {
+            offsetContext.setChangePosition(currentPosition, (int) eventSerialNo);
+        }
     }
 
     private SqlServerChangeTable[] processErrorFromChangeTableQuery(String databaseName, SQLException exception,
