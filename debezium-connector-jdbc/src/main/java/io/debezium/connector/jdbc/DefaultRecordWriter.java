@@ -160,7 +160,7 @@ public class DefaultRecordWriter implements RecordWriter {
      * binary handling mode. Returns {@code null} to use the regular binding.
      */
     protected List<ValueBindDescriptor> maybeBindBytesAsCharacter(JdbcSinkRecord record, JdbcFieldDescriptor field, TableDescriptor table, int index, Object value) {
-        if (table == null) {
+        if (table == null || !config.isBinaryHandlingEnabled()) {
             return null;
         }
         final BinaryHandling.Resolution resolution = dialect.resolveBinaryHandling(table, record, field);

@@ -107,6 +107,17 @@ class DefaultRecordWriterTest extends AbstractBaseJdbcSinkTest {
         verify(dialect, never()).resolveBinaryHandling(any(), any(), any());
     }
 
+    @Test
+    @FixFor("debezium/dbz#2468")
+    void maybeBindBytesAsCharacterShouldSkipResolutionWhenBinaryHandlingDisabled() throws SQLException {
+        final DatabaseDialect dialect = binaryHandlingDialect();
+        final DefaultRecordWriter writer = writerSpy(dialect, getConfig(Map.of(JdbcSinkConnectorConfig.INSERT_MODE, "insert")));
+
+        final JdbcSinkRecord record = bytesRecord(ENCODED_TOPIC);
+        assertThat(writer.maybeBindBytesAsCharacter(record, record.jdbcFields().get("data"), table(), 1, new byte[]{ 0x01 })).isNull();
+        verify(dialect, never()).resolveBinaryHandling(any(), any(), any());
+    }
+
     private DefaultRecordWriter writerSpy(DatabaseDialect dialect, JdbcSinkConnectorConfig config) throws SQLException {
         final DefaultRecordWriter writer = spy(new DefaultRecordWriter(
                 mock(SharedSessionContract.class), new QueryBinderResolver(), config, dialect, SinkProgressListener.NO_OP()));

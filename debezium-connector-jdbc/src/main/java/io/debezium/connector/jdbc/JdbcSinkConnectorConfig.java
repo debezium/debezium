@@ -506,16 +506,12 @@ public class JdbcSinkConnectorConfig implements SinkConnectorConfig {
          * Encodes the bytes in the textual representation for this mode.
          */
         public String encode(byte[] bytes) {
-            switch (this) {
-                case BASE64:
-                    return Base64.getEncoder().encodeToString(bytes);
-                case BASE64_URL_SAFE:
-                    return Base64.getUrlEncoder().encodeToString(bytes);
-                case HEX:
-                    return HexConverter.convertToHexString(bytes);
-                default:
-                    throw new IllegalStateException("Mode '" + mode + "' does not define a textual encoding");
-            }
+            return switch (this) {
+                case BASE64 -> Base64.getEncoder().encodeToString(bytes);
+                case BASE64_URL_SAFE -> Base64.getUrlEncoder().encodeToString(bytes);
+                case HEX -> HexConverter.convertToHexString(bytes);
+                default -> throw new IllegalStateException("Mode '" + mode + "' does not define a textual encoding");
+            };
         }
     }
 

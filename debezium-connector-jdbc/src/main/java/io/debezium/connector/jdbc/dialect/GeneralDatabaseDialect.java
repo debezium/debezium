@@ -754,6 +754,9 @@ public class GeneralDatabaseDialect implements DatabaseDialect {
 
     @Override
     public BinaryHandling.Resolution resolveBinaryHandling(TableDescriptor table, JdbcSinkRecord record, FieldDescriptor field) {
+        if (!connectorConfig.isBinaryHandlingEnabled()) {
+            return BinaryHandling.Resolution.bytes(null);
+        }
         final String columnName = resolveColumnName(field);
         final ColumnDescriptor column = table.hasColumn(columnName) ? table.getColumnByName(columnName) : null;
         return BinaryHandling.resolve(connectorConfig, record.topicName(), field, getSchemaType(field.getSchema()), column);

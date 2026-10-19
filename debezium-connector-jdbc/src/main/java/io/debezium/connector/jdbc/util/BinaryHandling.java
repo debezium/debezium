@@ -49,19 +49,12 @@ public final class BinaryHandling {
      * Returns whether the JDBC type is a character type.
      */
     public static boolean isCharacterType(int jdbcType) {
-        switch (jdbcType) {
-            case Types.CHAR:
-            case Types.VARCHAR:
-            case Types.LONGVARCHAR:
-            case Types.NCHAR:
-            case Types.NVARCHAR:
-            case Types.LONGNVARCHAR:
-            case Types.CLOB:
-            case Types.NCLOB:
-                return true;
-            default:
-                return false;
-        }
+        return switch (jdbcType) {
+            case Types.CHAR, Types.VARCHAR, Types.LONGVARCHAR, Types.NCHAR, Types.NVARCHAR,
+                    Types.LONGNVARCHAR, Types.CLOB, Types.NCLOB ->
+                true;
+            default -> false;
+        };
     }
 
     /**
