@@ -168,6 +168,41 @@ public class EventRouterConfigDefinition {
         }
     }
 
+    public enum JsonPayloadExpansionFailureBehavior implements EnumeratedValue {
+        WARN("warn"),
+        FAIL("fail");
+
+        private final String value;
+
+        JsonPayloadExpansionFailureBehavior(String value) {
+            this.value = value;
+        }
+
+        @Override
+        public String getValue() {
+            return value;
+        }
+
+        /**
+         * Determine if the supplied value is one of the predefined options.
+         *
+         * @param value the configuration property value; may not be null
+         * @return the matching option, or null if no match is found
+         */
+        public static JsonPayloadExpansionFailureBehavior parse(String value) {
+            if (value == null) {
+                return null;
+            }
+            value = value.trim();
+            for (JsonPayloadExpansionFailureBehavior option : JsonPayloadExpansionFailureBehavior.values()) {
+                if (option.getValue().equalsIgnoreCase(value)) {
+                    return option;
+                }
+            }
+            return null;
+        }
+    }
+
     public enum AdditionalFieldMissingBehavior implements EnumeratedValue {
         ERROR("error"),
         IGNORE("ignore");
@@ -366,6 +401,16 @@ public class EventRouterConfigDefinition {
                     " empty array field, optional_string will keep the field as an optional array with an optional string" +
                     " element type.");
 
+    public static final Field TABLE_JSON_PAYLOAD_EXPANSION_FAILURE_BEHAVIOR = Field.create("table.json.payload.expansion.failure.behavior")
+            .withDisplayName("Behavior when json payload expansion fails")
+            .withEnum(JsonPayloadExpansionFailureBehavior.class, JsonPayloadExpansionFailureBehavior.WARN)
+            .withWidth(ConfigDef.Width.MEDIUM)
+            .withImportance(ConfigDef.Importance.MEDIUM)
+            .withDescription("When the JSON expansion property 'table.expand.json.payload' is enabled and the payload" +
+                    " cannot be expanded into real JSON, defines the behavior. The default 'warn' emits the record with the" +
+                    " unexpanded payload and logs a warning; 'fail' stops the task with an error naming the failing field," +
+                    " both for a payload string that is not valid JSON and for a payload value that is not a string.");
+
     static final Field[] CONFIG_FIELDS = {
             FIELD_EVENT_ID,
             FIELD_EVENT_KEY,
@@ -382,7 +427,8 @@ public class EventRouterConfigDefinition {
             OPERATION_INVALID_BEHAVIOR,
             EXPAND_JSON_PAYLOAD,
             TABLE_JSON_PAYLOAD_NULL_BEHAVIOR,
-            TABLE_JSON_PAYLOAD_EMPTY_ARRAY_BEHAVIOR
+            TABLE_JSON_PAYLOAD_EMPTY_ARRAY_BEHAVIOR,
+            TABLE_JSON_PAYLOAD_EXPANSION_FAILURE_BEHAVIOR
     };
 
     /**
@@ -400,7 +446,7 @@ public class EventRouterConfigDefinition {
                 "Table",
                 FIELD_EVENT_ID, FIELD_EVENT_KEY, FIELD_EVENT_TYPE, FIELD_PAYLOAD, FIELD_EVENT_TIMESTAMP, FIELDS_ADDITIONAL_PLACEMENT,
                 FIELDS_ADDITIONAL_MISSING, FIELD_SCHEMA_VERSION, OPERATION_INVALID_BEHAVIOR, EXPAND_JSON_PAYLOAD, TABLE_JSON_PAYLOAD_NULL_BEHAVIOR,
-                TABLE_JSON_PAYLOAD_EMPTY_ARRAY_BEHAVIOR);
+                TABLE_JSON_PAYLOAD_EMPTY_ARRAY_BEHAVIOR, TABLE_JSON_PAYLOAD_EXPANSION_FAILURE_BEHAVIOR);
         Field.group(
                 config,
                 "Router",
