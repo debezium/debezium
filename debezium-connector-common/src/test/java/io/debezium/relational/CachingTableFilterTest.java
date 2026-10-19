@@ -41,12 +41,12 @@ public class CachingTableFilterTest {
 
     @Test
     @FixFor("debezium/dbz#2874")
-    public void shouldEvictTheOldestExcludedDecisionsAndKeepIncludedOnes() {
+    public void shouldEvictTheLeastRecentlyUsedExcludedDecisionsAndKeepIncludedOnes() {
         final TableId included = new TableId("db", null, "in1");
-        final TableId oldest = new TableId("db", null, "out0");
+        final TableId untouched = new TableId("db", null, "out0");
         final TableId newest = new TableId("db", null, "out" + (2 * MAX_EXCLUDED - 1));
         filter.isIncluded(included);
-        filter.isIncluded(oldest);
+        filter.isIncluded(untouched);
 
         for (int i = 1; i < 2 * MAX_EXCLUDED; i++) {
             filter.isIncluded(new TableId("db", null, "out" + i));
@@ -56,7 +56,27 @@ public class CachingTableFilterTest {
         assertThat(filter.isIncluded(included)).isTrue();
         assertThat(filter.isIncluded(newest)).isFalse();
         assertThat(evaluations).hasValue(before);
-        assertThat(filter.isIncluded(oldest)).isFalse();
+        assertThat(filter.isIncluded(untouched)).isFalse();
+        assertThat(evaluations).hasValue(before + 1);
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2874")
+    public void shouldKeepAnExcludedDecisionThatIsAskedForAgain() {
+        final TableId hot = new TableId("db", null, "hot");
+        final TableId cold = new TableId("db", null, "cold");
+        filter.isIncluded(hot);
+        filter.isIncluded(cold);
+
+        for (int i = 0; i < 2 * MAX_EXCLUDED; i++) {
+            filter.isIncluded(new TableId("db", null, "out" + i));
+            filter.isIncluded(hot);
+        }
+        final int before = evaluations.get();
+
+        assertThat(filter.isIncluded(hot)).isFalse();
+        assertThat(evaluations).hasValue(before);
+        assertThat(filter.isIncluded(cold)).isFalse();
         assertThat(evaluations).hasValue(before + 1);
     }
 
