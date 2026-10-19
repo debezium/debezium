@@ -86,7 +86,7 @@ public abstract class AbstractJdbcSinkBinaryHandlingModeUnnestTest extends Abstr
     @ParameterizedTest
     @ArgumentsSource(SinkRecordFactoryArgumentsProvider.class)
     @FixFor("debezium/dbz#2468")
-    public void testRawBinaryFieldsUseUnnestBatchPathAsTypedByteaArrays(SinkRecordFactory factory) throws Exception {
+    public void testRawBinaryFieldsFallBackToRowWisePath(SinkRecordFactory factory) throws Exception {
         final Map<String, String> properties = unnestSinkConfig("base64");
         startSinkConnector(properties);
         assertSinkConnectorIsRunning();
@@ -99,8 +99,8 @@ public abstract class AbstractJdbcSinkBinaryHandlingModeUnnestTest extends Abstr
                 createRecord(factory, topicName, (byte) 1, new byte[]{ 0x01, 0x02 }, config),
                 createRecord(factory, topicName, (byte) 2, new byte[]{ 0x03, 0x04 }, config));
 
-        // The destination column is binary, so the field keeps the raw bytes binding; the batch
-        // stays on the UNNEST path with the values passed as a typed byte[][] array.
+        // The destination column is binary, so the field keeps the raw bytes binding, which the UNNEST
+        // path cannot bind; the batch falls back to the row-wise path as it does without binary handling.
         final String destinationTable = destinationTableName(batch.get(0));
         getSink().execute(singleDataColumnTableDdl(destinationTable, binaryColumnType()));
 
@@ -120,24 +120,24 @@ public abstract class AbstractJdbcSinkBinaryHandlingModeUnnestTest extends Abstr
             return null;
         });
 
-        assertThat(interceptor.containsMessage(UNNEST_EXECUTED_MESSAGE)).isTrue();
+        assertThat(interceptor.containsMessage(UNNEST_EXECUTED_MESSAGE)).isFalse();
     }
 
     @ParameterizedTest
     @ArgumentsSource(SinkRecordFactoryArgumentsProvider.class)
     @FixFor("debezium/dbz#2468")
-    public void testTopicQualifiedModesUseSeparateUnnestBatchesWithEncodedRecordsFirst(SinkRecordFactory factory) throws Exception {
-        assertTopicQualifiedModesUseSeparateUnnestBatches(factory, true);
+    public void testTopicQualifiedModesUseSeparateBatchesWithEncodedRecordsFirst(SinkRecordFactory factory) throws Exception {
+        assertTopicQualifiedModesUseSeparateBatches(factory, true);
     }
 
     @ParameterizedTest
     @ArgumentsSource(SinkRecordFactoryArgumentsProvider.class)
     @FixFor("debezium/dbz#2468")
-    public void testTopicQualifiedModesUseSeparateUnnestBatchesWithRawRecordsFirst(SinkRecordFactory factory) throws Exception {
-        assertTopicQualifiedModesUseSeparateUnnestBatches(factory, false);
+    public void testTopicQualifiedModesUseSeparateBatchesWithRawRecordsFirst(SinkRecordFactory factory) throws Exception {
+        assertTopicQualifiedModesUseSeparateBatches(factory, false);
     }
 
-    private void assertTopicQualifiedModesUseSeparateUnnestBatches(SinkRecordFactory factory, boolean encodedRecordsFirst) throws Exception {
+    private void assertTopicQualifiedModesUseSeparateBatches(SinkRecordFactory factory, boolean encodedRecordsFirst) throws Exception {
         final String tableName = randomTableName();
         final String encodedTopic = "encoded_" + tableName;
         final String rawTopic = "raw_" + tableName;
@@ -186,7 +186,8 @@ public abstract class AbstractJdbcSinkBinaryHandlingModeUnnestTest extends Abstr
             return null;
         });
 
-        assertThat(interceptor.countOccurrences(UNNEST_EXECUTED_MESSAGE)).isEqualTo(2);
+        // Only the encoded records use the UNNEST path; the raw records fall back to the row-wise path
+        assertThat(interceptor.countOccurrences(UNNEST_EXECUTED_MESSAGE)).isEqualTo(1);
     }
 
     private Map<String, String> unnestSinkConfig(String binaryHandlingMode) {

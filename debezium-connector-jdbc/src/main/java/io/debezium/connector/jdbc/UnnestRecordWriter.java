@@ -26,7 +26,6 @@ import io.debezium.connector.jdbc.dialect.DatabaseDialect;
 import io.debezium.connector.jdbc.field.JdbcFieldDescriptor;
 import io.debezium.connector.jdbc.relational.TableDescriptor;
 import io.debezium.connector.jdbc.type.JdbcType;
-import io.debezium.connector.jdbc.util.BinaryHandling;
 import io.debezium.sink.spi.SinkProgressListener;
 import io.debezium.sink.valuebinding.ValueBindDescriptor;
 import io.debezium.util.Stopwatch;
@@ -157,7 +156,7 @@ public class UnnestRecordWriter extends DefaultRecordWriter {
 
             // Convert to array and bind using setArray()
             String sqlTypeName = getSqlTypeName(table, firstRecord, firstRecord.jdbcFields().get(fieldName));
-            Array sqlArray = conn.createArrayOf(sqlTypeName, toElementArray(sqlTypeName, columnValues));
+            Array sqlArray = conn.createArrayOf(sqlTypeName, columnValues.toArray());
             ps.setArray(parameterIndex++, sqlArray);
         }
 
@@ -194,23 +193,11 @@ public class UnnestRecordWriter extends DefaultRecordWriter {
 
             // Convert to array and bind using setArray()
             String sqlTypeName = getSqlTypeName(table, firstRecord, firstRecord.jdbcFields().get(fieldName));
-            Array sqlArray = conn.createArrayOf(sqlTypeName, toElementArray(sqlTypeName, columnValues));
+            Array sqlArray = conn.createArrayOf(sqlTypeName, columnValues.toArray());
             ps.setArray(parameterIndex++, sqlArray);
         }
 
         return parameterIndex;
-    }
-
-    /**
-     * Converts the collected values to the array type required by {@link Connection#createArrayOf}.
-     */
-    private static Object[] toElementArray(String sqlTypeName, List<Object> columnValues) {
-        // The PostgreSQL driver uses the Java component type to select its array encoder. A typed
-        // byte[][] selects the bytea encoder; a byte[] element in Object[] is treated as ambiguous.
-        if ("bytea".equals(sqlTypeName)) {
-            return columnValues.toArray(new byte[0][]);
-        }
-        return columnValues.toArray();
     }
 
     private Object transformValue(TableDescriptor table, JdbcSinkRecord record, JdbcFieldDescriptor field, Object value) {
@@ -244,14 +231,6 @@ public class UnnestRecordWriter extends DefaultRecordWriter {
 
         final Schema schema = field.getSchema();
         final JdbcType type = getDialect().getSchemaType(schema);
-
-        // The driver resolves the array element type by this name, so raw binary values must use
-        // the canonical "bytea" name; dialect type names such as CockroachDB's "bytes" have no
-        // corresponding server array type registered with the driver.
-        if (BinaryHandling.isRawBytesSchema(schema, type)) {
-            return "bytea";
-        }
-
         String typeName = type.getTypeName(schema, field.isKey());
 
         // Remove array brackets: text[][] -> text

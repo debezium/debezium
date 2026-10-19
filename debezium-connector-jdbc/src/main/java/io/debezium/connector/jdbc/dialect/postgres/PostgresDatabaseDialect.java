@@ -29,7 +29,6 @@ import io.debezium.connector.jdbc.dialect.GeneralDatabaseDialect;
 import io.debezium.connector.jdbc.dialect.SqlStatementBuilder;
 import io.debezium.connector.jdbc.relational.TableDescriptor;
 import io.debezium.connector.jdbc.type.JdbcType;
-import io.debezium.connector.jdbc.util.BinaryHandling;
 import io.debezium.data.Enum;
 import io.debezium.metadata.CollectionId;
 import io.debezium.sink.column.ColumnDescriptor;
@@ -151,7 +150,7 @@ public class PostgresDatabaseDialect extends GeneralDatabaseDialect {
         // per-value JdbcType#bind() the row-wise path uses. Types whose bind() reconstructs a different
         // representation (e.g. the native geometric types, which turn a Struct into PostgreSQL text) would
         // otherwise hand raw Structs to createArrayOf and fail, so fall back to the row-wise path for them.
-        if (hasUnnestUnsupportedField(firstRecord)) {
+        if (hasUnnestUnsupportedField(table, firstRecord)) {
             return Optional.empty();
         }
 
@@ -181,13 +180,6 @@ public class PostgresDatabaseDialect extends GeneralDatabaseDialect {
                 return "?::text[]";
             }
 
-            // Raw binary values are always bound as bytea arrays; the canonical name keeps the cast
-            // aligned with the array element type the driver binds, also on dialects whose BYTES
-            // type name differs (e.g. CockroachDB's "bytes").
-            if (BinaryHandling.isRawBytesSchema(field.getSchema(), getSchemaType(field.getSchema()))) {
-                return "?::bytea[]";
-            }
-
             final Schema fieldSchema = field.getSchema();
             final String columnType = getSchemaType(fieldSchema).getTypeName(fieldSchema, field.isKey());
 
@@ -208,20 +200,20 @@ public class PostgresDatabaseDialect extends GeneralDatabaseDialect {
      * values to {@link Connection#createArrayOf}, which only accepts scalar elements; a {@code STRUCT}
      * field (the geometric types point/box/lseg/path/polygon and circle/line) needs the per-value
      * {@code JdbcType#bind()} the row-wise path applies, so such records are handled row-wise instead.
-     * Plain {@code BYTES} fields can use this path. Raw values use a typed {@code byte[][]} array,
-     * while encoded values use a text array. Logical types backed by {@code BYTES}, such as
-     * {@code Decimal}, continue to use row-wise binding. An enum field is handled row-wise because
+     * {@code BYTES} fields are also excluded: the PostgreSQL driver cannot encode {@code bytea} array
+     * elements ({@code createArrayOf} rejects {@code byte[]} nested inside {@code Object[]}), so such
+     * records take the row-wise path as well, unless the field resolves to a textual binary handling
+     * mode, whose encoded strings are bound as a text array. An enum field is handled row-wise because
      * the array cast above is derived from the field schema, which for an enum only resolves to the
      * character varying fallback, whereas the cast has to name the destination column's enum type.
      * An {@code ARRAY} field cannot be batched at all: this path binds one array per column holding the
      * value of every row, so an array column would need an array of arrays, and the cast derived above
      * would be {@code ?::text[][]}, which {@code UNNEST} flattens into scalars the column rejects.
      */
-    private boolean hasUnnestUnsupportedField(JdbcSinkRecord record) {
+    private boolean hasUnnestUnsupportedField(TableDescriptor table, JdbcSinkRecord record) {
         return record.jdbcFields().values().stream()
                 .anyMatch(field -> field.getSchema().type() == Schema.Type.STRUCT
-                        || (field.getSchema().type() == Schema.Type.BYTES
-                                && !BinaryHandling.isRawBytesSchema(field.getSchema(), getSchemaType(field.getSchema())))
+                        || (field.getSchema().type() == Schema.Type.BYTES && !resolveBinaryHandling(table, record, field).isEncoded())
                         || field.getSchema().type() == Schema.Type.ARRAY
                         || Enum.LOGICAL_NAME.equals(field.getSchema().name()));
     }
