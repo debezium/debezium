@@ -1926,6 +1926,8 @@ The following options are available:
 `fail`:: Rejects the value.
 `saturate`:: Maps a value below or above the supported range to the nearest target boundary. Different source values can therefore be stored as the same target value.
 
+When xref:jdbc-property-timestamp-clamp-out-of-range-values[`timestamp.clamp.out.of.range.values`] is set to `true`, the connector first clamps a structured timestamp value that is outside the timestamp range of the target database, and applies this option only to the remaining values.
+
 |[[jdbc-property-delete-enabled]]<<jdbc-property-delete-enabled, `+delete.enabled+`>>
 |`false`
 |Specifies whether the connector processes `DELETE` or _tombstone_ events and removes the corresponding row from the database.

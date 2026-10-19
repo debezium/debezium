@@ -6,10 +6,12 @@
 package io.debezium.connector.jdbc.type.debezium;
 
 import java.sql.Types;
+import java.time.DateTimeException;
 import java.time.OffsetDateTime;
 import java.util.List;
 
 import org.apache.kafka.connect.data.Schema;
+import org.apache.kafka.connect.data.Struct;
 
 import io.debezium.connector.jdbc.type.AbstractTimestampType;
 import io.debezium.connector.jdbc.type.JdbcType;
@@ -70,17 +72,21 @@ public class StructuredZonedTimestampType extends AbstractTimestampType {
             return List.of(new ValueBindDescriptor(index, StructuredTemporalSupport.toOffsetDateTime(requireStruct(value)), getJdbcType()));
         }
         final var struct = requireStruct(value);
+        final OffsetDateTime clamped = clampIfOutOfRange(struct);
+        if (clamped != null) {
+            return List.of(new ValueBindDescriptor(index, clamped, getJdbcType()));
+        }
         final var capabilities = getDialect().getTargetTemporalCapabilities();
         StructuredTemporalPreflightValidator.validateZonedTimestamp(struct, capabilities);
-        final OffsetDateTime offsetDateTime = clampIfOutOfRange(StructuredTemporalSupport.toOffsetDateTime(
+        final OffsetDateTime offsetDateTime = StructuredTemporalSupport.toOffsetDateTime(
                 struct, getSchemaTimestampPrecision(schema), getPrecisionLossHandlingMode(),
-                capabilities.targetZonedTimestampRange(null, offsetSeconds(struct)), getRangeLossHandlingMode(), targetDescription(schema)));
+                capabilities.targetZonedTimestampRange(null, offsetSeconds(struct)), getRangeLossHandlingMode(), targetDescription(schema));
         return List.of(new ValueBindDescriptor(index, offsetDateTime, getJdbcType()));
     }
 
     @Override
     public void validate(ColumnDescriptor column, Schema schema, Object value) {
-        if (value != null) {
+        if (value != null && clampIfOutOfRange(requireStruct(value)) == null) {
             final var struct = requireStruct(value);
             final var capabilities = getDialect().getTargetTemporalCapabilities();
             StructuredTemporalPreflightValidator.validateZonedTimestamp(struct, capabilities);
@@ -98,14 +104,39 @@ public class StructuredZonedTimestampType extends AbstractTimestampType {
         if (value == null) {
             return List.of(new ValueBindDescriptor(index, null));
         }
+        final var struct = requireStruct(value);
+        final OffsetDateTime clamped = clampIfOutOfRange(struct);
+        if (clamped != null) {
+            return List.of(new ValueBindDescriptor(index, clamped, getJdbcType()));
+        }
         validate(column, schema, value);
         final int precision = getDialect().getTargetTemporalCapabilities().targetTimestampPrecision(column);
-        final var struct = requireStruct(value);
         final OffsetDateTime offsetDateTime = StructuredTemporalSupport.toOffsetDateTime(
                 struct, precision, getPrecisionLossHandlingMode(),
                 getDialect().getTargetTemporalCapabilities().targetZonedTimestampRange(column, offsetSeconds(struct)),
                 getRangeLossHandlingMode(), targetDescription(column));
         return List.of(new ValueBindDescriptor(index, offsetDateTime, getJdbcType()));
+    }
+
+    /**
+     * Returns the clamped date-time when {@code timestamp.clamp.out.of.range.values} is enabled and the
+     * structured value is a finite, valid calendar value that lies outside the dialect's supported range;
+     * otherwise returns {@code null} so that the value keeps the structured temporal precision and range
+     * handling.
+     */
+    protected OffsetDateTime clampIfOutOfRange(Struct struct) {
+        if (!isClampOutOfRangeValuesEnabled() || !StructuredTemporal.isFinite(struct)) {
+            return null;
+        }
+        final OffsetDateTime offsetDateTime;
+        try {
+            offsetDateTime = StructuredTemporalSupport.toOffsetDateTime(struct);
+        }
+        catch (DateTimeException e) {
+            return null;
+        }
+        final OffsetDateTime clamped = clampIfOutOfRange(offsetDateTime);
+        return clamped.equals(offsetDateTime) ? null : clamped;
     }
 
     private static int offsetSeconds(org.apache.kafka.connect.data.Struct value) {

@@ -70,6 +70,10 @@ public abstract class AbstractTemporalType extends AbstractType {
         return databaseTimeZone;
     }
 
+    protected boolean isClampOutOfRangeValuesEnabled() {
+        return clampOutOfRangeValues;
+    }
+
     /**
      * Clamps the supplied value to the dialect's minimum or maximum supported timestamp when the
      * value lies outside that range and {@code timestamp.clamp.out.of.range.values} is enabled;
