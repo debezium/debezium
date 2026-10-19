@@ -112,9 +112,9 @@ public class GeometryFormatTransformerTest {
     @Test
     public void testTransformPointGeometryWkbToEwkb() {
 
-        assertFormatTransformation(4326, POINT_GEO_WKB_HEX, POINT_GEO_EWKB_HEX);
+        assertFormatTransformation("ewkb", 4326, POINT_GEO_WKB_HEX, POINT_GEO_EWKB_HEX);
 
-        assertNullSridLeftUnchanged(POINT_GEO_WKB_HEX);
+        assertNullSridLeftUnchanged("ewkb", POINT_GEO_WKB_HEX);
 
     }
 
@@ -124,7 +124,7 @@ public class GeometryFormatTransformerTest {
     @Test
     public void testTransformPointGeometryEwkbToWkb() {
 
-        assertFormatTransformation(4326, POINT_GEO_EWKB_HEX, POINT_GEO_WKB_HEX);
+        assertFormatTransformation(null, 4326, POINT_GEO_EWKB_HEX, POINT_GEO_WKB_HEX);
 
     }
 
@@ -134,9 +134,9 @@ public class GeometryFormatTransformerTest {
     @Test
     public void testTransformLineStringWkbToEwkb() {
 
-        assertFormatTransformation(4326, LINE_STRING_GEO_WKB_HEX, LINE_STRING_GEO_EWKB_HEX);
+        assertFormatTransformation("ewkb", 4326, LINE_STRING_GEO_WKB_HEX, LINE_STRING_GEO_EWKB_HEX);
 
-        assertNullSridLeftUnchanged(LINE_STRING_GEO_WKB_HEX);
+        assertNullSridLeftUnchanged("ewkb", LINE_STRING_GEO_WKB_HEX);
     }
 
     /**
@@ -145,7 +145,7 @@ public class GeometryFormatTransformerTest {
     @Test
     public void testTransformLineStringEWkbToWkb() {
 
-        assertFormatTransformation(4326, LINE_STRING_GEO_EWKB_HEX, LINE_STRING_GEO_WKB_HEX);
+        assertFormatTransformation(null, 4326, LINE_STRING_GEO_EWKB_HEX, LINE_STRING_GEO_WKB_HEX);
 
     }
 
@@ -155,9 +155,9 @@ public class GeometryFormatTransformerTest {
     @Test
     public void testTransformPolygonWkbToEwkb() {
 
-        assertFormatTransformation(4326, POLYGON_GEO_WKB_HEX, POLYGON_GEO_EWKB_HEX);
+        assertFormatTransformation("ewkb", 4326, POLYGON_GEO_WKB_HEX, POLYGON_GEO_EWKB_HEX);
 
-        assertNullSridLeftUnchanged(POLYGON_GEO_WKB_HEX);
+        assertNullSridLeftUnchanged("ewkb", POLYGON_GEO_WKB_HEX);
     }
 
     /**
@@ -166,7 +166,7 @@ public class GeometryFormatTransformerTest {
     @Test
     public void testTransformPolygonEWkbToWkb() {
 
-        assertFormatTransformation(4326, POLYGON_GEO_EWKB_HEX, POLYGON_GEO_WKB_HEX);
+        assertFormatTransformation(null, 4326, POLYGON_GEO_EWKB_HEX, POLYGON_GEO_WKB_HEX);
 
     }
 
@@ -176,9 +176,9 @@ public class GeometryFormatTransformerTest {
     @Test
     public void testTransformMultiPolygonWkbToEwkb() {
 
-        assertFormatTransformation(4326, MULTI_POLYGON_GEO_WKB_HEX, MULTI_POLYGON_GEO_EWKB_HEX);
+        assertFormatTransformation("ewkb", 4326, MULTI_POLYGON_GEO_WKB_HEX, MULTI_POLYGON_GEO_EWKB_HEX);
 
-        assertNullSridLeftUnchanged(MULTI_POLYGON_GEO_WKB_HEX);
+        assertNullSridLeftUnchanged("ewkb", MULTI_POLYGON_GEO_WKB_HEX);
     }
 
     /**
@@ -187,7 +187,7 @@ public class GeometryFormatTransformerTest {
     @Test
     public void testTransformMultiPolygonEWkbToWkb() {
 
-        assertFormatTransformation(4326, MULTI_POLYGON_GEO_EWKB_HEX, MULTI_POLYGON_GEO_WKB_HEX);
+        assertFormatTransformation(null, 4326, MULTI_POLYGON_GEO_EWKB_HEX, MULTI_POLYGON_GEO_WKB_HEX);
 
     }
 
@@ -197,9 +197,9 @@ public class GeometryFormatTransformerTest {
     @Test
     public void testTransformPolygonWithMultipleRingsWkbToEwkb() {
 
-        assertFormatTransformation(4326, POLYGON_MULTIPLE_RINGS_GEO_WKB_HEX, POLYGON_MULTIPLE_RINGS_GEO_EWKB_HEX);
+        assertFormatTransformation("ewkb", 4326, POLYGON_MULTIPLE_RINGS_GEO_WKB_HEX, POLYGON_MULTIPLE_RINGS_GEO_EWKB_HEX);
 
-        assertNullSridLeftUnchanged(POLYGON_MULTIPLE_RINGS_GEO_WKB_HEX);
+        assertNullSridLeftUnchanged("ewkb", POLYGON_MULTIPLE_RINGS_GEO_WKB_HEX);
     }
 
     /**
@@ -208,7 +208,7 @@ public class GeometryFormatTransformerTest {
     @Test
     public void testTransformPolygonWithMultipleRingsEWkbToWkb() {
 
-        assertFormatTransformation(4326, POLYGON_MULTIPLE_RINGS_GEO_EWKB_HEX, POLYGON_MULTIPLE_RINGS_GEO_WKB_HEX);
+        assertFormatTransformation(null, 4326, POLYGON_MULTIPLE_RINGS_GEO_EWKB_HEX, POLYGON_MULTIPLE_RINGS_GEO_WKB_HEX);
 
     }
 
@@ -218,9 +218,9 @@ public class GeometryFormatTransformerTest {
     @Test
     public void testTransformMultiLineStringWkbToEwkb() {
 
-        assertFormatTransformation(4326, MULTI_LINE_STRING_GEO_WKB_HEX, MULTI_LINE_STRING_GEO_EWKB_HEX);
+        assertFormatTransformation("ewkb", 4326, MULTI_LINE_STRING_GEO_WKB_HEX, MULTI_LINE_STRING_GEO_EWKB_HEX);
 
-        assertNullSridLeftUnchanged(MULTI_LINE_STRING_GEO_WKB_HEX);
+        assertNullSridLeftUnchanged("ewkb", MULTI_LINE_STRING_GEO_WKB_HEX);
     }
 
     /**
@@ -229,7 +229,7 @@ public class GeometryFormatTransformerTest {
     @Test
     public void testTransformMultiLineStringEWkbToWkb() {
 
-        assertFormatTransformation(4326, MULTI_LINE_STRING_GEO_EWKB_HEX, MULTI_LINE_STRING_GEO_WKB_HEX);
+        assertFormatTransformation(null, 4326, MULTI_LINE_STRING_GEO_EWKB_HEX, MULTI_LINE_STRING_GEO_WKB_HEX);
 
     }
 
@@ -239,9 +239,9 @@ public class GeometryFormatTransformerTest {
     @Test
     public void testTransformGeometryCollectionWkbToEwkb() {
 
-        assertFormatTransformation(4326, GEOMETRY_COLLECTION_WKB_HEX, GEOMETRY_COLLECTION_EWKB_HEX);
+        assertFormatTransformation("ewkb", 4326, GEOMETRY_COLLECTION_WKB_HEX, GEOMETRY_COLLECTION_EWKB_HEX);
 
-        assertNullSridLeftUnchanged(GEOMETRY_COLLECTION_WKB_HEX);
+        assertNullSridLeftUnchanged("ewkb", GEOMETRY_COLLECTION_WKB_HEX);
     }
 
     /**
@@ -250,7 +250,7 @@ public class GeometryFormatTransformerTest {
     @Test
     public void testTransformGeometryCollectionEWkbToWkb() {
 
-        assertFormatTransformation(4326, GEOMETRY_COLLECTION_EWKB_HEX, GEOMETRY_COLLECTION_WKB_HEX);
+        assertFormatTransformation(null, 4326, GEOMETRY_COLLECTION_EWKB_HEX, GEOMETRY_COLLECTION_WKB_HEX);
 
     }
 
@@ -260,9 +260,9 @@ public class GeometryFormatTransformerTest {
     @Test
     public void testTransformMultiPointWkbToEwkb() {
 
-        assertFormatTransformation(4326, MULTI_POINT_GEO_WKB_HEX, MULTI_POINT_GEO_EWKB_HEX);
+        assertFormatTransformation("ewkb", 4326, MULTI_POINT_GEO_WKB_HEX, MULTI_POINT_GEO_EWKB_HEX);
 
-        assertNullSridLeftUnchanged(MULTI_POINT_GEO_WKB_HEX);
+        assertNullSridLeftUnchanged("ewkb", MULTI_POINT_GEO_WKB_HEX);
     }
 
     /**
@@ -271,7 +271,7 @@ public class GeometryFormatTransformerTest {
     @Test
     public void testTransformMultiPointEWkbToWkb() {
 
-        assertFormatTransformation(4326, MULTI_POINT_GEO_EWKB_HEX, MULTI_POINT_GEO_WKB_HEX);
+        assertFormatTransformation(null, 4326, MULTI_POINT_GEO_EWKB_HEX, MULTI_POINT_GEO_WKB_HEX);
 
     }
 
@@ -281,9 +281,9 @@ public class GeometryFormatTransformerTest {
     @Test
     public void testTransformEmptyGeometryWkbToEwkb() {
 
-        assertFormatTransformation(4326, EMPTY_GEOMETRY_WKB_HEX, EMPTY_GEOMETRY_EWKB_HEX);
+        assertFormatTransformation("ewkb", 4326, EMPTY_GEOMETRY_WKB_HEX, EMPTY_GEOMETRY_EWKB_HEX);
 
-        assertNullSridLeftUnchanged(EMPTY_GEOMETRY_WKB_HEX);
+        assertNullSridLeftUnchanged("ewkb", EMPTY_GEOMETRY_WKB_HEX);
     }
 
     /**
@@ -292,19 +292,42 @@ public class GeometryFormatTransformerTest {
     @Test
     public void testTransformEmptyGeometryEWkbToWkb() {
 
-        assertFormatTransformation(4326, EMPTY_GEOMETRY_EWKB_HEX, EMPTY_GEOMETRY_WKB_HEX);
+        assertFormatTransformation(null, 4326, EMPTY_GEOMETRY_EWKB_HEX, EMPTY_GEOMETRY_WKB_HEX);
 
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2904")
+    public void testWkbLeftUnchangedWithDefaultFormat() {
+        assertFormatTransformation(null, 4326, POINT_GEO_WKB_HEX, POINT_GEO_WKB_HEX);
+        assertFormatTransformation(null, 4326, MULTI_POLYGON_GEO_WKB_HEX, MULTI_POLYGON_GEO_WKB_HEX);
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2904")
+    public void testWkbLeftUnchangedWithWkbFormat() {
+        assertFormatTransformation("wkb", 4326, POINT_GEO_WKB_HEX, POINT_GEO_WKB_HEX);
+        assertFormatTransformation("wkb", 4326, POINT_GEO_EWKB_HEX, POINT_GEO_WKB_HEX);
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2904")
+    public void testEwkbLeftUnchangedWithEwkbFormat() {
+        assertFormatTransformation("EWKB", 4326, POINT_GEO_EWKB_HEX, POINT_GEO_EWKB_HEX);
+        assertFormatTransformation("EWKB", 4326, MULTI_POLYGON_GEO_EWKB_HEX, MULTI_POLYGON_GEO_EWKB_HEX);
+        assertFormatTransformation("EWKB", 4326, POINT_GEO_WKB_HEX, POINT_GEO_EWKB_HEX);
     }
 
     /**
      * Helper method to assert that the geometry WKB is converted to EWKB and vice versa for envelop payloads and flattened payloads.
+     * @param format the configured target format, or {@code null} to use the default
      * @param srid spacial reference id
      * @param inputFormatValue  can be WKB or EWKB
      * @param outputFormatValue  can be WKB or EWKB
      */
-    private void assertFormatTransformation(Integer srid, String inputFormatValue, String outputFormatValue) {
-        applyTransformEnvelopePayload(srid, inputFormatValue, outputFormatValue);
-        applyTransformFlattenedPayload(srid, inputFormatValue, outputFormatValue);
+    private void assertFormatTransformation(String format, Integer srid, String inputFormatValue, String outputFormatValue) {
+        applyTransformEnvelopePayload(format, srid, inputFormatValue, outputFormatValue);
+        applyTransformFlattenedPayload(format, srid, inputFormatValue, outputFormatValue);
 
     }
 
@@ -312,22 +335,35 @@ public class GeometryFormatTransformerTest {
      * Helper method to assert that a WKB->EWKB transformation of a geometry with no SRID leaves the value
      * unchanged. Native (non-PostGIS) geometric types carry a null SRID, which EWKB cannot represent, so
      * the transform is a no-op rather than a hard failure.
+     * @param format the configured target format, or {@code null} to use the default
      * @param wkb well-known-binary
      */
-    private void assertNullSridLeftUnchanged(String wkb) {
-        applyTransformEnvelopePayloadUnchanged(wkb);
-        applyTransformFlattenedPayloadUnchanged(wkb);
+    private void assertNullSridLeftUnchanged(String format, String wkb) {
+        applyTransformEnvelopePayloadUnchanged(format, wkb);
+        applyTransformFlattenedPayloadUnchanged(format, wkb);
+    }
+
+    /**
+     * Configures the transformer with the given target format.
+     * @param format the configured target format, or {@code null} to use the default
+     */
+    private void configureTransformer(String format) {
+        final Map<String, String> properties = new HashMap<>();
+        if (format != null) {
+            properties.put("format", format);
+        }
+        geometryFormatTransformer.configure(properties);
     }
 
     /**
      * Helper method to create a SourceRecord with flattened payload.
+     * @param format the configured target format, or {@code null} to use the default
      * @param srid spatial reference id
      * @param inputFormatValue can be WKB or EWKB
      * @return SourceRecord
      */
-    private SourceRecord getFlattenedPayload(Integer srid, String inputFormatValue) {
-        final Map<String, String> properties = new HashMap<>();
-        geometryFormatTransformer.configure(properties);
+    private SourceRecord getFlattenedPayload(String format, Integer srid, String inputFormatValue) {
+        configureTransformer(format);
 
         final byte[] wkbBytes = HexConverter.convertFromHex(inputFormatValue);
         final Struct payload = new Struct(RECORD_SCHEMA);
@@ -345,13 +381,13 @@ public class GeometryFormatTransformerTest {
 
     /**
      * Helper method to create a SourceRecord with envelope payload.
+     * @param format the configured target format, or {@code null} to use the default
      * @param srid spatial reference id
      * @param wkb well-known-binary
      * @return SourceRecord
      */
-    private SourceRecord getEnvelopPayload(Integer srid, String wkb) {
-        final Map<String, String> properties = new HashMap<>();
-        geometryFormatTransformer.configure(properties);
+    private SourceRecord getEnvelopPayload(String format, Integer srid, String wkb) {
+        configureTransformer(format);
 
         final byte[] wkbBytes = HexConverter.convertFromHex(wkb);
 
@@ -382,13 +418,14 @@ public class GeometryFormatTransformerTest {
 
     /**
      * Applies the geometry format transformation to a SourceRecord with flattened payload and asserts the result.
+     * @param format the configured target format, or {@code null} to use the default
      * @param srid spacial reference id
      * @param inputFormatValue can be WKB or EWKB
      * @param expectedOutputFormatValue can be WKB or EWKB
      */
-    private void applyTransformFlattenedPayload(Integer srid, String inputFormatValue, String expectedOutputFormatValue) {
+    private void applyTransformFlattenedPayload(String format, Integer srid, String inputFormatValue, String expectedOutputFormatValue) {
 
-        final SourceRecord record = getFlattenedPayload(srid, inputFormatValue);
+        final SourceRecord record = getFlattenedPayload(format, srid, inputFormatValue);
 
         final SourceRecord transformedRecord = geometryFormatTransformer.apply(record);
 
@@ -406,13 +443,14 @@ public class GeometryFormatTransformerTest {
 
     /**
      * Applies the geometry format transformation to a SourceRecord with envelope payload and asserts the result.
+     * @param format the configured target format, or {@code null} to use the default
      * @param srid spacial reference id
      * @param inputFormatValue can be WKB or EWKB
      * @param outputFormatValue can be WKB or EWKB
      */
-    private void applyTransformEnvelopePayload(Integer srid, String inputFormatValue, String outputFormatValue) {
+    private void applyTransformEnvelopePayload(String format, Integer srid, String inputFormatValue, String outputFormatValue) {
 
-        SourceRecord record = getEnvelopPayload(srid, inputFormatValue);
+        SourceRecord record = getEnvelopPayload(format, srid, inputFormatValue);
 
         final SourceRecord transformedRecord = geometryFormatTransformer.apply(record);
 
@@ -431,10 +469,11 @@ public class GeometryFormatTransformerTest {
     /**
      * Applies the geometry format transformation to a flattened payload whose geometry has no SRID and
      * asserts the WKB is returned unchanged.
+     * @param format the configured target format, or {@code null} to use the default
      * @param wkb well-known-binary
      */
-    private void applyTransformFlattenedPayloadUnchanged(String wkb) {
-        final SourceRecord record = getFlattenedPayload(null, wkb);
+    private void applyTransformFlattenedPayloadUnchanged(String format, String wkb) {
+        final SourceRecord record = getFlattenedPayload(format, null, wkb);
 
         final SourceRecord transformedRecord = geometryFormatTransformer.apply(record);
         final Struct transformedValue = requireStruct(transformedRecord.value(), "value should be a struct");
@@ -447,10 +486,11 @@ public class GeometryFormatTransformerTest {
     /**
      * Applies the geometry format transformation to an envelope payload whose geometry has no SRID and
      * asserts the WKB is returned unchanged.
+     * @param format the configured target format, or {@code null} to use the default
      * @param wkb well-known-binary
      */
-    private void applyTransformEnvelopePayloadUnchanged(String wkb) {
-        final SourceRecord record = getEnvelopPayload(null, wkb);
+    private void applyTransformEnvelopePayloadUnchanged(String format, String wkb) {
+        final SourceRecord record = getEnvelopPayload(format, null, wkb);
 
         final SourceRecord transformedRecord = geometryFormatTransformer.apply(record);
         final Struct transformedValue = requireStruct(transformedRecord.value(), "value should be a struct");
@@ -484,7 +524,7 @@ public class GeometryFormatTransformerTest {
         final Struct geo1 = requireStruct(transformed1.value(), "value should be a struct").getStruct("geo");
         assertThat(HexConverter.convertToHexString(geo1.getBytes(Geometry.WKB_FIELD))).isEqualTo(POINT_GEO_WKB_HEX);
 
-        // Record 2: WKB -> should be converted to EWKB
+        // Record 2: WKB -> should be left unchanged, as WKB is the configured format
         final byte[] wkbBytes2 = HexConverter.convertFromHex(POINT_GEO_WKB_HEX);
         final Struct payload2 = new Struct(RECORD_SCHEMA);
         payload2.put("id", (byte) 2);
@@ -494,7 +534,7 @@ public class GeometryFormatTransformerTest {
 
         final SourceRecord transformed2 = transformer.apply(record2);
         final Struct geo2 = requireStruct(transformed2.value(), "value should be a struct").getStruct("geo");
-        assertThat(HexConverter.convertToHexString(geo2.getBytes(Geometry.WKB_FIELD))).isEqualTo(POINT_GEO_EWKB_HEX);
+        assertThat(HexConverter.convertToHexString(geo2.getBytes(Geometry.WKB_FIELD))).isEqualTo(POINT_GEO_WKB_HEX);
 
         // Record 3: EWKB -> should be converted to WKB again
         final byte[] ewkbBytes3 = HexConverter.convertFromHex(POINT_GEO_EWKB_HEX);
