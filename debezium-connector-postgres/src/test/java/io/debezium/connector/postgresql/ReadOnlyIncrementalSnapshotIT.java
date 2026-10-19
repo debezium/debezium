@@ -9,27 +9,16 @@ import static io.debezium.junit.EqualityCheck.LESS_THAN;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.entry;
 
-import java.time.Duration;
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.Callable;
-import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicReference;
-import java.util.function.BooleanSupplier;
-import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.stream.Collectors;
-import java.util.stream.IntStream;
 
 import org.apache.kafka.connect.data.Struct;
-import org.apache.kafka.connect.source.SourceRecord;
-import org.awaitility.Awaitility;
 import org.junit.jupiter.api.Test;
-import org.slf4j.LoggerFactory;
 
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
@@ -38,7 +27,6 @@ import io.debezium.heartbeat.Heartbeat;
 import io.debezium.jdbc.JdbcConnection;
 import io.debezium.junit.SkipWhenDatabaseVersion;
 import io.debezium.junit.logging.LogInterceptor;
-import io.debezium.pipeline.notification.channels.SinkNotificationChannel;
 import io.debezium.pipeline.signal.actions.AbstractSnapshotSignal;
 import io.debezium.pipeline.signal.actions.snapshotting.ExecuteSnapshot;
 import io.debezium.pipeline.signal.actions.snapshotting.StopSnapshot;
@@ -47,172 +35,11 @@ import io.debezium.pipeline.source.snapshot.incremental.AbstractIncrementalSnaps
 import io.debezium.relational.RelationalDatabaseConnectorConfig;
 import io.debezium.util.Strings;
 
-import ch.qos.logback.classic.Level;
-import ch.qos.logback.classic.Logger;
-import ch.qos.logback.classic.spi.ILoggingEvent;
-import ch.qos.logback.core.UnsynchronizedAppenderBase;
-
 @SkipWhenDatabaseVersion(check = LESS_THAN, major = 13, minor = 0, reason = "Function pg_current_snapshot() not supported until PostgreSQL 13")
 public class ReadOnlyIncrementalSnapshotIT extends IncrementalSnapshotIT {
 
     private final LogInterceptor executeSignalInterceptor = new LogInterceptor(ExecuteSnapshot.class);
     private final LogInterceptor stopSignalInterceptor = new LogInterceptor(StopSnapshot.class);
-
-    @Test
-    @Override
-    @FixFor("debezium/dbz#2806")
-    public void testNotification() throws Exception {
-        final List<SourceRecord> snapshotRecords = new ArrayList<>();
-        final List<SourceRecord> notifications = new ArrayList<>();
-        final Consumer<SourceRecord> collect = record -> {
-            if ("io.debezium.notification".equals(record.topic())) {
-                notifications.add(record);
-            }
-            else if (topicName().equals(record.topic()) && record.value() instanceof Struct value && "r".equals(value.getString("op"))) {
-                snapshotRecords.add(record);
-            }
-        };
-
-        try (var synchronization = new NotificationSynchronization(getWaitDurationInSeconds())) {
-            startConnector(x -> x.with(CommonConnectorConfig.NOTIFICATION_ENABLED_CHANNELS, "sink")
-                    .with(CommonConnectorConfig.INCREMENTAL_SNAPSHOT_CHUNK_SIZE, defaultIncrementalSnapshotChunkSize())
-                    .with(SinkNotificationChannel.NOTIFICATION_TOPIC, "io.debezium.notification"), loggingCompletion(), false);
-            awaitNotificationCheckpoint("streaming ready", synchronization, () -> synchronization.streamingReady.getCount() == 0, collect);
-
-            // Insert after the replication stream is established, but before allowing it to read.
-            // This preserves the insert backlog from the reported failure without racing the first chunk.
-            populateTable();
-            sendAdHocSnapshotSignal();
-            awaitNotificationCheckpoint("first chunk loaded", synchronization, () -> synchronization.firstChunkLoaded.getCount() == 0, collect);
-            synchronization.allowStreaming.countDown();
-
-            // The first window must be emitted and cleared before pause/resume: resume reads the next chunk.
-            awaitNotificationCheckpoint("streaming between chunks", synchronization, () -> synchronization.betweenChunks.getCount() == 0, collect);
-            sendPauseSignal();
-            awaitNotificationCheckpoint("PAUSED notification", synchronization, () -> hasIncrementalNotification(notifications, "PAUSED"), collect);
-            assertThat(hasIncrementalNotification(notifications, "COMPLETED")).isFalse();
-
-            // Let the pending readChunk observe the paused state and take its early-return branch.
-            // Hold it there until resume has finished loading its chunk on the signal thread.
-            synchronization.allowPausedRead.countDown();
-            awaitNotificationCheckpoint("paused chunk read", synchronization, () -> synchronization.pausedRead.getCount() == 0, collect);
-            sendResumeSignal();
-            awaitNotificationCheckpoint("resume chunk loaded", synchronization,
-                    () -> synchronization.resumedChunkLoaded.getCount() == 0 && hasIncrementalNotification(notifications, "RESUMED"), collect);
-            synchronization.allowAfterResume.countDown();
-
-            awaitNotificationCheckpoint("snapshot completed", synchronization, () -> hasIncrementalNotification(notifications, "COMPLETED"), collect);
-            final List<Integer> keys = snapshotRecords.stream()
-                    .map(record -> ((Struct) record.key()).getInt32(pkFieldName()))
-                    .collect(Collectors.toList());
-            assertThat(keys).containsExactlyInAnyOrderElementsOf(IntStream.rangeClosed(1, ROW_COUNT).boxed().collect(Collectors.toList()));
-            assertThat(snapshotRecords).allSatisfy(record -> assertThat(getRecordValue().apply((Struct) record.value()))
-                    .isEqualTo(((Struct) record.key()).getInt32(pkFieldName()) - 1));
-            assertCorrectIncrementalSnapshotNotification(notifications);
-        }
-        finally {
-            stopConnector();
-        }
-    }
-
-    private void awaitNotificationCheckpoint(String description, NotificationSynchronization synchronization, BooleanSupplier reached,
-                                             Consumer<SourceRecord> collect) {
-        Awaitility.await(description).atMost(getWaitDurationInSeconds()).pollInterval(Duration.ofMillis(10)).until(() -> {
-            consumeAvailableRecords(collect);
-            assertThat(synchronization.failure.get()).as("Snapshot notification synchronization").isNull();
-            return reached.getAsBoolean();
-        });
-    }
-
-    private static boolean hasIncrementalNotification(List<SourceRecord> notifications, String type) {
-        return notifications.stream().map(record -> (Struct) record.value())
-                .anyMatch(value -> "Incremental Snapshot".equals(value.getString("aggregate_type")) && type.equals(value.getString("type")));
-    }
-
-    /**
-     * Coordinates real Kafka signals and WAL processing using log-triggered latches,
-     * An unsynchronized appender is needed:
-     * holding LogInterceptor's appender monitor would also block the signal thread.
-     */
-    private static class NotificationSynchronization extends UnsynchronizedAppenderBase<ILoggingEvent> implements AutoCloseable {
-        private final Logger streamingLogger = (Logger) LoggerFactory.getLogger(PostgresStreamingChangeEventSource.class);
-        private final Logger snapshotLogger = (Logger) LoggerFactory.getLogger(AbstractIncrementalSnapshotChangeEventSource.class);
-        private final Level previousStreamingLevel = streamingLogger.getLevel();
-        private final Level previousSnapshotLevel = snapshotLogger.getLevel();
-        private final Duration timeout;
-        private final CountDownLatch streamingReady = new CountDownLatch(1);
-        private final CountDownLatch firstChunkLoaded = new CountDownLatch(1);
-        private final CountDownLatch betweenChunks = new CountDownLatch(1);
-        private final CountDownLatch pausedRead = new CountDownLatch(1);
-        private final CountDownLatch resumedChunkLoaded = new CountDownLatch(1);
-        private final CountDownLatch allowStreaming = new CountDownLatch(1);
-        private final CountDownLatch allowPausedRead = new CountDownLatch(1);
-        private final CountDownLatch allowAfterResume = new CountDownLatch(1);
-        private final AtomicBoolean firstStreamingChunk = new AtomicBoolean(true);
-        private final AtomicReference<Throwable> failure = new AtomicReference<>();
-        private volatile Thread streamingThread;
-
-        private NotificationSynchronization(Duration timeout) {
-            this.timeout = timeout;
-            start();
-            streamingLogger.setLevel(Level.INFO);
-            snapshotLogger.setLevel(Level.TRACE);
-            streamingLogger.addAppender(this);
-            snapshotLogger.addAppender(this);
-        }
-
-        @Override
-        protected void append(ILoggingEvent event) {
-            if (streamingLogger.getName().equals(event.getLoggerName()) && "Processing messages".equals(event.getMessage())) {
-                streamingThread = Thread.currentThread();
-                streamingReady.countDown();
-                awaitGate(allowStreaming, "first chunk before streaming");
-            }
-            else if (snapshotLogger.getName().equals(event.getLoggerName())) {
-                if ("Window close emitted".equals(event.getMessage()) && Thread.currentThread() != streamingThread) {
-                    if (firstChunkLoaded.getCount() != 0) {
-                        firstChunkLoaded.countDown();
-                    }
-                    else {
-                        resumedChunkLoaded.countDown();
-                    }
-                }
-                else if ("Reading chunk".equals(event.getMessage()) && Thread.currentThread() == streamingThread
-                        && firstStreamingChunk.compareAndSet(true, false)) {
-                    betweenChunks.countDown();
-                    awaitGate(allowPausedRead, "pause notification before next chunk");
-                }
-                else if ("Incremental snapshot was paused.".equals(event.getMessage()) && Thread.currentThread() == streamingThread) {
-                    pausedRead.countDown();
-                    awaitGate(allowAfterResume, "resume chunk before streaming continues");
-                }
-            }
-        }
-
-        private void awaitGate(CountDownLatch gate, String description) {
-            try {
-                if (!gate.await(timeout.toMillis(), TimeUnit.MILLISECONDS)) {
-                    failure.compareAndSet(null, new IllegalStateException("Timed out waiting for " + description));
-                }
-            }
-            catch (InterruptedException e) {
-                Thread.currentThread().interrupt();
-                failure.compareAndSet(null, e);
-            }
-        }
-
-        @Override
-        public void close() {
-            streamingLogger.detachAppender(this);
-            snapshotLogger.detachAppender(this);
-            allowStreaming.countDown();
-            allowPausedRead.countDown();
-            allowAfterResume.countDown();
-            stop();
-            streamingLogger.setLevel(previousStreamingLevel);
-            snapshotLogger.setLevel(previousSnapshotLevel);
-        }
-    }
 
     @Override
     protected Configuration.Builder config() {
