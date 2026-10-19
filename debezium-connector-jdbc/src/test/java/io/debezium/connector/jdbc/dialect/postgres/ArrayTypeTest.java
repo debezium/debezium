@@ -18,6 +18,7 @@ import java.util.stream.Stream;
 import org.apache.kafka.connect.data.Decimal;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
+import org.apache.kafka.connect.errors.ConnectException;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
@@ -84,9 +85,8 @@ class ArrayTypeTest {
         final Schema schema = SchemaBuilder.array(SchemaBuilder.array(Schema.OPTIONAL_INT32_SCHEMA).build()).build();
 
         assertThatThrownBy(() -> arrayType.bind(1, schema, List.of(List.of(1), List.of(2, 3))))
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("ragged")
-                .hasMessageContaining("rectangular");
+                .isInstanceOf(ConnectException.class)
+                .hasMessageContaining("Multidimensional array must have sub-arrays with matching dimensions");
     }
 
     @Test
@@ -111,7 +111,7 @@ class ArrayTypeTest {
         final List<Object> value = Arrays.asList(List.of(1), null);
 
         assertThatThrownBy(() -> arrayType.bind(1, schema, value))
-                .isInstanceOf(IllegalArgumentException.class)
+                .isInstanceOf(ConnectException.class)
                 .hasMessageContaining("null inner array");
     }
 
