@@ -241,10 +241,12 @@ public class ParallelIncrementalSnapshotCoordinator<P extends Partition, T exten
 
     /**
      * Returns the window buffer of an active table, creating it on first use. Tables without a worker get no buffer,
-     * see {@link #windowBufferFor}.
+     * see {@link #windowBufferFor}. The buffer keeps the key order of the rows and is synchronized because a round
+     * started by a signal on the signal processor thread fills it while the streaming thread deduplicates or drains
+     * it; iterations must hold its monitor.
      */
     public Map<Struct, Object[]> getWindowBuffer(T dataCollectionId) {
-        return windowBuffers.computeIfAbsent(dataCollectionId, k -> new LinkedHashMap<>());
+        return windowBuffers.computeIfAbsent(dataCollectionId, k -> Collections.synchronizedMap(new LinkedHashMap<>()));
     }
 
     /**

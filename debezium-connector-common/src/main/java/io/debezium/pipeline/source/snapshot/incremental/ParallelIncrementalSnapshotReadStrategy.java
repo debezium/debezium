@@ -87,19 +87,23 @@ public class ParallelIncrementalSnapshotReadStrategy<P extends Partition, T exte
         for (Map.Entry<T, Map<Struct, Object[]>> entry : buffers.entrySet()) {
             final T tableId = entry.getKey();
             final Map<Struct, Object[]> tableWindow = entry.getValue();
-            if (tableWindow.isEmpty()) {
-                continue;
+            final List<Object[]> rows;
+            synchronized (tableWindow) {
+                if (tableWindow.isEmpty()) {
+                    continue;
+                }
+                rows = new ArrayList<>(tableWindow.values());
+                tableWindow.clear();
             }
             // The key goes into the worker context before the dispatch: the offset of the record is captured
             // inside the sink and must name the record's own key as its restart point.
             final TableSnapshotWorker<P, T> worker = coordinator.getActiveWorkers().get(tableId);
-            for (Object[] row : tableWindow.values()) {
+            for (Object[] row : rows) {
                 if (worker != null) {
                     worker.getContext().sendEvent(worker.keyOf(row));
                 }
                 sink.send(partition, offsetContext, tableId, row);
             }
-            tableWindow.clear();
         }
         offsetContext.postSnapshotCompletion();
     }
