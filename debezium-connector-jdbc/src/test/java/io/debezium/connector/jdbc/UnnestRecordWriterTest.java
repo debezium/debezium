@@ -47,6 +47,7 @@ class UnnestRecordWriterTest extends AbstractBaseJdbcSinkTest {
         SharedSessionContract session = mock(SharedSessionContract.class);
         DatabaseDialect dialect = mock(DatabaseDialect.class);
         JdbcSinkConnectorConfig config = getConfig(Map.of(
+                JdbcSinkConnectorConfig.CONNECTION_URL, "jdbc:postgresql://",
                 JdbcSinkConnectorConfig.INSERT_MODE, "insert",
                 JdbcSinkConnectorConfig.POSTGRES_UNNEST_INSERT, "true"));
 
@@ -80,6 +81,7 @@ class UnnestRecordWriterTest extends AbstractBaseJdbcSinkTest {
         SharedSessionContract session = mock(SharedSessionContract.class);
         DatabaseDialect dialect = mock(DatabaseDialect.class);
         JdbcSinkConnectorConfig config = getConfig(Map.of(
+                JdbcSinkConnectorConfig.CONNECTION_URL, "jdbc:postgresql://",
                 JdbcSinkConnectorConfig.INSERT_MODE, "insert",
                 JdbcSinkConnectorConfig.POSTGRES_UNNEST_INSERT, "true"));
 
@@ -113,6 +115,7 @@ class UnnestRecordWriterTest extends AbstractBaseJdbcSinkTest {
         SharedSessionContract session = mock(SharedSessionContract.class);
         DatabaseDialect dialect = mock(DatabaseDialect.class);
         JdbcSinkConnectorConfig config = getConfig(Map.of(
+                JdbcSinkConnectorConfig.CONNECTION_URL, "jdbc:postgresql://",
                 JdbcSinkConnectorConfig.INSERT_MODE, "insert",
                 JdbcSinkConnectorConfig.POSTGRES_UNNEST_INSERT, "true"));
 
@@ -187,6 +190,7 @@ class UnnestRecordWriterTest extends AbstractBaseJdbcSinkTest {
         SharedSessionContract session = mock(SharedSessionContract.class);
         DatabaseDialect dialect = mock(DatabaseDialect.class);
         JdbcSinkConnectorConfig config = getConfig(Map.of(
+                JdbcSinkConnectorConfig.CONNECTION_URL, "jdbc:postgresql://",
                 JdbcSinkConnectorConfig.INSERT_MODE, "insert",
                 JdbcSinkConnectorConfig.POSTGRES_UNNEST_INSERT, "true"));
 
