@@ -5,7 +5,9 @@
  */
 package io.debezium.relational;
 
+import java.util.Collections;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -21,8 +23,6 @@ import io.debezium.annotation.ThreadSafe;
 import io.debezium.function.Predicates;
 import io.debezium.schema.DataCollectionFilters.DataCollectionFilter;
 import io.debezium.schema.DatabaseSchema;
-import io.debezium.util.BoundedConcurrentHashMap;
-import io.debezium.util.BoundedConcurrentHashMap.Eviction;
 import io.debezium.util.Collect;
 import io.debezium.util.FunctionalReadWriteLock;
 import io.debezium.util.Interner;
@@ -105,17 +105,22 @@ public final class Tables {
         }
 
         private final TableFilter delegate;
-        private static final int EXCLUDED_CONCURRENCY = 16;
-
         private final Set<CacheKey> included = ConcurrentHashMap.newKeySet();
         private final Map<CacheKey, Boolean> excluded;
 
         CachingTableFilter(TableFilter delegate, int maxExcluded) {
             this.delegate = Objects.requireNonNull(delegate);
             // a snapshot asks about every table on the server, so the excluded decisions can be bounded
-            this.excluded = maxExcluded > 0
-                    ? new BoundedConcurrentHashMap<>(maxExcluded, EXCLUDED_CONCURRENCY, Eviction.LRU)
-                    : new ConcurrentHashMap<>();
+            this.excluded = maxExcluded > 0 ? Collections.synchronizedMap(newLruMap(maxExcluded)) : new ConcurrentHashMap<>();
+        }
+
+        private static Map<CacheKey, Boolean> newLruMap(int maxSize) {
+            return new LinkedHashMap<>(16, 0.75f, true) {
+                @Override
+                protected boolean removeEldestEntry(Map.Entry<CacheKey, Boolean> eldest) {
+                    return size() > maxSize;
+                }
+            };
         }
 
         @Override

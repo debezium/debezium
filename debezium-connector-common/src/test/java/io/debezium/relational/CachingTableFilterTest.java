@@ -62,7 +62,7 @@ public class CachingTableFilterTest {
 
     @Test
     @FixFor("debezium/dbz#2874")
-    public void shouldKeepAnExcludedDecisionThatIsAskedForAgain() {
+    public void shouldRefreshAnExcludedDecisionWhenItIsAskedForAgain() {
         final TableId hot = new TableId("db", null, "hot");
         final TableId cold = new TableId("db", null, "cold");
         filter.isIncluded(hot);
