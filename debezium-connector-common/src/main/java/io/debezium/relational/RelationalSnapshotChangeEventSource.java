@@ -771,7 +771,7 @@ public abstract class RelationalSnapshotChangeEventSource<P extends Partition, O
     protected List<Column> getKeyColumnsForChunking(Table table) {
         final Key.KeyMapper keyMapper = connectorConfig.getKeyMapper();
         if (keyMapper != null) {
-            final List<Column> customKeys = keyMapper.getKeyKolumns(table);
+            final List<Column> customKeys = keyMapper.getKeyColumns(table);
             if (!customKeys.isEmpty()) {
                 return customKeys;
             }
@@ -1217,7 +1217,7 @@ public abstract class RelationalSnapshotChangeEventSource<P extends Partition, O
         final Key.KeyMapper keyMapper = connectorConfig.getKeyMapper() != null
                 ? connectorConfig.getKeyMapper()
                 : Table::primaryKeyColumns;
-        final Set<String> keyColumnNames = keyMapper.getKeyKolumns(table).stream()
+        final Set<String> keyColumnNames = keyMapper.getKeyColumns(table).stream()
                 .map(Column::name)
                 .collect(Collectors.toSet());
         return table.retrieveColumnNames()
