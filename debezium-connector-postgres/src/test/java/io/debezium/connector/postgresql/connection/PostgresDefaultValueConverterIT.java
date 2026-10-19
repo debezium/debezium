@@ -10,6 +10,9 @@ import static io.debezium.connector.postgresql.TestHelper.defaultJdbcConfig;
 import java.nio.charset.Charset;
 import java.sql.SQLException;
 import java.sql.Types;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
 import java.util.Optional;
 
 import org.junit.jupiter.api.AfterEach;
@@ -121,6 +124,31 @@ public class PostgresDefaultValueConverterIT {
                 textColumn.defaultValueExpression().orElse(null));
 
         Assertions.assertEquals(Optional.of("can't"), convertedValue);
+    }
+
+    @Test
+    @FixFor("debezium/dbz#1269")
+    public void shouldParseTextAndVarcharArrayDefaults() {
+        Column textArrayColumn = Column.editor().type("_text").jdbcType(Types.ARRAY).defaultValueExpression("'{a,b}'::text[]").create();
+        Optional<Object> textArrConvertedValue = postgresDefaultValueConverter.parseDefaultValue(
+                textArrayColumn,
+                textArrayColumn.defaultValueExpression().orElse(null));
+        Assertions.assertTrue(textArrConvertedValue.isPresent());
+        Assertions.assertEquals(List.of("a", "b"), textArrConvertedValue.get());
+
+        textArrayColumn = Column.editor().type("_text").jdbcType(Types.ARRAY).defaultValueExpression("'{}'::text[]").create();
+        textArrConvertedValue = postgresDefaultValueConverter.parseDefaultValue(
+                textArrayColumn,
+                textArrayColumn.defaultValueExpression().orElse(null));
+        Assertions.assertTrue(textArrConvertedValue.isPresent());
+        Assertions.assertEquals(Collections.emptyList(), textArrConvertedValue.get());
+
+        Column varcharArrayColumn = Column.editor().type("_varchar").jdbcType(Types.ARRAY).defaultValueExpression("'{a,b}'::varchar[]").create();
+        Optional<Object> varcharArrConvertedValue = postgresDefaultValueConverter.parseDefaultValue(
+                varcharArrayColumn,
+                varcharArrayColumn.defaultValueExpression().orElse(null));
+        Assertions.assertTrue(varcharArrConvertedValue.isPresent());
+        Assertions.assertEquals(Arrays.asList("a", "b"), varcharArrConvertedValue.get());
     }
 
 }
