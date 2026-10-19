@@ -103,7 +103,7 @@ public class PostgresDatabaseDialect extends GeneralDatabaseDialect {
 
     @Override
     public String getAlterTableColumnPrefix() {
-        return "ADD COLUMN ";
+        return "ADD COLUMN IF NOT EXISTS";
     }
 
     @Override
