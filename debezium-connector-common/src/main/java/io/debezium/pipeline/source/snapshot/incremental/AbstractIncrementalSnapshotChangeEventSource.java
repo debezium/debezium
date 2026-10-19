@@ -112,7 +112,7 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<P extends Par
 
     @Override
     @SuppressWarnings("unchecked")
-    public void closeWindow(P partition, String id, OffsetContext offsetContext) throws InterruptedException {
+    public synchronized void closeWindow(P partition, String id, OffsetContext offsetContext) throws InterruptedException {
         context = (IncrementalSnapshotContext<T>) offsetContext.getIncrementalSnapshotContext();
         LOGGER.trace("Closing Window {}", maybeRedactSensitiveData(context));
         if (!context.closeWindow(id)) {
@@ -123,7 +123,7 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<P extends Par
     }
 
     @Override
-    public void pauseSnapshot(P partition, OffsetContext offsetContext) {
+    public synchronized void pauseSnapshot(P partition, OffsetContext offsetContext) {
         context = (IncrementalSnapshotContext<T>) offsetContext.getIncrementalSnapshotContext();
         if (context.snapshotRunning() && !context.isSnapshotPaused()) {
             context.pauseSnapshot();
@@ -133,7 +133,7 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<P extends Par
     }
 
     @Override
-    public void resumeSnapshot(P partition, OffsetContext offsetContext) throws InterruptedException {
+    public synchronized void resumeSnapshot(P partition, OffsetContext offsetContext) throws InterruptedException {
         context = (IncrementalSnapshotContext<T>) offsetContext.getIncrementalSnapshotContext();
         if (context.snapshotRunning() && context.isSnapshotPaused()) {
             context.resumeSnapshot();
@@ -144,7 +144,7 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<P extends Par
     }
 
     @Override
-    public void processSchemaChange(P partition, OffsetContext offsetContext, DataCollectionId dataCollectionId) throws InterruptedException {
+    public synchronized void processSchemaChange(P partition, OffsetContext offsetContext, DataCollectionId dataCollectionId) throws InterruptedException {
         context = (IncrementalSnapshotContext<T>) offsetContext.getIncrementalSnapshotContext();
         if (dataCollectionId != null && (context.currentDataCollectionId() != null) &&
                 dataCollectionId.equals(context.currentDataCollectionId().getId())) {
@@ -152,7 +152,7 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<P extends Par
         }
     }
 
-    public void rereadChunk(P partition, OffsetContext offsetContext) throws InterruptedException {
+    public synchronized void rereadChunk(P partition, OffsetContext offsetContext) throws InterruptedException {
         if (context == null) {
             return;
         }
@@ -221,7 +221,7 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<P extends Par
 
     @Override
     @SuppressWarnings("unchecked")
-    public void init(P partition, OffsetContext offsetContext) {
+    public synchronized void init(P partition, OffsetContext offsetContext) {
         if (offsetContext == null) {
             LOGGER.info("Empty incremental snapshot change event source started, no action needed");
             postIncrementalSnapshotCompleted();
@@ -245,7 +245,7 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<P extends Par
         LOGGER.info("Incremental snapshot in progress, loading of initial chunk completed");
     }
 
-    protected void readChunk(P partition, OffsetContext offsetContext) throws InterruptedException {
+    protected synchronized void readChunk(P partition, OffsetContext offsetContext) throws InterruptedException {
 
         LOGGER.trace("Reading chunk");
         checkAndProcessStopFlag(partition, offsetContext);
@@ -499,7 +499,7 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<P extends Par
 
     @Override
     @SuppressWarnings("unchecked")
-    public void addDataCollectionNamesToSnapshot(SignalPayload<P> signalPayload, SnapshotConfiguration snapshotConfiguration)
+    public synchronized void addDataCollectionNamesToSnapshot(SignalPayload<P> signalPayload, SnapshotConfiguration snapshotConfiguration)
             throws InterruptedException {
 
         final OffsetContext offsetContext = signalPayload.offsetContext;
@@ -590,7 +590,7 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<P extends Par
 
     @Override
     @SuppressWarnings("unchecked")
-    public void requestStopSnapshot(P partition, OffsetContext offsetContext, Map<String, Object> additionalData, List<String> dataCollectionIds) {
+    public synchronized void requestStopSnapshot(P partition, OffsetContext offsetContext, Map<String, Object> additionalData, List<String> dataCollectionIds) {
         context = (IncrementalSnapshotContext<T>) offsetContext.getIncrementalSnapshotContext();
         context.requestSnapshotStop(dataCollectionIds);
     }
@@ -841,7 +841,7 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<P extends Par
         return fieldValue instanceof ValueWrapper<?> ? ((ValueWrapper<Object>) fieldValue).getWrappedValue() : fieldValue;
     }
 
-    protected void setContext(IncrementalSnapshotContext<T> context) {
+    protected synchronized void setContext(IncrementalSnapshotContext<T> context) {
         this.context = context;
     }
 

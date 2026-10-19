@@ -64,7 +64,7 @@ public abstract class BinlogReadOnlyIncrementalSnapshotChangeEventSource<P exten
     }
 
     @Override
-    public void processMessage(P partition, DataCollectionId dataCollectionId, Object key, OffsetContext offsetContext)
+    public synchronized void processMessage(P partition, DataCollectionId dataCollectionId, Object key, OffsetContext offsetContext)
             throws InterruptedException {
         if (getContext() == null) {
             LOGGER.warn("Context is null, skipping message processing");
@@ -83,15 +83,11 @@ public abstract class BinlogReadOnlyIncrementalSnapshotChangeEventSource<P exten
 
     @Override
     public void processHeartbeat(P partition, OffsetContext offsetContext) throws InterruptedException {
-        if (getContext() == null) {
-            LOGGER.warn("Context is null, skipping message processing");
-            return;
-        }
         readUntilGtidChange(partition, offsetContext);
     }
 
     @Override
-    public void processFilteredEvent(P partition, OffsetContext offsetContext) throws InterruptedException {
+    public synchronized void processFilteredEvent(P partition, OffsetContext offsetContext) throws InterruptedException {
         if (getContext() == null) {
             LOGGER.warn("Context is null, skipping message processing");
             return;
@@ -104,7 +100,7 @@ public abstract class BinlogReadOnlyIncrementalSnapshotChangeEventSource<P exten
     }
 
     @Override
-    public void processTransactionStartedEvent(P partition, OffsetContext offsetContext) throws InterruptedException {
+    public synchronized void processTransactionStartedEvent(P partition, OffsetContext offsetContext) throws InterruptedException {
         if (getContext() == null) {
             LOGGER.warn("Context is null, skipping message processing");
             return;
@@ -118,10 +114,6 @@ public abstract class BinlogReadOnlyIncrementalSnapshotChangeEventSource<P exten
 
     @Override
     public void processTransactionCommittedEvent(P partition, OffsetContext offsetContext) throws InterruptedException {
-        if (getContext() == null) {
-            LOGGER.warn("Context is null, skipping message processing");
-            return;
-        }
         readUntilGtidChange(partition, offsetContext);
     }
 
@@ -166,15 +158,30 @@ public abstract class BinlogReadOnlyIncrementalSnapshotChangeEventSource<P exten
     }
 
     private void readUntilGtidChange(P partition, OffsetContext offsetContext) throws InterruptedException {
-        String currentGtid = getContext().getCurrentGtid(offsetContext);
-        while (getContext().snapshotRunning() && getContext().reachedHighWatermark(currentGtid)) {
-            getContext().closeWindow();
-            sendWindowEvents(partition, offsetContext);
-            readChunk(partition, offsetContext);
-            if (currentGtid == null && getContext().watermarksChanged()) {
+        final String currentGtid;
+        synchronized (this) {
+            if (getContext() == null) {
+                LOGGER.warn("Context is null, skipping message processing");
                 return;
             }
+            currentGtid = getContext().getCurrentGtid(offsetContext);
         }
+        while (readNextChunk(partition, offsetContext, currentGtid)) {
+            // Allow control signals to run between complete chunk transitions.
+        }
+    }
+
+    private synchronized boolean readNextChunk(P partition, OffsetContext offsetContext, String currentGtid) throws InterruptedException {
+        if (getContext() == null || !getContext().snapshotRunning() || !getContext().reachedHighWatermark(currentGtid)) {
+            return false;
+        }
+        getContext().closeWindow();
+        sendWindowEvents(partition, offsetContext);
+        readChunk(partition, offsetContext);
+        if (currentGtid == null && getContext().watermarksChanged()) {
+            return false;
+        }
+        return true;
     }
 
     private void updateLowWatermark() {
