@@ -629,6 +629,19 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
                     + "'. " +
                     "Defaults to '" + LogicalDecoder.DECODERBUFS.getValue() + "'.");
 
+    public static final Field PGOUTPUT_BINARY = Field.create("plugin.pgoutput.binary")
+            .withDisplayName("PgOutput Binary Mode")
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTION_ADVANCED_REPLICATION))
+            .withType(Type.BOOLEAN)
+            .withDefault(false)
+            .withWidth(Width.MEDIUM)
+            .withImportance(Importance.MEDIUM)
+            .withDescription("""
+                    If true, `pgoutput` decoder plugin will be configured to use the binary mode. If false, the plugin
+                    will use the default text mode.
+                    Defaults to `false`
+                    """);
+
     public static final Field SLOT_NAME = Field.create("slot.name")
             .withDisplayName("Slot")
             .withType(Type.STRING)
@@ -1437,6 +1450,10 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
         return getConfig().getString(SLOT_NAME);
     }
 
+    public boolean pgoutputBinaryMode() {
+        return getConfig().getBoolean(PGOUTPUT_BINARY);
+    }
+
     protected boolean dropSlotOnStop() {
         return getConfig().getBoolean(DROP_SLOT_ON_STOP);
     }
@@ -1501,7 +1518,7 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
         return intervalHandlingMode;
     }
 
-    protected boolean includeUnknownDatatypes() {
+    public boolean includeUnknownDatatypes() {
         return getConfig().getBoolean(INCLUDE_UNKNOWN_DATATYPES);
     }
 
@@ -1578,7 +1595,8 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
             .group(Field.Group.CONNECTION, HOSTNAME, PORT, USER, PASSWORD, DATABASE_NAME, QUERY_TIMEOUT_MS)
             .group(Field.Group.CONNECTION_ADVANCED, ON_CONNECT_STATEMENTS, TCP_KEEPALIVE)
             .group(Field.Group.CONNECTION_ADVANCED_SSL, SSL_MODE, SSL_CLIENT_CERT, SSL_CLIENT_KEY, SSL_CLIENT_KEY_PASSWORD, SSL_ROOT_CERT, SSL_SOCKET_FACTORY)
-            .group(Field.Group.CONNECTION_ADVANCED_REPLICATION, PLUGIN_NAME, SLOT_NAME, PUBLICATION_NAME, PUBLICATION_AUTOCREATE_MODE, REPLICA_IDENTITY_AUTOSET_VALUES,
+            .group(Field.Group.CONNECTION_ADVANCED_REPLICATION, PLUGIN_NAME, PGOUTPUT_BINARY, SLOT_NAME, PUBLICATION_NAME, PUBLICATION_AUTOCREATE_MODE,
+                    REPLICA_IDENTITY_AUTOSET_VALUES,
                     DROP_SLOT_ON_STOP, CREATE_FAIL_OVER_SLOT, STREAM_PARAMS, MAX_RETRIES, RETRY_DELAY_MS, STATUS_UPDATE_INTERVAL_MS, LSN_FLUSH_TIMEOUT_MS,
                     LSN_FLUSH_TIMEOUT_ACTION, XMIN_FETCH_INTERVAL)
             .group(Field.Group.CONNECTOR, HSTORE_HANDLING_MODE, BINARY_HANDLING_MODE, SCHEMA_NAME_ADJUSTMENT_MODE, INTERVAL_HANDLING_MODE,

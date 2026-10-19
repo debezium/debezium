@@ -156,4 +156,8 @@ public abstract class AbstractReplicationMessageColumn implements ReplicationMes
         }
         return typeMetadata;
     }
+
+    public String getTypeWithModifiers() {
+        return this.typeWithModifiers;
+    }
 }

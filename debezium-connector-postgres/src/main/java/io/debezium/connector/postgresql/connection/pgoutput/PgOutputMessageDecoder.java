@@ -7,7 +7,6 @@ package io.debezium.connector.postgresql.connection.pgoutput;
 
 import static java.util.stream.Collectors.toMap;
 
-import java.nio.BufferUnderflowException;
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 import java.sql.DatabaseMetaData;
@@ -26,6 +25,7 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.function.Function;
 
+import org.postgresql.core.BaseConnection;
 import org.postgresql.replication.fluent.logical.ChainedLogicalStreamBuilder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -70,6 +70,9 @@ public class PgOutputMessageDecoder extends AbstractMessageDecoder {
 
     private final MessageDecoderContext decoderContext;
     private final PostgresConnection connection;
+
+    private final AttributeDecoder textAttributeDecoder = AttributeDecoder.ofText();
+    private final AttributeDecoder binaryAttributeDecoder = AttributeDecoder.ofBinary();
 
     private Instant commitTimestamp;
 
@@ -199,6 +202,8 @@ public class PgOutputMessageDecoder extends AbstractMessageDecoder {
             LOGGER.trace("Message arrived from database {}", HexConverter.convertToHexString(content));
         }
 
+        requireHeapBuffer(buffer);
+
         final MessageType messageType = MessageType.forType((char) buffer.get());
         switch (messageType) {
             case BEGIN:
@@ -241,12 +246,29 @@ public class PgOutputMessageDecoder extends AbstractMessageDecoder {
 
     @Override
     public ChainedLogicalStreamBuilder defaultOptions(ChainedLogicalStreamBuilder builder, Function<Integer, Boolean> hasMinimumServerVersion) {
-        builder = builder.withSlotOption("proto_version", 1)
-                .withSlotOption("publication_names", decoderContext.getConfig().publicationName());
+        builder = builder.withSlotOption("publication_names", this.decoderContext.getConfig().publicationName());
 
-        // DBZ-4374 Use enum once the driver got updated
         if (hasMinimumServerVersion.apply(140000)) {
-            builder = builder.withSlotOption("messages", true);
+            builder = builder
+                    // DBZ-4374 Use enum once the driver got updated
+                    .withSlotOption("messages", true);
+
+            if (this.decoderContext.getConfig().pgoutputBinaryMode()) {
+                builder = builder
+                        // Binary is supported on in version 2+ of the pgoutput protocol.
+                        .withSlotOption("proto_version", 2)
+                        // Switch to binary wire format
+                        .withSlotOption("binary", true);
+            }
+            else {
+                builder = builder.withSlotOption("proto_version", 1);
+            }
+        }
+        else {
+            if (this.decoderContext.getConfig().pgoutputBinaryMode()) {
+                throw new DebeziumException("pgoutput binary mode require at least Postgres Server version 14.");
+            }
+            builder = builder.withSlotOption("proto_version", 1);
         }
 
         return builder;
@@ -729,7 +751,7 @@ public class PgOutputMessageDecoder extends AbstractMessageDecoder {
      * @param buffer The replication stream buffer
      * @return string read from the replication stream
      */
-    private static String readString(ByteBuffer buffer) {
+    static String readString(final ByteBuffer buffer) {
         requireHeapBuffer(buffer);
 
         final var position = buffer.position();
@@ -742,28 +764,6 @@ public class PgOutputMessageDecoder extends AbstractMessageDecoder {
                 buffer.arrayOffset() + position,
                 buffer.position() - position - 1,
                 StandardCharsets.UTF_8);
-    }
-
-    /**
-     * Reads the replication stream where the column stream specifies a length followed by the value.
-     *
-     * @param buffer The replication stream buffer
-     * @return the column value as a string read from the replication stream
-     */
-    private static String readColumnValueAsString(ByteBuffer buffer) {
-        requireHeapBuffer(buffer);
-
-        final var length = buffer.getInt();
-        if (length < 0 || length > buffer.remaining()) {
-            throw new BufferUnderflowException();
-        }
-
-        final var value = new String(buffer.array(),
-                buffer.arrayOffset() + buffer.position(),
-                length,
-                StandardCharsets.UTF_8);
-        buffer.position(buffer.position() + length);
-        return value;
     }
 
     private static void requireHeapBuffer(ByteBuffer buffer) {
@@ -783,7 +783,7 @@ public class PgOutputMessageDecoder extends AbstractMessageDecoder {
      * @param table The database table
      * @return list of replication message columns
      */
-    private static List<Column> resolveColumnsFromStreamTupleData(ByteBuffer buffer, TypeRegistry typeRegistry, Table table) {
+    private List<Column> resolveColumnsFromStreamTupleData(final ByteBuffer buffer, final TypeRegistry typeRegistry, final Table table) {
         // Read number of the columns
         short numberOfColumns = buffer.getShort();
 
@@ -803,21 +803,20 @@ public class PgOutputMessageDecoder extends AbstractMessageDecoder {
             // 't' : Value is represented as text
             // 'u' : An unchanged TOAST-ed value, actual value is not sent.
             // 'n' : Value is null.
-            char type = (char) buffer.get();
+            final var type = (char) buffer.get();
             if (type == 't') {
-                final String valueStr = readColumnValueAsString(buffer);
-                replicationMessageColumn = new AbstractReplicationMessageColumn(columnName, columnType, typeExpression, optional) {
-                    @Override
-                    public Object getValue(PgConnectionSupplier connection, boolean includeUnknownDatatypes) {
-                        return PgOutputReplicationMessage.getValue(columnName, columnType, typeExpression, valueStr, connection, includeUnknownDatatypes,
-                                typeRegistry);
-                    }
+                final var value = this.textAttributeDecoder.decode(buffer, columnName, columnType, typeExpression,
+                        () -> this.connection.connection().unwrap(BaseConnection.class),
+                        this.decoderContext.getConfig().includeUnknownDatatypes(), typeRegistry);
 
-                    @Override
-                    public String toString() {
-                        return columnName + "(" + typeExpression + ")=" + valueStr;
-                    }
-                };
+                replicationMessageColumn = new PgOutputReplicationMessageColumn(columnName, columnType, typeExpression, optional, value);
+            }
+            else if (type == 'b') {
+                final var value = this.binaryAttributeDecoder.decode(buffer, columnName, columnType, typeExpression,
+                        () -> this.connection.connection().unwrap(BaseConnection.class),
+                        this.decoderContext.getConfig().includeUnknownDatatypes(), typeRegistry);
+
+                replicationMessageColumn = new PgOutputReplicationMessageColumn(columnName, columnType, typeExpression, optional, value);
             }
             else if (type == 'u') {
                 replicationMessageColumn = new UnchangedToastedReplicationMessageColumn(columnName, columnType, typeExpression, optional) {
@@ -853,6 +852,28 @@ public class PgOutputMessageDecoder extends AbstractMessageDecoder {
     public void close() {
         if (connection != null) {
             connection.close();
+        }
+    }
+
+    private static class PgOutputReplicationMessageColumn extends AbstractReplicationMessageColumn {
+
+        private final Object value;
+
+        PgOutputReplicationMessageColumn(final String columnName, final PostgresType type,
+                                         final String typeWithModifiers, final boolean optional,
+                                         final Object value) {
+            super(columnName, type, typeWithModifiers, optional);
+            this.value = value;
+        }
+
+        @Override
+        public Object getValue(final PgConnectionSupplier connection, final boolean includeUnknownDatatypes) {
+            return this.value;
+        }
+
+        @Override
+        public String toString() {
+            return getName() + "(" + this.getTypeWithModifiers() + ")=" + this.value;
         }
     }
 }

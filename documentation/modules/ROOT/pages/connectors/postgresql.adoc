@@ -2411,7 +2411,7 @@ To replicate columns with custom data types, follow the instructions for {link-p
 The default `false` setting causes the custom converter to always return `null` values.
 * The type of value that is passed to the converter depends on the logical decoding output plug-in that is configured for the replication slot.
 ** `decoderbufs` passes a byte array (`byte[]`) representation of the column data.
-** `pgoutput` passes a string representation of the column data.
+** `pgoutput` passes a string representation of the column data in the default text mode. If xref:postgresql-property-plugin-pgoutput-binary[`plugin.pgouput.binary`] is set to `true`, `pgoutput` will pass a byte array (`byte[]`) instead.
 
 // Type: assembly
 // ModuleID: setting-up-postgresql-to-run-a-debezium-connector
@@ -3426,6 +3426,12 @@ ifdef::product[]
 The only supported value is `pgoutput`.
 You must explicitly set `plugin.name` to `pgoutput`.
 endif::product[]
+
+|[[postgresql-property-plugin-pgoutput-binary]]<<postgresql-property-plugin-pgoutput-binary, `+plugin.pgoutput.binary+`>>
+|`false`
+|Whether to use `pgoutput` binary mode or not. Binary mode can be more efficient than the default text mode. `pgoutput` binary mode requires PostgreSQL 14+.
+
+NOTE: Binary mode might be more efficient, but PostgreSQL may change the binary format between major versions. Before performing a major version upgrade, make sure {prodname} supports it.
 
 |[[postgresql-property-slot-name]]<<postgresql-property-slot-name, `+slot.name+`>>
 |`debezium`

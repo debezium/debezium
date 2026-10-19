@@ -139,6 +139,8 @@ public class TypeRegistry {
     private int ltreeArrayOid = Integer.MIN_VALUE;
     private int tsVectorOid = Integer.MIN_VALUE;
 
+    private Integer monetaryScale = null;
+
     public TypeRegistry(PostgresConnection connection) {
         this(connection, Collections.emptySet());
     }
@@ -493,6 +495,34 @@ public class TypeRegistry {
 
     public int tsVectorOid() {
         return tsVectorOid;
+    }
+
+    /**
+     * Get the monetary scale for {@code money} columns.
+     * <p>
+     * {@code money} columns in pgoutput binary mode are sent as int64 the needs to be divided by a factor that depends on
+     * {@code lc_monetary} setting. For example $19.84 is sent as 1984.
+     *<p>
+     * If the DB admin decided to change {@code lc_monetary} setting during the replication, all future money values might be
+     * wrong. Changing {@code lc_monetary} is dangerous anyway, because all stored money values before the change might have wrong value.
+     * That's why it's not recommended to use {@code money} columns
+     * (see. <a href="https://wiki.postgresql.org/wiki/Don't_Do_This#Don't_use_money">Don't Do This</a>)
+     * @return monetary scale based on lc_monetary setting.
+     */
+    public int monetaryScale() {
+        if (this.monetaryScale != null) {
+            return this.monetaryScale;
+        }
+
+        try (var statement = this.connection.connection().createStatement();
+                var rs = statement.executeQuery("SELECT scale('1'::money::numeric);")) {
+            rs.next();
+            this.monetaryScale = rs.getInt(1);
+            return this.monetaryScale;
+        }
+        catch (final SQLException e) {
+            throw new ConnectException("Database connection failed during getting monetary division factor", e);
+        }
     }
 
     /**

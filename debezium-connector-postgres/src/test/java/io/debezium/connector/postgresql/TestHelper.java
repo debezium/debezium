@@ -137,6 +137,14 @@ public final class TestHelper {
     }
 
     /**
+     * @returns
+     */
+    public static boolean pgoutputBinaryMode() {
+        final var binary = System.getProperty(PostgresConnectorConfig.PGOUTPUT_BINARY.name());
+        return Boolean.parseBoolean(binary);
+    }
+
+    /**
      * Obtain a default DB connection.
      *
      * @return the PostgresConnection instance; never null
@@ -343,6 +351,7 @@ public final class TestHelper {
                 .with(PostgresConnectorConfig.DROP_SLOT_ON_STOP, true)
                 .with(PostgresConnectorConfig.STATUS_UPDATE_INTERVAL_MS, 100)
                 .with(PostgresConnectorConfig.PLUGIN_NAME, decoderPlugin())
+                .with(PostgresConnectorConfig.PGOUTPUT_BINARY, pgoutputBinaryMode())
                 .with(PostgresConnectorConfig.SSL_MODE, SecureConnectionMode.DISABLED)
                 .with(PostgresConnectorConfig.MAX_RETRIES, 2)
                 .with(PostgresConnectorConfig.RETRY_DELAY_MS, 2000);
