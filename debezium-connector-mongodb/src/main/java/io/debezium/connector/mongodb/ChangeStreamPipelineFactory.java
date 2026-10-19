@@ -95,6 +95,9 @@ class ChangeStreamPipelineFactory {
     private ChangeStreamPipeline createInternalPipeline() {
         // MongoDB moves a $match ahead of the pre- and post-image lookup only if no stage reshapes the event first.
         // With required images, excluded events must be removed before the lookup or they fail the stream.
+        // Regex filters without required images keep the $replaceRoot pipeline below on purpose: it stays compatible
+        // with Amazon DocumentDB (DBZ-6421), whose 3.6 and 4.0 versions do not support $regexMatch. DocumentDB has no
+        // pre- or post-images, so the required image gate never applies to it.
         var matchOriginalEvent = filterConfig.isLiteralsMatchMode()
                 || connectorConfig.getCaptureModePreImage().isRequired()
                 || connectorConfig.getCaptureModePostImage().isRequired();
