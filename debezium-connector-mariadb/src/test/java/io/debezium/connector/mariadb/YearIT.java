@@ -31,7 +31,7 @@ public class YearIT extends BinlogYearIT<MariaDbConnector> implements MariaDbCom
 
     @ParameterizedTest
     @ValueSource(booleans = { true, false })
-    @FixFor("DBZ-2773")
+    @FixFor("debezium/dbz#2773")
     public void shouldKeepYear2ZeroConsistentAcrossSnapshotAndStreaming(boolean adjuster) throws Exception {
         Testing.Files.delete(SCHEMA_HISTORY_PATH);
         final var database = TestHelper.getUniqueDatabase("year2zero", "year_test")
@@ -41,7 +41,7 @@ public class YearIT extends BinlogYearIT<MariaDbConnector> implements MariaDbCom
             executeStatements(database.getDatabaseName(),
                     "CREATE TABLE " + TABLE + " (id INT PRIMARY KEY, y YEAR(2) DEFAULT '0000')",
                     "INSERT INTO " + TABLE + " (id) VALUES (1)",
-                    "INSERT INTO " + TABLE + " VALUES (2, '0000'), (3, 0), (4, 2000)");
+                    "INSERT INTO " + TABLE + " VALUES (2, '0000'), (3, 0), (4, 2000), (9, '18'), (10, '78')");
             final var config = database.defaultConfig()
                     .with(BinlogConnectorConfig.SNAPSHOT_MODE, BinlogConnectorConfig.SnapshotMode.INITIAL)
                     .with(BinlogConnectorConfig.TABLE_INCLUDE_LIST, database.qualifiedTableName(TABLE))
@@ -49,12 +49,12 @@ public class YearIT extends BinlogYearIT<MariaDbConnector> implements MariaDbCom
                     .with(BinlogConnectorConfig.ENABLE_TIME_ADJUSTER, adjuster)
                     .build();
             start(getConnectorClass(), config);
-            assertYears(4, "r", database.topicForTable(TABLE));
+            assertYears(6, "r", database.topicForTable(TABLE));
             waitForStreamingRunning(getConnectorName(), database.getServerName());
             executeStatements(database.getDatabaseName(),
                     "INSERT INTO " + TABLE + " (id) VALUES (5)",
-                    "INSERT INTO " + TABLE + " VALUES (6, '0000'), (7, 0), (8, 2000)");
-            assertYears(4, "c", database.topicForTable(TABLE));
+                    "INSERT INTO " + TABLE + " VALUES (6, '0000'), (7, 0), (8, 2000), (11, '18'), (12, '78')");
+            assertYears(6, "c", database.topicForTable(TABLE));
         }
         finally {
             stopConnector();
@@ -77,6 +77,8 @@ public class YearIT extends BinlogYearIT<MariaDbConnector> implements MariaDbCom
         return switch (id) {
             case 1, 2, 5, 6 -> 1900;
             case 3, 4, 7, 8 -> 2000;
+            case 9, 11 -> 2018;
+            case 10, 12 -> 1978;
             default -> throw new IllegalArgumentException("Unexpected id " + id);
         };
     }

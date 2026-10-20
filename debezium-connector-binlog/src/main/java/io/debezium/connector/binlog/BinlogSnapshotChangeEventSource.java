@@ -51,7 +51,6 @@ import io.debezium.pipeline.EventDispatcher;
 import io.debezium.pipeline.notification.NotificationService;
 import io.debezium.pipeline.source.SnapshottingTask;
 import io.debezium.pipeline.source.spi.SnapshotChangeEventSource;
-import io.debezium.relational.Column;
 import io.debezium.relational.RelationalDatabaseConnectorConfig.SnapshotTablesRowCountOrder;
 import io.debezium.relational.RelationalSnapshotChangeEventSource;
 import io.debezium.relational.RelationalTableFilters;
@@ -78,7 +77,7 @@ public abstract class BinlogSnapshotChangeEventSource<P extends BinlogPartition,
     private static final Duration LOCK_HEARTBEAT_INTERVAL = Duration.ofSeconds(30);
 
     private final BinlogConnectorConfig connectorConfig;
-    private final BinlogConnectorConnection connection;
+    protected final BinlogConnectorConnection connection;
     private final RelationalTableFilters filters;
     private final BinlogSnapshotChangeEventSourceMetrics<P> metrics;
     private final BinlogDatabaseSchema<P, O, ?, ?> databaseSchema;
@@ -118,23 +117,6 @@ public abstract class BinlogSnapshotChangeEventSource<P extends BinlogPartition,
     @Override
     protected SnapshotContext<P, O> prepare(P partition, boolean onDemand) {
         return new BinlogSnapshotContext<>(partition, onDemand);
-    }
-
-    @Override
-    protected List<String> getPreparedColumnNames(P partition, Table table) {
-        final List<String> columnNames = super.getPreparedColumnNames(partition, table);
-        for (Column column : table.columns()) {
-            if (column.length() != 2 || !"YEAR".equalsIgnoreCase(column.typeName())) {
-                continue;
-            }
-            final String quoted = connection.quoteIdentifier(column.name());
-            final int index = columnNames.indexOf(quoted);
-            if (index < 0) {
-                continue;
-            }
-            columnNames.set(index, "YEAR(" + quoted + ") AS " + quoted);
-        }
-        return columnNames;
     }
 
     @Override
