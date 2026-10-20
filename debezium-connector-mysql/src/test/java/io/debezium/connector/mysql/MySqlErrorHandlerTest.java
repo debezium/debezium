@@ -13,6 +13,8 @@ import java.sql.SQLException;
 
 import org.junit.jupiter.api.Test;
 
+import com.github.shyiko.mysql.binlog.network.ServerException;
+
 import io.debezium.DebeziumException;
 import io.debezium.config.Configuration;
 import io.debezium.connector.base.ChangeEventQueue;
@@ -65,6 +67,22 @@ public class MySqlErrorHandlerTest {
     void wrappedBinlogReadErrorIsNotRetriable() {
         final SQLException sqlException = new SQLException("could not find next log", "HY000", ER_MASTER_FATAL_ERROR_READING_BINLOG);
         assertThat(errorHandler.isRetriable(new DebeziumException(sqlException))).isFalse();
+    }
+
+    @Test
+    @FixFor("debezium/dbz#694")
+    void binlogStreamingReadErrorIsNotRetriable() {
+        // The binlog client reports an error that the server sends while streaming as a ServerException, an IOException
+        final ServerException serverException = new ServerException(
+                "Cannot replicate GTID-transaction when @@GLOBAL.GTID_MODE = OFF", ER_MASTER_FATAL_ERROR_READING_BINLOG, "HY000");
+        assertThat(errorHandler.isRetriable(new DebeziumException("Error code: 1236; SQLSTATE: HY000.", serverException))).isFalse();
+    }
+
+    @Test
+    @FixFor("debezium/dbz#694")
+    void binlogStreamingErrorWithoutNonRetriableCodeIsRetriable() {
+        final ServerException serverException = new ServerException("Got timeout reading communication packets", 1159, "08S01");
+        assertThat(errorHandler.isRetriable(new DebeziumException("Error code: 1159; SQLSTATE: 08S01.", serverException))).isTrue();
     }
 
     @Test
