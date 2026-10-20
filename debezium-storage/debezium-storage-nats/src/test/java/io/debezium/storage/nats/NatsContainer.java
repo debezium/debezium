@@ -5,10 +5,10 @@
  */
 package io.debezium.storage.nats;
 
-import java.util.function.Consumer;
-
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.testcontainers.containers.GenericContainer;
-import org.testcontainers.containers.output.OutputFrame;
+import org.testcontainers.containers.output.Slf4jLogConsumer;
 import org.testcontainers.utility.DockerImageName;
 
 /**
@@ -20,6 +20,8 @@ import org.testcontainers.utility.DockerImageName;
  * @author Nick Chomey
  */
 public class NatsContainer extends GenericContainer<NatsContainer> {
+
+    private static final Logger LOGGER = LoggerFactory.getLogger(NatsContainer.class);
 
     /**
      * The version of the NATS server the tests run against. Defaults to the newest 2.x
@@ -37,19 +39,15 @@ public class NatsContainer extends GenericContainer<NatsContainer> {
         super(DockerImageName.parse(IMAGE));
         withExposedPorts(NATS_PORT);
         withCommand("-js");
-        withLogConsumer(logToStdout());
+        withLogConsumer(logConsumer());
     }
 
     /**
-     * Forwards a container's output to stdout, so that a failing test shows the
+     * Forwards a container's output to the test log, so that a failing test shows the
      * server log.
      */
-    public static Consumer<OutputFrame> logToStdout() {
-        return frame -> {
-            if (frame != null && frame.getUtf8String() != null) {
-                System.out.print(frame.getUtf8String());
-            }
-        };
+    public static Slf4jLogConsumer logConsumer() {
+        return new Slf4jLogConsumer(LOGGER);
     }
 
     /**

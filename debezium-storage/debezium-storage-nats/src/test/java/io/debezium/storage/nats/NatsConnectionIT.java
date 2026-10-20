@@ -151,7 +151,7 @@ class NatsConnectionIT {
         try (GenericContainer<?> authNats = new GenericContainer<>(DockerImageName.parse(NatsContainer.IMAGE))
                 .withExposedPorts(NatsContainer.NATS_PORT)
                 .withCommand("-js", "--user", "debezium", "--pass", "secret")
-                .withLogConsumer(NatsContainer.logToStdout())) {
+                .withLogConsumer(NatsContainer.logConsumer())) {
             authNats.start();
             String url = NatsContainer.serverUrl(authNats);
 
@@ -174,7 +174,7 @@ class NatsConnectionIT {
         try (GenericContainer<?> authNats = new GenericContainer<>(DockerImageName.parse(NatsContainer.IMAGE))
                 .withExposedPorts(NatsContainer.NATS_PORT)
                 .withCommand("-js", "--auth", "tokensecret")
-                .withLogConsumer(NatsContainer.logToStdout())) {
+                .withLogConsumer(NatsContainer.logConsumer())) {
             authNats.start();
             String url = NatsContainer.serverUrl(authNats);
 
@@ -196,7 +196,7 @@ class NatsConnectionIT {
         try (GenericContainer<?> authNats = new GenericContainer<>(DockerImageName.parse(NatsContainer.IMAGE))
                 .withExposedPorts(NatsContainer.NATS_PORT)
                 .withCommand("-js", "--user", "debezium", "--pass", "secret")
-                .withLogConsumer(NatsContainer.logToStdout())) {
+                .withLogConsumer(NatsContainer.logConsumer())) {
             authNats.start();
             String url = NatsContainer.serverUrl(authNats);
 

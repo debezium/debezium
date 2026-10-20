@@ -1,0 +1,17 @@
+<configuration>
+
+    <appender name="CONSOLE"
+        class="ch.qos.logback.core.ConsoleAppender">
+        <encoder>
+            <pattern>%d{ISO8601} %-5p  %m   [%c]%n</pattern>
+        </encoder>
+    </appender>
+
+    <root level="warn">
+        <appender-ref ref="CONSOLE" />
+    </root>
+
+    <logger name="io.debezium" level="info" additivity="false">
+        <appender-ref ref="CONSOLE" />
+    </logger>
+</configuration>
