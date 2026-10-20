@@ -24,6 +24,7 @@ import org.junit.jupiter.api.Test;
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
 import io.debezium.connector.binlog.junit.SkipWhenDatabaseIs;
+import io.debezium.connector.binlog.junit.SkipWhenGtidModeIs;
 import io.debezium.connector.binlog.util.BinlogTestConnection;
 import io.debezium.connector.binlog.util.TestHelper;
 import io.debezium.connector.binlog.util.UniqueDatabase;
@@ -306,6 +307,73 @@ public abstract class BinlogReaderBufferIT<C extends SourceConnector> extends Ab
             assertThat(records.topics().size()).isEqualTo(1);
 
             Testing.print("*** Done with large TX");
+        }
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2914")
+    @SkipWhenGtidModeIs(value = SkipWhenGtidModeIs.GtidMode.OFF, reason = "The rest of an oversized transaction is lost on the buffer rewind only when GTIDs are used")
+    @SkipWhenDatabaseIs(value = SkipWhenDatabaseIs.Type.MARIADB, reason = "The rewind change targets the MySQL GTID dump command")
+    void shouldProcessLargeTransactionCompletelyAndOnlyOnceWithGtids() throws SQLException, InterruptedException {
+        String primaryPort = System.getProperty("database.port", "3306");
+        String replicaPort = System.getProperty("database.replica.port", "3306");
+        boolean replicaIsPrimary = primaryPort.equals(replicaPort);
+        if (!replicaIsPrimary) {
+            // Give time for the replica to catch up to the primary ...
+            Thread.sleep(5000L);
+        }
+
+        config = DATABASE.defaultConfig()
+                .with(BinlogConnectorConfig.HOSTNAME, System.getProperty("database.replica.hostname", "localhost"))
+                .with(BinlogConnectorConfig.PORT, System.getProperty("database.replica.port", "3306"))
+                .with(BinlogConnectorConfig.USER, "snapper")
+                .with(BinlogConnectorConfig.PASSWORD, "snapperpass")
+                .with(BinlogConnectorConfig.SERVER_ID, 18765)
+                .with(CommonConnectorConfig.TOPIC_PREFIX, DATABASE.getServerName())
+                .with(BinlogConnectorConfig.POLL_INTERVAL_MS, 10)
+                .with(BinlogConnectorConfig.DATABASE_INCLUDE_LIST, DATABASE.getDatabaseName())
+                .with(BinlogConnectorConfig.SCHEMA_HISTORY, FileSchemaHistory.class)
+                .with(BinlogConnectorConfig.INCLUDE_SCHEMA_CHANGES, true)
+                .with(BinlogConnectorConfig.BUFFER_SIZE_FOR_BINLOG_READER, 9)
+                .with(FileSchemaHistory.FILE_PATH, SCHEMA_HISTORY_PATH)
+                .build();
+
+        start(getConnectorClass(), config);
+
+        consumeRecordsByTopic(5 + 9 + 9 + 4 + 11 + 1); // 11 schema change records + 1 SET statement
+
+        // The transaction has many more events than the buffer holds, so the part that did not fit is re-read
+        // from the binlog. In GTID mode that re-read must not make the server skip the transaction.
+        final int numRecords = 40;
+        try (BinlogTestConnection db = getTestDatabaseConnection(DATABASE.getDatabaseName());
+                JdbcConnection connection = db.connect()) {
+            final Connection jdbc = connection.connection();
+            connection.setAutoCommit(false);
+            final Statement statement = jdbc.createStatement();
+            for (int i = 0; i < numRecords; i++) {
+                statement.executeUpdate(String.format("INSERT INTO customers VALUES (default,\"%s\",\"%s\",\"%s\")", i, i, i));
+            }
+            jdbc.commit();
+            connection.setAutoCommit(true);
+
+            // All records of the transaction must be present, in order
+            SourceRecords records = consumeRecordsByTopic(numRecords);
+            assertThat(records.allRecordsInOrder()).hasSize(numRecords);
+            int recordIndex = 0;
+            for (SourceRecord r : records.allRecordsInOrder()) {
+                Struct envelope = (Struct) r.value();
+                assertThat(envelope.getString("op")).isEqualTo("c");
+                assertThat(envelope.getStruct("after").getString("email")).isEqualTo(Integer.toString(recordIndex++));
+            }
+
+            // A following transaction must be the next thing that arrives: nothing of the large transaction may be
+            // emitted a second time, and the buffer must have been reset after the rewind
+            connection.execute("INSERT INTO customers VALUES (default, 'after', 'after', 'after')");
+            records = consumeRecordsByTopic(1);
+            assertThat(records.allRecordsInOrder()).hasSize(1);
+            final Struct after = ((Struct) records.allRecordsInOrder().get(0).value()).getStruct("after");
+            assertThat(after.getString("email")).isEqualTo("after");
+            assertNoRecordsToConsume();
         }
     }
 
