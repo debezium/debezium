@@ -2854,6 +2854,9 @@ endif::MARIADB[]
 
 |`binlog_row_image`
 |The `binlog_row_image` must be set to `FULL` or `full`.
+The connector also supports `NOBLOB`, for which it emits the BLOB and TEXT columns that the binlog omits with the value of the `unavailable.value.placeholder` property.
+Clients that change captured tables must not set another value, such as `MINIMAL`, for their sessions.
+If the connector reads a row image that omits other columns, the connector fails.
 
 |`binlog_expire_logs_seconds`
 |The `binlog_expire_logs_seconds` corresponds to deprecated system variable `expire_logs_days`.
