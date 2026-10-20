@@ -39,7 +39,8 @@ public abstract class BinlogEnumSetDefaultValueIT<C extends SourceConnector> ext
             new DefaultColumn("SET('a','b','c')", "'b,a,b'", "'c'"),
             new DefaultColumn("SET('a','b','c')", "''", "'c'"),
             new DefaultColumn("SET('A','b')", "'a'", "'b'"),
-            new DefaultColumn("ENUM('a','b','c')", "'B'", "'c'"));
+            new DefaultColumn("ENUM('a','b','c')", "'B'", "'c'"),
+            new DefaultColumn("SET('a','A') COLLATE utf8mb4_bin", "'A'", "'a'"));
 
     private UniqueDatabase database;
 

@@ -164,8 +164,9 @@ public abstract class BinlogDefaultValueConverter implements DefaultValueConvert
                 return value.getBytes(StandardCharsets.UTF_8);
         }
         final String typeName = column.typeName() != null ? column.typeName().toUpperCase() : null;
-        if (converters.matches(typeName, "ENUM") || converters.matches(typeName, "SET")) {
-            return convertToEnumOrSetValue(column, converters.matches(typeName, "SET"), value);
+        final boolean set = converters.matches(typeName, "SET");
+        if (set || converters.matches(typeName, "ENUM")) {
+            return convertToEnumOrSetValue(column, set, value);
         }
         return value;
     }
