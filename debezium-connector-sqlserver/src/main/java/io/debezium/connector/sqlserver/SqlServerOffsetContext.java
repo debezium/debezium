@@ -117,6 +117,14 @@ public class SqlServerOffsetContext extends CommonOffsetContext<SourceInfo> {
         sourceInfo.setEventSerialNo(eventSerialNo);
     }
 
+    void assignChangePosition(TxLogPosition position, long eventSerialNo) {
+        this.eventSerialNo = eventSerialNo;
+        sourceInfo.setCommitLsn(position.getCommitLsn());
+        sourceInfo.setChangeLsn(position.getInTxLsn());
+        sourceInfo.setCommandId(position.getCommandId());
+        sourceInfo.setEventSerialNo(eventSerialNo);
+    }
+
     public boolean isSnapshotCompleted() {
         return snapshotCompleted;
     }
