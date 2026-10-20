@@ -52,7 +52,7 @@ jobs:
         tidb#debezium/debezium-connector-tidb#main
         vitess#debezium/debezium-connector-vitess#main
         yashandb#debezium/debezium-connector-yashandb#main
-        elasticsearch#debezium/debezium-connector-elasticsearch
+        elasticsearch#debezium/debezium-connector-elasticsearch#main
         quarkus#debezium/debezium-quarkus#main
         server#debezium/debezium-server#main
         operator#debezium/debezium-operator#main
