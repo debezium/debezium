@@ -156,6 +156,12 @@ public abstract class RelationalSnapshotChangeEventSource<P extends Partition, O
             throws Exception {
         final RelationalSnapshotContext<P, O> ctx = (RelationalSnapshotContext<P, O>) snapshotContext;
 
+        // doExecute may run again on the same instance (e.g. a later blocking snapshot via
+        // ChangeEventSourceCoordinator#doBlockingSnapshot), so the per-execution retry bookkeeping must be reset
+        // rather than carried over from an earlier snapshot run.
+        totalSnapshotRetries.set(0);
+        selectOverrideTables.clear();
+
         Connection connection = null;
         Throwable exceptionWhileSnapshot = null;
         try {
@@ -969,7 +975,18 @@ public abstract class RelationalSnapshotChangeEventSource<P extends Partition, O
                     notificationService.initialSnapshotNotificationService().notifyTableSnapshotRetry(
                             snapshotContext.partition, snapshotContext.offset, tableIdentifier, attempt, maxRetries);
                     retryMetronome.pause();
-                    recoverConnection(snapshotContext, connection);
+                    try {
+                        recoverConnection(snapshotContext, connection);
+                    }
+                    catch (SQLException recoveryFailure) {
+                        // A failed recovery (e.g. the database is still unreachable after the delay) must not end
+                        // the retry loop: it counts as this attempt, and the unit keeps retrying until its budget
+                        // is spent. Keep the read failure that triggered the retry so it is not lost behind the
+                        // recovery failure.
+                        recoveryFailure.addSuppressed(e);
+                        LOGGER.warn("Connection recovery before retrying snapshot of {} failed; will retry if budget remains",
+                                unitDescription, recoveryFailure);
+                    }
                 }
             }
         }
