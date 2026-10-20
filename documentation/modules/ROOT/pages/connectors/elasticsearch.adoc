@@ -572,6 +572,7 @@ The xref:elasticsearch-property-connection-auth-mode[`connection.auth.mode`] pro
 
 |`kerberos`
 |SPNEGO negotiation using the principal and keytab in xref:elasticsearch-property-connection-kerberos-principal[`connection.kerberos.principal`] and xref:elasticsearch-property-connection-kerberos-keytab[`connection.kerberos.keytab`].
+For details, see xref:elasticsearch-kerberos-authentication[Kerberos authentication].
 
 |`custom`
 |An implementation of `io.debezium.connector.elasticsearch.client.ConnectionCredentialsProvider` named by xref:elasticsearch-property-connection-credentials-provider-class[`connection.credentials.provider.class`], for schemes that live outside the connector such as cloud-vendor request signing.
@@ -581,6 +582,36 @@ The xref:elasticsearch-property-connection-auth-mode[`connection.auth.mode`] pro
 When `connection.auth.mode` is not set, the connector uses `basic` if a username or password is configured and `none` otherwise.
 Credentials that do not match the selected mode, or a mode whose credentials are missing, are a startup error.
 The connector never falls through silently to unauthenticated access.
+
+[[elasticsearch-kerberos-authentication]]
+==== Kerberos authentication
+
+When xref:elasticsearch-property-connection-auth-mode[`connection.auth.mode`] is set to `kerberos`, the connector logs in with the principal in xref:elasticsearch-property-connection-kerberos-principal[`connection.kerberos.principal`] and the keytab in xref:elasticsearch-property-connection-kerberos-keytab[`connection.kerberos.keytab`], and attaches a fresh SPNEGO token to every request in an `Authorization: Negotiate` header.
+The connector builds its own login configuration from these two properties, so no JAAS configuration file is required, and one that is set through `java.security.auth.login.config` is not consulted.
+The keytab file must be readable at the configured path on every worker that runs a task of the connector.
+
+The first login happens when the task starts.
+A login that fails, for example because the keytab does not hold a key for the principal or the KDC cannot be reached, is a startup error that names the principal and the keytab.
+
+.Kerberos configuration file
+The realm and KDC addresses come from the Kerberos configuration file of the JVM, which is either the file named by the `java.security.krb5.conf` system property or the default location of the platform, such as `/etc/krb5.conf` on Linux.
+This setting applies to the whole JVM, so every connector and client in the same Kafka Connect worker or {prodname} Server process shares it.
+Set the system property in the JVM options of the process, for example through `KAFKA_OPTS` for a Kafka Connect worker.
+The connector rereads the file on every login, so a change to it takes effect at the next login without a restart.
+
+.Service principal
+The connector requests a service ticket for `HTTP@<host>`, where `<host>` is the host name of the node that the request is sent to, as it appears in xref:elasticsearch-property-connection-url[`connection.url`] or as reported by node discovery when xref:elasticsearch-property-connection-sniff-enabled[`connection.sniff.enabled`] is `true`.
+Each Elasticsearch node must therefore be registered in the KDC with an `HTTP/<host>` service principal that matches that host name.
+Use the fully qualified host names under which the principals are registered; an IP address or a load balancer alias does not match a node principal unless one is registered under that name as well.
+
+.Ticket renewal
+The connector logs in again, without interrupting the task, when the ticket-granting ticket is within five minutes of its end time, so a long-running task does not start failing once the ticket lifetime elapses.
+Concurrent requests share a single login, and the credentials of the replaced login are released as soon as the new login is in place.
+
+A ticket can also become invalid before its end time, for example when the KDC revokes it.
+When a token cannot be obtained, the connector logs a warning, logs in again, and retries the token once under the new login.
+To avoid sending a login to the KDC on every request when the cause is unrelated to the ticket, such as a missing service principal, the connector does not log in again within one minute of the previous login.
+In that case, or when the retry also fails, the request fails with an error that names the host the token was requested for.
 
 ==== TLS and proxies
 
