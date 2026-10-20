@@ -175,6 +175,28 @@ public class TableSchemaBuilderTest {
     }
 
     @Test
+    @FixFor("debezium/dbz#142")
+    public void shouldMarkAllValueFieldsOptionalWhenConfigured() {
+        schema = new TableSchemaBuilder(new JdbcValueConverters(), null, adjuster, customConverterRegistry,
+                SchemaBuilder.struct().build(), SchemaFactory.get().transactionBlockSchema(), defaultFieldNamer, false,
+                EventConvertingFailureHandlingMode.FAIL, true)
+                .create(topicNamingStrategy, table, null, null, null);
+
+        // every value field is optional, including those backed by NOT NULL columns
+        Schema values = schema.valueSchema();
+        values.fields().forEach(field -> assertThat(field.schema().isOptional())
+                .as("value field %s should be optional", field.name())
+                .isTrue());
+
+        // key fields keep the nullability of their columns
+        assertThat(schema.keySchema().field("C1").schema().isOptional()).isFalse();
+
+        // a null for a NOT NULL column is emitted as null rather than replaced by a fallback value
+        Struct value = schema.valueFromColumnData(data);
+        assertThat(value.get("C6")).isNull();
+    }
+
+    @Test
     @FixFor("DBZ-1089")
     public void shouldBuildCorrectSchemaNames() {
         // table id with catalog and schema

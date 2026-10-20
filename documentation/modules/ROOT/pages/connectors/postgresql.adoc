@@ -4341,6 +4341,16 @@ NOTE: Consumers risk backward compatibility issues when `include.unknown.datatyp
 Not only may the database-specific binary representation change between releases, but if the data type is eventually supported by {prodname}, the data type will be sent downstream in a logical type, which would require adjustments by consumers.
 In general, when encountering unsupported data types, create a feature request so that support can be added.
 
+|[[postgresql-property-schema-fields-force-all-optional]]<<postgresql-property-schema-fields-force-all-optional, `+schema.fields.force_all_optional+`>>
+|`false`
+|Specifies whether the connector marks every field in the value schema of change events as optional.
+By default, a field is optional only if the corresponding column is nullable.
+If the connector receives no value for a `NOT NULL` column, it emits the column default, or a type-specific fallback value, such as `0` or an empty string.
+
+Set this property to `true` to mark all value fields as optional regardless of `NOT NULL` constraints.
+The connector then emits `null` for any column for which it receives no value.
+Fields in the key schema are not affected.
+
 |[[postgresql-property-database-initial-statements]]<<postgresql-property-database-initial-statements, `+database.initial.statements+`>>
 |No default
 |A semicolon separated list of SQL statements that the connector executes when it establishes a JDBC connection to the database.

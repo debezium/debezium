@@ -23,6 +23,7 @@ import io.debezium.relational.ddl.DdlParser;
 import io.debezium.relational.history.TableChanges;
 import io.debezium.schema.SchemaChangeEvent;
 import io.debezium.schema.SchemaChangeEvent.SchemaChangeEventType;
+import io.debezium.schema.SchemaFactory;
 import io.debezium.schema.SchemaNameAdjuster;
 import io.debezium.spi.topic.TopicNamingStrategy;
 
@@ -48,9 +49,11 @@ public class SqlServerDatabaseSchema extends HistorizedRelationalDatabaseSchema 
                         schemaNameAdjuster,
                         customConverterRegistry,
                         connectorConfig.getSourceInfoStructMaker().schema(),
+                        SchemaFactory.get().transactionBlockSchema(),
                         connectorConfig.getFieldNamer(),
                         true,
-                        connectorConfig.getEventConvertingFailureHandlingMode()),
+                        connectorConfig.getEventConvertingFailureHandlingMode(),
+                        connectorConfig.isSchemaFieldsForceAllOptional()),
                 false, connectorConfig.getKeyMapper(), taskContext);
     }
 

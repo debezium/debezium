@@ -2849,6 +2849,16 @@ That is, the specified expression is matched against the entire name string of t
 
 For the list of SQL Server-specific data type names, see the xref:sqlserver-data-types[SQL Server data type mappings].
 
+|[[sqlserver-property-schema-fields-force-all-optional]]<<sqlserver-property-schema-fields-force-all-optional, `+schema.fields.force_all_optional+`>>
+|`false`
+|Specifies whether the connector marks every field in the value schema of change events as optional.
+By default, a field is optional only if the corresponding column is nullable.
+If the connector receives no value for a `NOT NULL` column, it emits the column default, or a type-specific fallback value, such as `0` or an empty string.
+
+Set this property to `true` to mark all value fields as optional regardless of `NOT NULL` constraints.
+The connector then emits `null` for any column for which it receives no value.
+Fields in the key schema are not affected.
+
 |[[sqlserver-property-message-key-columns]]<<sqlserver-property-message-key-columns, `+message.key.columns+`>>
 |_n/a_
 |A list of expressions that specify the columns that the connector uses to form custom message keys for change event records that it publishes to the Kafka topics for specified tables.

@@ -1519,7 +1519,7 @@ public class JdbcValueConverters implements ValueConverterProvider {
      */
     protected Object convertValue(Column column, Field fieldDefn, Object data, Object fallback, ValueConversionCallback callback) {
         if (data == null) {
-            if (column.isOptional()) {
+            if (column.isOptional() || fieldDefn.schema().isOptional()) {
                 return null;
             }
             final Object schemaDefault = fieldDefn.schema().defaultValue();
