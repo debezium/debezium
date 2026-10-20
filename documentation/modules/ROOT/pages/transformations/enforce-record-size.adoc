@@ -78,6 +78,9 @@ Kafka Connect stores the connector configuration and returns it from its REST AP
 If you must use a static secret access key, supply it through a Kafka Connect `ConfigProvider` placeholder, for example `${file:/opt/kafka/external-configuration/s3.properties:secret.access.key}`, rather than as a literal value.
 To use it, make the `debezium-storage-s3` artifact and its dependencies available on the same Kafka Connect plugin path as the connector.
 
+The S3 implementation only writes objects and never deletes them.
+Configure an S3 lifecycle rule on the bucket, or on the prefix in `claim.check.storage.base.path`, that expires objects after downstream consumers no longer need them.
+
 The marker is a JSON value that retains the column's original string or unnamed bytes schema.
 For example:
 
@@ -96,8 +99,12 @@ For example:
 
 A downstream consumer must recognize the marker, read the complete record from `uri`, verify it as needed by using `sha256`, and recover the value identified by `column`.
 
-The storage key is derived from the source partition and offset and from the serialized payload hash.
-As a result, a retry of the same source event writes the same key and does not create duplicate objects.
+The storage key is derived from the topic, from the source partition and offset, and from a hash of the serialized payload.
+If Kafka Connect retries the same in-memory record, for example after a transient producer failure, the SMT writes the same key again and storage does not create a second object.
+This guarantee does not extend to a connector restart.
+When the connector re-emits an event from a committed offset, the envelope carries new processing-time values, such as `ts_ms`, and possibly different headers, so the payload hash and the key change and storage receives a second object for the same source event.
+Objects that belong to the same source event share the `offset-` segment of the key.
+The SMT never deletes stored objects, so configure a retention policy in the storage service.
 The write is synchronous and fail-closed: if storage does not acknowledge the write, the SMT throws an exception and does not emit a marker record.
 
 // Type: concept
@@ -183,6 +190,10 @@ It validates all configured column names before writing the record to storage.
 
 * The `claim_check` strategy leaves the input record unchanged and returns a copied envelope that contains the markers.
 It emits that copy only after external storage acknowledges the complete record.
+
+* The `claim_check` strategy deduplicates only in-process retries of the same record.
+After a connector restart, a re-emitted event is stored as a second object, and the SMT never deletes stored objects.
+Configure a retention policy in the storage service.
 
 // Type: reference
 // ModuleID: options-for-configuring-the-enforce-record-size-transformation
