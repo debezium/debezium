@@ -491,10 +491,10 @@ The connector writes `POINT`, `LINESTRING`, and `POLYGON` WKB values to SingleSt
 SingleStore supports multiple polygon regions and interior holes within a single `POLYGON` value.
 The connector uses this capability to write `MULTIPOLYGON` WKB values as SingleStore `POLYGON` WKT strings containing all exterior and interior rings.
 
-SingleStore `GEOGRAPHY` truncates coordinates to eight decimal places on insertion and rejects invalid polygons.
-This truncation can make nearby vertices coincide.
-By default, the connector does not repair polygons.
-Set `dialect.singlestore.geometry.repair.enabled=true` to round `POLYGON` and `MULTIPOLYGON` coordinates to eight decimal places (half-up) and use JTS GeometryFixer if the rounded geometry is invalid.
+On insertion, SingleStore `GEOGRAPHY` discards coordinate digits beyond eight decimal places without rounding, then rejects invalid polygons.
+This can make nearby vertices coincide.
+By default, the connector does not change polygon coordinates before insertion.
+Set `dialect.singlestore.geometry.repair.enabled=true` to have the connector round `POLYGON` and `MULTIPOLYGON` coordinates to eight decimal places (half-up) before insertion and use JTS GeometryFixer if the rounded geometry is invalid.
 The connector also rounds coordinates created by repair and rejects results with no polygonal area or that remain invalid.
 
 Repair can split or merge polygon regions, remove collapsed holes or polygon components, and change the area.
@@ -1957,7 +1957,7 @@ For more information about how the connector's use of the UNNEST function improv
 
 |[[jdbc-property-dialect-singlestore-geometry-repair-enabled]]<<jdbc-property-dialect-singlestore-geometry-repair-enabled, `+dialect.singlestore.geometry.repair.enabled+`>>
 |`false`
-|For SingleStore `GEOGRAPHY` polygons, rounds coordinates to eight decimal places and repairs invalid polygonal geometry with JTS GeometryFixer before writing.
+|When enabled, the connector rounds SingleStore `GEOGRAPHY` polygon coordinates to eight decimal places and repairs invalid polygonal geometry with JTS GeometryFixer before writing.
 SingleStore validates the resulting polygon on insertion.
 
 |[[jdbc-property-dialect-sqlserver-identity-insert]]<<jdbc-property-dialect-sqlserver-identity-insert, `+dialect.sqlserver.identity.insert+`>>
