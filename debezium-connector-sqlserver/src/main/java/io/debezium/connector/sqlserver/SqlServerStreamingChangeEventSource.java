@@ -501,6 +501,8 @@ public class SqlServerStreamingChangeEventSource implements StreamingChangeEvent
             throws InterruptedException {
         final TxLogPosition currentPosition = offsetContext.getChangePosition();
         final long eventSerialNo = offsetContext.getEventSerialNo();
+        // The schema-change record is emitted at the capture start so it sorts after the last old-structure row.
+        // If that record is the last committed offset, a restart re-reads from the capture start. That duplicates one poll. It does not drop rows.
         offsetContext.assignChangePosition(TxLogPosition.valueOf(newTable.getStartLsn(), newTable.getStartLsn(), currentPosition.getCommandId()), 0);
         try {
             action.run();
