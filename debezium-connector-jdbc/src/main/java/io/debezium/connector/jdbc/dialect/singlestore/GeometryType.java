@@ -32,6 +32,16 @@ class GeometryType extends AbstractGeometryType {
 
     public static final GeometryType INSTANCE = new GeometryType();
 
+    private final boolean repairEnabled;
+
+    GeometryType() {
+        this(false);
+    }
+
+    GeometryType(boolean repairEnabled) {
+        this.repairEnabled = repairEnabled;
+    }
+
     @Override
     public String getQueryBinding(ColumnDescriptor column, Schema schema, Object value) {
         return "?";
@@ -84,6 +94,11 @@ class GeometryType extends AbstractGeometryType {
             if (multiPolygon.getPolygons().isEmpty()) {
                 throw unsupportedGeometry("MULTIPOLYGON EMPTY");
             }
+            if (repairEnabled) {
+                return GeometryRepair.polygon(multiPolygon.getPolygons().stream()
+                        .map(Polygon::getRings)
+                        .collect(Collectors.toList()));
+            }
             final List<LineString> rings = multiPolygon.getPolygons().stream()
                     .flatMap(polygon -> {
                         if (polygon.getRings().isEmpty()) {
@@ -117,6 +132,9 @@ class GeometryType extends AbstractGeometryType {
     private String toWkt(Polygon polygon) {
         if (polygon.getRings().isEmpty()) {
             throw unsupportedGeometry("POLYGON EMPTY");
+        }
+        if (repairEnabled) {
+            return GeometryRepair.polygon(List.of(polygon.getRings()));
         }
         return "POLYGON (" + polygon.getRings().stream()
                 .map(this::ring)

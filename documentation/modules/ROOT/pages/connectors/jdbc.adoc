@@ -491,11 +491,14 @@ The connector writes `POINT`, `LINESTRING`, and `POLYGON` WKB values to SingleSt
 SingleStore supports multiple polygon regions and interior holes within a single `POLYGON` value.
 The connector uses this capability to write `MULTIPOLYGON` WKB values as SingleStore `POLYGON` WKT strings containing all exterior and interior rings.
 
-SingleStore `GEOGRAPHY` coordinates have a precision of eight decimal places (`1e-8` degrees).
-When a value is inserted, SingleStore truncates additional decimal places rather than rounding them.
-This truncation can cause nearby vertices to coincide or otherwise make a polygon invalid.
-SingleStore validates polygons on insertion and rejects invalid values, including those that were valid before truncation.
-The connector does not repair geometries before writing them to SingleStore.
+SingleStore `GEOGRAPHY` truncates coordinates to eight decimal places on insertion and rejects invalid polygons.
+This truncation can make nearby vertices coincide.
+By default, the connector does not repair polygons.
+Set `dialect.singlestore.geometry.repair.enabled=true` to round `POLYGON` and `MULTIPOLYGON` coordinates to eight decimal places (half-up) and use JTS GeometryFixer if the rounded geometry is invalid.
+The connector also rounds coordinates created by repair and rejects results with no polygonal area or that remain invalid.
+
+Repair can split or merge polygon regions, remove collapsed holes or polygon components, and change the area.
+JTS checks planar validity; SingleStore separately checks spherical validity on insertion.
 For more information about the `GEOGRAPHY` type, see the link:https://docs.singlestore.com/db/v9.0/reference/sql-reference/data-types/geospatial-types/[SingleStore geospatial types documentation^].
 
 [[jdbc-starrocks-targets]]
@@ -1951,6 +1954,11 @@ For more information about how the connector's use of the UNNEST function improv
 * link:https://www.tigerdata.com/blog/boosting-postgres-insert-performance["Boosting Postgres Insert Performance"^] in the Tiger Data blog.
 
 * link:https://www.cockroachlabs.com/docs/stable/performance-best-practices-overview#use-multi-row-statements-instead-of-multiple-single-row-statements["Use multi-row statements instead of multiple single-row statements"^] in the CockroachDB documentation.
+
+|[[jdbc-property-dialect-singlestore-geometry-repair-enabled]]<<jdbc-property-dialect-singlestore-geometry-repair-enabled, `+dialect.singlestore.geometry.repair.enabled+`>>
+|`false`
+|For SingleStore `GEOGRAPHY` polygons, rounds coordinates to eight decimal places and repairs invalid polygonal geometry with JTS GeometryFixer before writing.
+SingleStore validates the resulting polygon on insertion.
 
 |[[jdbc-property-dialect-sqlserver-identity-insert]]<<jdbc-property-dialect-sqlserver-identity-insert, `+dialect.sqlserver.identity.insert+`>>
 |`false`
