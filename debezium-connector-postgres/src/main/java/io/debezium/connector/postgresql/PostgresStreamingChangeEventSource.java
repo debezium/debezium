@@ -368,6 +368,7 @@ public class PostgresStreamingChangeEventSource implements StreamingChangeEventS
         }
         else if (message.getOperation() == Operation.MESSAGE) {
             final LogicalDecodingMessage logicalMessage = (LogicalDecodingMessage) message;
+            offsetContext.incrementLsnEventsProcessed(lsn);
             offsetContext.updateWalPosition(lsn, lastCompletelyProcessedLsn, logicalMessage.getCommitTime(), toLong(logicalMessage.getTransactionId()),
                     getSlotXmin(),
                     logicalMessage.getOperation());
