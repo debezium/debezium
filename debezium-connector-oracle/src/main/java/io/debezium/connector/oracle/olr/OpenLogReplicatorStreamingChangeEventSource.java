@@ -384,7 +384,7 @@ public class OpenLogReplicatorStreamingChangeEventSource implements StreamingCha
         // change within its transaction and is what a replay skips through on restart.
         offsetContext.setScn(event.getCheckpointScn());
         offsetContext.setScnIndex(event.getCheckpointIndex());
-        offsetContext.setEventScn(event.getCheckpointScn());
+        offsetContext.setEventScn(getEventScn(event));
         offsetContext.setTransactionId(event.getXid());
         offsetContext.tableEvent(tableId, event.getTimestamp());
         offsetContext.setRowId(mutationEvent.getRid());
@@ -475,6 +475,15 @@ public class OpenLogReplicatorStreamingChangeEventSource implements StreamingCha
                         event.getTimestamp(),
                         streamingMetrics,
                         () -> processTruncateEvent(event, schemaEvent)));
+    }
+
+    /**
+     * Returns the SCN to report as {@code source.scn} for a row change: the row's own SCN when the
+     * message has one, as with LogMiner, otherwise {@code c_scn}. The offset always uses {@code c_scn}.
+     */
+    static Scn getEventScn(StreamingEvent event) {
+        final Scn scn = event.getScn();
+        return scn != null && !scn.isNull() ? scn : event.getCheckpointScn();
     }
 
     private boolean isTableSqlStatement(String sqlStatement) {
