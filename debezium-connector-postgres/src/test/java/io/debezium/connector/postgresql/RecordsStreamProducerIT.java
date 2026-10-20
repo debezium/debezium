@@ -77,6 +77,7 @@ import io.debezium.connector.SnapshotRecord;
 import io.debezium.connector.postgresql.PostgresConnectorConfig.IntervalHandlingMode;
 import io.debezium.connector.postgresql.PostgresConnectorConfig.SchemaRefreshMode;
 import io.debezium.connector.postgresql.PostgresConnectorConfig.SnapshotMode;
+import io.debezium.connector.postgresql.connection.Lsn;
 import io.debezium.connector.postgresql.connection.PostgresConnection;
 import io.debezium.connector.postgresql.connection.ReplicationConnection;
 import io.debezium.connector.postgresql.junit.SkipWhenDecoderPluginNameIs;
@@ -1672,6 +1673,51 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
         Awaitility.await().alias("WAL growing log message").pollInterval(1, TimeUnit.SECONDS).atMost(5 * TestHelper.waitTimeForRecords(), TimeUnit.SECONDS)
                 .until(() -> logInterceptor.containsWarnMessage(
                         "Received 10001 events which were all filtered out, so no offset could be committed. This prevents the replication slot from acknowledging the processed WAL offsets, causing a growing backlog of non-removeable WAL segments on the database server. Consider to either adjust your filter configuration or enable heartbeat events (via the heartbeat.interval.ms option) to avoid this situation."));
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2906")
+    public void shouldNotWarnOnFilteredEventsWhenHeartbeatIsEnabled() throws Exception {
+        final LogInterceptor logInterceptor = new LogInterceptor(PostgresStreamingChangeEventSource.class);
+        startConnector(config -> config
+                .with(Heartbeat.HEARTBEAT_INTERVAL, "100")
+                .with(PostgresConnectorConfig.POLL_INTERVAL_MS, "50")
+                .with(PostgresConnectorConfig.TABLE_INCLUDE_LIST, "s1\\.b")
+                .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NO_DATA),
+                false);
+        waitForStreamingToStart();
+
+        String statement = "CREATE SCHEMA s1;" +
+                "CREATE TABLE s1.a (pk SERIAL, aa integer, PRIMARY KEY(pk));" +
+                "CREATE TABLE s1.b (pk SERIAL, bb integer, PRIMARY KEY(pk));" +
+                "INSERT INTO s1.a (aa) VALUES (11);" +
+                "INSERT INTO s1.b (bb) VALUES (22);";
+
+        consumer = testConsumer(1);
+        executeAndWait(statement);
+
+        final int filteredCount = 10_100;
+        TestHelper.execute(
+                IntStream.range(0, filteredCount)
+                        .mapToObj(x -> "INSERT INTO s1.a (pk) VALUES (default);")
+                        .collect(Collectors.joining()));
+        final Lsn lsnAfterInserts;
+        try (PostgresConnection connection = TestHelper.create()) {
+            lsnAfterInserts = Lsn.valueOf(connection.currentXLogLocation());
+        }
+        final String warning = "events which were all filtered out";
+        Awaitility.await().alias("confirmed_flush_lsn did not reach the filtered inserts")
+                .pollInterval(1, TimeUnit.SECONDS)
+                .atMost(TestHelper.waitTimeForRecords() * 30L, TimeUnit.SECONDS)
+                .until(() -> {
+                    if (logInterceptor.containsWarnMessage(warning)) {
+                        return true;
+                    }
+                    final var slot = TestHelper.getDefaultReplicationSlot();
+                    final var flushed = slot == null ? null : slot.slotLastFlushedLsn();
+                    return flushed != null && flushed.compareTo(lsnAfterInserts) >= 0;
+                });
+        assertThat(logInterceptor.containsWarnMessage(warning)).isFalse();
     }
 
     @Test
