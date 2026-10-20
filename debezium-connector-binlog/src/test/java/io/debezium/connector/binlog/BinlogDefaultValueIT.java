@@ -749,8 +749,7 @@ public abstract class BinlogDefaultValueIT<C extends SourceConnector> extends Ab
         // Number of days since epoch for date 1976-08-23
         assertThat(schemaA.defaultValue()).isEqualTo(2426);
 
-        String value1 = "1970-01-01 00:00:01";
-        ZonedDateTime t = java.sql.Timestamp.valueOf(value1).toInstant().atZone(ZoneId.systemDefault());
+        ZonedDateTime t = Instant.ofEpochSecond(1).atZone(ZoneId.systemDefault());
         String isoString = getZonedDateTimeIsoString(t);
         assertThat(schemaB.defaultValue()).isEqualTo(isoString);
 
@@ -817,8 +816,7 @@ public abstract class BinlogDefaultValueIT<C extends SourceConnector> extends Ab
         Instant instant = LocalDate.from(accessor).atStartOfDay().toInstant(ZoneOffset.UTC);
         assertThat(schemaA.defaultValue()).isEqualTo(java.util.Date.from(instant));
 
-        String value1 = "1970-01-01 00:00:01";
-        ZonedDateTime t = java.sql.Timestamp.valueOf(value1).toInstant().atZone(ZoneId.systemDefault());
+        ZonedDateTime t = Instant.ofEpochSecond(1).atZone(ZoneId.systemDefault());
         String isoString = getZonedDateTimeIsoString(t);
         assertThat(schemaB.defaultValue()).isEqualTo(isoString);
 
