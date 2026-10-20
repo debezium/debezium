@@ -114,24 +114,29 @@ public class PostgresReadOnlyIncrementalSnapshotChangeEventSource<P extends Post
     }
 
     @Override
-    public synchronized void processMessage(P partition, DataCollectionId dataCollectionId, Object key, OffsetContext offsetContext) throws InterruptedException {
+    public void processMessage(P partition, DataCollectionId dataCollectionId, Object key, OffsetContext offsetContext) throws InterruptedException {
+        snapshotLock.lock();
+        try {
+            if (getContext() == null) {
+                LOGGER.warn("Context is null, skipping message processing");
+                return;
+            }
 
-        if (getContext() == null) {
-            LOGGER.warn("Context is null, skipping message processing");
-            return;
+            LOGGER.debug("Checking window for table '{}', key '{}', window contains '{}'", dataCollectionId, key, window);
+            getContext().updateWindowState(offsetContext);
+
+            boolean windowClosed = getContext().isWindowClosed();
+            if (getContext().snapshotRunning() && windowClosed) {
+                sendWindowEvents(partition, offsetContext);
+                readChunk(partition, offsetContext);
+            }
+            else if (!window.isEmpty() && getContext().deduplicationNeeded()) {
+                LOGGER.trace("Deduplicating");
+                deduplicateWindow(dataCollectionId, key);
+            }
         }
-
-        LOGGER.debug("Checking window for table '{}', key '{}', window contains '{}'", dataCollectionId, key, window);
-        getContext().updateWindowState(offsetContext);
-
-        boolean windowClosed = getContext().isWindowClosed();
-        if (getContext().snapshotRunning() && windowClosed) {
-            sendWindowEvents(partition, offsetContext);
-            readChunk(partition, offsetContext);
-        }
-        else if (!window.isEmpty() && getContext().deduplicationNeeded()) {
-            LOGGER.trace("Deduplicating");
-            deduplicateWindow(dataCollectionId, key);
+        finally {
+            snapshotLock.unlock();
         }
     }
 
@@ -161,7 +166,8 @@ public class PostgresReadOnlyIncrementalSnapshotChangeEventSource<P extends Post
     private void readUntilNewTransactionChange(P partition, OffsetContext offsetContext) throws InterruptedException {
 
         final Long eventTxId;
-        synchronized (this) {
+        snapshotLock.lock();
+        try {
             if (getContext() == null) {
                 LOGGER.warn("Context is null, skipping message processing");
                 return;
@@ -180,31 +186,40 @@ public class PostgresReadOnlyIncrementalSnapshotChangeEventSource<P extends Post
                 return;
             }
         }
+        finally {
+            snapshotLock.unlock();
+        }
 
         while (readNextChunk(partition, offsetContext, eventTxId)) {
             // Allow control signals to run between complete chunk transitions.
         }
     }
 
-    private synchronized boolean readNextChunk(P partition, OffsetContext offsetContext, Long eventTxId) throws InterruptedException {
-        if (getContext() == null || !getContext().snapshotRunning() || !getContext().isTransactionVisible(eventTxId)) {
-            return false;
+    private boolean readNextChunk(P partition, OffsetContext offsetContext, Long eventTxId) throws InterruptedException {
+        snapshotLock.lock();
+        try {
+            if (getContext() == null || !getContext().snapshotRunning() || !getContext().isTransactionVisible(eventTxId)) {
+                return false;
+            }
+
+            LOGGER.debug("Finishing snapshot, snapshot is running {}, reachedHighWatermark {}", getContext().snapshotRunning(),
+                    getContext().isTransactionVisible(eventTxId));
+
+            getContext().closeWindow();
+            sendWindowEvents(partition, offsetContext);
+            readChunk(partition, offsetContext);
+            if (getContext().watermarksChanged()) {
+                LOGGER.trace("Watermarks changed");
+                return false;
+            }
+
+            LOGGER.trace("Re read chunk finished, snapshot is running {}, reachedHighWatermark {}", getContext().snapshotRunning(),
+                    getContext().isTransactionVisible(eventTxId));
+            return true;
         }
-
-        LOGGER.debug("Finishing snapshot, snapshot is running {}, reachedHighWatermark {}", getContext().snapshotRunning(),
-                getContext().isTransactionVisible(eventTxId));
-
-        getContext().closeWindow();
-        sendWindowEvents(partition, offsetContext);
-        readChunk(partition, offsetContext);
-        if (getContext().watermarksChanged()) {
-            LOGGER.trace("Watermarks changed");
-            return false;
+        finally {
+            snapshotLock.unlock();
         }
-
-        LOGGER.trace("Re read chunk finished, snapshot is running {}, reachedHighWatermark {}", getContext().snapshotRunning(),
-                getContext().isTransactionVisible(eventTxId));
-        return true;
     }
 
     private void getCurrentSnapshot(Consumer<PgSnapshot> watermark) {
