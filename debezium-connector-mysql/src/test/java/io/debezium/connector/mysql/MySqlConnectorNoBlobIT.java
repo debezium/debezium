@@ -236,6 +236,7 @@ public class MySqlConnectorNoBlobIT extends AbstractAsyncEngineConnectorTest {
         }
 
         Awaitility.await().atMost(60, TimeUnit.SECONDS).until(() -> !isEngineRunning.get());
+        assertThat(logInterceptor.containsMessage("Incomplete row image (UPDATE before) for table")).isTrue();
         assertThat(logInterceptor.containsMessage("A client may have set binlog_row_image=MINIMAL or NOBLOB for its session")).isTrue();
     }
 
