@@ -121,7 +121,7 @@ public abstract class AbstractBufferedLogMinerStreamingChangeEventSourceTest ext
         this.offsetContext = Mockito.mock(OracleOffsetContext.class);
         final CommitScn commitScn = CommitScn.valueOf((String) null);
         Mockito.when(this.offsetContext.getCommitScn()).thenReturn(commitScn);
-        Mockito.when(this.offsetContext.getSnapshotScn()).thenReturn(Scn.valueOf("1"));
+        Mockito.when(this.offsetContext.getSnapshotCommitScn()).thenReturn(Scn.NULL);
         this.connectionFactory = createOracleConnectionFactory(false);
         this.schema = createOracleDatabaseSchema();
         this.metrics = createMetrics(schema);
@@ -180,6 +180,106 @@ public abstract class AbstractBufferedLogMinerStreamingChangeEventSourceTest ext
             source.processEvent(getCommitLogMinerEventRow(3, TRANSACTION_ID_1));
 
             assertThat(source.getTransactionCache().isEmpty()).isTrue();
+        }
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2779")
+    void testUnreconstructableEventsBeforeSnapshotCommitScnAreRaisedAtCommitWhenTransactionCommitsAfterSnapshot() throws Exception {
+        final Configuration config = getConfig()
+                .with(CommonConnectorConfig.EVENT_PROCESSING_FAILURE_HANDLING_MODE, "warn")
+                .build();
+        final LogInterceptor logInterceptor = new LogInterceptor(AbstractLogMinerStreamingChangeEventSource.class);
+
+        mockSnapshotCommitScn(10);
+        try (var source = getChangeEventSource(config)) {
+            source.processEvent(getStartLogMinerEventRow(1, TRANSACTION_ID_1));
+            source.processEvent(getUnreconstructableInsertLogMinerEventRow(2, TRANSACTION_ID_1));
+            source.processEvent(getUnreconstructableInsertLogMinerEventRow(3, TRANSACTION_ID_1));
+            source.processEvent(getUnreconstructableInsertLogMinerEventRow(4, TRANSACTION_ID_1));
+
+            assertThat(logInterceptor.getLogEntriesThatContainsMessage("cannot be parsed")).isEmpty();
+
+            // The transaction is emitted, so every failure held back while that was undecided is raised now
+            source.processEvent(getCommitLogMinerEventRow(11, TRANSACTION_ID_1));
+
+            assertThat(logInterceptor.getLogEntriesThatContainsMessage("cannot be parsed")).containsExactly(
+                    "An INSERT event with SCN 2 cannot be parsed. This event will be ignored and skipped.",
+                    "An INSERT event with SCN 3 cannot be parsed. This event will be ignored and skipped.",
+                    "An INSERT event with SCN 4 cannot be parsed. This event will be ignored and skipped.");
+        }
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2779")
+    void testUnreconstructableEventAfterSnapshotCommitScnFailsImmediatelyEvenWhenEarlierFailureIsHeld() throws Exception {
+        mockSnapshotCommitScn(10);
+        try (var source = getChangeEventSource(getConfig().build())) {
+            source.processEvent(getStartLogMinerEventRow(1, TRANSACTION_ID_1));
+            source.processEvent(getUnreconstructableInsertLogMinerEventRow(2, TRANSACTION_ID_1));
+
+            // An event after the snapshot commit SCN can only belong to an emitted transaction, so it is not held
+            assertThatThrownBy(() -> source.processEvent(getUnreconstructableInsertLogMinerEventRow(12, TRANSACTION_ID_1)))
+                    .isInstanceOf(DebeziumException.class)
+                    .hasMessageContaining("unable to re-construct the SQL for 'INSERT' event with SCN 12");
+        }
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2779")
+    void testUnreconstructableEventBeforeSnapshotCommitScnIsDiscardedWhenTransactionIsRolledBackBeforeSnapshot() throws Exception {
+        mockSnapshotCommitScn(10);
+        try (var source = getChangeEventSource(getConfig().build())) {
+            source.processEvent(getStartLogMinerEventRow(1, TRANSACTION_ID_1));
+            source.processEvent(getUnreconstructableInsertLogMinerEventRow(2, TRANSACTION_ID_1));
+
+            // The transaction ended at or before the snapshot commit SCN, so it cannot have been emitted
+            source.processEvent(getRollbackLogMinerEventRow(3, TRANSACTION_ID_1));
+
+            // A later transaction reusing the id must not inherit the discarded failure
+            source.processEvent(getStartLogMinerEventRow(11, TRANSACTION_ID_1));
+            source.processEvent(getInsertLogMinerEventRow(12, TRANSACTION_ID_1));
+            source.processEvent(getCommitLogMinerEventRow(13, TRANSACTION_ID_1));
+
+            assertThat(source.getTransactionCache().isEmpty()).isTrue();
+        }
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2779")
+    void testUnreconstructableEventBeforeSnapshotCommitScnIsRaisedWhenTransactionIsRolledBackAfterSnapshot() throws Exception {
+        mockSnapshotCommitScn(10);
+        try (var source = getChangeEventSource(getConfig().build())) {
+            source.processEvent(getStartLogMinerEventRow(1, TRANSACTION_ID_1));
+            source.processEvent(getUnreconstructableInsertLogMinerEventRow(2, TRANSACTION_ID_1));
+
+            // The transaction ended after the snapshot commit SCN and is not assumed to be discarded
+            assertThatThrownBy(() -> source.processEvent(getRollbackLogMinerEventRow(11, TRANSACTION_ID_1)))
+                    .isInstanceOf(DebeziumException.class)
+                    .hasMessageContaining("unable to re-construct the SQL for 'INSERT' event with SCN 2");
+        }
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2779")
+    void testUnreconstructableEventBeforeSnapshotCommitScnIsRaisedWhenTransactionIsAbandoned() throws Exception {
+        if (!isTransactionAbandonmentSupported()) {
+            return;
+        }
+
+        mockSnapshotCommitScn(10);
+        try (var source = getChangeEventSource(getConfig().build())) {
+            Mockito.when(offsetContext.getScn()).thenReturn(Scn.valueOf(1L));
+
+            final Instant changeTime = Instant.now().minus(24, ChronoUnit.HOURS);
+            source.processEvent(getStartLogMinerEventRow(2, TRANSACTION_ID_1, changeTime));
+            source.processEvent(getInsertLogMinerEventRow(3, TRANSACTION_ID_1, changeTime));
+            source.processEvent(getUnreconstructableInsertLogMinerEventRow(4, TRANSACTION_ID_1));
+
+            // An abandoned transaction is not assumed to be discarded, so the held failure is raised
+            assertThatThrownBy(() -> source.abandonTransactions(Duration.ofHours(1L)))
+                    .isInstanceOf(DebeziumException.class)
+                    .hasMessageContaining("unable to re-construct the SQL for 'INSERT' event with SCN 4");
         }
     }
 
@@ -422,6 +522,38 @@ public abstract class AbstractBufferedLogMinerStreamingChangeEventSourceTest ext
     }
 
     @Test
+    @FixFor("debezium/dbz#2779")
+    void testScnDoesNotMoveBackwardsWhenCacheBecomesEmptyOnRollback() throws Exception {
+        if (!isTransactionAbandonmentSupported()) {
+            return;
+        }
+
+        // The last committed transaction is before the offset SCN, which a still open transaction held back
+        Mockito.when(offsetContext.getCommitScn()).thenReturn(CommitScn.valueOf("500:1:"));
+        Mockito.when(offsetContext.getScn()).thenReturn(Scn.valueOf(600));
+
+        try (var source = getChangeEventSource(getConfig().build())) {
+            final ResultSet rs = Mockito.mock(ResultSet.class);
+            Mockito.when(rs.next()).thenReturn(true, false);
+            Mockito.when(rs.getString(1)).thenReturn("700");
+            Mockito.when(rs.getInt(3)).thenReturn(EventType.ROLLBACK.getValue());
+            Mockito.when(rs.getTimestamp(eq(4), any(Calendar.class))).thenReturn(Timestamp.valueOf(LocalDateTime.now()));
+            Mockito.when(rs.getBytes(5)).thenReturn(new byte[]{ 0x12, 0x34, 0x56, 0x78 });
+
+            final PreparedStatement ps = Mockito.mock(PreparedStatement.class);
+            Mockito.when(ps.executeQuery()).thenReturn(rs);
+
+            final BufferedLogMinerStreamingChangeEventSource mock = Mockito.spy(source);
+            Mockito.doReturn(ps).when(mock).createQueryStatement();
+
+            // The open transaction rolled back, so the cache is empty
+            mock.process(Scn.valueOf(600), Scn.valueOf(600), Scn.valueOf(800));
+
+            Mockito.verify(offsetContext, Mockito.never()).setScn(Scn.valueOf(500));
+        }
+    }
+
+    @Test
     void testAbandonOneTransaction() throws Exception {
         if (!isTransactionAbandonmentSupported()) {
             return;
@@ -429,7 +561,6 @@ public abstract class AbstractBufferedLogMinerStreamingChangeEventSourceTest ext
 
         try (var source = getChangeEventSource(getConfig().build())) {
             Mockito.when(offsetContext.getScn()).thenReturn(Scn.valueOf(1L));
-            Mockito.when(offsetContext.getSnapshotScn()).thenReturn(Scn.NULL);
 
             final Instant changeTime = Instant.now().minus(24, ChronoUnit.HOURS);
 
@@ -450,7 +581,6 @@ public abstract class AbstractBufferedLogMinerStreamingChangeEventSourceTest ext
 
         try (var source = getChangeEventSource(getConfig().build())) {
             Mockito.when(offsetContext.getScn()).thenReturn(Scn.valueOf(1L));
-            Mockito.when(offsetContext.getSnapshotScn()).thenReturn(Scn.NULL);
 
             final Instant changeTime = Instant.now().minus(24, ChronoUnit.HOURS);
             source.processEvent(getInsertLogMinerEventRow(2, TRANSACTION_ID_1, changeTime));
@@ -468,7 +598,6 @@ public abstract class AbstractBufferedLogMinerStreamingChangeEventSourceTest ext
 
         try (var source = getChangeEventSource(getConfig().build())) {
             Mockito.when(offsetContext.getScn()).thenReturn(Scn.valueOf(1L));
-            Mockito.when(offsetContext.getSnapshotScn()).thenReturn(Scn.NULL);
 
             final Instant changeTime = Instant.now().minus(24, ChronoUnit.HOURS);
             source.processEvent(getStartLogMinerEventRow(2, TRANSACTION_ID_1, changeTime));
@@ -492,7 +621,6 @@ public abstract class AbstractBufferedLogMinerStreamingChangeEventSourceTest ext
 
         try (var source = getChangeEventSource(getConfig().build())) {
             Mockito.when(offsetContext.getScn()).thenReturn(Scn.valueOf(1L));
-            Mockito.when(offsetContext.getSnapshotScn()).thenReturn(Scn.NULL);
 
             final Instant changeTime = Instant.now().minus(24, ChronoUnit.HOURS);
             source.processEvent(getInsertLogMinerEventRow(2, TRANSACTION_ID_1, changeTime));
@@ -520,7 +648,6 @@ public abstract class AbstractBufferedLogMinerStreamingChangeEventSourceTest ext
         metrics = createMetrics(schema);
 
         Mockito.when(offsetContext.getScn()).thenReturn(Scn.valueOf(1L));
-        Mockito.when(offsetContext.getSnapshotScn()).thenReturn(Scn.NULL);
 
         final Instant changeTime1 = Instant.now().minus(24, ChronoUnit.HOURS);
         final Instant changeTime2 = Instant.now().minus(23, ChronoUnit.HOURS);
@@ -556,7 +683,6 @@ public abstract class AbstractBufferedLogMinerStreamingChangeEventSourceTest ext
         metrics = createMetrics(schema);
 
         Mockito.when(offsetContext.getScn()).thenReturn(Scn.valueOf(1L));
-        Mockito.when(offsetContext.getSnapshotScn()).thenReturn(Scn.NULL);
 
         final Instant changeTime1 = Instant.now().minus(24, ChronoUnit.HOURS);
         final Instant changeTime2 = Instant.now().minus(23, ChronoUnit.HOURS);
@@ -588,7 +714,6 @@ public abstract class AbstractBufferedLogMinerStreamingChangeEventSourceTest ext
         detailsLogger.setLevel(Level.DEBUG);
         try (var source = getChangeEventSource(getConfig().build())) {
             Mockito.when(offsetContext.getScn()).thenReturn(Scn.valueOf(1L));
-            Mockito.when(offsetContext.getSnapshotScn()).thenReturn(Scn.NULL);
 
             final Instant changeTime = Instant.now().minus(24, ChronoUnit.HOURS);
             source.processEvent(getInsertLogMinerEventRow(2, TRANSACTION_ID_1, changeTime, "TEST_TABLE", "AAAAAAAAAAAAAAAAAB", "'insert'"));
@@ -1261,6 +1386,28 @@ public abstract class AbstractBufferedLogMinerStreamingChangeEventSourceTest ext
 
     private LogMinerEventRow getInsertLogMinerEventRow(long scn, String transactionId, Instant changeTime) {
         return getInsertLogMinerEventRow(scn, transactionId, changeTime, "TEST_TABLE", "AAAAAAAAAAAAAAAAAB", "'Test'");
+    }
+
+    /**
+     * Mocks the snapshot commit SCN on the offset context, including the comparison against it.
+     */
+    private void mockSnapshotCommitScn(long snapshotCommitScn) {
+        final Scn scn = Scn.valueOf(snapshotCommitScn);
+        Mockito.when(offsetContext.getSnapshotCommitScn()).thenReturn(scn);
+        Mockito.when(offsetContext.isLessThanOrEqualToSnapshotCommitScn(any())).thenAnswer(invocation -> {
+            final Scn value = invocation.getArgument(0);
+            return value != null && !value.isNull() && value.compareTo(scn) <= 0;
+        });
+    }
+
+    /**
+     * An insert whose SQL LogMiner could not reconstruct, as reported with STATUS=2 and a reason in INFO.
+     */
+    private LogMinerEventRow getUnreconstructableInsertLogMinerEventRow(long scn, String transactionId) {
+        final LogMinerEventRow row = getInsertLogMinerEventRow(scn, transactionId);
+        Mockito.when(row.hasErrorStatus()).thenReturn(true);
+        Mockito.when(row.getInfo()).thenReturn("Dictionary Mismatch");
+        return row;
     }
 
     private LogMinerEventRow getInsertLogMinerEventRow(long scn, String transactionId, Instant changeTime, String tableName, String rowId, String dataValue) {
