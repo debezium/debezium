@@ -379,6 +379,7 @@ Steviep,Stephen Powis
 stt-bakr,Barnabas Kralik
 subkanthi,Kanthi Subramanian
 subodh,Subodh Kant Chaturvedi
+sudeepshm,Sudeep HM
 sullis,Sean C. Sullivan
 sundongkim-dev,Sundong Kim
 sunxiaojian,Sun Xiao Jian
