@@ -33,6 +33,7 @@ import io.debezium.relational.Column;
 import io.debezium.relational.DefaultValueConverter;
 import io.debezium.relational.ValueConverter;
 import io.debezium.util.Collect;
+import io.debezium.util.Strings;
 
 /**
  * Used by binlog-based connector DDL parsers to convert string default values to a specific Java type
@@ -53,7 +54,7 @@ public abstract class BinlogDefaultValueConverter implements DefaultValueConvert
     private static final String EPOCH_TIMESTAMP = "1970-01-01 00:00:00";
     private static final String EPOCH_DATE = "1970-01-01";
     private static final Pattern TIMESTAMP_PATTERN = Pattern.compile("([0-9]*-[0-9]*-[0-9]*) ([0-9]*:[0-9]*:[0-9]*(\\.([0-9]*))?)");
-    private static final Pattern COMPACT_TIMESTAMP_PATTERN = Pattern.compile("([0-9]{6}|[0-9]{8})|([0-9]{12}|[0-9]{14})(\\.[0-9]+)?");
+    private static final Pattern COMPACT_TIMESTAMP_PATTERN = Pattern.compile("([0-9]{3,4}|[0-9]{6}|[0-9]{8})|([0-9]{9,14})(\\.[0-9]+)?");
     private static final Pattern COMPACT_TIME_PATTERN = Pattern.compile("(-?)([0-9]+)(\\.[0-9]+)?");
     private static final Pattern CHARSET_INTRODUCER_PATTERN = Pattern.compile("^_[A-Za-z0-9]+'(.*)'$");
 
@@ -175,6 +176,7 @@ public abstract class BinlogDefaultValueConverter implements DefaultValueConvert
      * @return the converted value;
      */
     private Object convertToLocalDate(Column column, String value) {
+        value = normalizeCompactTimestamp(value);
         final boolean zero = EPOCH_EQUIVALENT_DATE.matcher(value).matches()
                 || EPOCH_EQUIVALENT_TIMESTAMP.matcher(value).matches()
                 || "0".equals(value);
@@ -273,12 +275,18 @@ public abstract class BinlogDefaultValueConverter implements DefaultValueConvert
     }
 
     /**
-     * Converts a DATETIME or TIMESTAMP value without delimiters, such as {@code 20260928123456} or {@code 260928}, to the
-     * {@code yyyy-MM-dd HH:mm:ss} format, as MySQL and MariaDB interpret it. A year of two digits is in the range 1970-2069.
+     * Converts a DATE, DATETIME or TIMESTAMP value without delimiters, such as {@code 20260928123456}, {@code 260928} or
+     * the number {@code 123}, to the {@code yyyy-MM-dd HH:mm:ss} format, as MySQL and MariaDB interpret it. A year of two
+     * digits is in the range 1970-2069.
+     * <p>
+     * MySQL and MariaDB pad a number with leading zeros to 6, 8, 12 or 14 digits, so that {@code 123} is
+     * {@code 2000-01-23}. They reject a string of 3, 4, 9 to 11 or 13 digits, so a value of such a length is a number and is
+     * padded. A value of 5 or 7 digits is not converted, as a string of such a length is interpreted differently from a
+     * number.
      *
      * @param value the default value; never null
-     * @return the value in the {@code yyyy-MM-dd HH:mm:ss} format, or the given value if it is not a number of 6, 8, 12
-     *         or 14 digits
+     * @return the value in the {@code yyyy-MM-dd HH:mm:ss} format, or the given value if it is not a number of 3, 4, 6, 8
+     *         or 9 to 14 digits
      */
     private static String normalizeCompactTimestamp(String value) {
         final Matcher matcher = COMPACT_TIMESTAMP_PATTERN.matcher(value);
@@ -286,6 +294,8 @@ public abstract class BinlogDefaultValueConverter implements DefaultValueConvert
             return value;
         }
         String digits = matcher.group(1) != null ? matcher.group(1) : matcher.group(2);
+        final int length = digits.length() <= 6 ? 6 : digits.length() == 8 ? 8 : digits.length() <= 12 ? 12 : 14;
+        digits = Strings.justifyRight(digits, length, '0');
         if (digits.length() == 6 || digits.length() == 12) {
             digits = (Integer.parseInt(digits.substring(0, 2)) < 70 ? "20" : "19") + digits;
         }
