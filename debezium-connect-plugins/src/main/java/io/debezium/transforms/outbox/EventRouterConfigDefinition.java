@@ -381,8 +381,8 @@ public class EventRouterConfigDefinition {
             .withWidth(ConfigDef.Width.MEDIUM)
             .withImportance(ConfigDef.Importance.MEDIUM)
             .withDescription("Whether or not to try unescaping a JSON string and make it real JSON. It will infer schema information" +
-                    " from payload and update the record schema accordingly. If content is not JSON, it just produces a warning" +
-                    " and emits the record unchanged");
+                    " from payload and update the record schema accordingly. If the content is not JSON, the behavior is defined by" +
+                    " the 'table.json.payload.expansion.failure.behavior' option");
 
     public static final Field TABLE_JSON_PAYLOAD_NULL_BEHAVIOR = Field.create("table.json.payload.null.behavior")
             .withDisplayName("Behavior when json payload including null value")
