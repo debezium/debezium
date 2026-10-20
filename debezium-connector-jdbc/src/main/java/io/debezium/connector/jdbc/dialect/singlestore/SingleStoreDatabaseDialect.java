@@ -46,6 +46,16 @@ public class SingleStoreDatabaseDialect extends MariaDbDatabaseDialect {
     }
 
     @Override
+    public String getTimestampPositiveInfinityValue() {
+        return "9999-12-31T00:00:00+00:00";
+    }
+
+    @Override
+    public String getTimestampNegativeInfinityValue() {
+        return "0000-01-02T00:00:00+00:00";
+    }
+
+    @Override
     protected void registerTypes() {
         super.registerTypes();
 
