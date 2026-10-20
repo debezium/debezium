@@ -83,7 +83,7 @@ public class CompositeHeartbeat implements Heartbeat, Heartbeat.ScheduledHeartbe
 
     @Override
     public boolean isEnabled() {
-        return heartbeats.stream().anyMatch(Heartbeat::isEnabled);
+        return scheduledHeartbeat.isEnabled() || heartbeats.stream().anyMatch(Heartbeat::isEnabled);
     }
 
     @Override
