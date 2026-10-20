@@ -501,12 +501,12 @@ public class SqlServerStreamingChangeEventSource implements StreamingChangeEvent
             throws InterruptedException {
         final TxLogPosition currentPosition = offsetContext.getChangePosition();
         final long eventSerialNo = offsetContext.getEventSerialNo();
-        offsetContext.setChangePosition(TxLogPosition.valueOf(newTable.getStartLsn(), newTable.getStartLsn(), currentPosition.getCommandId()), 0);
+        offsetContext.assignChangePosition(TxLogPosition.valueOf(newTable.getStartLsn(), newTable.getStartLsn(), currentPosition.getCommandId()), 0);
         try {
             action.run();
         }
         finally {
-            offsetContext.setChangePosition(currentPosition, (int) eventSerialNo);
+            offsetContext.assignChangePosition(currentPosition, eventSerialNo);
         }
     }
 

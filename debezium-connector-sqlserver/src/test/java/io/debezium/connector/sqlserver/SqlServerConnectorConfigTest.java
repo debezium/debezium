@@ -300,6 +300,28 @@ public class SqlServerConnectorConfigTest {
         assertEquals(previous, offsetContext.getChangePosition().getCommitLsn());
         assertEquals(previous, offsetContext.getChangePosition().getInTxLsn());
         assertEquals(eventSerialNo, offsetContext.getEventSerialNo());
+        assertEquals(7, offsetContext.getChangePosition().getCommandId());
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2867")
+    void schemaMigrationRestoresSerialWhenCaptureStartMatchesCurrentPosition() throws InterruptedException {
+        final SqlServerConnectorConfig connectorConfig = new SqlServerConnectorConfig(defaultConfig().build());
+        final Lsn migration = Lsn.valueOf("00000030:00000001:0001");
+        final SqlServerOffsetContext offsetContext = new SqlServerOffsetContext(connectorConfig,
+                TxLogPosition.valueOf(migration, migration, 7), null, true);
+        offsetContext.setChangePosition(TxLogPosition.valueOf(migration, migration, 7), 4);
+        final long eventSerialNo = offsetContext.getEventSerialNo();
+
+        final SqlServerChangeTable newTable = new SqlServerChangeTable(new TableId("db", "dbo", "orders"), "dbo_orders", 1, migration,
+                Collections.emptyList());
+        SqlServerStreamingChangeEventSource.withCaptureStartPosition(offsetContext, newTable,
+                () -> assertEquals(0L, offsetContext.getEventSerialNo()));
+
+        assertEquals(migration, offsetContext.getChangePosition().getCommitLsn());
+        assertEquals(migration, offsetContext.getChangePosition().getInTxLsn());
+        assertEquals(7, offsetContext.getChangePosition().getCommandId());
+        assertEquals(eventSerialNo, offsetContext.getEventSerialNo());
     }
 
     private static Map<String, Object> position(String commitLsn, String changeLsn) {
