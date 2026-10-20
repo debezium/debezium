@@ -7,6 +7,7 @@ package io.debezium.storage.nats.history;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.awaitility.Awaitility.await;
 
 import java.net.URI;
 import java.net.http.HttpClient;
@@ -16,6 +17,7 @@ import java.time.Duration;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -461,7 +463,7 @@ class NatsSchemaHistoryIT {
         try (GenericContainer<?> plainNats = new GenericContainer<>(DockerImageName.parse(NatsContainer.IMAGE))
                 .withExposedPorts(NatsContainer.NATS_PORT, NatsContainer.NATS_MONITOR_PORT)
                 .withCommand("-m", String.valueOf(NatsContainer.NATS_MONITOR_PORT))
-                .withLogConsumer(NatsContainer.logToStdout())) {
+                .withLogConsumer(NatsContainer.logConsumer())) {
             plainNats.start();
 
             Map<String, String> config = new HashMap<>();
@@ -476,16 +478,17 @@ class NatsSchemaHistoryIT {
             failing.configure(Configuration.from(config), null, SchemaHistoryListener.NOOP, true);
             assertThatThrownBy(failing::start).isInstanceOf(SchemaHistoryException.class);
 
-            assertThat(connectionCount(plainNats))
-                    .as("a failed start() must not leave a NATS connection behind")
-                    .isZero();
+            // The server accounts for a closed socket asynchronously, so give it a moment.
+            await().alias("a failed start() must not leave a NATS connection behind")
+                    .atMost(10, TimeUnit.SECONDS)
+                    .pollInterval(100, TimeUnit.MILLISECONDS)
+                    .until(() -> connectionCount(plainNats) == 0);
         }
     }
 
     /**
-     * Number of live client connections the server reports on its monitoring
-     * endpoint, polled briefly because the server accounts for a closed socket
-     * asynchronously.
+     * Number of live client connections the server currently reports on its
+     * monitoring endpoint.
      */
     private int connectionCount(GenericContainer<?> container) throws Exception {
         final URI connz = URI.create(
@@ -493,19 +496,11 @@ class NatsSchemaHistoryIT {
                         container.getMappedPort(NatsContainer.NATS_MONITOR_PORT)));
         final HttpClient client = HttpClient.newHttpClient();
         final Pattern numConnections = Pattern.compile("\"num_connections\"\\s*:\\s*(\\d+)");
-        int connections = -1;
-        for (int attempt = 0; attempt < 100; attempt++) {
-            final String body = client.send(HttpRequest.newBuilder(connz).build(),
-                    HttpResponse.BodyHandlers.ofString()).body();
-            final Matcher matcher = numConnections.matcher(body);
-            assertThat(matcher.find()).as("monitoring endpoint did not report num_connections: %s", body).isTrue();
-            connections = Integer.parseInt(matcher.group(1));
-            if (connections == 0) {
-                break;
-            }
-            Thread.sleep(100);
-        }
-        return connections;
+        final String body = client.send(HttpRequest.newBuilder(connz).build(),
+                HttpResponse.BodyHandlers.ofString()).body();
+        final Matcher matcher = numConnections.matcher(body);
+        assertThat(matcher.find()).as("monitoring endpoint did not report num_connections: %s", body).isTrue();
+        return Integer.parseInt(matcher.group(1));
     }
 
     @SuppressWarnings("deprecation")

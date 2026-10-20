@@ -60,7 +60,7 @@ class NatsTlsConnectionIT {
                 .withCopyFileToContainer(MountableFile.forHostPath(certFile.getAbsolutePath()), "/certs/server.crt")
                 .withCopyFileToContainer(MountableFile.forHostPath(keyFile.getAbsolutePath()), "/certs/server.key")
                 .withCommand("-js", "--tls", "--tlscert", "/certs/server.crt", "--tlskey", "/certs/server.key")
-                .withLogConsumer(NatsContainer.logToStdout())) {
+                .withLogConsumer(NatsContainer.logConsumer())) {
             tlsNats.start();
             String url = NatsContainer.serverUrl(tlsNats);
 
