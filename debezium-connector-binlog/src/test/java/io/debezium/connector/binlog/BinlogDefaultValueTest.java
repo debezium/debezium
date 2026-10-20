@@ -1123,7 +1123,9 @@ public abstract class BinlogDefaultValueTest<V extends BinlogValueConverters, P 
                 Arguments.of("SET('A','b')", "'a'", "A"),
                 Arguments.of("SET('a','A') COLLATE utf8mb4_bin", "'A'", "A"),
                 Arguments.of("ENUM('a','b','c')", "'B'", "b"),
-                Arguments.of("ENUM('a','b','c')", "'b'", "b")));
+                Arguments.of("ENUM('a','b','c')", "'b'", "b"),
+                Arguments.of("ENUM('a','b')", "'x'", "x"),
+                Arguments.of("SET('a','b')", "'a,x'", "a,x")));
     }
 
     private Table parseTable(String type, String literal, String action) {
