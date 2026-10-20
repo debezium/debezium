@@ -21,6 +21,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
+import org.apache.kafka.common.config.ConfigDef;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -163,6 +164,24 @@ class S3OversizedRecordStorageTest {
                 DebeziumException.class,
                 () -> storage.configure(Configuration.from(properties)));
         assertTrue(exception.getMessage().contains(S3OversizedRecordStorage.REGION_CONFIG));
+    }
+
+    @Test
+    void shouldDeclareTheSecretAccessKeyAsAPassword() {
+        assertEquals(ConfigDef.Type.PASSWORD, S3OversizedRecordStorage.SECRET_ACCESS_KEY.type());
+        assertEquals(ConfigDef.Type.STRING, S3OversizedRecordStorage.ACCESS_KEY_ID.type());
+        assertTrue(S3OversizedRecordStorage.ALL_FIELDS.asArray().length == 6);
+    }
+
+    @Test
+    void shouldRejectAnInvalidForcePathStyleValue() {
+        Map<String, Object> properties = new LinkedHashMap<>(configurationProperties());
+        properties.put(S3OversizedRecordStorage.FORCE_PATH_STYLE_CONFIG, "sometimes");
+
+        DebeziumException exception = assertThrows(
+                DebeziumException.class,
+                () -> storage.configure(Configuration.from(properties)));
+        assertTrue(exception.getMessage().contains("Error configuring"));
     }
 
     @Test
