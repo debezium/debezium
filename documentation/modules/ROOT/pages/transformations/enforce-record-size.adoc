@@ -70,9 +70,12 @@ transforms.EnforceRecordSize.claim.check.storage.base.path=s3://my-bucket/debezi
 transforms.EnforceRecordSize.claim.check.storage.region=us-west-1
 ----
 
-By default, the S3 implementation uses the AWS default credentials provider chain, including web identity credentials for IAM roles for service accounts (IRSA).
-To use static credentials for local development, set both `claim.check.storage.access.key.id` and `claim.check.storage.secret.access.key`.
+By default, the S3 implementation uses the AWS default credentials provider chain, which resolves credentials from the environment, from an EC2 instance profile, or from web identity credentials for IAM roles for service accounts (IRSA).
+Prefer the default provider chain in production, so that no credentials appear in the connector configuration.
+To use static credentials, set both `claim.check.storage.access.key.id` and `claim.check.storage.secret.access.key`.
 When both properties are present, the S3 implementation uses them instead of the default provider chain.
+Kafka Connect stores the connector configuration and returns it from its REST API as plain text.
+If you must use a static secret access key, supply it through a Kafka Connect `ConfigProvider` placeholder, for example `${file:/opt/kafka/external-configuration/s3.properties:secret.access.key}`, rather than as a literal value.
 To use it, make the `debezium-storage-s3` artifact and its dependencies available on the same Kafka Connect plugin path as the connector.
 
 The marker is a JSON value that retains the column's original string or unnamed bytes schema.
@@ -245,11 +248,13 @@ Required when `strategy` is set to `claim_check`.
 |No default value.
 |Optional access key ID for `S3OversizedRecordStorage`.
 When this property and `claim.check.storage.secret.access.key` are both set, the S3 implementation uses static credentials.
+Omit both properties to use the AWS default credentials provider chain, which is the recommended option.
 
 |[[enforce-record-size-claim-check-s3-secret-access-key]]<<enforce-record-size-claim-check-s3-secret-access-key, `claim.check.storage.secret.access.key`>>
 |No default value.
 |Optional secret access key for `S3OversizedRecordStorage`.
 When this property and `claim.check.storage.access.key.id` are both set, the S3 implementation uses static credentials.
+Because the connector configuration is stored as plain text, supply this value through a Kafka Connect `ConfigProvider` placeholder rather than as a literal.
 
 |[[enforce-record-size-claim-check-s3-endpoint]]<<enforce-record-size-claim-check-s3-endpoint, `claim.check.storage.endpoint`>>
 |No default value.

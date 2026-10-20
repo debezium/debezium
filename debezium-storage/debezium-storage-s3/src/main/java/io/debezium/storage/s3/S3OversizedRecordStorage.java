@@ -8,9 +8,16 @@ package io.debezium.storage.s3;
 import java.net.URI;
 import java.net.URISyntaxException;
 
+import org.apache.kafka.common.config.ConfigDef.Importance;
+import org.apache.kafka.common.config.ConfigDef.Type;
+import org.apache.kafka.common.config.ConfigDef.Width;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import io.debezium.DebeziumException;
 import io.debezium.common.annotation.Incubating;
 import io.debezium.config.Configuration;
+import io.debezium.config.Field;
 import io.debezium.spi.storage.OversizedRecord;
 import io.debezium.spi.storage.OversizedRecordReference;
 import io.debezium.spi.storage.OversizedRecordStorage;
@@ -41,6 +48,52 @@ public class S3OversizedRecordStorage implements OversizedRecordStorage {
     public static final String ACCESS_KEY_ID_CONFIG = "access.key.id";
     public static final String SECRET_ACCESS_KEY_CONFIG = "secret.access.key";
 
+    public static final Field BASE_PATH = Field.create(BASE_PATH_CONFIG)
+            .withDisplayName("S3 base path")
+            .withType(Type.STRING)
+            .withWidth(Width.LONG)
+            .withImportance(Importance.HIGH)
+            .withDescription("The S3 bucket and optional object prefix, in the form s3://bucket/optional-prefix.");
+
+    public static final Field REGION = Field.create(REGION_CONFIG)
+            .withDisplayName("S3 region")
+            .withType(Type.STRING)
+            .withWidth(Width.LONG)
+            .withImportance(Importance.HIGH)
+            .withDescription("The AWS region in which the bucket is located.");
+
+    public static final Field ENDPOINT = Field.create(ENDPOINT_CONFIG)
+            .withDisplayName("S3 endpoint")
+            .withType(Type.STRING)
+            .withWidth(Width.LONG)
+            .withImportance(Importance.LOW)
+            .withDescription("An optional absolute URI of a custom S3-compatible endpoint.");
+
+    public static final Field FORCE_PATH_STYLE = Field.create(FORCE_PATH_STYLE_CONFIG)
+            .withDisplayName("S3 force path style URL")
+            .withType(Type.BOOLEAN)
+            .withImportance(Importance.LOW)
+            .withDefault(false)
+            .withValidation(Field::isBoolean)
+            .withDescription("Whether the S3 client uses path-style access.");
+
+    public static final Field ACCESS_KEY_ID = Field.create(ACCESS_KEY_ID_CONFIG)
+            .withDisplayName("S3 access key id")
+            .withType(Type.STRING)
+            .withWidth(Width.LONG)
+            .withImportance(Importance.MEDIUM)
+            .withDescription("An optional static access key id. When omitted, the AWS default credentials provider chain is used.");
+
+    public static final Field SECRET_ACCESS_KEY = Field.create(SECRET_ACCESS_KEY_CONFIG)
+            .withDisplayName("S3 secret access key")
+            .withType(Type.PASSWORD)
+            .withWidth(Width.LONG)
+            .withImportance(Importance.MEDIUM)
+            .withDescription("An optional static secret access key. Supply it through a Kafka Connect ConfigProvider rather than as a literal value.");
+
+    public static final Field.Set ALL_FIELDS = Field.setOf(BASE_PATH, REGION, ENDPOINT, FORCE_PATH_STYLE, ACCESS_KEY_ID, SECRET_ACCESS_KEY);
+
+    private static final Logger LOGGER = LoggerFactory.getLogger(S3OversizedRecordStorage.class);
     private static final String STORAGE_NAME = "s3";
 
     private String bucket;
@@ -51,8 +104,12 @@ public class S3OversizedRecordStorage implements OversizedRecordStorage {
     public void configure(Configuration config) {
         close();
 
-        URI basePath = parseBasePath(config.getString(BASE_PATH_CONFIG));
-        String regionName = config.getString(REGION_CONFIG);
+        if (!config.validateAndRecord(ALL_FIELDS, LOGGER::error)) {
+            throw new DebeziumException("Error configuring an instance of " + getClass().getSimpleName() + "; check the logs for details");
+        }
+
+        URI basePath = parseBasePath(config.getString(BASE_PATH));
+        String regionName = config.getString(REGION);
         if (Strings.isNullOrBlank(regionName)) {
             throw new DebeziumException("Configuration '" + REGION_CONFIG + "' is required for " + getClass().getSimpleName());
         }
@@ -73,9 +130,9 @@ public class S3OversizedRecordStorage implements OversizedRecordStorage {
         S3ClientBuilder builder = S3Client.builder()
                 .region(region)
                 .credentialsProvider(credentialsProvider)
-                .forcePathStyle(config.getBoolean(FORCE_PATH_STYLE_CONFIG, false));
+                .forcePathStyle(config.getBoolean(FORCE_PATH_STYLE));
 
-        String endpoint = config.getString(ENDPOINT_CONFIG);
+        String endpoint = config.getString(ENDPOINT);
         if (!Strings.isNullOrBlank(endpoint)) {
             builder.endpointOverride(parseAbsoluteUri(ENDPOINT_CONFIG, endpoint));
         }
@@ -83,8 +140,8 @@ public class S3OversizedRecordStorage implements OversizedRecordStorage {
     }
 
     private static AwsCredentialsProvider createCredentialsProvider(Configuration config) {
-        String accessKeyId = config.getString(ACCESS_KEY_ID_CONFIG);
-        String secretAccessKey = config.getString(SECRET_ACCESS_KEY_CONFIG);
+        String accessKeyId = config.getString(ACCESS_KEY_ID);
+        String secretAccessKey = config.getString(SECRET_ACCESS_KEY);
         if (!Strings.isNullOrBlank(accessKeyId) && !Strings.isNullOrBlank(secretAccessKey)) {
             return StaticCredentialsProvider.create(AwsBasicCredentials.create(accessKeyId, secretAccessKey));
         }
