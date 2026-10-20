@@ -5,9 +5,12 @@
  */
 package io.debezium.connector.jdbc.dialect.mysql;
 
+import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Types;
+import java.time.LocalDateTime;
+import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeFormatterBuilder;
@@ -19,6 +22,7 @@ import java.util.Optional;
 import java.util.Set;
 
 import org.apache.kafka.connect.data.Schema;
+import org.apache.kafka.connect.errors.ConnectException;
 import org.hibernate.PessimisticLockException;
 import org.hibernate.SessionFactory;
 import org.hibernate.StatelessSession;
@@ -50,6 +54,8 @@ public class MySqlDatabaseDialect extends GeneralDatabaseDialect {
     private static final List<String> NO_DEFAULT_VALUE_TYPES = Arrays.asList(
             "tinytext", "mediumtext", "longtext", "text", "tinyblob", "mediumblob", "longblob");
 
+    private static final DateTimeFormatter UTC_TIMESTAMP_LITERAL = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+
     private static final DateTimeFormatter ISO_LOCAL_DATE_TIME_WITH_SPACE = new DateTimeFormatterBuilder()
             .parseCaseInsensitive()
             .append(DateTimeFormatter.ISO_LOCAL_DATE)
@@ -75,12 +81,35 @@ public class MySqlDatabaseDialect extends GeneralDatabaseDialect {
     }
 
     private final boolean connectionTimeZoneSet;
+    private final SessionFactory sessionFactory;
 
     protected MySqlDatabaseDialect(JdbcSinkConnectorConfig config, SessionFactory sessionFactory) {
         super(config, sessionFactory);
+        this.sessionFactory = sessionFactory;
 
         try (StatelessSession session = sessionFactory.openStatelessSession()) {
             this.connectionTimeZoneSet = session.doReturningWork((connection) -> connection.getMetaData().getURL().contains("connectionTimeZone="));
+        }
+    }
+
+    public String toSessionZoneLiteral(ZonedDateTime value) {
+        final LocalDateTime utc = LocalDateTime.ofInstant(value.toInstant(), ZoneOffset.UTC);
+        try (StatelessSession session = sessionFactory.openStatelessSession()) {
+            return session.doReturningWork((connection) -> {
+                try (PreparedStatement statement = connection.prepareStatement(
+                        "SELECT CONVERT_TZ(?, 'UTC', @@session.time_zone)")) {
+                    statement.setString(1, UTC_TIMESTAMP_LITERAL.format(utc));
+                    try (ResultSet converted = statement.executeQuery()) {
+                        if (converted.next() && converted.getString(1) != null) {
+                            return converted.getString(1);
+                        }
+                    }
+                }
+                throw new ConnectException("Failed to resolve the session time zone offset from the target database");
+            });
+        }
+        catch (Exception e) {
+            throw new ConnectException("Failed to resolve the session time zone offset from the target database", e);
         }
     }
 
