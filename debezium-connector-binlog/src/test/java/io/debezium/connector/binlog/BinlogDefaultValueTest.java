@@ -1105,6 +1105,27 @@ public abstract class BinlogDefaultValueTest<V extends BinlogValueConverters, P 
                 Arguments.of("TIME(3)", "123456.789", "'12:34:56.789'")));
     }
 
+    @ParameterizedTest(name = "{0} DEFAULT {1}, {3}")
+    @MethodSource("enumAndSetDefaults")
+    @FixFor("debezium/dbz#2768")
+    void shouldConvertEnumAndSetDefaultsToDeclaredMembers(String type, String literal, String expected, String action) {
+        // MySQL and MariaDB store the members in the spelling and the order in which they are declared
+        assertThat(getColumnSchema(parseTable(type, literal, action), "v").defaultValue()).isEqualTo(expected);
+    }
+
+    protected static Stream<Arguments> enumAndSetDefaults() {
+        return withDdlActions(Stream.of(
+                Arguments.of("SET('a','b','c')", "'b,a'", "a,b"),
+                Arguments.of("SET('a','b','c')", "'c,a,b'", "a,b,c"),
+                Arguments.of("SET('a','b','c')", "'B,a'", "a,b"),
+                Arguments.of("SET('a','b','c')", "'b,a,b'", "a,b"),
+                Arguments.of("SET('a','b','c')", "''", ""),
+                Arguments.of("SET('A','b')", "'a'", "A"),
+                Arguments.of("SET('a','A') COLLATE utf8mb4_bin", "'A'", "A"),
+                Arguments.of("ENUM('a','b','c')", "'B'", "b"),
+                Arguments.of("ENUM('a','b','c')", "'b'", "b")));
+    }
+
     private Table parseTable(String type, String literal, String action) {
         final var literalTables = new Tables();
         final String column = "v " + type + " DEFAULT " + literal;

@@ -18,6 +18,7 @@ import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeFormatterBuilder;
 import java.time.temporal.ChronoField;
+import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 import java.util.regex.Matcher;
@@ -162,7 +163,58 @@ public abstract class BinlogDefaultValueConverter implements DefaultValueConvert
                 // The value converter pads bytes, unlike a string, to the length of the column, as it pads the values
                 return value.getBytes(StandardCharsets.UTF_8);
         }
+        final String typeName = column.typeName() != null ? column.typeName().toUpperCase() : null;
+        if (converters.matches(typeName, "ENUM") || converters.matches(typeName, "SET")) {
+            return convertToEnumOrSetValue(column, converters.matches(typeName, "SET"), value);
+        }
         return value;
+    }
+
+    /**
+     * Converts an ENUM or SET default to the index or the bits of its members, as the binlog represents the values, so that
+     * the value converter emits the default in the spelling and the order in which the members are declared, as MySQL and
+     * MariaDB store it. For example, the default {@code 'B,a'} of a {@code SET('a','b','c')} column is {@code a,b}. A member
+     * is matched exactly first, as the members of a column with a case-sensitive collation may differ only in case, and else
+     * ignoring case.
+     *
+     * @param column the ENUM or SET column; never null
+     * @param set whether the column is a SET column
+     * @param value the default value; never null
+     * @return the 1-based index of an ENUM member or the bits of the SET members, or the given value if it is not a member
+     */
+    private Object convertToEnumOrSetValue(Column column, boolean set, String value) {
+        final List<String> options = converters.extractEnumAndSetOptions(column);
+        if (options == null) {
+            return value;
+        }
+        if (!set) {
+            final int index = indexOfOption(options, value);
+            return index < 0 ? value : Integer.valueOf(index + 1);
+        }
+        long bits = 0L;
+        if (!value.isEmpty()) {
+            for (String member : value.split(",", -1)) {
+                final int index = indexOfOption(options, member);
+                if (index < 0 || index >= Long.SIZE) {
+                    return value;
+                }
+                bits |= 1L << index;
+            }
+        }
+        return bits;
+    }
+
+    private static int indexOfOption(List<String> options, String member) {
+        final int index = options.indexOf(member);
+        if (index >= 0) {
+            return index;
+        }
+        for (int i = 0; i < options.size(); i++) {
+            if (options.get(i).equalsIgnoreCase(member)) {
+                return i;
+            }
+        }
+        return -1;
     }
 
     /**
