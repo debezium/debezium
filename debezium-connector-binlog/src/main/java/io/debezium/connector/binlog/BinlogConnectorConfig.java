@@ -318,17 +318,6 @@ public abstract class BinlogConnectorConfig extends HistorizedRelationalDatabase
                     + "currently-running database processes in the cluster. This connector joins the "
                     + "database cluster as another server (with this unique ID) so it can read the binlog.");
 
-    public static final Field SERVER_ID_OFFSET = Field.create("database.server.id.offset")
-            .withDisplayName("Cluster ID offset")
-            .withType(ConfigDef.Type.LONG)
-            .withWidth(ConfigDef.Width.LONG)
-            .withImportance(ConfigDef.Importance.HIGH)
-            .withDefault(10000L)
-            .withGroup(Field.createGroupEntry(Field.Group.CONNECTION_ADVANCED, 0))
-            .withDescription("Only relevant if parallel snapshotting is configured. During parallel snapshotting, "
-                    + "multiple (4) connections open to the database client, and they each need their own unique "
-                    + "connection ID. This offset is used to generate those IDs from the base configured cluster ID.");
-
     public static final Field SSL_KEYSTORE = Field.create("database.ssl.keystore")
             .withDisplayName("SSL Keystore")
             .withType(ConfigDef.Type.STRING)
@@ -634,7 +623,6 @@ public abstract class BinlogConnectorConfig extends HistorizedRelationalDatabase
                     QUERY_TIMEOUT_MS,
                     ON_CONNECT_STATEMENTS,
                     SERVER_ID,
-                    SERVER_ID_OFFSET,
                     SSL_KEYSTORE,
                     SSL_KEYSTORE_PASSWORD,
                     SSL_TRUSTSTORE,
