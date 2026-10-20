@@ -180,6 +180,16 @@ public class JdbcSinkConnectorConfigTest extends AbstractBaseJdbcSinkTest {
     }
 
     @Test
+    @FixFor("DBZ-2909")
+    public void testSingleStoreGeometryRepairIsOptIn() {
+        final Map<String, String> properties = connectionProperties();
+        assertThat(new JdbcSinkConnectorConfig(properties).isSingleStoreGeometryRepairEnabled()).isFalse();
+
+        properties.put(JdbcSinkConnectorConfig.SINGLESTORE_GEOMETRY_REPAIR_ENABLED, "true");
+        assertThat(new JdbcSinkConnectorConfig(properties).isSingleStoreGeometryRepairEnabled()).isTrue();
+    }
+
+    @Test
     public void testStarRocksCatalogNameConfiguresInitialSql() {
         final Map<String, String> properties = connectionProperties();
         properties.put(JdbcSinkConnectorConfig.STARROCKS_CATALOG_NAME, "external_catalog");
