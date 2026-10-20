@@ -254,15 +254,10 @@ public class SqlServerStreamingChangeEventSource implements StreamingChangeEvent
                 while (!schemaChangeCheckpoints.isEmpty()) {
                     migrateTable(partition, schemaChangeCheckpoints, offsetContext);
                 }
-                final List<SqlServerChangeTable> newChangeTables = dataConnection.getNewChangeTables(databaseName, fromLsn, toLsn);
-                if (!newChangeTables.isEmpty()) {
+                if (!dataConnection.getNewChangeTables(databaseName, fromLsn, toLsn).isEmpty()) {
                     final SqlServerChangeTable[] tables = getChangeTablesToQuery(partition, offsetContext, toLsn);
                     tablesSlot.set(tables);
-                    for (SqlServerChangeTable detected : newChangeTables) {
-                        final SqlServerChangeTable table = matchingChangeTable(tables, detected);
-                        if (table == null || table.getSourceTableId() == null) {
-                            continue;
-                        }
+                    for (SqlServerChangeTable table : tables) {
                         if (table.getStartLsn().isBetween(fromLsn, toLsn)) {
                             LOGGER.info("Schema will be changed for {}", table);
                             schemaChangeCheckpoints.add(table);
@@ -477,16 +472,6 @@ public class SqlServerStreamingChangeEventSource implements StreamingChangeEvent
         }
         LOGGER.info("Refreshed connections (data refreshed={}, metadata refreshed={}) for database '{}'",
                 !dataValid, !metadataValid, databaseName);
-    }
-
-    private static SqlServerChangeTable matchingChangeTable(SqlServerChangeTable[] tables, SqlServerChangeTable detected) {
-        for (SqlServerChangeTable table : tables) {
-            if (table.getCaptureInstance().equals(detected.getCaptureInstance())
-                    && table.getChangeTableObjectId() == detected.getChangeTableObjectId()) {
-                return table;
-            }
-        }
-        return null;
     }
 
     private void migrateTable(SqlServerPartition partition, final Queue<SqlServerChangeTable> schemaChangeCheckpoints, SqlServerOffsetContext offsetContext)

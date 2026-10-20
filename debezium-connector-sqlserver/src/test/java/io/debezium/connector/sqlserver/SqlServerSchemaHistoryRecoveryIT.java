@@ -72,18 +72,24 @@ public class SqlServerSchemaHistoryRecoveryIT extends AbstractAsyncEngineConnect
         start(SqlServerConnector.class, config, loggingCompletion(), null, stopOnMigratedRow(captureStart), true);
         assertConnectorIsRunning();
         TestHelper.waitForStreamingStarted();
+        consumedLines.clear();
 
         replaceCaptureInstance();
         Awaitility.await("new capture instance")
                 .pollInterval(200, TimeUnit.MILLISECONDS)
                 .atMost(Duration.ofSeconds(TestHelper.waitTimeForLogEntries()))
-                .until(() -> rememberCaptureStart(captureStart));
+                .until(() -> {
+                    consumedLines.clear();
+                    return rememberCaptureStart(captureStart);
+                });
         connection.execute("INSERT INTO orders VALUES(2, 'paid', 20)");
         Awaitility.await("migrated row committed")
                 .pollInterval(200, TimeUnit.MILLISECONDS)
                 .atMost(Duration.ofSeconds(TestHelper.waitTimeForLogEntries() * 4L))
-                .until(() -> !isEngineRunning.get());
-        consumedLines.clear();
+                .until(() -> {
+                    consumedLines.clear();
+                    return !isEngineRunning.get();
+                });
         waitForEngineShutdown();
         cleanupTestFwkState();
 
