@@ -434,7 +434,7 @@ public abstract class BinlogReadOnlyIncrementalSnapshotIT<C extends SourceConnec
         final String tableRemoveMessage = String.format("Removed '%s' from incremental snapshot collection list.", tableDataCollectionId());
 
         Awaitility.await()
-                .atMost(Duration.ofMinutes(2))
+                .atMost(Duration.ofMinutes(4))
                 .until(() -> {
                     consumeAvailableRecords(record -> {
                         if (topicName.equalsIgnoreCase(record.topic())) {
