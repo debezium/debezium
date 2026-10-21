@@ -221,11 +221,11 @@ public class JdbcSinkConnectorTask extends SinkTask {
         // This allows any PostgreSQL-compatible dialect to use UNNEST without code changes
         if (config.isPostgresUnnestInsertEnabled()) {
             LOGGER.info("Using UnnestRecordWriter for UNNEST optimization");
-            return new UnnestRecordWriter(session, sessionFactory, queryBinderResolver, config, databaseDialect, progressListener);
+            return new UnnestRecordWriter(session, queryBinderResolver, config, databaseDialect, progressListener);
         }
 
         LOGGER.info("Using DefaultRecordWriter for standard JDBC batching");
-        return new DefaultRecordWriter(session, sessionFactory, queryBinderResolver, config, databaseDialect, progressListener);
+        return new DefaultRecordWriter(session, queryBinderResolver, config, databaseDialect, progressListener);
     }
 
     @Override
