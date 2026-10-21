@@ -5,16 +5,15 @@
  */
 package io.debezium.connector.postgresql.connection.pgoutput;
 
-import java.sql.SQLException;
-
+import io.debezium.connector.postgresql.TestHelper;
+import io.debezium.connector.postgresql.connection.PostgresConnection;
+import io.debezium.connector.postgresql.junit.SkipTestOnPostgresVersion;
 import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
-import io.debezium.connector.postgresql.TestHelper;
-import io.debezium.connector.postgresql.connection.PostgresConnection;
-import io.debezium.connector.postgresql.junit.SkipTestOnPostgresVersion;
+import java.sql.SQLException;
 
 /**
  * A collection of tests to ensure Postgres binary representation did not change between Postgres version. The test
@@ -87,6 +86,9 @@ public class PgOutputBinaryCompatibilityIT {
                     "466f7572206c65677320676f6f642c2074776f206c656773206261642e");
             assertSendValue(connection, "select encode(byteasend('Four legs good, two legs bad.'), 'hex')",
                     "466f7572206c65677320676f6f642c2074776f206c656773206261642e");
+
+            // ISBN
+            // ISBN does not have a binary send function. It's always sent in text mode.
 
             // Temporal
             assertSendValue(connection, "select encode(date_send('1-1-2000'), 'hex')", "00000000");
