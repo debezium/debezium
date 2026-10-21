@@ -5,7 +5,6 @@
  */
 package io.debezium.connector.jdbc.dialect.singlestore;
 
-import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.util.ArrayList;
 import java.util.List;
@@ -67,7 +66,7 @@ final class GeometryRepair {
             }
             result = fixed;
         }
-        throw new ConnectException("SingleStore polygon remains invalid after three precision repair attempts.");
+        throw new ConnectException("SingleStore polygon remains invalid after repair.");
     }
 
     private static LinearRing ring(GeometryFactory factory, LineString source) {
@@ -110,10 +109,7 @@ final class GeometryRepair {
     }
 
     private static double round(double value) {
-        if (!Double.isFinite(value)) {
-            throw new ConnectException(String.format("Invalid SingleStore geospatial coordinate '%s'.", value));
-        }
-        return BigDecimal.valueOf(value).setScale(8, RoundingMode.HALF_UP).doubleValue();
+        return GeometryType.decimal(value).setScale(8, RoundingMode.HALF_UP).doubleValue();
     }
 
     private static void requireAreal(Geometry geometry) {
@@ -147,8 +143,7 @@ final class GeometryRepair {
     private static String ringWkt(Coordinate[] coordinates) {
         final StringJoiner points = new StringJoiner(", ", "(", ")");
         for (Coordinate coordinate : coordinates) {
-            points.add(BigDecimal.valueOf(coordinate.x).stripTrailingZeros().toPlainString() + " "
-                    + BigDecimal.valueOf(coordinate.y).stripTrailingZeros().toPlainString());
+            points.add(GeometryType.format(coordinate.x) + " " + GeometryType.format(coordinate.y));
         }
         return points.toString();
     }
