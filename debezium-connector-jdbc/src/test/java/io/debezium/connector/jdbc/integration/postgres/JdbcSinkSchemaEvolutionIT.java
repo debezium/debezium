@@ -9,6 +9,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import java.sql.ResultSet;
 import java.sql.Statement;
+import java.time.Duration;
 import java.util.List;
 import java.util.Map;
 
@@ -19,6 +20,7 @@ import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.sink.SinkRecord;
 import org.assertj.db.api.TableAssert;
 import org.assertj.db.type.ValueType;
+import org.awaitility.Awaitility;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -60,11 +62,10 @@ public class JdbcSinkSchemaEvolutionIT extends AbstractJdbcSinkSchemaEvolutionTe
     }
 
     @Test
-    @FixFor("DBZ-2302")
+    @FixFor("debezium/dbz#2302")
     public void testConcurrentAlterRecoversWhenColumnAlreadyExists() throws Exception {
-        final Race race = startLosingAlter(true, "order_status");
+        final Race race = startLosingAlter(AlterLoss.RECOVER, "order_status");
         try {
-            getSink().execute("ALTER TABLE " + race.destinationTableName + " ADD COLUMN order_status text");
             final JdbcSinkConnectorTask competingTask = awaitCompetingPut(race);
             assertThat(competingTask.getLastProcessingException()).as("competing task failure").isNull();
             competingTask.preCommit(Map.of(new TopicPartition(race.topicName, 0), new OffsetAndMetadata(1)));
@@ -81,13 +82,14 @@ public class JdbcSinkSchemaEvolutionIT extends AbstractJdbcSinkSchemaEvolutionTe
     }
 
     @Test
-    @FixFor("DBZ-2302")
+    @FixFor("debezium/dbz#2302")
     public void testConcurrentAlterFailsOnceWhenColumnRemainsMissing() throws Exception {
-        final Race race = startLosingAlter(false, "order_status");
+        final Race race = startLosingAlter(AlterLoss.MISSING, "order_status");
         try {
             final JdbcSinkConnectorTask competingTask = awaitCompetingPut(race);
             assertThat(competingTask.getLastProcessingException()).as("competing task failure").isNotNull();
             assertThat(race.logs.countOccurrences("rechecking schema before failing")).isEqualTo(1);
+            assertThat(attemptCount(race.destinationTableName)).isEqualTo(2);
 
             final TableAssert tableAssert = TestHelper.assertTable(assertDbConnection(), race.destinationTableName);
             tableAssert.hasNumberOfRows(1);
@@ -99,12 +101,10 @@ public class JdbcSinkSchemaEvolutionIT extends AbstractJdbcSinkSchemaEvolutionTe
     }
 
     @Test
-    @FixFor("DBZ-2302")
+    @FixFor("debezium/dbz#2302")
     public void testConcurrentAlterRecoversWhenMultipleColumnsAlreadyExist() throws Exception {
-        final Race race = startLosingAlter(true, "order_status", "priority");
+        final Race race = startLosingAlter(AlterLoss.RECOVER, "order_status", "priority");
         try {
-            getSink().execute("ALTER TABLE " + race.destinationTableName
-                    + " ADD COLUMN order_status text, ADD COLUMN priority text");
             final JdbcSinkConnectorTask competingTask = awaitCompetingPut(race);
             assertThat(competingTask.getLastProcessingException()).as("competing task failure").isNull();
             competingTask.preCommit(Map.of(new TopicPartition(race.topicName, 0), new OffsetAndMetadata(1)));
@@ -131,7 +131,7 @@ public class JdbcSinkSchemaEvolutionIT extends AbstractJdbcSinkSchemaEvolutionTe
         return task;
     }
 
-    private Race startLosingAlter(boolean waitForColumns, String... columns) throws Exception {
+    private Race startLosingAlter(AlterLoss loss, String... columns) throws Exception {
         final Map<String, String> properties = evolutionProperties();
         final String tableName = randomTableName();
         final String topicName = topicName("server1", "schema", tableName);
@@ -142,7 +142,7 @@ public class JdbcSinkSchemaEvolutionIT extends AbstractJdbcSinkSchemaEvolutionTe
         startSinkConnector(properties);
         assertSinkConnectorIsRunning();
         consume(firstRecord);
-        installLosingAlterTrigger(destinationTableName, waitForColumns, columns);
+        installLosingAlterTrigger(destinationTableName, loss, columns);
 
         final LogInterceptor logs = new LogInterceptor(DefaultRecordWriter.class);
         final JdbcSinkConnectorTask competingTask = startCompetingTask(properties);
@@ -154,9 +154,10 @@ public class JdbcSinkSchemaEvolutionIT extends AbstractJdbcSinkSchemaEvolutionTe
         return new Race(topicName, destinationTableName, logs, competingTask, competingPut);
     }
 
-    private JdbcSinkConnectorTask awaitCompetingPut(Race race) throws Exception {
-        race.competingPut.join(10_000);
-        assertThat(race.competingPut.isAlive()).as("competing task still running").isFalse();
+    private JdbcSinkConnectorTask awaitCompetingPut(Race race) {
+        Awaitility.await("competing task still running")
+                .atMost(Duration.ofSeconds(10))
+                .until(() -> !race.competingPut.isAlive());
         return race.competingTask;
     }
 
@@ -179,62 +180,69 @@ public class JdbcSinkSchemaEvolutionIT extends AbstractJdbcSinkSchemaEvolutionTe
         return properties;
     }
 
-    private void installLosingAlterTrigger(String tableName, boolean waitForColumns, String... columns) throws Exception {
+    private void installLosingAlterTrigger(String tableName, AlterLoss loss, String... columns) throws Exception {
         final String qualifiedTableName = tableName.contains(".") ? tableName : "public." + tableName;
         final String unqualifiedTableName = qualifiedTableName.substring(qualifiedTableName.indexOf('.') + 1);
-        // Fail only the first ALTER. Its counter is committed independently because the failed statement rolls back.
-        // Recovery tests add the columns before the one-shot retry re-reads the table. The failure test never does.
         getSink().execute("CREATE EXTENSION IF NOT EXISTS dblink");
         getSink().execute("CREATE TABLE IF NOT EXISTS dbz2302_alter_attempts (table_name text PRIMARY KEY, attempts int NOT NULL)");
         final String recordAttempt = "INSERT INTO dbz2302_alter_attempts (table_name, attempts) VALUES (''"
                 + qualifiedTableName + "'', 1) ON CONFLICT (table_name) DO UPDATE SET attempts = dbz2302_alter_attempts.attempts + 1";
-        final StringBuilder columnWait = new StringBuilder();
-        if (waitForColumns) {
-            for (String column : columns) {
-                columnWait.append("PERFORM pg_sleep(0.05); EXIT WHEN EXISTS (SELECT 1 FROM information_schema.columns ")
-                        .append("WHERE table_schema = 'public' AND table_name = '").append(unqualifiedTableName)
-                        .append("' AND column_name = '").append(column).append("'); ");
+        final String dblink = "dbname=' || current_database() || ' user=" + getSink().getUsername()
+                + " password=" + getSink().getPassword();
+        final StringBuilder onFirstAttempt = new StringBuilder();
+        if (loss == AlterLoss.RECOVER) {
+            final StringBuilder addColumns = new StringBuilder("ALTER TABLE ").append(qualifiedTableName);
+            for (int i = 0; i < columns.length; i++) {
+                addColumns.append(i == 0 ? " ADD COLUMN " : ", ADD COLUMN ");
+                addColumns.append(columns[i]).append(" text");
             }
+            onFirstAttempt.append("PERFORM dblink_exec('").append(dblink).append("', '")
+                    .append(addColumns).append("'); ");
         }
-        else {
-            columnWait.append("EXIT; ");
-        }
+        onFirstAttempt.append("RAISE EXCEPTION 'column \"%\" of relation \"%\" already exists', '")
+                .append(columns[0]).append("', '").append(unqualifiedTableName)
+                .append("' USING ERRCODE = '42701'; ");
+        final String onSecondAttempt = loss == AlterLoss.MISSING
+                ? "IF attempt_count = 2 THEN RAISE EXCEPTION 'column \"%\" of relation \"%\" already exists', '"
+                        + columns[0] + "', '" + unqualifiedTableName + "' USING ERRCODE = '42701'; END IF; "
+                : "";
         getSink().execute("CREATE OR REPLACE FUNCTION dbz2302_lose_alter() RETURNS event_trigger LANGUAGE plpgsql AS $$ "
-                + "DECLARE command record; "
                 + "DECLARE attempt_count int; "
                 + "BEGIN "
-                + "FOR command IN SELECT * FROM pg_event_trigger_ddl_commands() LOOP "
-                + "IF command.command_tag = 'ALTER TABLE' AND command.object_identity = '" + qualifiedTableName + "' THEN "
-                + "PERFORM dblink_exec('dbname=' || current_database() || ' user=" + getSink().getUsername()
-                + " password=" + getSink().getPassword() + "', '" + recordAttempt + "'); "
+                + "IF TG_TAG = 'ALTER TABLE' AND position('" + unqualifiedTableName + "' in current_query()) > 0 THEN "
+                + "PERFORM dblink_exec('" + dblink + "', '" + recordAttempt + "'); "
                 + "SELECT attempts INTO attempt_count FROM dbz2302_alter_attempts WHERE table_name = '" + qualifiedTableName + "'; "
-                + "IF attempt_count = 1" + (waitForColumns ? "" : " OR attempt_count = 2") + " THEN "
-                + "LOOP "
-                + columnWait
-                + "END LOOP; "
-                + "RAISE EXCEPTION 'column \"%\" of relation \"%\" already exists', '" + columns[0] + "', '"
-                + unqualifiedTableName + "' USING ERRCODE = '42701'; "
+                + "IF attempt_count = 1 THEN "
+                + onFirstAttempt
                 + "END IF; "
+                + onSecondAttempt
                 + "END IF; "
-                + "END LOOP; "
                 + "END $$");
         getSink().execute("DROP EVENT TRIGGER IF EXISTS dbz2302_lose_alter");
-        getSink().execute("CREATE EVENT TRIGGER dbz2302_lose_alter ON ddl_command_end EXECUTE FUNCTION dbz2302_lose_alter()");
+        getSink().execute("CREATE EVENT TRIGGER dbz2302_lose_alter ON ddl_command_start EXECUTE FUNCTION dbz2302_lose_alter()");
     }
 
-    private void awaitFirstAlterFailure(String tableName) throws Exception {
-        final long deadline = System.currentTimeMillis() + 10_000;
-        while (System.currentTimeMillis() < deadline) {
-            try (Statement statement = getSink().getConnection().createStatement();
-                    ResultSet attempts = statement.executeQuery(
-                            "SELECT attempts FROM dbz2302_alter_attempts WHERE table_name = '" + tableName + "'")) {
-                if (attempts.next() && attempts.getInt(1) >= 1) {
-                    return;
-                }
+    private void awaitFirstAlterFailure(String tableName) {
+        Awaitility.await("competing ALTER did not fail")
+                .atMost(Duration.ofSeconds(10))
+                .until(() -> attemptCount(tableName) >= 1);
+    }
+
+    private int attemptCount(String tableName) throws Exception {
+        final String qualifiedTableName = tableName.contains(".") ? tableName : "public." + tableName;
+        try (Statement statement = getSink().getConnection().createStatement();
+                ResultSet attempts = statement.executeQuery(
+                        "SELECT attempts FROM dbz2302_alter_attempts WHERE table_name = '" + qualifiedTableName + "'")) {
+            if (attempts.next()) {
+                return attempts.getInt(1);
             }
-            Thread.sleep(50);
+            return 0;
         }
-        throw new AssertionError("The competing ALTER did not fail");
+    }
+
+    private enum AlterLoss {
+        RECOVER,
+        MISSING
     }
 
     private JdbcKafkaSinkRecord record(String topicName, byte id, int offset, Map<String, String> properties,
