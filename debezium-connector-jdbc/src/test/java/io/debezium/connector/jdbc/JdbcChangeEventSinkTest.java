@@ -13,6 +13,7 @@ import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doCallRealMethod;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
@@ -109,13 +110,17 @@ class JdbcChangeEventSinkTest {
 
         final JdbcChangeEventSink sink = new JdbcChangeEventSink(config, mock(StatelessSession.class), dialect, recordWriter, connectorContext,
                 progressListener, ErrorReporters.nop());
-        sink.execute(List.of(RECORD_FACTORY.tombstoneRecord("database.schema.table", config).getOriginalKafkaRecord()));
+        sink.execute(List.of(
+                RECORD_FACTORY.tombstoneRecord("database.schema.table", config).getOriginalKafkaRecord(),
+                RECORD_FACTORY.tombstoneRecord("database.schema.table", config).getOriginalKafkaRecord()));
         sink.forceFlush();
 
         // The table must not be created from a tombstone, which has no value to derive the columns from
         verify(recordWriter, never()).checkAndApplyTableChangesIfNeeded(any(), any());
         verify(recordWriter, never()).write(any(TableDescriptor.class), any());
-        verify(progressListener).filtered();
+        // The existence of the table is checked only once per batch
+        verify(recordWriter).tableExists(collectionId);
+        verify(progressListener, times(2)).filtered();
         verifyNoMoreInteractions(progressListener);
     }
 

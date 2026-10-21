@@ -11,6 +11,7 @@ import static io.debezium.openlineage.dataset.DatasetMetadata.DatasetKind.OUTPUT
 
 import java.sql.SQLException;
 import java.util.Collection;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -94,6 +95,7 @@ public class JdbcChangeEventSink extends AbstractChangeEventSink implements Chan
             return;
         }
 
+        final Set<CollectionId> missingTables = new HashSet<>();
         for (SinkRecord kafkaSinkRecord : records) {
             JdbcSinkRecord record = new JdbcKafkaSinkRecord(kafkaSinkRecord, config);
             LOGGER.trace("Processing {}", record);
@@ -151,12 +153,13 @@ public class JdbcChangeEventSink extends AbstractChangeEventSink implements Chan
                     }
                 }
 
-                if (!upsertBufferByTable.containsKey(collectionId) && !deleteBufferByTable.containsKey(collectionId)
-                        && !recordWriter.tableExists(collectionId)) {
-                    // A delete has nothing to delete in a missing table, and a tombstone carries no value
-                    // the table could be created from.
-                    LOGGER.debug("Delete skipped for topic '{}' because table '{}' does not exist.", record.topicName(),
+                if (record.getPayload() == null && !upsertBufferByTable.containsKey(collectionId) && !deleteBufferByTable.containsKey(collectionId)
+                        && (missingTables.contains(collectionId) || !recordWriter.tableExists(collectionId))) {
+                    // A delete without payload, e.g. a tombstone, carries no columns the missing table could be
+                    // created from, and there is nothing to delete in a table that does not exist.
+                    LOGGER.debug("Delete without payload skipped for topic '{}' because table '{}' does not exist.", record.topicName(),
                             collectionId.toFullIdentiferString());
+                    missingTables.add(collectionId);
                     progressListener.filtered();
                     continue;
                 }

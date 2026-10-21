@@ -303,13 +303,13 @@ public class DefaultRecordWriter implements RecordWriter {
             var record = (JdbcKafkaSinkRecord) batchRecord.record();
             var collectionId = batchRecord.collectionId();
 
-            if ((record.isDelete() || record.isTombstone()) && !tables.containsKey(collectionId)
+            if ((record.isDelete() || record.isTombstone()) && record.getPayload() == null && !tables.containsKey(collectionId)
                     && (missingTables.contains(collectionId) || !tableExists(collectionId))) {
-                // A delete has nothing to delete in a missing table, and a tombstone carries no value
-                // the table could be created from.
-                LOGGER.debug("Delete skipped because table '{}' does not exist.", collectionId.toFullIdentiferString());
+                // A delete without payload, e.g. a tombstone, carries no columns the missing table could be
+                // created from, and there is nothing to delete in a table that does not exist.
+                LOGGER.debug("Delete without payload skipped because table '{}' does not exist.", collectionId.toFullIdentiferString());
                 missingTables.add(collectionId);
-                progressListener.filtered();
+                progressListener().filtered();
                 continue;
             }
 
