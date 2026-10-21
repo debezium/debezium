@@ -510,6 +510,10 @@ public abstract class RelationalDatabaseConnectorConfig extends CommonConnectorC
             .withDescription("A comma-separated list of regular expressions matching the database-specific data type names that "
                     + "adds the data type's original type and original length as parameters to the corresponding field schemas in the emitted change records.");
 
+    /**
+     * Not part of the shared {@link #CONFIG_DEFINITION}: connectors that pass this setting to the
+     * {@link TableSchemaBuilder} register it in their own configuration definition.
+     */
     public static final Field SCHEMA_FIELDS_FORCE_ALL_OPTIONAL = Field.create("schema.fields.force.all.optional")
             .withDisplayName("Force all schema fields to be optional")
             .withType(Type.BOOLEAN)
@@ -585,7 +589,7 @@ public abstract class RelationalDatabaseConnectorConfig extends CommonConnectorC
                     SCHEMA_EXCLUDE_LIST, DATABASE_INCLUDE_LIST, DATABASE_EXCLUDE_LIST)
             .group(Field.Group.CONNECTOR, DECIMAL_HANDLING_MODE, TIME_PRECISION_MODE, INCLUDE_SCHEMA_CHANGES, INCLUDE_SCHEMA_COMMENTS)
             .group(Field.Group.CONNECTOR_ADVANCED, MSG_KEY_COLUMNS, MASK_COLUMN_WITH_HASH, MASK_COLUMN, TRUNCATE_COLUMN, PROPAGATE_COLUMN_SOURCE_TYPE,
-                    PROPAGATE_DATATYPE_SOURCE_TYPE, SCHEMA_STORAGE_CLASS, TABLE_STORAGE_CLASS, SCHEMA_FIELDS_FORCE_ALL_OPTIONAL)
+                    PROPAGATE_DATATYPE_SOURCE_TYPE, SCHEMA_STORAGE_CLASS, TABLE_STORAGE_CLASS)
             .group(Field.Group.CONNECTOR_SNAPSHOT, SNAPSHOT_LOCK_TIMEOUT_MS, SNAPSHOT_SELECT_STATEMENT_OVERRIDES_BY_TABLE, SNAPSHOT_FULL_COLUMN_SCAN_FORCE,
                     SNAPSHOT_TABLES_ORDER_BY_ROW_COUNT)
             .group(Field.Group.ADVANCED_HEARTBEAT, DatabaseHeartbeatImpl.HEARTBEAT_ACTION_QUERY)
