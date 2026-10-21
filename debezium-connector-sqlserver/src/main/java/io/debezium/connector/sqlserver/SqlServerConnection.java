@@ -50,14 +50,11 @@ import io.debezium.config.Field;
 import io.debezium.data.Envelope;
 import io.debezium.jdbc.JdbcConfiguration;
 import io.debezium.jdbc.JdbcConnection;
-import io.debezium.pipeline.source.snapshot.incremental.ChunkQueryBuilder;
 import io.debezium.pipeline.spi.OffsetContext;
 import io.debezium.pipeline.spi.Partition;
 import io.debezium.relational.Column;
-import io.debezium.relational.RelationalDatabaseConnectorConfig;
 import io.debezium.relational.Table;
 import io.debezium.relational.TableId;
-import io.debezium.spi.schema.DataCollectionId;
 
 /**
  * {@link JdbcConnection} extension to be used with Microsoft SQL Server
@@ -828,6 +825,14 @@ public class SqlServerConnection extends JdbcConnection {
     }
 
     @Override
+    public String getQueryParameterPlaceholder(Column column) {
+        if ("datetime".equalsIgnoreCase(column.typeName())) {
+            return "CAST(? AS datetime)";
+        }
+        return super.getQueryParameterPlaceholder(column);
+    }
+
+    @Override
     public String buildSelectWithRowLimits(TableId tableId, int limit, String projection, Optional<String> condition,
                                            Optional<String> additionalCondition, String orderBy, Optional<String> tableAlias) {
         final StringBuilder sql = new StringBuilder("SELECT TOP ");
@@ -955,11 +960,6 @@ public class SqlServerConnection extends JdbcConnection {
 
     public <T> T singleOptionalValue(String query, ResultSetExtractor<T> extractor) throws SQLException {
         return queryAndMap(query, rs -> rs.next() ? extractor.apply(rs) : null);
-    }
-
-    @Override
-    public <T extends DataCollectionId> ChunkQueryBuilder<T> chunkQueryBuilder(RelationalDatabaseConnectorConfig connectorConfig) {
-        return new SqlServerChunkQueryBuilder<>(connectorConfig, this);
     }
 
     public Duration getCdcCapturePollingInterval() {
