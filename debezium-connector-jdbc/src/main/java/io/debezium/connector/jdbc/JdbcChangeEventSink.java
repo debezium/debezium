@@ -151,6 +151,16 @@ public class JdbcChangeEventSink extends AbstractChangeEventSink implements Chan
                     }
                 }
 
+                if (!upsertBufferByTable.containsKey(collectionId) && !deleteBufferByTable.containsKey(collectionId)
+                        && !recordWriter.tableExists(collectionId)) {
+                    // A delete has nothing to delete in a missing table, and a tombstone carries no value
+                    // the table could be created from.
+                    LOGGER.debug("Delete skipped for topic '{}' because table '{}' does not exist.", record.topicName(),
+                            collectionId.toFullIdentiferString());
+                    progressListener.filtered();
+                    continue;
+                }
+
                 final Buffer upsertBufferToFlush = upsertBufferByTable.get(collectionId);
                 if (upsertBufferToFlush != null && !upsertBufferToFlush.isEmpty()) {
                     // When a delete event arrives, update buffer must be flushed to avoid losing the delete

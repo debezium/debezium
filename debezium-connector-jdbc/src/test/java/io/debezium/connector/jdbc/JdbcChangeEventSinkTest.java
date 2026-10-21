@@ -8,9 +8,11 @@ package io.debezium.connector.jdbc;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doCallRealMethod;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
@@ -87,6 +89,68 @@ class JdbcChangeEventSinkTest {
 
         verify(progressListener).written(1);
         verifyNoMoreInteractions(progressListener);
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2916")
+    void shouldSkipTombstoneWhenTableDoesNotExist() throws Exception {
+        final JdbcSinkConnectorConfig config = new JdbcSinkConnectorConfig(Map.of(
+                JdbcSinkConnectorConfig.DELETE_ENABLED, "true",
+                JdbcSinkConnectorConfig.PRIMARY_KEY_MODE, "record_key"));
+        final CollectionId collectionId = new CollectionId(null, null, "database_schema_table");
+        final DatabaseDialect dialect = mock(DatabaseDialect.class);
+        final SinkProgressListener progressListener = mock(SinkProgressListener.class);
+        final DefaultRecordWriter recordWriter = mock(DefaultRecordWriter.class);
+        final ConnectorContext connectorContext = new ConnectorContext("jdbc-sink", "jdbc", "0", "test", UUID.randomUUID(), Map.of());
+
+        when(dialect.getVersion()).thenReturn(DatabaseVersion.make(1));
+        when(dialect.getCollectionId("database_schema_table")).thenReturn(collectionId);
+        when(recordWriter.tableExists(collectionId)).thenReturn(false);
+
+        final JdbcChangeEventSink sink = new JdbcChangeEventSink(config, mock(StatelessSession.class), dialect, recordWriter, connectorContext,
+                progressListener, ErrorReporters.nop());
+        sink.execute(List.of(RECORD_FACTORY.tombstoneRecord("database.schema.table", config).getOriginalKafkaRecord()));
+        sink.forceFlush();
+
+        // The table must not be created from a tombstone, which has no value to derive the columns from
+        verify(recordWriter, never()).checkAndApplyTableChangesIfNeeded(any(), any());
+        verify(recordWriter, never()).write(any(TableDescriptor.class), any());
+        verify(progressListener).filtered();
+        verifyNoMoreInteractions(progressListener);
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2916")
+    void shouldWriteTombstoneWhenTableExists() throws Exception {
+        final JdbcSinkConnectorConfig config = new JdbcSinkConnectorConfig(Map.of(
+                JdbcSinkConnectorConfig.DELETE_ENABLED, "true",
+                JdbcSinkConnectorConfig.PRIMARY_KEY_MODE, "record_key"));
+        final CollectionId collectionId = new CollectionId(null, null, "database_schema_table");
+        final TableDescriptor table = TableDescriptor.builder()
+                .tableName("database_schema_table")
+                .build();
+        final DatabaseDialect dialect = mock(DatabaseDialect.class);
+        final SinkProgressListener progressListener = mock(SinkProgressListener.class);
+        final DefaultRecordWriter recordWriter = mock(DefaultRecordWriter.class);
+        final ConnectorContext connectorContext = new ConnectorContext("jdbc-sink", "jdbc", "0", "test", UUID.randomUUID(), Map.of());
+
+        when(dialect.getVersion()).thenReturn(DatabaseVersion.make(1));
+        when(dialect.getCollectionId("database_schema_table")).thenReturn(collectionId);
+        when(dialect.resolveMissingFields(any(), any())).thenReturn(Set.of());
+        when(recordWriter.tableExists(collectionId)).thenReturn(true);
+        when(recordWriter.checkAndApplyTableChangesIfNeeded(any(), any())).thenReturn(table);
+        when(recordWriter.executeWithRetries(anyString(), any())).thenAnswer(invocation -> {
+            final Callable<?> callable = invocation.getArgument(1);
+            return callable.call();
+        });
+
+        final JdbcChangeEventSink sink = new JdbcChangeEventSink(config, mock(StatelessSession.class), dialect, recordWriter, connectorContext,
+                progressListener, ErrorReporters.nop());
+        sink.execute(List.of(RECORD_FACTORY.tombstoneRecord("database.schema.table", config).getOriginalKafkaRecord()));
+        sink.forceFlush();
+
+        verify(recordWriter).write(eq(table), any());
+        verify(progressListener, never()).filtered();
     }
 
     @Test
