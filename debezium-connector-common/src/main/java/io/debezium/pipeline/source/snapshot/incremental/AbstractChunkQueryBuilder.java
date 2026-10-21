@@ -142,7 +142,7 @@ public abstract class AbstractChunkQueryBuilder<T extends DataCollectionId>
             condition.append('(');
             for (int j = 0; j < i + 1; j++) {
                 final boolean isLastIterationForJ = (i == j);
-                final String placeholder = boundPlaceholder(pkColumns.get(j));
+                final String placeholder = jdbcConnection.getQueryParameterPlaceholder(pkColumns.get(j));
                 final String operator =
                         // not the last item in this iteration
                         !isLastIterationForJ ? " = " + placeholder :
@@ -225,14 +225,6 @@ public abstract class AbstractChunkQueryBuilder<T extends DataCollectionId>
     public void addUpperBound(List<Column> pkColumns, Object[] boundaryKey, StringBuilder sql, boolean inclusiveFinal) {
         sql.append("NOT ");
         addLowerBound(pkColumns, boundaryKey, sql, !inclusiveFinal);
-    }
-
-    /**
-     * JDBC placeholder used for a chunk-bound comparison. Connectors may wrap {@code ?}
-     * so the database compares the bound using the column's native type.
-     */
-    protected String boundPlaceholder(Column column) {
-        return "?";
     }
 
     @Override
