@@ -510,18 +510,18 @@ public abstract class RelationalDatabaseConnectorConfig extends CommonConnectorC
             .withDescription("A comma-separated list of regular expressions matching the database-specific data type names that "
                     + "adds the data type's original type and original length as parameters to the corresponding field schemas in the emitted change records.");
 
-    public static final Field SCHEMA_FIELDS_FORCE_ALL_OPTIONAL = Field.create("schema.fields.force_all_optional")
-            .withDisplayName("Force all value schema fields to be optional")
+    public static final Field SCHEMA_FIELDS_FORCE_ALL_OPTIONAL = Field.create("schema.fields.force.all.optional")
+            .withDisplayName("Force all schema fields to be optional")
             .withType(Type.BOOLEAN)
             .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR_ADVANCED))
             .withDefault(false)
             .withWidth(Width.SHORT)
             .withImportance(Importance.LOW)
             .withValidation(Field::isBoolean)
-            .withDescription("Specify whether all fields of the emitted value schemas should be marked as optional: "
+            .withDescription("Specify whether all fields of the emitted key and value schemas should be marked as optional: "
                     + "'false' (the default) marks a field as optional only if the corresponding column is nullable; "
                     + "'true' marks every field as optional regardless of the column's NOT NULL constraint. "
-                    + "Only the schema is affected; emitted values are unchanged. Key schema fields are not affected.");
+                    + "Only the schemas are affected; emitted values are unchanged.");
 
     public static final Field SNAPSHOT_FULL_COLUMN_SCAN_FORCE = Field.createInternal("snapshot.scan.all.columns.force")
             .withDisplayName("Snapshot force scan all columns of all tables")
@@ -721,7 +721,7 @@ public abstract class RelationalDatabaseConnectorConfig extends CommonConnectorC
     }
 
     /**
-     * Whether all fields of the emitted value schemas should be marked as optional,
+     * Whether all fields of the emitted key and value schemas should be marked as optional,
      * regardless of the nullability of the underlying columns.
      */
     public boolean isSchemaFieldsForceAllOptional() {

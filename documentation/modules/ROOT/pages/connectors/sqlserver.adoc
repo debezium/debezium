@@ -2849,16 +2849,16 @@ That is, the specified expression is matched against the entire name string of t
 
 For the list of SQL Server-specific data type names, see the xref:sqlserver-data-types[SQL Server data type mappings].
 
-|[[sqlserver-property-schema-fields-force-all-optional]]<<sqlserver-property-schema-fields-force-all-optional, `+schema.fields.force_all_optional+`>>
+|[[sqlserver-property-schema-fields-force-all-optional]]<<sqlserver-property-schema-fields-force-all-optional, `+schema.fields.force.all.optional+`>>
 |`false`
-|Specifies whether the connector marks every field in the value schema of change events as optional.
+|Specifies whether the connector marks every field in the key and value schemas of change events as optional.
 By default, a field is optional only if the corresponding column is nullable.
 
-Set this property to `true` to mark all value fields as optional regardless of `NOT NULL` constraints.
-Use this setting when downstream consumers or schema compatibility rules require every value field to be optional.
-This property changes only the schema; it does not change the values that the connector emits.
+Set this property to `true` to mark all key and value fields as optional regardless of `NOT NULL` constraints.
+Use this setting when downstream consumers or schema compatibility rules require every field to be optional.
+This property changes only the schemas; it does not change the values that the connector emits.
 If the connector receives no value for a `NOT NULL` column, it still emits the column default, or, if the column has no default, a type-specific fallback value, such as `0` or an empty string.
-Fields in the key schema are not affected.
+Because primary key columns are also marked as optional in the key schema, verify that consumers that derive primary keys from the key schema, such as sink connectors that create tables, can handle optional key fields.
 
 |[[sqlserver-property-message-key-columns]]<<sqlserver-property-message-key-columns, `+message.key.columns+`>>
 |_n/a_

@@ -66,7 +66,7 @@ public class TableSchemaBuilder {
     private final CustomConverterRegistry customConverterRegistry;
     private final boolean multiPartitionMode;
     private final EventConvertingFailureHandlingMode eventConvertingFailureHandlingMode;
-    private final boolean valueFieldsOptional;
+    private final boolean forceAllFieldsOptional;
 
     /**
      * Create a new instance of the builder.
@@ -138,8 +138,8 @@ public class TableSchemaBuilder {
      * @param defaultValueConverter is used to convert the default value literal to a Java type
      *            recognized by value converters for a subset of types. may be null.
      * @param schemaNameAdjuster the adjuster for schema names; may not be null
-     * @param valueFieldsOptional whether all fields of the value schema should be marked as optional,
-     *            regardless of the nullability of the underlying columns; key schema fields are not affected
+     * @param forceAllFieldsOptional whether all fields of the key and value schemas should be marked as optional,
+     *            regardless of the nullability of the underlying columns; emitted values are not affected
      */
     public TableSchemaBuilder(ValueConverterProvider valueConverterProvider,
                               DefaultValueConverter defaultValueConverter,
@@ -150,7 +150,7 @@ public class TableSchemaBuilder {
                               FieldNamer<Column> fieldNamer,
                               boolean multiPartitionMode,
                               EventConvertingFailureHandlingMode eventConvertingFailureHandlingMode,
-                              boolean valueFieldsOptional) {
+                              boolean forceAllFieldsOptional) {
         this.schemaNameAdjuster = schemaNameAdjuster;
         this.valueConverterProvider = valueConverterProvider;
         this.defaultValueConverter = Optional.ofNullable(defaultValueConverter)
@@ -161,7 +161,7 @@ public class TableSchemaBuilder {
         this.customConverterRegistry = customConverterRegistry;
         this.multiPartitionMode = multiPartitionMode;
         this.eventConvertingFailureHandlingMode = eventConvertingFailureHandlingMode;
-        this.valueFieldsOptional = valueFieldsOptional;
+        this.forceAllFieldsOptional = forceAllFieldsOptional;
     }
 
     /**
@@ -204,7 +204,7 @@ public class TableSchemaBuilder {
                 .filter(column -> filter == null || filter.matches(tableId.catalog(), tableId.schema(), tableId.table(), column.name()))
                 .forEach(column -> {
                     ColumnMapper mapper = mappers == null ? null : mappers.mapperFor(tableId, column);
-                    addField(valSchemaBuilder, table, column, mapper, valueFieldsOptional);
+                    addField(valSchemaBuilder, table, column, mapper);
                 });
 
         Schema valSchema = valSchemaBuilder.optional().build();
@@ -436,19 +436,6 @@ public class TableSchemaBuilder {
      * @param mapper the mapping function for the column; may be null if the columns is not to be mapped to different values
      */
     protected void addField(SchemaBuilder builder, Table table, Column column, ColumnMapper mapper) {
-        addField(builder, table, column, mapper, false);
-    }
-
-    /**
-     * Add to the supplied {@link SchemaBuilder} a field for the column with the given information.
-     *
-     * @param builder the schema builder; never null
-     * @param table the table definition; never null
-     * @param column the column definition
-     * @param mapper the mapping function for the column; may be null if the columns is not to be mapped to different values
-     * @param forceOptional whether the field should be marked as optional even if the column is not nullable
-     */
-    protected void addField(SchemaBuilder builder, Table table, Column column, ColumnMapper mapper, boolean forceOptional) {
         final Object defaultValue = parseDefaultValue(table.id(), column);
 
         final SchemaBuilder fieldBuilder = customConverterRegistry.registerConverterFor(table.id(), column, defaultValue)
@@ -459,7 +446,7 @@ public class TableSchemaBuilder {
                 // Let the mapper add properties to the schema ...
                 mapper.alterFieldSchema(column, fieldBuilder);
             }
-            if (column.isOptional() || forceOptional) {
+            if (column.isOptional() || forceAllFieldsOptional) {
                 fieldBuilder.optional();
             }
 

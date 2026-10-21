@@ -176,7 +176,7 @@ public class TableSchemaBuilderTest {
 
     @Test
     @FixFor("debezium/dbz#142")
-    public void shouldMarkAllValueFieldsOptionalWhenConfigured() {
+    public void shouldMarkAllKeyAndValueFieldsOptionalWhenConfigured() {
         schema = new TableSchemaBuilder(new JdbcValueConverters(), null, adjuster, customConverterRegistry,
                 SchemaBuilder.struct().build(), SchemaFactory.get().transactionBlockSchema(), defaultFieldNamer, false,
                 EventConvertingFailureHandlingMode.FAIL, true)
@@ -188,8 +188,10 @@ public class TableSchemaBuilderTest {
                 .as("value field %s should be optional", field.name())
                 .isTrue());
 
-        // key fields keep the nullability of their columns
-        assertThat(schema.keySchema().field("C1").schema().isOptional()).isFalse();
+        // key fields are optional too, including the NOT NULL primary key column C1
+        schema.keySchema().fields().forEach(field -> assertThat(field.schema().isOptional())
+                .as("key field %s should be optional", field.name())
+                .isTrue());
 
         // only the schema changes: a null for a NOT NULL column is still replaced by the type fallback
         Struct value = schema.valueFromColumnData(data);
@@ -198,7 +200,7 @@ public class TableSchemaBuilderTest {
 
     @Test
     @FixFor("debezium/dbz#142")
-    public void shouldKeepDefaultAndFallbackValuesWhenAllValueFieldsOptional() {
+    public void shouldKeepDefaultAndFallbackValuesWhenAllFieldsOptional() {
         Table tableWithDefaults = Table.editor()
                 .tableId(id)
                 .addColumns(Column.editor().name("ID")
