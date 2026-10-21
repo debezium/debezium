@@ -449,6 +449,7 @@ Zakariae BEN ALLAL,Zakariae Ben Allal
 zalmane,Oren Elias
 ZdravkoDonev-redis,Zdravko Donev
 zeldanerd24,Kevin Rothenberger
+zerafachris,Christopher Zerafa
 zhanghelong,Helong Zhang
 Zica,Lucas Gazire
 zrlurb,Peter Urbanetz
