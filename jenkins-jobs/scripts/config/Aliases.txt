@@ -138,6 +138,7 @@ gaurav7261,Gaurav Miglani
 ggaborg,Gabor Andras
 GitHubSergei,Sergey Kazakov
 gkorland,Guy Korland
+glitke-dev,Gennadi Litke
 gmarav05,Aravind Gm
 gmouss,Moustapha Mahfoud
 gongchanghua,Gong Chang Hua
