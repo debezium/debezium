@@ -1777,6 +1777,13 @@ If `max.queue.size` is also set, writes to the queue are blocked when the queue 
 |`500` (0.5 seconds)
 |A positive integer value that specifies the number of milliseconds the connector should wait for new change events to appear during each iteration.
 
+|[[yashandb-property-table-filter-excluded-cache-size]]<<yashandb-property-table-filter-excluded-cache-size, `+table.filter.excluded.cache.size+`>>
+|`0`
+|The maximum number of excluded tables whose filter decision the connector caches.
+The connector asks the table filter about every table on the server, for example during a snapshot, and by default remembers all of the answers, which takes memory in proportion to the number of excluded tables.
+Set a positive value to bound the cache: beyond it, the least recently used decisions are evicted and evaluated again when needed.
+The default value `0` does not evict anything.
+
 |[[yashandb-property-skipped-operations]]<<yashandb-property-skipped-operations, `+skipped.operations+`>>
 |`t`
 |A comma-separated list of operation types that you want the connector to skip during streaming.

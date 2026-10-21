@@ -1935,6 +1935,13 @@ If a value greater than 5000 milliseconds (5 seconds) is provided, the effective
 |`0`
 |An integer value that specifies the number of milliseconds the connector should accumulate events in the queue before each queue consumption.
 
+|[[vitess-property-table-filter-excluded-cache-size]]<<vitess-property-table-filter-excluded-cache-size, `+table.filter.excluded.cache.size+`>>
+|`0`
+|The maximum number of excluded tables whose filter decision the connector caches.
+The connector asks the table filter about every table on the server, for example during a snapshot, and by default remembers all of the answers, which takes memory in proportion to the number of excluded tables.
+Set a positive value to bound the cache: beyond it, the least recently used decisions are evicted and evaluated again when needed.
+The default value `0` does not evict anything.
+
 |[[vitess-property-skipped-operations]]<<vitess-property-skipped-operations, `+skipped.operations+`>>
 |`t`
 |A comma-separated list of the operation types that you want the connector to skip during streaming.

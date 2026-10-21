@@ -5,12 +5,14 @@
  */
 package io.debezium.relational;
 
+import java.util.Collections;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentMap;
 import java.util.function.BiConsumer;
 import java.util.function.Function;
 import java.util.function.Predicate;
@@ -39,6 +41,9 @@ public final class Tables {
     @FunctionalInterface
     public interface TableFilter extends DataCollectionFilter<TableId> {
 
+        /** The excluded decisions a caching filter keeps unless configured otherwise: 0 means all of them. */
+        int DEFAULT_MAX_EXCLUDED = 0;
+
         /**
          * Determines whether the given table should be included in the current {@link DatabaseSchema}.
          */
@@ -66,7 +71,20 @@ public final class Tables {
          * @return a caching filter
          */
         static TableFilter cached(TableFilter filter) {
-            return new CachingTableFilter(filter);
+            return cached(filter, DEFAULT_MAX_EXCLUDED);
+        }
+
+        /**
+         * Creates a {@link TableFilter} that caches the results of the given filter, keeping at most the given
+         * number of excluded decisions.
+         *
+         * @param filter the filter to wrap; may not be null
+         * @param maxExcluded how many excluded decisions to keep, the least recently used one is evicted beyond that;
+         *            0 keeps them all
+         * @return a caching filter
+         */
+        static TableFilter cached(TableFilter filter, int maxExcluded) {
+            return new CachingTableFilter(filter, maxExcluded);
         }
     }
 
@@ -87,15 +105,41 @@ public final class Tables {
         }
 
         private final TableFilter delegate;
-        private final ConcurrentMap<CacheKey, Boolean> cache = new ConcurrentHashMap<>();
+        private final Set<CacheKey> included = ConcurrentHashMap.newKeySet();
+        private final Map<CacheKey, Boolean> excluded;
 
-        CachingTableFilter(TableFilter delegate) {
+        CachingTableFilter(TableFilter delegate, int maxExcluded) {
             this.delegate = Objects.requireNonNull(delegate);
+            // a snapshot asks about every table on the server, so the excluded decisions can be bounded
+            this.excluded = maxExcluded > 0 ? Collections.synchronizedMap(newLruMap(maxExcluded)) : new ConcurrentHashMap<>();
+        }
+
+        private static Map<CacheKey, Boolean> newLruMap(int maxSize) {
+            return new LinkedHashMap<>(16, 0.75f, true) {
+                @Override
+                protected boolean removeEldestEntry(Map.Entry<CacheKey, Boolean> eldest) {
+                    return size() > maxSize;
+                }
+            };
         }
 
         @Override
         public boolean isIncluded(TableId tableId) {
-            return cache.computeIfAbsent(new CacheKey(tableId), key -> delegate.isIncluded(tableId));
+            final CacheKey key = new CacheKey(tableId);
+            if (included.contains(key)) {
+                return true;
+            }
+            if (excluded.get(key) != null) {
+                return false;
+            }
+            final boolean result = delegate.isIncluded(tableId);
+            if (result) {
+                included.add(new CacheKey(Interner.intern(tableId)));
+            }
+            else {
+                excluded.put(key, Boolean.TRUE);
+            }
+            return result;
         }
     }
 

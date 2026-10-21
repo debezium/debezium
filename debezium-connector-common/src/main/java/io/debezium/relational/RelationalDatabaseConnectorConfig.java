@@ -291,6 +291,18 @@ public abstract class RelationalDatabaseConnectorConfig extends CommonConnectorC
             .withValidation(Field::isBoolean)
             .withDescription("Flag specifying whether built-in tables should be ignored.");
 
+    public static final Field TABLE_FILTER_EXCLUDED_CACHE_SIZE = Field.create("table.filter.excluded.cache.size")
+            .withDisplayName("Excluded table cache size")
+            .withType(Type.INT)
+            .withGroup(Field.createGroupEntry(Field.Group.FILTERS))
+            .withWidth(Width.SHORT)
+            .withImportance(Importance.LOW)
+            .withDefault(Tables.TableFilter.DEFAULT_MAX_EXCLUDED)
+            .withValidation(Field::isNonNegativeInteger)
+            .withDescription("The maximum number of excluded tables whose filter decision is cached. Beyond it the least recently used decisions are evicted "
+                    + "and evaluated again when asked for. The default of 0 keeps every decision, which is fastest, but takes memory in proportion to "
+                    + "the number of excluded tables on the server.");
+
     /**
      * A comma-separated list of regular expressions that match fully-qualified names of columns to be excluded from monitoring
      * and change messages. The exact form of fully qualified names for columns might vary between connector types.
@@ -569,7 +581,7 @@ public abstract class RelationalDatabaseConnectorConfig extends CommonConnectorC
     protected static final ConfigDefinition CONFIG_DEFINITION = CommonConnectorConfig.CONFIG_DEFINITION.edit()
             .group(Field.Group.CONNECTION, HOSTNAME, PORT, USER, PASSWORD, DATABASE_NAME, QUERY_TIMEOUT_MS)
             .group(Field.Group.FILTERS, TABLE_INCLUDE_LIST, TABLE_EXCLUDE_LIST, TABLE_IGNORE_BUILTIN, COLUMN_EXCLUDE_LIST, COLUMN_INCLUDE_LIST, SCHEMA_INCLUDE_LIST,
-                    SCHEMA_EXCLUDE_LIST, DATABASE_INCLUDE_LIST, DATABASE_EXCLUDE_LIST)
+                    SCHEMA_EXCLUDE_LIST, DATABASE_INCLUDE_LIST, DATABASE_EXCLUDE_LIST, TABLE_FILTER_EXCLUDED_CACHE_SIZE)
             .group(Field.Group.CONNECTOR, DECIMAL_HANDLING_MODE, TIME_PRECISION_MODE, INCLUDE_SCHEMA_CHANGES, INCLUDE_SCHEMA_COMMENTS)
             .group(Field.Group.CONNECTOR_ADVANCED, MSG_KEY_COLUMNS, MASK_COLUMN_WITH_HASH, MASK_COLUMN, TRUNCATE_COLUMN, PROPAGATE_COLUMN_SOURCE_TYPE,
                     PROPAGATE_DATATYPE_SOURCE_TYPE, SCHEMA_STORAGE_CLASS, TABLE_STORAGE_CLASS)

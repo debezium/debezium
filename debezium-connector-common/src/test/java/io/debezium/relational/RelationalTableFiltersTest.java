@@ -7,8 +7,14 @@ package io.debezium.relational;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import java.util.List;
+
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+
+import io.debezium.config.Configuration;
+import io.debezium.config.Field;
+import io.debezium.doc.FixFor;
 
 /**
  * @author ggaborg
@@ -223,4 +229,29 @@ public class RelationalTableFiltersTest {
         assertThat(filters.eligibleForSchemaDataCollectionFilter().isIncluded(id)).isTrue();
     }
 
+    @Test
+    @FixFor("debezium/dbz#2874")
+    public void shouldKeepFilteringWhenTheExcludedCacheIsSmallerThanTheTablesAsked() {
+        filters = build.includeCollections("db1\\.in.*").excludedCacheSize("2").createFilters();
+
+        for (int round = 0; round < 3; round++) {
+            for (int i = 0; i < 10; i++) {
+                assertThat(filters.dataCollectionFilter().isIncluded(new TableId("db1", null, "out" + i))).isFalse();
+            }
+            assertThat(filters.dataCollectionFilter().isIncluded(new TableId("db1", null, "in1"))).isTrue();
+        }
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2874")
+    public void shouldNotBoundTheExcludedCacheByDefaultAndRejectNegativeSizes() {
+        final Field field = RelationalDatabaseConnectorConfig.TABLE_FILTER_EXCLUDED_CACHE_SIZE;
+        assertThat(field.defaultValueAsString()).isEqualTo("0");
+        assertThat(validationErrors(field, 0)).isEmpty();
+        assertThat(validationErrors(field, -1)).isNotEmpty();
+    }
+
+    private static List<String> validationErrors(Field field, int value) {
+        return Configuration.create().with(field, value).build().validate(Field.setOf(field)).get(field.name()).errorMessages();
+    }
 }
