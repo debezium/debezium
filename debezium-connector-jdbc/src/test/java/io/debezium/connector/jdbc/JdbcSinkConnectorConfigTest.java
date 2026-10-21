@@ -180,7 +180,7 @@ public class JdbcSinkConnectorConfigTest extends AbstractBaseJdbcSinkTest {
     }
 
     @Test
-    @FixFor("DBZ-2909")
+    @FixFor("debezium/dbz#2909")
     public void testSingleStoreGeometryRepairIsOptIn() {
         final Map<String, String> properties = connectionProperties();
         assertThat(new JdbcSinkConnectorConfig(properties).isSingleStoreGeometryRepairEnabled()).isFalse();

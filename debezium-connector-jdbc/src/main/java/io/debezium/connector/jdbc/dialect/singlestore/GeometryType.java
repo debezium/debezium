@@ -12,8 +12,11 @@ import java.util.stream.Collectors;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.errors.ConnectException;
 
+import io.debezium.connector.jdbc.JdbcSinkConnectorConfig;
+import io.debezium.connector.jdbc.dialect.DatabaseDialect;
 import io.debezium.connector.jdbc.type.JdbcType;
 import io.debezium.connector.jdbc.type.debezium.AbstractGeometryType;
+import io.debezium.sink.SinkConnectorConfig;
 import io.debezium.sink.column.ColumnDescriptor;
 import io.debezium.sink.valuebinding.ValueBindDescriptor;
 import io.debezium.spatial.GeometryBytes;
@@ -32,14 +35,14 @@ class GeometryType extends AbstractGeometryType {
 
     public static final GeometryType INSTANCE = new GeometryType();
 
-    private final boolean repairEnabled;
+    private boolean repairEnabled;
 
-    GeometryType() {
-        this(false);
-    }
-
-    GeometryType(boolean repairEnabled) {
-        this.repairEnabled = repairEnabled;
+    @Override
+    public void configure(SinkConnectorConfig config, DatabaseDialect dialect) {
+        super.configure(config, dialect);
+        if (config instanceof JdbcSinkConnectorConfig jdbcConfig) {
+            repairEnabled = jdbcConfig.isSingleStoreGeometryRepairEnabled();
+        }
     }
 
     @Override
@@ -158,10 +161,14 @@ class GeometryType extends AbstractGeometryType {
         return format(point.getX()) + " " + format(point.getY());
     }
 
-    private String format(double value) {
+    static String format(double value) {
+        return decimal(value).stripTrailingZeros().toPlainString();
+    }
+
+    static BigDecimal decimal(double value) {
         if (!Double.isFinite(value)) {
             throw new ConnectException(String.format("Invalid SingleStore geospatial coordinate '%s'.", value));
         }
-        return BigDecimal.valueOf(value).stripTrailingZeros().toPlainString();
+        return BigDecimal.valueOf(value);
     }
 }
