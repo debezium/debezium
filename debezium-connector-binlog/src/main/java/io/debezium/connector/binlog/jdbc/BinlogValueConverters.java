@@ -483,6 +483,10 @@ public abstract class BinlogValueConverters extends JdbcValueConverters {
      * @throws IllegalArgumentException if the value could not be converted but the column does not allow nulls
      */
     protected Object convertJson(Column column, Field fieldDefn, Object data) {
+        if (data == UNAVAILABLE_VALUE) {
+            // Without a placeholder, an unavailable value is converted like a missing one
+            return unavailableValuePlaceholderString != null ? unavailableValuePlaceholderString : convertJson(column, fieldDefn, null);
+        }
         return convertValue(column, fieldDefn, data, "{}", (r) -> {
             if (data instanceof byte[]) {
                 // The BinlogReader sees these JSON values as binary encoded, so we use the binlog client library's utility
