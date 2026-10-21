@@ -18,6 +18,8 @@ import io.debezium.connector.sqlserver.util.TestHelper;
 import io.debezium.doc.FixFor;
 import io.debezium.embedded.async.AbstractAsyncEngineConnectorTest;
 import io.debezium.jdbc.TemporalPrecisionMode;
+import io.debezium.junit.EqualityCheck;
+import io.debezium.junit.SkipWhenDatabaseVersion;
 import io.debezium.relational.RelationalDatabaseConnectorConfig;
 import io.debezium.util.Testing;
 
@@ -39,6 +41,7 @@ public class SpecialTableTypesIT extends AbstractAsyncEngineConnectorTest {
 
     @Test
     @FixFor("dbz#28")
+    @SkipWhenDatabaseVersion(check = EqualityCheck.LESS_THAN, major = 15, reason = "OPTIMIZE_FOR_SEQUENTIAL_KEY not supported before SQL Server 2019 (v15)")
     public void shouldIgnoreTemporalTable() throws Exception {
         TestHelper.createTestDatabase();
         connection = TestHelper.testConnection();
