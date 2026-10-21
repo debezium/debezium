@@ -36,6 +36,7 @@ Alfusainey Jallow
 Alisa Houskova
 Alvar Viana
 Alvar Viana Gomez
+Aly Ayman
 Aman Garg
 Amirmohammad Sadat Shokouhi
 Amit Sela
@@ -106,6 +107,7 @@ Balint Bene
 Balázs Németh
 Balázs Sipos
 Barbara Lócsi
+Barnabas Kralik
 Barry LaFond
 Bartosz Miedlar
 battmush
@@ -274,6 +276,7 @@ Fatih Güçlü Akkaya
 Felix Eckhardt
 Filip Leski
 Fintan Bolton
+forestbupt
 Fr0z3Nn
 Frank Koornstra
 Frank Mormino
@@ -425,8 +428,10 @@ Joseph Koshakow
 Josh Arenberg
 Josh Ribera
 Josh Stanfield
+Josip Vukoja
 José Felipe
 Joy Gao
+João Almeida
 Juan Antonio Pedraza
 Juan Fiallo
 Juanma Barea
@@ -462,6 +467,7 @@ Kosta Kostelnik
 Krizhan Mariampillai
 Krzysztof Grzechnik
 Kunal Bhatnagar
+Kurtis Ley
 Kyley Jex
 Lairen Hightower
 laoflch
@@ -578,6 +584,7 @@ Moustapha Mahfoud
 moyq5
 Muhammad Sufyian
 My Lang Pangzi
+MyungJoo Song
 Nagasree Valaboju
 Nancy Xu
 Nansen
@@ -601,6 +608,7 @@ Nikolay Angelov
 Nils Hartmann
 Nir Levy
 Nishant Singh
+Niteesh Kumar Pandey
 Nitin Agarwal
 Nitin Chhabra
 Oladele Oluwaseun
@@ -775,6 +783,7 @@ Stephen Powis
 Steven Jenkins De Haro
 Steven Siahetiong
 Subodh Kant Chaturvedi
+Sudeep HM
 Sujal Shrestha
 Sumit Jha
 Sun Xiao Jian
@@ -899,6 +908,7 @@ Zhongqiang Gong
 Zihan Dai
 Zongwen Li
 Zoran Regvart
+Éder Júlio Costa
 Ünal Sürmeli
 Đỗ Ngọc Sơn
 حمود سمبول

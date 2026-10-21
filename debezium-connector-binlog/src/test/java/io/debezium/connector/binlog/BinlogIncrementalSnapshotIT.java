@@ -345,6 +345,41 @@ public abstract class BinlogIncrementalSnapshotIT<C extends SourceConnector>
     }
 
     @Test
+    @FixFor("debezium/dbz#1015")
+    public void tableWithTimeOutsideOfDayRange() throws Exception {
+        // The last row is read for the maximum key, so it holds a value whose text form is not 8 or 12 bytes long
+        final List<String> times = List.of("25:00:00", "838:59:59", "-00:00:01", "-838:59:59");
+        try (JdbcConnection connection = databaseConnection()) {
+            connection.setAutoCommit(false);
+            for (int i = 0; i < times.size(); i++) {
+                connection.executeWithoutCommitting(String.format(
+                        "INSERT INTO a_dt (pk, dt, d, t) VALUES (%s, '2000-05-01', '2000-05-01', '%s')", i + 1, times.get(i)));
+            }
+            connection.commit();
+        }
+
+        final Configuration config = config().with(BinlogConnectorConfig.SNAPSHOT_FETCH_SIZE, 5).build();
+        start(connectorClass(), config, loggingCompletion());
+        waitForConnectorToStart();
+        waitForAvailableRecords(5, TimeUnit.SECONDS);
+
+        sendAdHocSnapshotSignal(dataCollectionName("a_dt"));
+
+        final Map<Integer, Long> dbChanges = consumeMixedWithIncrementalSnapshot(
+                times.size(),
+                x -> true,
+                k -> k.getInt32(pkFieldName()),
+                record -> ((Struct) record.value()).getStruct("after").getInt64("t"),
+                DATABASE.topicForTable("a_dt"),
+                null);
+        assertThat(dbChanges).containsOnly(
+                entry(1, 90_000_000_000L),
+                entry(2, 3_020_399_000_000L),
+                entry(3, -1_000_000L),
+                entry(4, -3_020_399_000_000L));
+    }
+
+    @Test
     @FixFor("DBZ-5099")
     public void tableWithZeroDate() throws Exception {
         // Testing.Print.enable();

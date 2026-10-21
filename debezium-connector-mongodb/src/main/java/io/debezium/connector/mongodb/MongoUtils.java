@@ -254,16 +254,18 @@ public class MongoUtils {
             stream.batchSize(config.getQueryFetchSize());
         }
 
-        if (config.getCaptureMode().isFullUpdate()) {
-            if (config.getCaptureModeFullUpdateType().isPostImage()) {
-                stream.fullDocument(FullDocument.WHEN_AVAILABLE);
+        final var postImageMode = config.getCaptureModePostImage();
+        if (postImageMode.isEnabled()) {
+            if (postImageMode.isPostImage()) {
+                stream.fullDocument(postImageMode.isRequired() ? FullDocument.REQUIRED : FullDocument.WHEN_AVAILABLE);
             }
             else {
                 stream.fullDocument(FullDocument.UPDATE_LOOKUP);
             }
         }
-        if (config.getCaptureMode().isIncludePreImage()) {
-            stream.fullDocumentBeforeChange(FullDocumentBeforeChange.WHEN_AVAILABLE);
+        final var preImageMode = config.getCaptureModePreImage();
+        if (preImageMode.isEnabled()) {
+            stream.fullDocumentBeforeChange(preImageMode.isRequired() ? FullDocumentBeforeChange.REQUIRED : FullDocumentBeforeChange.WHEN_AVAILABLE);
         }
         return stream;
     }
@@ -279,6 +281,42 @@ public class MongoUtils {
             result = database.runCommand(new Document("isMaster", 1), BsonDocument.class);
         }
         return result.getTimestamp("operationTime");
+    }
+
+    /**
+     * Detect missing required images in an exception or its causes. Reopening the stream or re-enabling
+     * image recording cannot restore these images.
+     *
+     * <p>The server reports NoMatchingDocument (47), which is also used by unrelated operations such as
+     * PersistentTaskStore.update (see the sources below). The code alone does not identify image errors.
+     *
+     * <p>In the linked MongoDB 6.0, 7.0 and 8.0 sources, the image error messages are English string literals
+     * with no locale-dependent selection. Their wording is not a stable API: the post-image message in
+     * 6.0.0 mentions update, delete and replace events, whereas 7.0.0 and 8.0.0 mention only update events.
+     * Match the shared image-specific fragment, allowing server/driver prefixes and event details to vary.
+     * Even this fragment could change in a future server version; keep the versioned message tests and
+     * real-server required-image tests when upgrading MongoDB.
+     *
+     * @param throwable the exception to inspect; may be null
+     * @return true if a cause has both the expected error code and required-image message fragment
+     * @see <a href="https://github.com/mongodb/mongo/blob/r8.0.0/src/mongo/base/error_codes.yml#L87">NoMatchingDocument error code</a>
+     * @see <a href="https://github.com/mongodb/mongo/blob/r8.0.0/src/mongo/db/persistent_task_store.h#L220">Unrelated use of NoMatchingDocument</a>
+     * @see <a href="https://github.com/mongodb/mongo/blob/r8.0.0/src/mongo/db/pipeline/document_source_change_stream_add_pre_image.cpp#L110">Pre-image error</a>
+     * @see <a href="https://github.com/mongodb/mongo/blob/r6.0.0/src/mongo/db/pipeline/document_source_change_stream_add_post_image.cpp#L100">MongoDB 6.0.0 post-image error</a>
+     * @see <a href="https://github.com/mongodb/mongo/blob/r7.0.0/src/mongo/db/pipeline/document_source_change_stream_add_post_image.cpp#L93">MongoDB 7.0.0 post-image error</a>
+     * @see <a href="https://github.com/mongodb/mongo/blob/r8.0.0/src/mongo/db/pipeline/document_source_change_stream_add_post_image.cpp#L109">MongoDB 8.0.0 post-image error</a>
+     */
+    public static boolean isRequiredImageMissing(Throwable throwable) {
+        for (Throwable cause = throwable; cause != null; cause = cause.getCause()) {
+            if (cause instanceof MongoException mongoException && mongoException.getCode() == 47) {
+                final var message = mongoException.getMessage();
+                if (message != null && (message.contains("Change stream was configured to require a pre-image")
+                        || message.contains("Change stream was configured to require a post-image"))) {
+                    return true;
+                }
+            }
+        }
+        return false;
     }
 
     private MongoUtils() {

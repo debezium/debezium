@@ -21,7 +21,6 @@ import io.debezium.pipeline.spi.OffsetContext;
 import io.debezium.pipeline.txmetadata.TransactionContext;
 import io.debezium.relational.TableId;
 import io.debezium.spi.schema.DataCollectionId;
-import io.debezium.util.Strings;
 
 /**
  * A concrete implementation of the {@link CommonOffsetContext} for binlog-based connectors that tracks the
@@ -184,7 +183,8 @@ public class BinlogOffsetContext<T extends BinlogSourceInfo> extends CommonOffse
             // Remove all the newline chars that exist in the GTID set string ...
             String trimmedGtidSet = gtidSet.replace("\n", "").replace("\r", "");
             // Set the GTID set that we'll use if restarting BEFORE successful completion of the events in this GTID ...
-            this.restartGtidSet = Strings.defaultIfBlank(this.currentGtidSet, trimmedGtidSet);
+            // Without a previously completed GTID set, the restart uses the binlog position instead
+            this.restartGtidSet = this.currentGtidSet;
             // Record the GTID set that includes the current transaction ...
             this.currentGtidSet = trimmedGtidSet;
         }

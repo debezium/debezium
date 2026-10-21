@@ -1147,7 +1147,8 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
     public static final Field UNAVAILABLE_VALUE_PLACEHOLDER = RelationalDatabaseConnectorConfig.UNAVAILABLE_VALUE_PLACEHOLDER
             .withDescription("Specify the constant that will be provided by Debezium to indicate that " +
                     "the original value is a toasted value not provided by the database. " +
-                    "If starts with 'hex:' prefix it is expected that the rest of the string represents hexadecimal encoded octets.");
+                    "If starts with 'hex:' prefix it is expected that the rest of the string represents hexadecimal encoded octets.")
+            .withValidation(ConnectorConfigValidationHelper::validateHexPrefixedValue);
 
     public static final Field MONEY_FRACTION_DIGITS = Field.create("money.fraction.digits")
             .withDisplayName("Money fraction digits")
@@ -1531,8 +1532,8 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
     @Override
     public byte[] getUnavailableValuePlaceholder() {
         String placeholder = getConfig().getString(UNAVAILABLE_VALUE_PLACEHOLDER);
-        if (placeholder.startsWith("hex:")) {
-            return Strings.hexStringToByteArray(placeholder.substring(4));
+        if (placeholder.startsWith(ConnectorConfigValidationHelper.HEX_PREFIX)) {
+            return Strings.hexStringToByteArray(placeholder.substring(ConnectorConfigValidationHelper.HEX_PREFIX.length()));
         }
         return placeholder.getBytes();
     }

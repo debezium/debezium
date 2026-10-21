@@ -5,6 +5,7 @@
  */
 package io.debezium.relational;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.RETURNS_DEEP_STUBS;
@@ -75,7 +76,7 @@ public class RelationalSnapshotChangeEventSourceTest {
         final JdbcConnection jdbcConnection = new JdbcConnection(
                 JdbcConfiguration.adapt(Configuration.create().build()), config -> connection, "\"", "\"");
 
-        final TestRelationalSnapshotSource source = new TestRelationalSnapshotSource(config(), jdbcConnection);
+        final TestRelationalSnapshotSource source = new TestRelationalSnapshotSource(config(Configuration.empty()), jdbcConnection);
 
         final TableId tableId = new TableId("db1", "s1", "t1");
         final Table table = Table.editor()
@@ -106,10 +107,32 @@ public class RelationalSnapshotChangeEventSourceTest {
         verify(statement).setFetchSize(CONFIGURED_FETCH_SIZE);
     }
 
-    private static RelationalDatabaseConnectorConfig config() {
+    @Test
+    @FixFor("debezium/dbz#488")
+    public void shouldSelectKeyColumnsExcludedByColumnFilter() {
+        final RelationalDatabaseConnectorConfig config = config(Configuration.create()
+                .with(RelationalDatabaseConnectorConfig.COLUMN_EXCLUDE_LIST, ".*\\.(id|secret)$")
+                .build());
+        final JdbcConnection jdbcConnection = new JdbcConnection(
+                JdbcConfiguration.adapt(Configuration.create().build()), c -> null, "\"", "\"");
+        final TestRelationalSnapshotSource source = new TestRelationalSnapshotSource(config, jdbcConnection);
+
+        final Table table = Table.editor()
+                .tableId(new TableId("db1", "s1", "t1"))
+                .addColumn(Column.editor().name("id").type("INT").jdbcType(Types.INTEGER).create())
+                .addColumn(Column.editor().name("name").type("VARCHAR").jdbcType(Types.VARCHAR).create())
+                .addColumn(Column.editor().name("secret").type("VARCHAR").jdbcType(Types.VARCHAR).create())
+                .setPrimaryKeyNames("id")
+                .create();
+
+        assertThat(source.getPreparedColumnNames(null, table)).containsExactly("\"id\"", "\"name\"");
+    }
+
+    private static RelationalDatabaseConnectorConfig config(Configuration additionalConfig) {
         final Configuration configuration = Configuration.create()
                 .with(RelationalDatabaseConnectorConfig.TOPIC_PREFIX, "core")
                 .with(CommonConnectorConfig.SNAPSHOT_FETCH_SIZE, CONFIGURED_FETCH_SIZE)
+                .with(additionalConfig)
                 .build();
         return new RelationalDatabaseConnectorConfig(configuration, null, null, 0, ColumnFilterMode.CATALOG, true) {
             @Override

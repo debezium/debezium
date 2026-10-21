@@ -38,15 +38,77 @@ runs:
 
     - name: Build MySQL connector (MySQL ${{ inputs.version-mysql-server }} - ${{ inputs.profile }})
       shell: ${{ inputs.shell }}
-      run: >
-        ./mvnw clean install -B -pl debezium-connector-mysql -am
-        -P${{ inputs.profile }}
-        -Dcheckstyle.skip=true
-        -Dformat.skip=true
-        -Dversion.mysql.server=${{ inputs.version-mysql-server }}
-        -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn
-        -Dmaven.wagon.http.pool=false
-        -Dmaven.wagon.httpconnectionManager.ttlSeconds=120
-        -DfailFlakyTests=false
-        -Ddebezium.test.mongo.replica.primary.startup.timeout.seconds=120
-        ${{ inputs.only-build == 'true' && '-DskipTests=true -DskipITs=true' || '' }}
+      run: |
+        set -o pipefail
+        set +e
+
+        trimmed_log="${RUNNER_TEMP}/mysql-${{ inputs.version-mysql-server }}-${{ inputs.profile }}-trimmed.log"
+        echo "::group::Full Maven output"
+        ./mvnw clean install -B -ntp -pl debezium-connector-mysql -am \
+          -P${{ inputs.profile }} \
+          -Dcheckstyle.skip=true \
+          -Dformat.skip=true \
+          -Dversion.mysql.server=${{ inputs.version-mysql-server }} \
+          -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn \
+          -Dmaven.wagon.http.pool=false \
+          -Dmaven.wagon.httpconnectionManager.ttlSeconds=120 \
+          -DfailFlakyTests=false \
+          -Ddebezium.test.mongo.replica.primary.startup.timeout.seconds=120 \
+          ${{ inputs.only-build == 'true' && '-DskipTests=true -DskipITs=true' || '' }} \
+          2>&1 | awk -v trimmed_log="${trimmed_log}" '
+            {
+              print
+              fflush()
+            }
+            /\[ERROR\]/ || /(^|[[:space:]])ERROR([[:space:]:]|$)/ {
+              error_context = 80
+              print > trimmed_log
+              next
+            }
+            /\[WARNING\]/ || /(^|[[:space:]])WARN(ING)?([[:space:]:]|$)/ {
+              print > trimmed_log
+              next
+            }
+            error_context > 0 {
+              print > trimmed_log
+              error_context--
+              next
+            }
+            /\[INFO\] (Running|Tests run:|Results:|Failures:|Errors:|Reactor Summary|BUILD |Total time:|Finished at:)/ {
+              print > trimmed_log
+            }
+          '
+        build_status=$?
+        echo "::endgroup::"
+        exit "${build_status}"
+
+    - name: Summarize MySQL build failure
+      if: failure()
+      shell: ${{ inputs.shell }}
+      run: |
+        artifact_name="mysql-${{ inputs.version-mysql-server }}-${{ inputs.profile }}-diagnostics"
+        {
+          echo "### MySQL ${{ inputs.version-mysql-server }} - ${{ inputs.profile }} failed"
+          echo
+          echo "Trimmed Maven output and test reports are available in artifact \`${artifact_name}\`."
+          echo
+          echo '```text'
+          find . -type f \( -path '*/target/surefire-reports/*.txt' -o -path '*/target/failsafe-reports/*.txt' \) \
+            -exec grep -hE '<<< (FAILURE|ERROR)!|Tests run:.*(Failures|Errors): [1-9]' {} + 2>/dev/null \
+            | head -100 || true
+          echo '```'
+        } >> "${GITHUB_STEP_SUMMARY}"
+
+    - name: Upload MySQL failure diagnostics
+      if: failure()
+      uses: actions/upload-artifact@v7
+      with:
+        name: mysql-${{ inputs.version-mysql-server }}-${{ inputs.profile }}-diagnostics
+        path: |
+          ${{ runner.temp }}/mysql-${{ inputs.version-mysql-server }}-${{ inputs.profile }}-trimmed.log
+          **/target/surefire-reports/**
+          **/target/failsafe-reports/**
+          **/target/*.dump
+          **/target/*.dumpstream
+        if-no-files-found: warn
+        retention-days: 7

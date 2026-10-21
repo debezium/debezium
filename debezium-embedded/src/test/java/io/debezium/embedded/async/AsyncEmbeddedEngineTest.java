@@ -14,12 +14,15 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.Function;
+import java.util.function.Supplier;
 
 import org.apache.kafka.common.config.ConfigDef;
 import org.apache.kafka.connect.connector.Task;
@@ -956,6 +959,87 @@ public class AsyncEmbeddedEngineTest {
     }
 
     @Test
+    @FixFor("debezium/dbz#2877")
+    void testCommitsOffsetsOfRecordsDroppedByTransformationInBatch() throws Exception {
+        assertRecordsDroppedByTransformationAreNotReadAgain(AsyncEmbeddedEngine.AsyncEngineBuilder::new, SourceRecord::value);
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2877")
+    void testCommitsOffsetsOfRecordsDroppedByTransformationInConvertingBatch() throws Exception {
+        this.<EmbeddedEngineChangeEvent> assertRecordsDroppedByTransformationAreNotReadAgain(
+                () -> new AsyncEmbeddedEngine.AsyncEngineBuilder<>(KeyValueHeaderChangeEventFormat.of(Json.class, Json.class, Json.class)),
+                record -> record.value());
+    }
+
+    /**
+     * Runs the engine with a transformation that drops every record, restarts it without dropping, and verifies that only the records
+     * added after the restart reach the handler. If the offsets of the dropped records were not committed, the engine would read them again.
+     */
+    private <R> void assertRecordsDroppedByTransformationAreNotReadAgain(Supplier<DebeziumEngine.Builder<R>> builders,
+                                                                         Function<R, Object> value)
+            throws Exception {
+        final Properties props = new Properties();
+        props.setProperty(ConnectorConfig.NAME_CONFIG, "debezium-engine");
+        props.setProperty(CommonConnectorConfig.TASKS_MAX.name(), "1");
+        props.setProperty(ConnectorConfig.CONNECTOR_CLASS_CONFIG, FileStreamSourceConnector.class.getName());
+        props.setProperty(StandaloneConfig.OFFSET_STORAGE_FILE_FILENAME_CONFIG, OFFSET_STORE_PATH.toAbsolutePath().toString());
+        props.setProperty(WorkerConfig.OFFSET_COMMIT_INTERVAL_MS_CONFIG, "0");
+        props.setProperty(FileStreamSourceConnector.FILE_CONFIG, TEST_FILE_PATH.toAbsolutePath().toString());
+        props.setProperty(FileStreamSourceConnector.TOPIC_CONFIG, "testTopic");
+        props.setProperty("transforms", "drop");
+        props.setProperty("transforms.drop.type", "io.debezium.embedded.async.AsyncEmbeddedEngineTest$SwitchableDropTransform");
+
+        final List<Object> delivered = new CopyOnWriteArrayList<>();
+
+        // Every record is dropped, so the handler only receives empty batches
+        SwitchableDropTransform.reset(true);
+        appendLinesToSource(NUMBER_OF_LINES);
+        final CountDownLatch allDropped = new CountDownLatch(1);
+        runEngineUntil(builders.get(), props, delivered, value, allDropped,
+                () -> SwitchableDropTransform.applied.get() >= NUMBER_OF_LINES);
+        assertThat(delivered).isEmpty();
+
+        // After the restart, the engine must resume after the dropped records
+        SwitchableDropTransform.reset(false);
+        appendLinesToSource(NUMBER_OF_LINES);
+        final String lastLine = DebeziumEngineTestUtils.generateLine(2 * NUMBER_OF_LINES);
+        final CountDownLatch lastLineDelivered = new CountDownLatch(1);
+        runEngineUntil(builders.get(), props, delivered, value, lastLineDelivered,
+                () -> delivered.stream().anyMatch(v -> String.valueOf(v).contains(lastLine)));
+        assertThat(delivered).hasSize(NUMBER_OF_LINES);
+        assertThat(String.valueOf(delivered.get(0))).contains(DebeziumEngineTestUtils.generateLine(NUMBER_OF_LINES + 1));
+    }
+
+    private <R> void runEngineUntil(DebeziumEngine.Builder<R> builder, Properties props, List<Object> delivered, Function<R, Object> value,
+                                    CountDownLatch latch, Supplier<Boolean> condition)
+            throws Exception {
+        final DebeziumEngine<R> testEngine = builder
+                .using(props)
+                .using(new TestEngineConnectorCallback())
+                .notifying((records, committer) -> {
+                    for (R r : records) {
+                        delivered.add(value.apply(r));
+                        committer.markProcessed(r);
+                    }
+                    committer.markBatchFinished();
+                    if (condition.get()) {
+                        latch.countDown();
+                    }
+                }).build();
+
+        engineExecSrv.submit(() -> {
+            LoggingContext.forConnector(getClass().getSimpleName(), "", "engine");
+            testEngine.run();
+        });
+        latch.await(AbstractConnectorTest.waitTimeForEngine(), TimeUnit.SECONDS);
+        assertThat(latch.getCount()).isEqualTo(0);
+
+        testEngine.close();
+        Awaitility.await().atMost(AbstractConnectorTest.waitTimeForEngine(), TimeUnit.SECONDS).until(() -> !isEngineRunning.get());
+    }
+
+    @Test
     @FixFor("DBZ-8936")
     void testGracefullyShutDownUponStopEngineException() throws Exception {
         final Properties props = new Properties();
@@ -1681,6 +1765,39 @@ public class AsyncEmbeddedEngineTest {
         @Override
         public void configure(Map<String, ?> map) {
             wasClosed = false;
+        }
+    }
+
+    public static class SwitchableDropTransform implements Transformation<SourceRecord> {
+
+        public static final AtomicBoolean dropping = new AtomicBoolean(false);
+        public static final AtomicInteger applied = new AtomicInteger(0);
+
+        public static void reset(boolean drop) {
+            dropping.set(drop);
+            applied.set(0);
+        }
+
+        @Override
+        public SourceRecord apply(SourceRecord record) {
+            applied.incrementAndGet();
+            return dropping.get() ? null : record;
+        }
+
+        @Override
+        public ConfigDef config() {
+            // Nothing to do.
+            return null;
+        }
+
+        @Override
+        public void close() {
+            // Nothing to do.
+        }
+
+        @Override
+        public void configure(Map<String, ?> map) {
+            // Nothing to do.
         }
     }
 

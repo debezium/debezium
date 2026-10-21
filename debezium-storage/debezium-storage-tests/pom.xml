@@ -161,7 +161,7 @@
                         <tag.azurite>${version.azurite}</tag.azurite>
                     </systemPropertyVariables>
                     <runOrder>alphabetical</runOrder>
-                    <argLine>${debug.argline} ${modules.argline} ${test.argline}</argLine>
+                    <argLine>@{argLine} ${debug.argline} ${modules.argline} ${test.argline}</argLine>
                     <useSystemClassLoader>${useSystemClassLoader}</useSystemClassLoader>
                 </configuration>
             </plugin>

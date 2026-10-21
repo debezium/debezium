@@ -5,9 +5,9 @@
  */
 package io.debezium.transforms;
 
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.stream.Collectors;
 
 import org.apache.kafka.common.config.ConfigDef;
 import org.apache.kafka.connect.components.Versioned;
@@ -106,10 +106,12 @@ public class SwapGeometryCoordinates<R extends ConnectRecord<R>> implements Tran
                         .toList();
             }
             case MAP -> {
-                return ((Map<?, ?>) value).entrySet().stream()
-                        .collect(Collectors.toMap(
-                                e -> processField(e.getKey(), schema.keySchema()),
-                                e -> processField(e.getValue(), schema.valueSchema())));
+                // Collectors.toMap() rejects null values, but map values may be null (e.g. PostgreSQL hstore)
+                final Map<Object, Object> result = new LinkedHashMap<>();
+                ((Map<?, ?>) value).forEach((k, v) -> result.put(
+                        processField(k, schema.keySchema()),
+                        processField(v, schema.valueSchema())));
+                return result;
             }
             default -> {
                 return value;

@@ -674,8 +674,10 @@
                         <database.jdbc.driver>${mysql.database.jdbc.driver}</database.jdbc.driver>
                         <skipLongRunningTests>${skipLongRunningTests}</skipLongRunningTests>
                         <database.ssl.mode>disabled</database.ssl.mode>
+                        <!-- Image for tests that start their own server container -->
+                        <mysql.server.image>${mysql.server.image.source}:${version.mysql.server}</mysql.server.image>
                     </systemPropertyVariables>
-                    <argLine>-javaagent:"${settings.localRepository}/@{opentelemetry.agent.for.testing.artifact.relative.path}" -Dio.opentelemetry.javaagent.slf4j.simpleLogger.defaultLogLevel=off</argLine>
+                    <argLine>@{argLine} -javaagent:"${settings.localRepository}/@{opentelemetry.agent.for.testing.artifact.relative.path}" -Dio.opentelemetry.javaagent.slf4j.simpleLogger.defaultLogLevel=off</argLine>
                     <runOrder>${runOrder}</runOrder>
                 </configuration>
                 <executions>

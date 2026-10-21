@@ -59,6 +59,11 @@ public class MySqlAntlrDdlParserTest
     }
 
     @Override
+    protected MySqlAntlrDdlParser getParser(SimpleDdlParserListener listener, BinlogConnectorConfig.RealHandlingMode realHandlingMode) {
+        return new MySqlDdlParserWithSimpleTestListener(listener, realHandlingMode);
+    }
+
+    @Override
     protected MySqlValueConverters getValueConverters() {
         return new MySqlValueConvertersFactory().create(
                 RelationalDatabaseConnectorConfig.DecimalHandlingMode.parse(JdbcValueConverters.DecimalMode.DOUBLE.name()),
@@ -76,6 +81,21 @@ public class MySqlAntlrDdlParserTest
     @Override
     protected List<String> extractEnumAndSetOptions(List<String> enumValues) {
         return MySqlAntlrDdlParser.extractEnumAndSetOptions(enumValues);
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2829")
+    void shouldParseAlterDatabaseWithDefaultCharsetWithoutDatabaseName() {
+        parser.parse("CREATE DATABASE db1 CHARACTER SET latin1;", tables);
+        parser.parse("USE db1;", tables);
+
+        parser.parse("ALTER DATABASE DEFAULT CHARACTER SET utf8mb4;", tables);
+        parser.parse("USE db1;", tables);
+        assertThat(parser.systemVariables().getVariable("character_set_database")).isEqualToIgnoringCase("utf8mb4");
+
+        parser.parse("ALTER SCHEMA DEFAULT CHARSET latin2 DEFAULT COLLATE latin2_general_ci;", tables);
+        parser.parse("USE db1;", tables);
+        assertThat(parser.systemVariables().getVariable("character_set_database")).isEqualToIgnoringCase("latin2");
     }
 
     @Test
@@ -275,8 +295,17 @@ public class MySqlAntlrDdlParserTest
             this(changesListener, includeViews, includeComments, TableFilter.includeAll());
         }
 
+        MySqlDdlParserWithSimpleTestListener(DdlChanges changesListener, BinlogConnectorConfig.RealHandlingMode realHandlingMode) {
+            this(changesListener, false, false, TableFilter.includeAll(), realHandlingMode);
+        }
+
         private MySqlDdlParserWithSimpleTestListener(DdlChanges changesListener, boolean includeViews, boolean includeComments, TableFilter tableFilter) {
-            super(false, includeViews, includeComments, tableFilter, new MySqlCharsetRegistry());
+            this(changesListener, includeViews, includeComments, tableFilter, BinlogConnectorConfig.RealHandlingMode.DOUBLE);
+        }
+
+        private MySqlDdlParserWithSimpleTestListener(DdlChanges changesListener, boolean includeViews, boolean includeComments, TableFilter tableFilter,
+                                                     BinlogConnectorConfig.RealHandlingMode realHandlingMode) {
+            super(false, includeViews, includeComments, tableFilter, new MySqlCharsetRegistry(), realHandlingMode);
             this.ddlChanges = changesListener;
         }
     }

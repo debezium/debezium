@@ -308,18 +308,27 @@ Consumers must explicitly use these headers if they need field-specific processi
 If an additional SMT unwraps the envelope, place it after `ExtractChangedRecordState` so both document images are still available for comparison.
 For more information, see xref:transformations/event-changes.adoc[Event changes].
 
-== Capture modes and deletes
+== Document images and deletes
 
 Create, snapshot, and update events require a non-null full `after` document.
-For streaming updates, set `capture.mode` to `change_streams_update_full` or `change_streams_update_full_with_pre_image` on the MongoDB source connector.
-To compare changed fields, use `change_streams_update_full_with_pre_image` and enable MongoDB document pre-images for the captured collections.
-If the full document is unavailable, including a failed full-document lookup, the SMT reports an error rather than treating the event as a document with every projected field removed.
+For streaming updates, configure the MongoDB source connector's `capture.mode.post.image` as `lookup` (the default), `post_image`, or `post_image_required`.
+With `lookup` or `post_image`, the full document can be unavailable, in which case this SMT reports an error.
 Partial updates are not reconstructed by this SMT.
 
-With the default full-document lookup, concurrent updates can cause `after` to contain a newer state than the operation represented by the event.
+To compare changed fields, both document images must be available.
+Set `capture.mode.pre.image` to `when_available` and enable document pre-images for the captured collections before the changes occur.
+If missing pre-images must cause the source connector to fail, use `required` instead.
+When `before` is unavailable, the changed and unchanged headers are empty; this does not establish that the document was unchanged.
+
+With `capture.mode.post.image=lookup`, concurrent updates can cause `after` to contain a newer state than the operation represented by the event.
 The changed-field headers describe differences between the received images, not the update operators that MongoDB executed.
-If operation-specific images are required, consider `capture.mode.full.update.type=post_image` with the MongoDB version and collection configuration required for post-images.
-See xref:connectors/mongodb.adoc#mongodb-property-capture-mode[Capture mode] and xref:connectors/mongodb.adoc#mongodb-property-capture-mode-full-update-type[Full update type].
+
+To request the document as it appeared immediately after the update, use `capture.mode.post.image=post_image`.
+Use `post_image_required` if an unavailable post-image must cause the source connector to fail.
+These post-image policies require MongoDB 6.0 or later and document pre- and post-images to be enabled on the captured collections before the changes occur.
+
+With either required-image policy, `deployment` or `database` capture scope and regex filtering can cause missing-image errors for events from excluded collections.
+See xref:connectors/mongodb.adoc#mongodb-property-capture-mode-pre-image[`capture.mode.pre.image`] and xref:connectors/mongodb.adoc#mongodb-property-capture-mode-post-image[`capture.mode.post.image`] for prerequisites, filtering, and restart behavior.
 
 Delete events are retained even when no pre-image is available; their `before` and `after` fields use optional Struct schemas and their original key is preserved.
 Tombstones and non-envelope records pass through unchanged.

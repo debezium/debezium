@@ -63,30 +63,40 @@ Source metadata:: Includes, but is not limited to the following fields:
 
 Document data::
 `before` data:::
-This field is present in environments that run MongoDB 6.0 and later when the `capture.mode` for the {prodname} connector is set to one of the following values:
-* `change_streams_with_pre_image`.
-* `change_streams_update_full_with_pre_image`.
+A JSON string that represents the document before the change.
+To request pre-images, set `capture.mode.pre.image` to `when_available` or `required`.
+Pre-images require MongoDB 6.0 or later and must be enabled separately for the captured collections before the changes occur.
+With `when_available`, the `before` value is null if the image is unavailable.
+With `required`, a missing pre-image for an update, replacement, or delete causes the connector to fail.
 +
-For more information, see {link-prefix}:{link-mongodb-connector}#mongodb-pre-image-support[MongoDB pre-image support]
+For more information, see {link-prefix}:{link-mongodb-connector}#mongodb-property-capture-mode-pre-image[`capture.mode.pre.image`].
 
 `after` data:::
-JSON strings that represent the values that are present in a document after the current operation.
-The presence of an `after` field in an event message depends on the type of event and the connector configuration.
-A `create` event for a MongoDB `insert` operation always contain an `after` field, regardless of the `capture.mode` setting.
-For `update` events, the `after` field is present only when `capture.mode` is set to one of the following values:
-* `change_streams_update_full`
-* `change_streams_update_full_with_pre_image`.
+A JSON string that represents the full document retrieved for the event.
+Insert and replacement operations include the full document regardless of the image settings.
+For MongoDB update operations, `capture.mode.post.image` controls how the connector requests the full document:
 +
+--
+* `off`: Does not request the full document.
+* `lookup` (default): Requests the current full document by using a lookup.
+* `post_image`: Requests the document as it appeared immediately after the update, when available.
+* `post_image_required`: Requires the document as it appeared immediately after the update and causes the connector to fail if it is unavailable.
+
+With `lookup` or `post_image`, the `after` value can be null if the document is unavailable.
+
 [NOTE]
 ====
-The `after` value in a change event message does not necessarily represent the state of a document immediately following the event.
-The value is not calculated dynamically; instead, after the connector captures a change event, it  queries the collection to retrieve the current value of the document.
+With `capture.mode.post.image=lookup`, concurrent updates can cause the lookup to return a newer document state than the operation represented by the event.
+For example, the document retrieved for change `a` might already include subsequent changes `b` or `c`.
 
-For example, imagine a situation in which multiple operations, `a`, `b`, and `c` modify a document in quick succession.
-When the connector processes, change `a`, it queries the collection for the full document.
-In the meantime, changes `b` and `c` occur.
-When the connector receives a response to its query for the full document for change `a`, it might receive a version of the document that is based on the subsequent changes for `b` or `c`.
-For more information, see the documentation for the {link-prefix}:{link-mongodb-connector}#mongodb-property-capture-mode[`capture.mode`] property.
+For more information, see {link-prefix}:{link-mongodb-connector}#mongodb-property-capture-mode-post-image[`capture.mode.post.image`].
+====
+--
+
+[NOTE]
+====
+With either required-image policy, `deployment` or `database` capture scope and regex filtering can cause missing-image errors for events from excluded collections.
+See {link-prefix}:{link-mongodb-connector}#mongodb-property-capture-mode-pre-image[`capture.mode.pre.image`] for scope, filtering, retention, and restart considerations.
 ====
 
 The following fragment shows the basic structure of a `create` change event that the connector emits after a MongoDB `insert` operation:
@@ -351,18 +361,16 @@ The following example shows part of an update message for an operation that resu
 }
 ----
 
-In the preceding example, the `before` and `after` represent the state of the source document before and after the document was updated.
-These fields are present in the event message that a connector emits only if the `capture.mode` for the connector is set as described in the following list:
+In the preceding update event, the availability of the `before` and `after` values depends on the connector's image settings and whether MongoDB can provide the requested images.
 
-`before` field:: Provides the state of the document before the change.
-This field is present only when `capture.mode` is set to one of the following values:
-* `change_streams_with_pre_image`
-* `change_streams_update_full_with_pre_image`.
+`before` field::
+Requested when `capture.mode.pre.image` is `when_available` or `required`.
 
-`after` field:: Provides the full state of the document after a change.
-This field is present only when `capture.mode` is set to one of the following values:
-* `change_streams_update_full`
-* `change_streams_update_full_with_pre_image`.
+`after` field::
+Requested when `capture.mode.post.image` is `lookup`, `post_image`, or `post_image_required`.
+
+The optional image policies can produce null values when images are unavailable.
+The required image policies cause the connector to fail instead.
 
 Assuming a connector that is configured to capture full documents, when the `ExtractNewDocumentState` SMT receives an `update` message for an `$unset` event, the SMT re-encodes the message by representing the removed field has a `null` value, as shown in the following example:
 

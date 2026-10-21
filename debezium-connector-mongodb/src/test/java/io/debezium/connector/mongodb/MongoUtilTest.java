@@ -10,9 +10,20 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 import java.util.List;
+import java.util.stream.Stream;
 
+import org.bson.BsonDocument;
+import org.bson.BsonInt32;
+import org.bson.BsonString;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.MethodSource;
+import org.junit.jupiter.params.provider.NullAndEmptySource;
+import org.junit.jupiter.params.provider.ValueSource;
 
+import com.mongodb.MongoCommandException;
+import com.mongodb.MongoException;
+import com.mongodb.MongoQueryException;
 import com.mongodb.MongoSocketOpenException;
 import com.mongodb.ServerAddress;
 import com.mongodb.client.MongoClient;
@@ -23,6 +34,7 @@ import com.mongodb.connection.ClusterType;
 import com.mongodb.connection.ServerConnectionState;
 import com.mongodb.connection.ServerDescription;
 
+import io.debezium.DebeziumException;
 import io.debezium.util.Collect;
 
 /**
@@ -123,6 +135,70 @@ public class MongoUtilTest {
         var actualRsName = MongoUtils.replicaSetName(clusterDescription);
 
         assertThat(actualRsName).isEmpty();
+    }
+
+    static Stream<String> requiredImageMessages() {
+        // Server wording from the versioned sources linked in MongoUtils.isRequiredImageMissing().
+        return Stream.of(
+                // Pre-image message in MongoDB 6.0.0, 7.0.0 and 8.0.0.
+                "Change stream was configured to require a pre-image for all update, delete and replace events, "
+                        + "but the pre-image was not found for event: ",
+                // Post-image message in MongoDB 6.0.0.
+                "Change stream was configured to require a post-image for all update, delete and replace events, "
+                        + "but the post-image was not found for event: ",
+                // Post-image message in MongoDB 7.0.0 and 8.0.0 (also used in later 6.0 releases).
+                "Change stream was configured to require a post-image for all update events, "
+                        + "but the post-image was not found for event: ");
+    }
+
+    @ParameterizedTest
+    @MethodSource("requiredImageMessages")
+    void shouldRecognizeRequiredImageErrorsAcrossServerVersions(String message) {
+        final var response = errorResponse(47, message + "{operationType: \"update\", ns: {db: \"test\", coll: \"documents\"}}");
+        assertThat(MongoUtils.isRequiredImageMissing(new MongoCommandException(response, new ServerAddress()))).isTrue();
+        assertThat(MongoUtils.isRequiredImageMissing(new MongoQueryException(response, new ServerAddress()))).isTrue();
+    }
+
+    @ParameterizedTest
+    @MethodSource("requiredImageMessages")
+    void shouldRecognizeRequiredImagesBehindServerAndExceptionPrefixes(String message) {
+        final var response = errorResponse(47, "PlanExecutor error during aggregation :: caused by :: " + message + "{}");
+        final var error = new DebeziumException("Checking change stream",
+                new MongoException("Wrapped failure", new MongoCommandException(response, new ServerAddress())));
+        assertThat(MongoUtils.isRequiredImageMissing(error)).isTrue();
+    }
+
+    @ParameterizedTest
+    @MethodSource("requiredImageMessages")
+    void shouldRequireMatchingErrorCodeAndMessage(String message) {
+        final var error = new MongoCommandException(errorResponse(91, message + "{}"), new ServerAddress());
+        assertThat(MongoUtils.isRequiredImageMissing(error)).isFalse();
+        assertThat(MongoUtils.isRequiredImageMissing(new IllegalStateException(message))).isFalse();
+    }
+
+    @ParameterizedTest
+    @NullAndEmptySource
+    @ValueSource(strings = { "No matching document found for query {} on namespace config.rangeDeletions" })
+    void shouldNotClassifyUnrelatedOrMissingMessagesAsRequiredImages(String message) {
+        assertThat(MongoUtils.isRequiredImageMissing(new MongoException(47, message))).isFalse();
+    }
+
+    @Test
+    void shouldNotClassifyImageWordsInWrapperAsAnImageError() {
+        final var cause = new MongoCommandException(errorResponse(47, "No matching document found for another operation"), new ServerAddress());
+        final var error = new DebeziumException("Change stream was configured to require a pre-image", cause);
+        assertThat(MongoUtils.isRequiredImageMissing(error)).isFalse();
+    }
+
+    @Test
+    void shouldAcceptNullWhenCheckingForRequiredImageErrors() {
+        assertThat(MongoUtils.isRequiredImageMissing(null)).isFalse();
+    }
+
+    private static BsonDocument errorResponse(int code, String message) {
+        return new BsonDocument("ok", new BsonInt32(0))
+                .append("code", new BsonInt32(code))
+                .append("errmsg", new BsonString(message));
     }
 
 }

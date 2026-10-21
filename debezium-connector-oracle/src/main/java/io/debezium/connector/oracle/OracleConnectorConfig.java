@@ -130,12 +130,13 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
             .withWidth(Width.SHORT)
             .withImportance(Importance.LOW)
             .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR_SNAPSHOT))
-            .withDescription("Controls how the connector holds locks on tables while performing the schema snapshot. The default is 'shared', "
-                    + "which means the connector will hold a table lock that prevents exclusive table access for just the initial portion of the snapshot "
-                    + "while the database schemas and other metadata are being read. The remaining work in a snapshot involves selecting all rows from "
-                    + "each table, and this is done using a flashback query that requires no locks. However, in some cases it may be desirable to avoid "
-                    + "locks entirely which can be done by specifying 'none'. This mode is only safe to use if no schema changes are happening while the "
-                    + "snapshot is taken.");
+            .withDescription("Controls how the connector holds locks on tables while performing the snapshot. The default is 'shared', "
+                    + "which means the connector will hold a ROW SHARE table lock for the duration of the snapshot. The lock allows other sessions "
+                    + "to read and write the table and prevents most DDL on it; however, Oracle non-blocking DDL such as ALTER TABLE ADD COLUMN is "
+                    + "still permitted and would invalidate the flashback query used to read the table data (ORA-01466). Specifying 'extended' "
+                    + "holds a SHARE table lock instead, which prevents all DDL but also blocks writes to the table for the duration of the snapshot. "
+                    + "In some cases it may be desirable to avoid locks entirely which can be done by specifying 'none'. This mode is only safe "
+                    + "to use if no schema changes are happening while the snapshot is taken.");
 
     public static final Field CONNECTOR_ADAPTER = Field.create(ConfigurationNames.DATABASE_CONFIG_PREFIX + "connection.adapter")
             .withDisplayName("Connector adapter")
@@ -661,15 +662,6 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
                     "INTERNAL events provide the ROW_IDs necessary for accurate ROLLBACK TO SAVEPOINT handling. " +
                     "NOTE: Enabling this may significantly increase the volume of events returned by LogMiner.");
 
-    public static final Field SNAPSHOT_DATABASE_ERRORS_MAX_RETRIES = Field.create("snapshot.database.errors.max.retries")
-            .withDisplayName("The maximum number of retries before snapshot database errors are not retried")
-            .withType(Type.INT)
-            .withDefault(0)
-            .withWidth(Width.SHORT)
-            .withImportance(Importance.LOW)
-            .withValidation(Field::isNonNegativeInteger)
-            .withDescription("The number of attempts to retry database errors during snapshots before failing.");
-
     public static final Field LOG_MINING_BUFFER_EHCACHE_GLOBAL_CONFIG = Field.create("log.mining.buffer.ehcache.global.config")
             .withDisplayName("Defines any global configuration for the Ehcache transaction buffer")
             .withType(Type.STRING)
@@ -862,7 +854,7 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
             .group(Field.Group.CONNECTOR, INTERVAL_HANDLING_MODE, UNAVAILABLE_VALUE_PLACEHOLDER, BINARY_HANDLING_MODE, SCHEMA_NAME_ADJUSTMENT_MODE,
                     LEGACY_DECIMAL_HANDLING_STRATEGY)
             .group(Field.Group.CONNECTOR_ADVANCED, QUERY_FETCH_SIZE, OBJECT_ID_CACHE_SIZE)
-            .group(Field.Group.CONNECTOR_SNAPSHOT, SNAPSHOT_MODE, SNAPSHOT_ENHANCEMENT_TOKEN, SNAPSHOT_LOCKING_MODE, SNAPSHOT_DATABASE_ERRORS_MAX_RETRIES)
+            .group(Field.Group.CONNECTOR_SNAPSHOT, SNAPSHOT_MODE, SNAPSHOT_ENHANCEMENT_TOKEN, SNAPSHOT_LOCKING_MODE)
             .group(Field.Group.CONNECTOR, SOURCE_INFO_STRUCT_MAKER, SIGNAL_DATA_COLLECTION)
             .create();
 
@@ -893,7 +885,6 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
     private final String snapshotEnhancementToken;
     private final SnapshotLockingMode snapshotLockingMode;
     private final int queryFetchSize;
-    private final int snapshotRetryDatabaseErrorsMaxRetries;
     private final int objectIdToTableIdCacheSize;
     private final boolean legacyDecimalHandlingStrategy;
 
@@ -982,7 +973,6 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
         this.captureMode = CaptureMode.parse(config.getString(CAPTURE_MODE));
 
         this.queryFetchSize = config.getInteger(QUERY_FETCH_SIZE);
-        this.snapshotRetryDatabaseErrorsMaxRetries = config.getInteger(SNAPSHOT_DATABASE_ERRORS_MAX_RETRIES);
 
         // LogMiner
         this.logMiningStrategy = LogMiningStrategy.parse(config.getString(LOG_MINING_STRATEGY));
@@ -1094,10 +1084,6 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
     @Override
     public int getQueryFetchSize() {
         return queryFetchSize;
-    }
-
-    public int getSnapshotRetryDatabaseErrorsMaxRetries() {
-        return snapshotRetryDatabaseErrorsMaxRetries;
     }
 
     @Override
@@ -1267,9 +1253,18 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
     public enum SnapshotLockingMode implements EnumeratedValue {
         /**
          * This mode will allow concurrent access to the table during the snapshot but prevents any
-         * session from acquiring any table-level exclusive lock.
+         * session from acquiring a table-level exclusive lock for the duration of the snapshot. This
+         * prevents most DDL on the table, but Oracle non-blocking DDL such as {@code ALTER TABLE ADD COLUMN}
+         * does not require an exclusive lock and is still permitted.
          */
         SHARED("shared"),
+
+        /**
+         * This mode prevents any DDL on the table, including Oracle non-blocking DDL, for the duration
+         * of the snapshot. Other sessions can still read the table but any write is blocked until the
+         * snapshot completes.
+         */
+        EXTENDED("extended"),
 
         /**
          * This mode will avoid using ANY table locks during the snapshot process.

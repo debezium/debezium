@@ -6,6 +6,7 @@
 package io.debezium.transforms.outbox;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.io.IOException;
 import java.net.URISyntaxException;
@@ -106,7 +107,7 @@ public class JsonSchemaDataTest {
         }
         assertThat(expectedException).isNotNull();
         assertThat(expectedException).isInstanceOf(ConnectException.class);
-        assertThat(expectedException).hasMessage("Field is not a homogenous array (1 x 2.0), different number types (Schema{INT32} x Schema{FLOAT64})");
+        assertThat(expectedException).hasMessage("Array elements have conflicting types (INT32 x FLOAT64).");
     }
 
     @Test
@@ -211,5 +212,164 @@ public class JsonSchemaDataTest {
         Schema payloadSchema = jsonSchemaData.toConnectSchema("payload", testNode);
         Struct payload = (Struct) jsonSchemaData.toConnectData(testNode, payloadSchema);
         assertThat(payload.get("tags")).isEqualTo(List.of());
+    }
+
+    @Test
+    @FixFor("debezium/dbz#1332")
+    public void shouldMergeFieldsOfObjectsInNestedArray() throws Exception {
+        String json = """
+                {
+                  "array": [
+                    { "subarray": [ { "code": "100", "description": "some description" } ] },
+                    { "subarray": [ { "code": "200", "comment": "some comment" } ] }
+                  ]
+                }
+                """;
+        JsonNode testNode = mapper.readTree(json);
+        Schema payloadSchema = jsonSchemaData.toConnectSchema("payload", testNode);
+        Schema subarrayItemSchema = payloadSchema.field("array").schema().valueSchema()
+                .field("subarray").schema().valueSchema();
+        assertThat(subarrayItemSchema.field("code")).isNotNull();
+        assertThat(subarrayItemSchema.field("description")).isNotNull();
+        assertThat(subarrayItemSchema.field("comment")).isNotNull();
+
+        Struct payload = (Struct) jsonSchemaData.toConnectData(testNode, payloadSchema);
+        List<Struct> array = payload.getArray("array");
+        List<Struct> firstSubarray = array.get(0).getArray("subarray");
+        List<Struct> secondSubarray = array.get(1).getArray("subarray");
+        assertThat(firstSubarray.get(0).getString("description")).isEqualTo("some description");
+        assertThat(secondSubarray.get(0).getString("comment")).isEqualTo("some comment");
+    }
+
+    @Test
+    @FixFor("debezium/dbz#1332")
+    public void shouldMergeFieldsOfNestedObjectsInArray() throws Exception {
+        String json = """
+                {
+                  "items": [
+                    { "details": { "code": "100", "description": "some description" } },
+                    { "details": { "code": "200", "comment": "some comment" } }
+                  ]
+                }
+                """;
+        JsonNode testNode = mapper.readTree(json);
+        Schema payloadSchema = jsonSchemaData.toConnectSchema("payload", testNode);
+        Schema detailsSchema = payloadSchema.field("items").schema().valueSchema().field("details").schema();
+        assertThat(detailsSchema.field("code")).isNotNull();
+        assertThat(detailsSchema.field("description")).isNotNull();
+        assertThat(detailsSchema.field("comment")).isNotNull();
+
+        Struct payload = (Struct) jsonSchemaData.toConnectData(testNode, payloadSchema);
+        List<Struct> items = payload.getArray("items");
+        assertThat(items.get(0).getStruct("details").getString("description")).isEqualTo("some description");
+        assertThat(items.get(1).getStruct("details").getString("comment")).isEqualTo("some comment");
+    }
+
+    @Test
+    @FixFor("debezium/dbz#1332")
+    public void failSchemaCheckForArrayOfObjectsWithConflictingFieldTypes() throws Exception {
+        String json = """
+                {
+                  "example": [
+                    { "code": "300", "description": "a description" },
+                    { "code": "200", "description": true }
+                  ]
+                }
+                """;
+        JsonNode testNode = mapper.readTree(json);
+        assertThatThrownBy(() -> jsonSchemaData.toConnectSchema("payload", testNode))
+                .isInstanceOf(ConnectException.class)
+                .hasMessage("Field 'description' has conflicting types in array elements (STRING x BOOLEAN).");
+    }
+
+    @Test
+    @FixFor("debezium/dbz#1332")
+    public void shouldMergeFieldsOfObjectsInListOfLists() throws Exception {
+        String json = """
+                {
+                  "matrix": [
+                    [ { "id": 1 } ],
+                    [ { "id": 2, "name": "z" } ]
+                  ]
+                }
+                """;
+        JsonNode testNode = mapper.readTree(json);
+        Schema payloadSchema = jsonSchemaData.toConnectSchema("payload", testNode);
+        Schema cellSchema = payloadSchema.field("matrix").schema().valueSchema().valueSchema();
+        assertThat(cellSchema.field("id")).isNotNull();
+        assertThat(cellSchema.field("name")).isNotNull();
+
+        Struct payload = (Struct) jsonSchemaData.toConnectData(testNode, payloadSchema);
+        List<List<Struct>> matrix = payload.getArray("matrix");
+        assertThat(matrix.get(1).get(0).getString("name")).isEqualTo("z");
+    }
+
+    @Test
+    @FixFor("debezium/dbz#1332")
+    public void shouldKeepMergedObjectsOptional() throws Exception {
+        String json = """
+                {
+                  "a": [
+                    { "d": { "p": 1 } },
+                    { "d": { "q": 2 } },
+                    {}
+                  ]
+                }
+                """;
+        JsonNode testNode = mapper.readTree(json);
+        Schema payloadSchema = jsonSchemaData.toConnectSchema("payload", testNode);
+        Schema itemSchema = payloadSchema.field("a").schema().valueSchema();
+        assertThat(itemSchema.isOptional()).isTrue();
+        assertThat(itemSchema.field("d").schema().isOptional()).isTrue();
+
+        Struct payload = (Struct) jsonSchemaData.toConnectData(testNode, payloadSchema);
+        List<Struct> items = payload.getArray("a");
+        assertThat(items.get(2).getStruct("d")).isNull();
+    }
+
+    @Test
+    @FixFor("debezium/dbz#1332")
+    public void shouldMergeEmptyArrayPlaceholderWithTypedArray() throws Exception {
+        jsonSchemaData = new JsonSchemaData(JsonPayloadNullFieldBehavior.IGNORE,
+                JsonPayloadEmptyArrayBehavior.OPTIONAL_STRING, avroFieldNamer);
+        String json = """
+                {
+                  "a": [
+                    { "ids": [1] },
+                    { "ids": [] }
+                  ]
+                }
+                """;
+        JsonNode testNode = mapper.readTree(json);
+        Schema payloadSchema = jsonSchemaData.toConnectSchema("payload", testNode);
+        Schema idsSchema = payloadSchema.field("a").schema().valueSchema().field("ids").schema();
+        assertThat(idsSchema.valueSchema().type()).isEqualTo(Schema.Type.INT32);
+
+        Struct payload = (Struct) jsonSchemaData.toConnectData(testNode, payloadSchema);
+        List<Struct> items = payload.getArray("a");
+        assertThat(items.get(0).getArray("ids")).isEqualTo(List.of(1));
+        assertThat(items.get(1).getArray("ids")).isEqualTo(List.of());
+    }
+
+    @Test
+    @FixFor("debezium/dbz#1332")
+    public void shouldKeepFieldOrderOfMergedObjectsAsInDocument() throws Exception {
+        String json = """
+                {
+                  "a": [
+                    { "f1": 1 },
+                    { "f2": 1 },
+                    { "f3": 1 },
+                    { "f4": 1 },
+                    { "f5": 1 },
+                    { "f6": 1 }
+                  ]
+                }
+                """;
+        JsonNode testNode = mapper.readTree(json);
+        Schema payloadSchema = jsonSchemaData.toConnectSchema("payload", testNode);
+        Schema itemSchema = payloadSchema.field("a").schema().valueSchema();
+        assertThat(itemSchema.fields()).extracting(Field::name)
+                .containsExactly("f1", "f2", "f3", "f4", "f5", "f6");
     }
 }

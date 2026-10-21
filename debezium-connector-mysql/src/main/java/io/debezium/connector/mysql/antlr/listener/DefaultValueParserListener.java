@@ -6,8 +6,11 @@
 
 package io.debezium.connector.mysql.antlr.listener;
 
+import java.sql.Types;
 import java.util.concurrent.atomic.AtomicReference;
 
+import io.debezium.connector.binlog.util.BinaryLiteralDefaultValueUtils;
+import io.debezium.connector.binlog.util.BinaryLiteralDefaultValueUtils.BinaryLiteral;
 import io.debezium.connector.mysql.antlr.MySqlAntlrDdlParser;
 import io.debezium.ddl.parser.mysql.generated.MySqlParser;
 import io.debezium.ddl.parser.mysql.generated.MySqlParserBaseListener;
@@ -53,6 +56,9 @@ public class DefaultValueParserListener extends MySqlParserBaseListener {
     }
 
     private void handleDefaultValue(MySqlParser.ColumnAttributeContext ctx) {
+        // The last default of a column definition applies
+        parser.binaryLiteralDefaults().remove(getColumnEditor().name());
+
         // Handle expression-based defaults (MySQL 8.0.13+)
         if (ctx.exprWithParentheses() != null) {
             // Default value is calculated/expression - handle as NULL
@@ -75,6 +81,12 @@ public class DefaultValueParserListener extends MySqlParserBaseListener {
             // Handle signedLiteralOrNull
             if (literalCtx.signedLiteralOrNull() != null) {
                 MySqlParser.SignedLiteralOrNullContext signedLitCtx = literalCtx.signedLiteralOrNull();
+
+                if (getColumnEditor().jdbcType() == Types.BIT) {
+                    getColumnEditor().defaultValueExpression(BitDefaultValueParser.parse(signedLitCtx, parser));
+                    exitDefaultValue(true);
+                    return;
+                }
 
                 // Check for NULL
                 if (signedLitCtx.nullAsLiteral() != null) {
@@ -135,13 +147,8 @@ public class DefaultValueParserListener extends MySqlParserBaseListener {
         }
 
         // Hex/Bin number
-        if (literalCtx.HEX_NUMBER() != null) {
-            getColumnEditor().defaultValueExpression(unquoteBinary(literalCtx.HEX_NUMBER().getText()));
-            return;
-        }
-
-        if (literalCtx.BIN_NUMBER() != null) {
-            getColumnEditor().defaultValueExpression(unquoteBinary(literalCtx.BIN_NUMBER().getText()));
+        if (literalCtx.HEX_NUMBER() != null || literalCtx.BIN_NUMBER() != null) {
+            getColumnEditor().defaultValueExpression(parseBinaryLiteral(literalCtx, getColumnEditor(), parser));
             return;
         }
 
@@ -164,11 +171,17 @@ public class DefaultValueParserListener extends MySqlParserBaseListener {
         }
     }
 
-    private String unquoteBinary(String stringLiteral) {
-        if (stringLiteral != null && stringLiteral.length() > 2) {
-            return stringLiteral.substring(2, stringLiteral.length() - 1);
-        }
-        return stringLiteral;
+    static String parseBinaryLiteral(MySqlParser.LiteralContext literalCtx, ColumnEditor columnEditor, MySqlAntlrDdlParser parser) {
+        final byte[] bytes = literalCtx.HEX_NUMBER() != null
+                ? BinaryLiteralDefaultValueUtils.parseHexadecimal(literalCtx.HEX_NUMBER().getText())
+                : BinaryLiteralDefaultValueUtils.parseBitValue(literalCtx.BIN_NUMBER().getText());
+        final String introducer = literalCtx.UNDERSCORE_CHARSET() != null ? literalCtx.UNDERSCORE_CHARSET().getText() : null;
+        // MySQL treats X'41' like 0x41, as a number in a numeric context
+        final BinaryLiteral literal = new BinaryLiteral(bytes, true, introducer);
+        // The character set of the column may only be known at the end of the statement, which converts the literal again
+        parser.binaryLiteralDefaults().put(columnEditor.name(), literal);
+        return BinaryLiteralDefaultValueUtils.toDefaultValueExpression(columnEditor, literal, parser.currentDatabaseCharset(),
+                parser::getJavaEncodingForCharSet);
     }
 
 }

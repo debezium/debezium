@@ -28,10 +28,13 @@ import io.debezium.antlr.DataTypeResolver;
 import io.debezium.antlr.DataTypeResolver.DataTypeEntry;
 import io.debezium.antlr.mysql.SqlMode;
 import io.debezium.antlr.mysql.SqlModes;
+import io.debezium.connector.binlog.BinlogConnectorConfig.RealHandlingMode;
 import io.debezium.connector.binlog.charset.BinlogCharsetRegistry;
 import io.debezium.connector.binlog.jdbc.BinlogSystemVariables;
+import io.debezium.connector.binlog.util.BinaryLiteralDefaults;
 import io.debezium.connector.binlog.util.StringLiteralParser;
 import io.debezium.connector.mysql.antlr.listener.MySqlAntlrDdlParserListener;
+import io.debezium.connector.mysql.charset.MySqlCharsetRegistry;
 import io.debezium.ddl.parser.mysql.generated.MySqlLexer;
 import io.debezium.ddl.parser.mysql.generated.MySqlParser;
 import io.debezium.ddl.parser.mysql.generated.MySqlParser.CharsetNameContext;
@@ -78,9 +81,10 @@ public class MySqlAntlrDdlParser extends AntlrDdlParser<MySqlLexer, MySqlParser>
             "_utf8", "_utf8mb3", "_utf8mb4");
 
     private final ConcurrentMap<String, String> charsetNameForDatabase = new ConcurrentHashMap<>();
+    private final BinaryLiteralDefaults binaryLiteralDefaults = new BinaryLiteralDefaults();
     private final TableFilter tableFilter;
     private final BinlogCharsetRegistry charsetRegistry;
-    private final DataTypeResolver dataTypeResolver = initializeDataTypeResolver();
+    private final DataTypeResolver dataTypeResolver;
 
     @VisibleForTesting
     public MySqlAntlrDdlParser() {
@@ -89,15 +93,21 @@ public class MySqlAntlrDdlParser extends AntlrDdlParser<MySqlLexer, MySqlParser>
 
     @VisibleForTesting
     public MySqlAntlrDdlParser(TableFilter tableFilter) {
-        this(true, false, false, tableFilter, null);
+        this(true, false, false, tableFilter, new MySqlCharsetRegistry());
     }
 
     public MySqlAntlrDdlParser(boolean throwErrorsFromTreeWalk, boolean includeViews, boolean includeComments,
                                TableFilter tableFilter, BinlogCharsetRegistry charsetRegistry) {
+        this(throwErrorsFromTreeWalk, includeViews, includeComments, tableFilter, charsetRegistry, RealHandlingMode.DOUBLE);
+    }
+
+    public MySqlAntlrDdlParser(boolean throwErrorsFromTreeWalk, boolean includeViews, boolean includeComments,
+                               TableFilter tableFilter, BinlogCharsetRegistry charsetRegistry, RealHandlingMode realHandlingMode) {
         super(throwErrorsFromTreeWalk, includeViews, includeComments);
         systemVariables = new BinlogSystemVariables();
         this.tableFilter = tableFilter;
         this.charsetRegistry = charsetRegistry;
+        this.dataTypeResolver = initializeDataTypeResolver(realHandlingMode);
     }
 
     @Override
@@ -161,7 +171,7 @@ public class MySqlAntlrDdlParser extends AntlrDdlParser<MySqlLexer, MySqlParser>
         return dataTypeResolver;
     }
 
-    private DataTypeResolver initializeDataTypeResolver() {
+    private DataTypeResolver initializeDataTypeResolver(RealHandlingMode realHandlingMode) {
         DataTypeResolver.Builder dataTypeResolverBuilder = new DataTypeResolver.Builder();
 
         // In the new Oracle grammar, all data types are unified in DataTypeContext
@@ -205,7 +215,8 @@ public class MySqlAntlrDdlParser extends AntlrDdlParser<MySqlLexer, MySqlParser>
                 new DataTypeEntry(Types.BIGINT, MySqlParser.BIGINT_SYMBOL)
                         .setSuffixTokens(MySqlParser.SIGNED_SYMBOL, MySqlParser.UNSIGNED_SYMBOL, MySqlParser.ZEROFILL_SYMBOL),
                 // Floating point types
-                new DataTypeEntry(Types.REAL, MySqlParser.REAL_SYMBOL)
+                // REAL defaults to DOUBLE, but can be mapped to FLOAT for REAL_AS_FLOAT compatibility.
+                new DataTypeEntry(realHandlingMode.asJdbcType(), MySqlParser.REAL_SYMBOL)
                         .setSuffixTokens(MySqlParser.SIGNED_SYMBOL, MySqlParser.UNSIGNED_SYMBOL, MySqlParser.ZEROFILL_SYMBOL),
                 new DataTypeEntry(Types.DOUBLE, MySqlParser.DOUBLE_SYMBOL)
                         .setSuffixTokens(MySqlParser.PRECISION_SYMBOL, MySqlParser.SIGNED_SYMBOL, MySqlParser.UNSIGNED_SYMBOL, MySqlParser.ZEROFILL_SYMBOL),
@@ -466,6 +477,15 @@ public class MySqlAntlrDdlParser extends AntlrDdlParser<MySqlLexer, MySqlParser>
     }
 
     /**
+     * Get the hexadecimal and bit-value literal defaults of the current CREATE TABLE or ALTER TABLE statement.
+     *
+     * @return the literal defaults; never null
+     */
+    public BinaryLiteralDefaults binaryLiteralDefaults() {
+        return binaryLiteralDefaults;
+    }
+
+    /**
      * Get the name of the character set for the current database, via the "character_set_database" system property.
      *
      * @return the name of the character set for the current database, or null if not known ...
@@ -486,6 +506,10 @@ public class MySqlAntlrDdlParser extends AntlrDdlParser<MySqlLexer, MySqlParser>
     public String charsetForTable(TableId tableId) {
         final String defaultDatabaseCharset = tableId.catalog() != null ? charsetNameForDatabase().get(tableId.catalog()) : null;
         return defaultDatabaseCharset != null ? defaultDatabaseCharset : currentDatabaseCharset();
+    }
+
+    public String getJavaEncodingForCharSet(String charsetName) {
+        return charsetRegistry.getJavaEncodingForCharSet(charsetName);
     }
 
     /**

@@ -127,4 +127,26 @@ public class TableIdTest {
         TableId id5 = new TableId("db", "sch]ema", "tab]le");
         assertThat(TableId.parse(id5.toBracketQuoted().toString(), false, predicates)).isEqualTo(id5);
     }
+
+    @Test
+    @FixFor("debezium/dbz#2828")
+    public void shouldQuoteIdentifierPartStartingOrEndingWithQuoteChar() {
+        TableId trailingQuote = new TableId(null, "schema", "table\"");
+        assertThat(trailingQuote.toDoubleQuoted().table()).isEqualTo("\"table\"\"\"");
+        assertThat(trailingQuote.toDoubleQuotedString()).isEqualTo("\"schema\".\"table\"\"\"");
+
+        TableId leadingQuote = new TableId(null, "schema", "\"table");
+        assertThat(leadingQuote.toDoubleQuoted().table()).isEqualTo("\"\"\"table\"");
+        assertThat(leadingQuote.toDoubleQuotedString()).isEqualTo("\"schema\".\"\"\"table\"");
+
+        TableId singleQuote = new TableId(null, "schema", "\"");
+        assertThat(singleQuote.toDoubleQuoted().table()).isEqualTo("\"\"\"\"");
+        assertThat(singleQuote.toDoubleQuotedString()).isEqualTo("\"schema\".\"\"\"\"");
+
+        TableId bracketLeading = new TableId(null, "schema", "[table");
+        assertThat(bracketLeading.toBracketQuoted().table()).isEqualTo("[[table]");
+
+        TableId bracketTrailing = new TableId(null, "schema", "table]");
+        assertThat(bracketTrailing.toBracketQuoted().table()).isEqualTo("[table]]]");
+    }
 }

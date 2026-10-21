@@ -34,6 +34,7 @@ import java.util.concurrent.ExecutorCompletionService;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.function.Function;
+import java.util.function.Predicate;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -770,7 +771,7 @@ public abstract class RelationalSnapshotChangeEventSource<P extends Partition, O
     protected List<Column> getKeyColumnsForChunking(Table table) {
         final Key.KeyMapper keyMapper = connectorConfig.getKeyMapper();
         if (keyMapper != null) {
-            final List<Column> customKeys = keyMapper.getKeyKolumns(table);
+            final List<Column> customKeys = keyMapper.getKeyColumns(table);
             if (!customKeys.isEmpty()) {
                 return customKeys;
             }
@@ -1194,29 +1195,37 @@ public abstract class RelationalSnapshotChangeEventSource<P extends Partition, O
 
     /**
      * Prepares a list of columns to be used in the snapshot select.
-     * The selected columns are based on the column include/exclude filters and if all columns are excluded,
-     * the list will contain all the primary key columns.
+     * The selected columns are based on the column include/exclude filters, plus the key columns, as the
+     * record key is built from them even when the filters exclude them from the value. If the filters
+     * exclude all columns, the list contains all columns.
      *
      * @return list of snapshot select columns
      */
     protected List<String> getPreparedColumnNames(P partition, Table table) {
-        List<String> columnNames = table.retrieveColumnNames()
-                .stream()
-                .filter(columnName -> additionalColumnFilter(partition, table.id(), columnName))
-                .filter(columnName -> connectorConfig.getColumnFilter().matches(table.id().catalog(), table.id().schema(), table.id().table(), columnName))
-                .map(jdbcConnection::quoteIdentifier)
-                .collect(Collectors.toList());
+        final Predicate<String> isIncluded = columnName -> additionalColumnFilter(partition, table.id(), columnName)
+                && connectorConfig.getColumnFilter().matches(table.id().catalog(), table.id().schema(), table.id().table(), columnName);
 
-        if (columnNames.isEmpty()) {
+        if (table.retrieveColumnNames().stream().noneMatch(isIncluded)) {
             LOGGER.info("\t All columns in table {} were excluded due to include/exclude lists, defaulting to selecting all columns", table.id());
 
-            columnNames = table.retrieveColumnNames()
+            return table.retrieveColumnNames()
                     .stream()
                     .map(jdbcConnection::quoteIdentifier)
                     .collect(Collectors.toList());
         }
 
-        return columnNames;
+        final Key.KeyMapper keyMapper = connectorConfig.getKeyMapper() != null
+                ? connectorConfig.getKeyMapper()
+                : Table::primaryKeyColumns;
+        final Set<String> keyColumnNames = keyMapper.getKeyColumns(table).stream()
+                .map(Column::name)
+                .collect(Collectors.toSet());
+        return table.retrieveColumnNames()
+                .stream()
+                .filter(columnName -> isIncluded.test(columnName)
+                        || (keyColumnNames.contains(columnName) && additionalColumnFilter(partition, table.id(), columnName)))
+                .map(jdbcConnection::quoteIdentifier)
+                .collect(Collectors.toList());
     }
 
     /**

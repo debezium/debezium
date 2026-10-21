@@ -22,8 +22,10 @@ import io.debezium.annotation.VisibleForTesting;
 import io.debezium.antlr.AntlrDdlParser;
 import io.debezium.antlr.AntlrDdlParserListener;
 import io.debezium.antlr.DataTypeResolver;
+import io.debezium.connector.binlog.BinlogConnectorConfig.RealHandlingMode;
 import io.debezium.connector.binlog.charset.BinlogCharsetRegistry;
 import io.debezium.connector.binlog.jdbc.BinlogSystemVariables;
+import io.debezium.connector.binlog.util.BinaryLiteralDefaults;
 import io.debezium.connector.binlog.util.StringLiteralParser;
 import io.debezium.connector.mariadb.antlr.listener.MariaDbAntlrDdlParserListener;
 import io.debezium.ddl.parser.mariadb.generated.MariaDBLexer;
@@ -47,9 +49,10 @@ import io.debezium.relational.Tables;
 public class MariaDbAntlrDdlParser extends AntlrDdlParser<MariaDBLexer, MariaDBParser> {
 
     private final ConcurrentHashMap<String, String> charsetNameForDatabase = new ConcurrentHashMap<>();
+    private final BinaryLiteralDefaults binaryLiteralDefaults = new BinaryLiteralDefaults();
     private final Tables.TableFilter tableFilter;
     private final BinlogCharsetRegistry charsetRegistry;
-    private final DataTypeResolver dataTypeResolver = initializeDataTypeResolver();
+    private final DataTypeResolver dataTypeResolver;
 
     @VisibleForTesting
     public MariaDbAntlrDdlParser() {
@@ -63,10 +66,16 @@ public class MariaDbAntlrDdlParser extends AntlrDdlParser<MariaDBLexer, MariaDBP
 
     public MariaDbAntlrDdlParser(boolean throwWerrorsFromTreeWalk, boolean includeViews, boolean includeComments,
                                  Tables.TableFilter tableFilter, BinlogCharsetRegistry charsetRegistry) {
+        this(throwWerrorsFromTreeWalk, includeViews, includeComments, tableFilter, charsetRegistry, RealHandlingMode.DOUBLE);
+    }
+
+    public MariaDbAntlrDdlParser(boolean throwWerrorsFromTreeWalk, boolean includeViews, boolean includeComments,
+                                 Tables.TableFilter tableFilter, BinlogCharsetRegistry charsetRegistry, RealHandlingMode realHandlingMode) {
         super(throwWerrorsFromTreeWalk, includeViews, includeComments);
         systemVariables = new BinlogSystemVariables();
         this.tableFilter = tableFilter;
         this.charsetRegistry = charsetRegistry;
+        this.dataTypeResolver = initializeDataTypeResolver(realHandlingMode);
     }
 
     @Override
@@ -128,7 +137,7 @@ public class MariaDbAntlrDdlParser extends AntlrDdlParser<MariaDBLexer, MariaDBP
         return dataTypeResolver;
     }
 
-    private DataTypeResolver initializeDataTypeResolver() {
+    private DataTypeResolver initializeDataTypeResolver(RealHandlingMode realHandlingMode) {
         DataTypeResolver.Builder dataTypeResolverBuilder = new DataTypeResolver.Builder();
         dataTypeResolverBuilder.registerDataTypes(MariaDBParser.StringDataTypeContext.class.getCanonicalName(), Arrays.asList(
                 new DataTypeResolver.DataTypeEntry(Types.CHAR, MariaDBParser.CHAR),
@@ -188,7 +197,8 @@ public class MariaDbAntlrDdlParser extends AntlrDdlParser<MariaDBLexer, MariaDBP
                         .setSuffixTokens(MariaDBParser.SIGNED, MariaDBParser.UNSIGNED, MariaDBParser.ZEROFILL),
                 new DataTypeResolver.DataTypeEntry(Types.BIGINT, MariaDBParser.INT8)
                         .setSuffixTokens(MariaDBParser.SIGNED, MariaDBParser.UNSIGNED, MariaDBParser.ZEROFILL),
-                new DataTypeResolver.DataTypeEntry(Types.REAL, MariaDBParser.REAL)
+                // REAL defaults to DOUBLE, but can be mapped to FLOAT for REAL_AS_FLOAT compatibility.
+                new DataTypeResolver.DataTypeEntry(realHandlingMode.asJdbcType(), MariaDBParser.REAL)
                         .setSuffixTokens(MariaDBParser.SIGNED, MariaDBParser.UNSIGNED, MariaDBParser.ZEROFILL),
                 new DataTypeResolver.DataTypeEntry(Types.DOUBLE, MariaDBParser.DOUBLE)
                         .setSuffixTokens(MariaDBParser.PRECISION, MariaDBParser.SIGNED, MariaDBParser.UNSIGNED, MariaDBParser.ZEROFILL),
@@ -420,6 +430,15 @@ public class MariaDbAntlrDdlParser extends AntlrDdlParser<MariaDBLexer, MariaDBP
                     return tableEditor.columnWithName(columnName);
                 })
                 .collect(Collectors.toList());
+    }
+
+    /**
+     * Get the hexadecimal and bit-value literal defaults of the current CREATE TABLE or ALTER TABLE statement.
+     *
+     * @return the literal defaults; never null
+     */
+    public BinaryLiteralDefaults binaryLiteralDefaults() {
+        return binaryLiteralDefaults;
     }
 
     /**

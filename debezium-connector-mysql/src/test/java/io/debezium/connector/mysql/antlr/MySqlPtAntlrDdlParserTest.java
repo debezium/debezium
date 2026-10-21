@@ -7,6 +7,7 @@ package io.debezium.connector.mysql.antlr;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import java.sql.Types;
 import java.util.List;
 
 import org.junit.jupiter.api.Test;
@@ -24,6 +25,7 @@ import io.debezium.doc.FixFor;
 import io.debezium.jdbc.JdbcValueConverters;
 import io.debezium.jdbc.TemporalPrecisionMode;
 import io.debezium.relational.RelationalDatabaseConnectorConfig;
+import io.debezium.relational.Tables;
 import io.debezium.relational.Tables.TableFilter;
 import io.debezium.relational.ddl.DdlChanges;
 import io.debezium.relational.ddl.SimpleDdlParserListener;
@@ -53,6 +55,11 @@ public class MySqlPtAntlrDdlParserTest
     @Override
     protected MySqlPtAntlrDdlParser getParser(SimpleDdlParserListener listener, boolean includeViews, boolean includeComments) {
         return new MySqlPtDdlParserWithSimpleTestListener(listener, includeViews, includeComments);
+    }
+
+    @Override
+    protected MySqlPtAntlrDdlParser getParser(SimpleDdlParserListener listener, BinlogConnectorConfig.RealHandlingMode realHandlingMode) {
+        return new MySqlPtDdlParserWithSimpleTestListener(listener, realHandlingMode);
     }
 
     @Override
@@ -102,6 +109,24 @@ public class MySqlPtAntlrDdlParserTest
         assertThat(parser.systemVariables().getVariable("character_set_database")).isEqualToIgnoringCase("latin1");
         parser.parse("USE db2;", tables);
         assertThat(parser.systemVariables().getVariable("character_set_database")).isEqualToIgnoringCase("latin2");
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2217")
+    public void shouldApplyRealHandlingMode() {
+        final String ddl = "CREATE TABLE realtable (id INT PRIMARY KEY, r REAL);";
+
+        final Tables doubleTables = new Tables();
+        final MySqlPtAntlrDdlParser doubleParser = new MySqlPtAntlrDdlParser(
+                false, false, false, TableFilter.includeAll(), new MySqlCharsetRegistry(), BinlogConnectorConfig.RealHandlingMode.DOUBLE);
+        doubleParser.parse(ddl, doubleTables);
+        assertThat(doubleTables.forTable(null, null, "realtable").columnWithName("r").jdbcType()).isEqualTo(Types.DOUBLE);
+
+        final Tables floatTables = new Tables();
+        final MySqlPtAntlrDdlParser floatParser = new MySqlPtAntlrDdlParser(
+                false, false, false, TableFilter.includeAll(), new MySqlCharsetRegistry(), BinlogConnectorConfig.RealHandlingMode.FLOAT);
+        floatParser.parse(ddl, floatTables);
+        assertThat(floatTables.forTable(null, null, "realtable").columnWithName("r").jdbcType()).isEqualTo(Types.REAL);
     }
 
     @Test
@@ -178,8 +203,17 @@ public class MySqlPtAntlrDdlParserTest
             this(changesListener, includeViews, includeComments, TableFilter.includeAll());
         }
 
+        MySqlPtDdlParserWithSimpleTestListener(DdlChanges changesListener, BinlogConnectorConfig.RealHandlingMode realHandlingMode) {
+            this(changesListener, false, false, TableFilter.includeAll(), realHandlingMode);
+        }
+
         private MySqlPtDdlParserWithSimpleTestListener(DdlChanges changesListener, boolean includeViews, boolean includeComments, TableFilter tableFilter) {
-            super(false, includeViews, includeComments, tableFilter, new MySqlCharsetRegistry());
+            this(changesListener, includeViews, includeComments, tableFilter, BinlogConnectorConfig.RealHandlingMode.DOUBLE);
+        }
+
+        private MySqlPtDdlParserWithSimpleTestListener(DdlChanges changesListener, boolean includeViews, boolean includeComments, TableFilter tableFilter,
+                                                       BinlogConnectorConfig.RealHandlingMode realHandlingMode) {
+            super(false, includeViews, includeComments, tableFilter, new MySqlCharsetRegistry(), realHandlingMode);
             this.ddlChanges = changesListener;
         }
     }

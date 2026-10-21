@@ -604,7 +604,9 @@ public final class AsyncEmbeddedEngine<R> implements DebeziumEngine<R>, AsyncEng
                     config.asMap());
         }
         if (ParallelSmtAndConvertBatchProcessor.class.getName().equals(processorClassName)) {
-            return ParallelSmtAndConvertBatchProcessor.create(new ConvertingRecordCommitter(task),
+            final SourceRecordCommitter sourceCommitter = new SourceRecordCommitter(task);
+            return ParallelSmtAndConvertBatchProcessor.create(new ConvertingRecordCommitter(sourceCommitter),
+                    sourceCommitter,
                     recordConverter,
                     handler,
                     watcher,
@@ -1408,8 +1410,8 @@ public final class AsyncEmbeddedEngine<R> implements DebeziumEngine<R>, AsyncEng
 
         private final SourceRecordCommitter delegate;
 
-        ConvertingRecordCommitter(final EngineSourceTask task) {
-            this.delegate = new SourceRecordCommitter(task);
+        ConvertingRecordCommitter(final SourceRecordCommitter delegate) {
+            this.delegate = delegate;
         }
 
         @Override
