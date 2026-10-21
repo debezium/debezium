@@ -27,6 +27,7 @@ import java.util.TimeZone;
 import org.apache.kafka.connect.data.Decimal;
 import org.apache.kafka.connect.data.Field;
 import org.apache.kafka.connect.data.SchemaBuilder;
+import org.apache.kafka.connect.errors.DataException;
 import org.junit.jupiter.api.Test;
 import org.postgresql.PGStatement;
 import org.postgresql.core.Oid;
@@ -103,12 +104,14 @@ class PostgresValueConverterTest {
 
     @FixFor("debezium/dbz#2418")
     @Test
-    public void shouldConvertUnchangedToastedArrayWithoutPlaceholderRepresentationToNull() {
+    public void shouldRejectUnchangedToastedArrayWithoutPlaceholderRepresentation() {
         final Column column = Column.editor().name("bool_array").type("_bool").jdbcType(Types.ARRAY).optional(true).create();
         final Field field = new Field("bool_array", 0, SchemaBuilder.array(SchemaBuilder.OPTIONAL_BOOLEAN_SCHEMA).optional().build());
 
-        assertThat(converter.convertArray(column, field, PostgresType.UNKNOWN, elementConverter,
-                UnchangedToastedReplicationMessageColumn.UNCHANGED_TOAST_VALUE)).isNull();
+        assertThatThrownBy(() -> converter.convertArray(column, field, PostgresType.UNKNOWN, elementConverter,
+                UnchangedToastedReplicationMessageColumn.UNCHANGED_TOAST_VALUE))
+                .isInstanceOf(DataException.class)
+                .hasMessageContaining("bool_array");
     }
 
     private static Array jdbcArrayOf(Object[] values) {

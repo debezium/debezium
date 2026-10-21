@@ -47,6 +47,7 @@ import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.errors.ConnectException;
+import org.apache.kafka.connect.errors.DataException;
 import org.postgresql.PGStatement;
 import org.postgresql.geometric.PGbox;
 import org.postgresql.geometric.PGcircle;
@@ -786,7 +787,7 @@ public class PostgresValueConverter extends JdbcValueConverters {
     private Object convertLtreeArray(Column column, Field fieldDefn, Object data) {
         return convertValue(column, fieldDefn, data, Collections.emptyList(), r -> {
             if (UnchangedToastedReplicationMessageColumn.isUnchangedToastedValue(data)) {
-                r.deliver(unchangedToastedPlaceholder.getArrayValue(fieldDefn.schema().valueSchema()).orElse(null));
+                r.deliver(unchangedToastedArrayPlaceholder(column, fieldDefn));
             }
             else if (data instanceof byte[]) {
                 String s = new String((byte[]) data, databaseCharset);
@@ -1568,10 +1569,16 @@ public class PostgresValueConverter extends JdbcValueConverters {
         T parse(String value) throws SQLException;
     }
 
+    private List<Object> unchangedToastedArrayPlaceholder(Column column, Field fieldDefn) {
+        // thrown so that event.converting.failure.handling.mode decides the outcome
+        return unchangedToastedPlaceholder.getArrayValue(fieldDefn.schema().valueSchema())
+                .orElseThrow(() -> new DataException("No unavailable value placeholder for the element type of column " + column.name()));
+    }
+
     protected Object convertArray(Column column, Field fieldDefn, PostgresType elementType, ValueConverter elementConverter, Object data) {
         return convertValue(column, fieldDefn, data, Collections.emptyList(), (r) -> {
             if (UnchangedToastedReplicationMessageColumn.isUnchangedToastedValue(data)) {
-                r.deliver(unchangedToastedPlaceholder.getArrayValue(fieldDefn.schema().valueSchema()).orElse(null));
+                r.deliver(unchangedToastedArrayPlaceholder(column, fieldDefn));
             }
             else if (data instanceof List) {
                 r.deliver(((List<?>) data).stream()
