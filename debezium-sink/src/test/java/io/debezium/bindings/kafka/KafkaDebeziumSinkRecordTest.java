@@ -274,6 +274,51 @@ class KafkaDebeziumSinkRecordTest {
         assertThat(filteredKey.get("id")).isEqualTo((byte) 1);
     }
 
+    @FixFor("debezium/dbz#2917")
+    @Test
+    void getFilteredKeyShouldWrapPrimitiveKeyForModeRecordKey() {
+        SinkRecord kafkaRecord = new SinkRecord(TOPIC, 0,
+                Schema.OPTIONAL_STRING_SCHEMA, "4711_0001_X",
+                simpleSchema(), simpleStruct((byte) 1, "John"),
+                42);
+        KafkaDebeziumSinkRecord record = new KafkaDebeziumSinkRecord(kafkaRecord, CE_PATTERN);
+
+        Struct filteredKey = record.getFilteredKey(PrimaryKeyMode.RECORD_KEY, Set.of("key_id"), null);
+        assertThat(filteredKey).isNotNull();
+        assertThat(filteredKey.schema().fields()).extracting("name").containsExactly("key_id");
+        assertThat(filteredKey.schema().field("key_id").schema()).isEqualTo(Schema.OPTIONAL_STRING_SCHEMA);
+        assertThat(filteredKey.get("key_id")).isEqualTo("4711_0001_X");
+    }
+
+    @FixFor("debezium/dbz#2917")
+    @Test
+    void getFilteredKeyShouldReturnEqualSchemasForPrimitiveKeys() {
+        KafkaDebeziumSinkRecord first = new KafkaDebeziumSinkRecord(simpleRecord((byte) 1, "John"), CE_PATTERN);
+        KafkaDebeziumSinkRecord second = new KafkaDebeziumSinkRecord(simpleRecord((byte) 2, "Jane"), CE_PATTERN);
+
+        // Buffers compare key schemas to detect schema changes, so a new schema per record must still be equal
+        assertThat(first.getFilteredKey(PrimaryKeyMode.RECORD_KEY, Set.of("id"), null).schema())
+                .isEqualTo(second.getFilteredKey(PrimaryKeyMode.RECORD_KEY, Set.of("id"), null).schema());
+    }
+
+    @FixFor("debezium/dbz#2917")
+    @Test
+    void getFilteredKeyShouldThrowForPrimitiveKeyWithoutPrimaryKeyField() {
+        KafkaDebeziumSinkRecord record = new KafkaDebeziumSinkRecord(simpleRecord((byte) 1, "John"), CE_PATTERN);
+
+        assertThatThrownBy(() -> record.getFilteredKey(PrimaryKeyMode.RECORD_KEY, Set.of(), null))
+                .hasMessageContaining("requires exactly one field name in 'primary.key.fields'");
+    }
+
+    @FixFor("debezium/dbz#2917")
+    @Test
+    void getFilteredKeyShouldThrowForPrimitiveKeyWithSeveralPrimaryKeyFields() {
+        KafkaDebeziumSinkRecord record = new KafkaDebeziumSinkRecord(simpleRecord((byte) 1, "John"), CE_PATTERN);
+
+        assertThatThrownBy(() -> record.getFilteredKey(PrimaryKeyMode.RECORD_KEY, Set.of("id", "name"), null))
+                .hasMessageContaining("requires exactly one field name in 'primary.key.fields'");
+    }
+
     @FixFor("debezium/dbz#1185")
     @Test
     void getFilteredKeyShouldReturnKafkaCoordinatesForModeKafka() {
