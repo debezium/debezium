@@ -792,8 +792,11 @@ public class PgOutputMessageDecoder extends AbstractMessageDecoder {
 
             final io.debezium.relational.Column column = table.columns().get(i);
             final String columnName = column.name();
-            final String typeName = column.typeName();
-            final PostgresType columnType = typeRegistry.get(table.id().schema(), typeName);
+            // Resolve the column's type by its OID, which the relation message established as the
+            // authoritative identity, rather than by (table schema + unqualified type name). A name-based
+            // lookup confuses types that share an unqualified name across schemas: a cross-schema domain
+            // such as oracle.date would fall back to pg_catalog.date and parse its value as the wrong type.
+            final PostgresType columnType = typeRegistry.get(column.nativeType());
             final String typeExpression = column.typeExpression();
             final boolean optional = column.isOptional();
 
