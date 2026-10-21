@@ -169,6 +169,47 @@ public abstract class AbstractJdbcSinkPrimaryKeyModeTest extends AbstractJdbcSin
 
     @ParameterizedTest
     @ArgumentsSource(SinkRecordFactoryArgumentsProvider.class)
+    @FixFor("debezium/dbz#2917")
+    public void testRecordWithPrimitiveKeyWithPrimaryKeyModeRecordKey(SinkRecordFactory factory) {
+        final Map<String, String> properties = getDefaultSinkConfig();
+        properties.put(JdbcSinkConnectorConfig.SCHEMA_EVOLUTION, SchemaEvolutionMode.BASIC.getValue());
+        properties.put(JdbcSinkConnectorConfig.PRIMARY_KEY_MODE, PrimaryKeyMode.RECORD_KEY.getValue());
+        properties.put(JdbcSinkConnectorConfig.PRIMARY_KEY_FIELDS, "key_id");
+        properties.put(JdbcSinkConnectorConfig.DELETE_ENABLED, "true");
+        startSinkConnector(properties);
+        assertSinkConnectorIsRunning();
+
+        final String tableName = randomTableName();
+        final String topicName = topicName("server1", "schema", tableName);
+
+        final JdbcSinkConnectorConfig config = getConfig(properties);
+        final SinkRecord record = factory.createRecord(topicName, config).getOriginalKafkaRecord();
+
+        // Same value, but a plain string as record key
+        final JdbcKafkaSinkRecord createRecord = new JdbcKafkaSinkRecord(new SinkRecord(record.topic(), record.kafkaPartition(),
+                Schema.STRING_SCHEMA, "4711_0001_X", record.valueSchema(), record.value(), record.kafkaOffset()), config);
+        consume(createRecord);
+
+        final String destinationTableName = destinationTableName(createRecord);
+
+        final TableAssert tableAssert = TestHelper.assertTable(assertDbConnection(), destinationTableName);
+        tableAssert.exists().hasNumberOfRows(1).hasNumberOfColumns(4);
+
+        getSink().assertColumnType(tableAssert, "key_id", ValueType.TEXT, "4711_0001_X");
+        getSink().assertColumnType(tableAssert, "id", ValueType.NUMBER, (byte) 1);
+        getSink().assertColumnType(tableAssert, "name", ValueType.TEXT, "John Doe");
+
+        assertHasPrimaryKeyColumns(destinationTableName, "key_id");
+
+        // A tombstone with the same string key deletes the row
+        consume(new JdbcKafkaSinkRecord(new SinkRecord(record.topic(), record.kafkaPartition(),
+                Schema.STRING_SCHEMA, "4711_0001_X", null, null, record.kafkaOffset() + 1), config));
+
+        TestHelper.assertTable(assertDbConnection(), destinationTableName).exists().hasNumberOfRows(0);
+    }
+
+    @ParameterizedTest
+    @ArgumentsSource(SinkRecordFactoryArgumentsProvider.class)
     public void testRecordWithPrimaryKeyColumnsWithPrimaryKeyModeRecordKey(SinkRecordFactory factory) {
         final Map<String, String> properties = getDefaultSinkConfig();
         properties.put(JdbcSinkConnectorConfig.SCHEMA_EVOLUTION, SchemaEvolutionMode.BASIC.getValue());
