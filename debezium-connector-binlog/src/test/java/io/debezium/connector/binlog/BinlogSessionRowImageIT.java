@@ -33,7 +33,7 @@ public abstract class BinlogSessionRowImageIT<C extends SourceConnector> extends
             .toAbsolutePath();
     private static final String TABLE = "session_row_image";
 
-    private UniqueDatabase database;
+    protected UniqueDatabase database;
 
     @BeforeEach
     void beforeEach() {

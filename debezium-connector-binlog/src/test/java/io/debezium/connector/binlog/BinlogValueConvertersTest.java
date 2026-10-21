@@ -90,6 +90,30 @@ public abstract class BinlogValueConvertersTest<C extends SourceConnector> imple
     }
 
     @Test
+    @FixFor("debezium/dbz#962")
+    void shouldConvertUnavailableJsonValueLikeText() {
+        // MariaDB stores JSON as LONGTEXT, so a NOBLOB row image omits an unchanged JSON column like a TEXT column
+        final BinlogValueConverters converters = getValueConverters(
+                JdbcValueConverters.DecimalMode.DOUBLE,
+                TemporalPrecisionMode.CONNECT,
+                JdbcValueConverters.BigIntUnsignedMode.LONG,
+                BinaryHandlingMode.BYTES,
+                x -> x,
+                EventConvertingFailureHandlingMode.WARN);
+        final Tables tables = new Tables();
+        getDdlParser().parse("CREATE TABLE unavailable_values (j JSON, t TEXT)", tables);
+        final Table table = tables.forTable(new TableId(null, null, "unavailable_values"));
+
+        final Column json = table.columnWithName("j");
+        final Column text = table.columnWithName("t");
+        final Object unavailableJson = converters.converter(json, new Field(json.name(), -1, converters.schemaBuilder(json).optional().build()))
+                .convert(BinlogValueConverters.UNAVAILABLE_VALUE);
+        final Object unavailableText = converters.converter(text, new Field(text.name(), -1, converters.schemaBuilder(text).optional().build()))
+                .convert(BinlogValueConverters.UNAVAILABLE_VALUE);
+        assertThat(unavailableJson).isEqualTo(unavailableText);
+    }
+
+    @Test
     void testJsonValues() {
         String sql = "CREATE TABLE JSON_TABLE (" + "    A JSON," + "    B JSON NOT NULL" + ");";
 

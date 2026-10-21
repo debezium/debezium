@@ -22,7 +22,8 @@ public final class RowImageUtils {
      * Determines whether a column is a BLOB or TEXT family column. This covers all size variants
      * such as {@code TINYBLOB}, {@code MEDIUMBLOB}, {@code LONGBLOB}, {@code TINYTEXT},
      * {@code MEDIUMTEXT} and {@code LONGTEXT}, all of which are excluded from the binlog row image
-     * when {@code binlog_row_image=NOBLOB}.
+     * when {@code binlog_row_image=NOBLOB}. A {@code JSON} column is included as well, as MariaDB stores
+     * it as {@code LONGTEXT} and excludes it like a TEXT column, while MySQL keeps it in the row image.
      *
      * @param column the column to check; may not be null
      * @return true if the column is a BLOB or TEXT family column
@@ -33,6 +34,6 @@ public final class RowImageUtils {
             return false;
         }
         final String upperCaseTypeName = typeName.toUpperCase();
-        return upperCaseTypeName.contains("BLOB") || upperCaseTypeName.contains("TEXT");
+        return upperCaseTypeName.contains("BLOB") || upperCaseTypeName.contains("TEXT") || upperCaseTypeName.equals("JSON");
     }
 }
