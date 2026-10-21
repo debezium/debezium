@@ -5,15 +5,16 @@
  */
 package io.debezium.connector.postgresql.connection.pgoutput;
 
-import io.debezium.connector.postgresql.TestHelper;
-import io.debezium.connector.postgresql.connection.PostgresConnection;
-import io.debezium.connector.postgresql.junit.SkipTestOnPostgresVersion;
+import java.sql.SQLException;
+
 import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
-import java.sql.SQLException;
+import io.debezium.connector.postgresql.TestHelper;
+import io.debezium.connector.postgresql.connection.PostgresConnection;
+import io.debezium.connector.postgresql.junit.SkipTestOnPostgresVersion;
 
 /**
  * A collection of tests to ensure Postgres binary representation did not change between Postgres version. The test
