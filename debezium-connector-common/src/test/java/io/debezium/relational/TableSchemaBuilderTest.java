@@ -191,9 +191,44 @@ public class TableSchemaBuilderTest {
         // key fields keep the nullability of their columns
         assertThat(schema.keySchema().field("C1").schema().isOptional()).isFalse();
 
-        // a null for a NOT NULL column is emitted as null rather than replaced by a fallback value
+        // only the schema changes: a null for a NOT NULL column is still replaced by the type fallback
         Struct value = schema.valueFromColumnData(data);
-        assertThat(value.get("C6")).isNull();
+        assertThat(value.get("C6")).isEqualTo(Short.valueOf((short) 0));
+    }
+
+    @Test
+    @FixFor("debezium/dbz#142")
+    public void shouldKeepDefaultAndFallbackValuesWhenAllValueFieldsOptional() {
+        Table tableWithDefaults = Table.editor()
+                .tableId(id)
+                .addColumns(Column.editor().name("ID")
+                        .type("INTEGER").jdbcType(Types.INTEGER)
+                        .optional(false)
+                        .create(),
+                        Column.editor().name("WITH_DEFAULT")
+                                .type("VARCHAR").jdbcType(Types.VARCHAR).length(10)
+                                .optional(false)
+                                .defaultValueExpression("dflt")
+                                .create(),
+                        Column.editor().name("NO_DEFAULT")
+                                .type("VARCHAR").jdbcType(Types.VARCHAR).length(10)
+                                .optional(false)
+                                .create())
+                .setPrimaryKeyNames("ID")
+                .create();
+
+        schema = new TableSchemaBuilder(new JdbcValueConverters(), null, adjuster, customConverterRegistry,
+                SchemaBuilder.struct().build(), SchemaFactory.get().transactionBlockSchema(), defaultFieldNamer, false,
+                EventConvertingFailureHandlingMode.FAIL, true)
+                .create(topicNamingStrategy, tableWithDefaults, null, null, null);
+
+        Struct value = schema.valueFromColumnData(new Object[]{ 1, null, null });
+
+        // the fields are optional, but values resolve as before: column default first, then the type fallback
+        assertThat(schema.valueSchema().field("WITH_DEFAULT").schema().isOptional()).isTrue();
+        assertThat(schema.valueSchema().field("NO_DEFAULT").schema().isOptional()).isTrue();
+        assertThat(value.get("WITH_DEFAULT")).isEqualTo("dflt");
+        assertThat(value.get("NO_DEFAULT")).isEqualTo("");
     }
 
     @Test

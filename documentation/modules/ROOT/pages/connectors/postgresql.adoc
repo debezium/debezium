@@ -4345,10 +4345,11 @@ In general, when encountering unsupported data types, create a feature request s
 |`false`
 |Specifies whether the connector marks every field in the value schema of change events as optional.
 By default, a field is optional only if the corresponding column is nullable.
-If the connector receives no value for a `NOT NULL` column, it emits the column default, or a type-specific fallback value, such as `0` or an empty string.
 
 Set this property to `true` to mark all value fields as optional regardless of `NOT NULL` constraints.
-The connector then emits `null` for any column for which it receives no value.
+Use this setting when downstream consumers or schema compatibility rules require every value field to be optional.
+This property changes only the schema; it does not change the values that the connector emits.
+If the connector receives no value for a `NOT NULL` column, it still emits the column default, or, if the column has no default, a type-specific fallback value, such as `0` or an empty string.
 Fields in the key schema are not affected.
 
 |[[postgresql-property-database-initial-statements]]<<postgresql-property-database-initial-statements, `+database.initial.statements+`>>

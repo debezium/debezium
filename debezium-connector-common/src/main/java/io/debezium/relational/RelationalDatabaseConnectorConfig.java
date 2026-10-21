@@ -521,7 +521,7 @@ public abstract class RelationalDatabaseConnectorConfig extends CommonConnectorC
             .withDescription("Specify whether all fields of the emitted value schemas should be marked as optional: "
                     + "'false' (the default) marks a field as optional only if the corresponding column is nullable; "
                     + "'true' marks every field as optional regardless of the column's NOT NULL constraint. "
-                    + "Key schema fields are not affected.");
+                    + "Only the schema is affected; emitted values are unchanged. Key schema fields are not affected.");
 
     public static final Field SNAPSHOT_FULL_COLUMN_SCAN_FORCE = Field.createInternal("snapshot.scan.all.columns.force")
             .withDisplayName("Snapshot force scan all columns of all tables")
