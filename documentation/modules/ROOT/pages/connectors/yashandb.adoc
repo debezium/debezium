@@ -1984,7 +1984,9 @@ include::{partialsdir}/modules/all-connectors/frag-common-mbean-name.adoc[levelo
 
 ==== Common streaming metrics
 
+:unchanged-events-metric-note: {connector-name} does not support skipping unchanged events, so this metric is always `0` when the property is `true`.
 include::{partialsdir}/modules/all-connectors/ref-connector-monitoring-streaming-metrics.adoc[leveloffset=+1]
+:unchanged-events-metric-note!:
 
 ==== YStream streaming metrics
 
