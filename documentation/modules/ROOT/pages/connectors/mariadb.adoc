@@ -13,7 +13,7 @@
 :include-list-example: inventory.*
 :MARIADB:
 :collection-container: database
-:supports-skipping-unchanged-events:
+:unchanged-events-metric-note:
 
 ifdef::community[]
 :toc:
