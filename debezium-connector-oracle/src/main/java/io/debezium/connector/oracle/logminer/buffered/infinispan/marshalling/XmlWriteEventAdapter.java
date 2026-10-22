@@ -14,7 +14,6 @@ import org.infinispan.protostream.annotations.ProtoField;
 import io.debezium.connector.oracle.Scn;
 import io.debezium.connector.oracle.logminer.events.EventType;
 import io.debezium.connector.oracle.logminer.events.XmlWriteEvent;
-import io.debezium.relational.TableId;
 
 /**
  * A LogMiner event that represents a {@code XML_WRITE} event type.
@@ -39,7 +38,7 @@ public class XmlWriteEventAdapter extends LogMinerEventAdapter {
      */
     @ProtoFactory
     public XmlWriteEvent factory(int eventType, String scn, String tableId, String rowId, String rsId, String changeTime, String xml, Integer length) {
-        return new XmlWriteEvent(EventType.from(eventType), Scn.valueOf(scn), TableId.parse(tableId), rowId, rsId, Instant.parse(changeTime), xml, length);
+        return new XmlWriteEvent(EventType.from(eventType), Scn.valueOf(scn), parseTableId(tableId), rowId, rsId, Instant.parse(changeTime), xml, length);
     }
 
     /**

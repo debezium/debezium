@@ -127,13 +127,13 @@ public abstract class AbstractFindRolledBackRangeTest<T extends Transaction> {
                 event(EventType.XML_BEGIN, 0, "AAAAAAAAAAAAAAAAAA", "4"),
                 event(EventType.XML_WRITE, 0, "AAAAAAAAAAAAAAAAAA", "4"),
                 event(EventType.XML_END, 0, "AAAAAAAAAAAAAAAAAA", "4"),
-                event(EventType.INTERNAL, 0, "BBBBBBBBBBBBBBBBBB", "5"),
+                // event(EventType.INTERNAL, 0, "BBBBBBBBBBBBBBBBBB", "5"), // SEQUENCE#=1
                 event(EventType.DELETE, 1, "BBBBBBBBBBBBBBBBBB", "6"), };
         LogMinerEvent[] expected = new LogMinerEvent[]{
                 event(EventType.DELETE, 1, "BBBBBBBBBBBBBBBBBB", "6"), };
         assertThat(cache(events)).isEqualTo(expected);
         assertThat(logInterceptor.containsWarnMessage("Manual investigation is required")).isFalse();
-        assertThat(logInterceptor.containsWarnMessage("Please enable 'log.mining.include.internal.events'")).isFalse();
+        assertThat(logInterceptor.containsWarnMessage("Please enable 'log.mining.include.internal.events'")).isTrue();
     }
 
     @Test
@@ -267,6 +267,8 @@ public abstract class AbstractFindRolledBackRangeTest<T extends Transaction> {
                 event(EventType.XML_BEGIN, 0, "AAAAAAAAAAAAAAAAAA", "2"),
                 event(EventType.XML_WRITE, 0, "AAAAAAAAAAAAAAAAAA", "2"),
                 event(EventType.XML_END, 0, "AAAAAAAAAAAAAAAAAA", "2"),
+                // With lob.enabled=false, the following event will be removed as it will be the closest event to the rollback event,
+                // since no events from the rolled-back statement are present. This case requires lob.enabled=true to work correctly.
                 event(EventType.UPDATE, 0, "BBBBBBBBBBBBBBBBBB", "3"),
                 event(EventType.UPDATE, 1, "BBBBBBBBBBBBBBBBBB", "9"), };
         assertThat(cache(events)).isEqualTo(expected);
@@ -1195,6 +1197,103 @@ public abstract class AbstractFindRolledBackRangeTest<T extends Transaction> {
         assertThat(logInterceptor.containsWarnMessage("unexpected TABLE_NAME '" + OTHER_TABLE + "'")).isTrue();
         assertThat(logInterceptor.containsWarnMessage("Please enable 'log.mining.include.internal.events'")).isTrue();
         assertThat(logInterceptor.containsWarnMessage("Manual investigation is required")).isFalse();
+    }
+
+    // Requires log.mining.include.internal.events=true when lob.enabled=false
+
+    @Test
+    @FixFor("debezium/dbz#2666")
+    public void testRollbackUpdateOutOfLineWithLobDisabled() throws Exception {
+        // CREATE TABLE DBZ2666_1(ID NUMERIC(9,0) PRIMARY KEY, LOB0 CLOB);
+        // INSERT INTO DBZ2666_1 (ID, LOB0) VALUES (1, 'LOB0-1-0');
+        // SAVEPOINT s1;
+        // UPDATE DBZ2666_1 SET LOB0 = RPAD('LOB0-1-', 1985, '0') WHERE ID = 1;
+        // ROLLBACK TO SAVEPOINT s1;
+        // Version: 26ai Free Release 23.26.2.0.0
+        LogInterceptor logInterceptor = new LogInterceptor(AbstractLogMinerTransactionCache.class);
+        LogMinerEvent[] events = new LogMinerEvent[]{
+                event(EventType.INSERT, 0, "AAAAAAAAAAAAAAAAAA", "1"),
+                // With both lob.enabled=false and log.mining.include.internal.events=false,
+                // the following event will be removed as it will be the closest event to the rollback event,
+                // since no events from the rolled-back statement are present.
+                event(EventType.UPDATE, 0, "BBBBBBBBBBBBBBBBBB", "2"),
+                // event(EventType.SELECT_LOB_LOCATOR, 0, "AAAAAAAAAAAAAAAAAA", "3"),
+                // event(EventType.LOB_WRITE, 0, "AAAAAAAAAAAAAAAAAA", "4"),
+                event(EventType.INTERNAL, 0, "BBBBBBBBBBBBBBBBBB", "5"),
+                event(EventType.UPDATE, 1, "BBBBBBBBBBBBBBBBBB", "6"), };
+        LogMinerEvent[] expected = new LogMinerEvent[]{
+                event(EventType.INSERT, 0, "AAAAAAAAAAAAAAAAAA", "1"),
+                event(EventType.UPDATE, 0, "BBBBBBBBBBBBBBBBBB", "2"),
+                event(EventType.UPDATE, 1, "BBBBBBBBBBBBBBBBBB", "6"), };
+        assertThat(cache(events)).isEqualTo(expected);
+        assertThat(logInterceptor.containsWarnMessage("Manual investigation is required")).isFalse();
+        assertThat(logInterceptor.containsWarnMessage("Please enable 'log.mining.include.internal.events'")).isFalse();
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2666")
+    public void testUpdateEmptyAndRollbackUpdateOutOfLineWithLobDisabled() throws Exception {
+        // CREATE TABLE DBZ2666_2(ID NUMERIC(9,0) PRIMARY KEY, LOB0 CLOB);
+        // INSERT INTO DBZ2666_2 (ID, LOB0) VALUES (1, NULL);
+        // UPDATE DBZ2666_2 SET LOB0 = EMPTY_CLOB() WHERE ID = 1;
+        // SAVEPOINT s1;
+        // UPDATE DBZ2666_2 SET LOB0 = RPAD('LOB0-1-', 1985, '2') WHERE ID = 1;
+        // ROLLBACK TO SAVEPOINT s1;
+        // Version: 26ai Free Release 23.26.2.0.0
+        LogInterceptor logInterceptor = new LogInterceptor(AbstractLogMinerTransactionCache.class);
+        LogMinerEvent[] events = new LogMinerEvent[]{
+                event(EventType.INSERT, 0, "AAAAAAAAAAAAAAAAAA", "1"),
+                event(EventType.UPDATE, 0, "BBBBBBBBBBBBBBBBBB", "2"),
+                // With both lob.enabled=false and log.mining.include.internal.events=false,
+                // the following event will be removed as it will be merged with the rolled-back INTERNAL.
+                event(EventType.UPDATE, 0, "AAAAAAAAAAAAAAAAAA", "3"),
+                event(EventType.INTERNAL, 0, "BBBBBBBBBBBBBBBBBB", "4"),
+                // event(EventType.SELECT_LOB_LOCATOR, 0, "AAAAAAAAAAAAAAAAAA", "5"),
+                // event(EventType.LOB_WRITE, 0, "AAAAAAAAAAAAAAAAAA", "6"),
+                event(EventType.INTERNAL, 0, "BBBBBBBBBBBBBBBBBB", "7"),
+                event(EventType.UPDATE, 1, "BBBBBBBBBBBBBBBBBB", "8"), };
+        LogMinerEvent[] expected = new LogMinerEvent[]{
+                event(EventType.INSERT, 0, "AAAAAAAAAAAAAAAAAA", "1"),
+                event(EventType.UPDATE, 0, "BBBBBBBBBBBBBBBBBB", "2"),
+                event(EventType.UPDATE, 0, "AAAAAAAAAAAAAAAAAA", "3"),
+                event(EventType.INTERNAL, 0, "BBBBBBBBBBBBBBBBBB", "4"),
+                event(EventType.UPDATE, 1, "BBBBBBBBBBBBBBBBBB", "8"), };
+        assertThat(cache(events)).isEqualTo(expected);
+        assertThat(logInterceptor.containsWarnMessage("Manual investigation is required")).isFalse();
+        assertThat(logInterceptor.containsWarnMessage("Please enable 'log.mining.include.internal.events'")).isFalse();
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2666")
+    public void testUpdateEmptyAndRollbackUpdateInlineAndOutOfLineWithLobDisabled() throws Exception {
+        // CREATE TABLE DBZ2666_3(ID NUMERIC(9,0) PRIMARY KEY, LOB0 CLOB, LOB1 CLOB);
+        // INSERT INTO DBZ2666_3 (ID, LOB0, LOB1) VALUES (1, NULL, NULL);
+        // UPDATE DBZ2666_3 SET LOB0 = EMPTY_CLOB(), LOB1 = EMPTY_CLOB() WHERE ID = 1;
+        // SAVEPOINT s1;
+        // UPDATE DBZ2666_3 SET LOB0 = RPAD('LOB0-1-', 1985, '2'), LOB1 = 'LOB1-1-2' WHERE ID = 1;
+        // ROLLBACK TO SAVEPOINT s1;
+        // Version: 26ai Free Release 23.26.2.0.0
+        LogInterceptor logInterceptor = new LogInterceptor(AbstractLogMinerTransactionCache.class);
+        LogMinerEvent[] events = new LogMinerEvent[]{
+                event(EventType.INSERT, 0, "AAAAAAAAAAAAAAAAAA", "1"),
+                event(EventType.UPDATE, 0, "BBBBBBBBBBBBBBBBBB", "2"),
+                // With both lob.enabled=false and log.mining.include.internal.events=false,
+                // the following event will be removed as it will be merged with the rolled-back UPDATE.
+                event(EventType.UPDATE, 0, "AAAAAAAAAAAAAAAAAA", "3"),
+                event(EventType.INTERNAL, 0, "BBBBBBBBBBBBBBBBBB", "4"),
+                // event(EventType.SELECT_LOB_LOCATOR, 0, "AAAAAAAAAAAAAAAAAA", "5"),
+                // event(EventType.LOB_WRITE, 0, "AAAAAAAAAAAAAAAAAA", "6"),
+                event(EventType.UPDATE, 0, "BBBBBBBBBBBBBBBBBB", "7"),
+                event(EventType.UPDATE, 1, "BBBBBBBBBBBBBBBBBB", "8"), };
+        LogMinerEvent[] expected = new LogMinerEvent[]{
+                event(EventType.INSERT, 0, "AAAAAAAAAAAAAAAAAA", "1"),
+                event(EventType.UPDATE, 0, "BBBBBBBBBBBBBBBBBB", "2"),
+                event(EventType.UPDATE, 0, "AAAAAAAAAAAAAAAAAA", "3"),
+                event(EventType.INTERNAL, 0, "BBBBBBBBBBBBBBBBBB", "4"),
+                event(EventType.UPDATE, 1, "BBBBBBBBBBBBBBBBBB", "8"), };
+        assertThat(cache(events)).isEqualTo(expected);
+        assertThat(logInterceptor.containsWarnMessage("Manual investigation is required")).isFalse();
+        assertThat(logInterceptor.containsWarnMessage("Please enable 'log.mining.include.internal.events'")).isFalse();
     }
 
     private LogMinerEvent event(EventType eventType, int rollback, String rowId, String rsId) {
