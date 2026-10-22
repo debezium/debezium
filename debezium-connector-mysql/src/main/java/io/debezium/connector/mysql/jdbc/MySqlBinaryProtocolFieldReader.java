@@ -11,7 +11,7 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.time.Duration;
 import java.time.LocalDate;
-import java.util.Calendar;
+import java.time.LocalDateTime;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -169,6 +169,6 @@ public class MySqlBinaryProtocolFieldReader extends AbstractFieldReader {
         }
         return MySqlValueConverters.containsZeroValuesInDatePart(value, column, table)
                 ? null
-                : rs.getTimestamp(columnIndex, Calendar.getInstance());
+                : rs.getObject(columnIndex, LocalDateTime.class);
     }
 }

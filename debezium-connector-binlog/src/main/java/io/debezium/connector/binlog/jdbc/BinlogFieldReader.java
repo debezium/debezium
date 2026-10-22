@@ -9,11 +9,16 @@ import java.io.UnsupportedEncodingException;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Types;
+import java.time.DateTimeException;
+import java.time.LocalDate;
 import java.util.Set;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import io.debezium.DebeziumException;
+import io.debezium.config.CommonConnectorConfig;
+import io.debezium.config.CommonConnectorConfig.EventProcessingFailureHandlingMode;
 import io.debezium.connector.binlog.BinlogConnectorConfig;
 import io.debezium.connector.binlog.charset.BinlogCharsetRegistry;
 import io.debezium.jdbc.TemporalPrecisionMode;
@@ -59,6 +64,9 @@ public abstract class BinlogFieldReader {
                 try {
                     return readDateField(rs, columnIndex, column, table);
                 }
+                catch (DateTimeException e) {
+                    return handleInvalidTemporalValue(column, table, e, LocalDate.EPOCH);
+                }
                 catch (RuntimeException e) {
                     LOGGER.warn("Failed to read data value: '{}'. Trying default implementation.", e.getMessage());
                     // Workaround for DBZ-5084
@@ -67,11 +75,13 @@ public abstract class BinlogFieldReader {
             }
 
             // This is for DATETIME columns (a logical date + time without time zone).
-            // Reading them with a calendar based on the default time zone, we make sure that the value
-            // is constructed correctly using the database's (or connection's) time zone.
+            // They are read without a time zone, like streaming does, so that every value is kept as it is.
             case Types.TIMESTAMP: {
                 try {
                     return readTimestampField(rs, columnIndex, column, table);
+                }
+                catch (DateTimeException e) {
+                    return handleInvalidTemporalValue(column, table, e, LocalDate.EPOCH.atStartOfDay());
                 }
                 catch (RuntimeException e) {
                     LOGGER.warn("Failed to read data value: '{}'. Trying default implementation.", e.getMessage());
@@ -119,6 +129,33 @@ public abstract class BinlogFieldReader {
 
         // Fallback
         return rs.getObject(columnIndex);
+    }
+
+    /**
+     * Handles a {@code DATE} or {@code DATETIME} value that is not a valid date, such as one stored with
+     * {@code ALLOW_INVALID_DATES}, based on the event processing failure handling mode, like streaming does.
+     *
+     * @param column the relational model column being read, never null
+     * @param table the relational table being read, never null
+     * @param e the exception thrown while converting the value
+     * @param fallbackValue the value to emit when the mode is not {@code fail}, the same value as streaming emits
+     * @return the fallback value
+     */
+    private Object handleInvalidTemporalValue(Column column, Table table, DateTimeException e, Object fallbackValue) {
+        final String message = "Invalid value in column '" + column.name() + "' of table '" + table.id() + "': " + e.getMessage();
+        final EventProcessingFailureHandlingMode mode = connectorConfig.getEventProcessingFailureHandlingMode();
+        if (mode == EventProcessingFailureHandlingMode.FAIL) {
+            throw new DebeziumException(message + ". Set '" + CommonConnectorConfig.EVENT_PROCESSING_FAILURE_HANDLING_MODE.name()
+                    + "' to 'warn' or 'ignore' to emit the epoch instead, or set '" + BinlogConnectorConfig.TIME_PRECISION_MODE.name()
+                    + "' to 'structured' to keep the value", e);
+        }
+        else if (mode == EventProcessingFailureHandlingMode.WARN) {
+            LOGGER.warn("{}, emitting the epoch instead", message);
+        }
+        else {
+            LOGGER.debug("{}, emitting the epoch instead", message);
+        }
+        return fallbackValue;
     }
 
     /**
