@@ -142,7 +142,7 @@ public abstract class BinlogTemporalSnapshotIT<C extends SourceConnector> extend
     }
 
     @ParameterizedTest(name = "time.precision.mode={0}, enable.time.adjuster={1}")
-    @CsvSource({ "adaptive_time_microseconds, true", "adaptive_time_microseconds, false" })
+    @CsvSource({ "adaptive_time_microseconds, true", "adaptive_time_microseconds, false", "structured, true" })
     @FixFor("debezium/dbz#2922")
     void shouldEmitDatesWithYearZeroAsSnapshotDoes(String timePrecisionMode, boolean enableTimeAdjuster) throws Exception {
         final String values = "'0000-01-01', '0000-01-01 00:00:00', '0000-01-01 00:00:00'";
@@ -162,6 +162,30 @@ public abstract class BinlogTemporalSnapshotIT<C extends SourceConnector> extend
         // Streaming does not discard the year zero as a zero date
         for (String field : List.of("d", "dt", "dt_not_null")) {
             assertThat(streaming.get(field)).as(field).isNotNull().isEqualTo(snapshot.get(field));
+        }
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2922")
+    void shouldSnapshotDatetimeThatDoesNotExistInJvmTimeZoneWithStructuredMode() throws Exception {
+        final TimeZone defaultTimeZone = TimeZone.getDefault();
+        try {
+            TimeZone.setDefault(TimeZone.getTimeZone("America/New_York"));
+            executeStatements(database.getDatabaseName(),
+                    "CREATE TABLE " + TABLE + " (id INT PRIMARY KEY, dst DATETIME)",
+                    "INSERT INTO " + TABLE + " VALUES (1, '2024-03-10 02:30:00')");
+            start(getConnectorClass(), connectorConfig(0).with(BinlogConnectorConfig.TIME_PRECISION_MODE, "structured").build());
+
+            final Struct snapshot = consumeAfter();
+            waitForStreamingRunning(getConnectorName(), database.getServerName());
+            executeStatements(database.getDatabaseName(), "INSERT INTO " + TABLE + " VALUES (2, '2024-03-10 02:30:00')");
+            final Struct streaming = consumeAfter();
+
+            assertThat(((Struct) snapshot.get("dst")).get("hour")).isEqualTo((byte) 2);
+            assertThat(snapshot.get("dst")).isEqualTo(streaming.get("dst"));
+        }
+        finally {
+            TimeZone.setDefault(defaultTimeZone);
         }
     }
 
