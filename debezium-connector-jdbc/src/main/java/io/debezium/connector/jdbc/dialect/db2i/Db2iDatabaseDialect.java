@@ -21,6 +21,8 @@ import io.debezium.connector.jdbc.dialect.DatabaseDialect;
 import io.debezium.connector.jdbc.dialect.DatabaseDialectProvider;
 import io.debezium.connector.jdbc.dialect.GeneralDatabaseDialect;
 import io.debezium.connector.jdbc.dialect.SqlStatementBuilder;
+import io.debezium.connector.jdbc.dialect.db2.StructuredTimestampType;
+import io.debezium.connector.jdbc.dialect.db2.StructuredZonedTimestampType;
 import io.debezium.connector.jdbc.dialect.db2i.connect.ConnectDateType;
 import io.debezium.connector.jdbc.dialect.db2i.connect.ConnectTimeType;
 import io.debezium.connector.jdbc.dialect.db2i.connect.ConnectTimestampType;
@@ -31,6 +33,8 @@ import io.debezium.connector.jdbc.dialect.db2i.debezium.NanoTimestampType;
 import io.debezium.connector.jdbc.dialect.db2i.debezium.TimeType;
 import io.debezium.connector.jdbc.dialect.db2i.debezium.TimestampType;
 import io.debezium.connector.jdbc.relational.TableDescriptor;
+import io.debezium.connector.jdbc.type.debezium.TargetTemporalCapabilities;
+import io.debezium.connector.jdbc.type.debezium.TemporalRange;
 import io.debezium.metadata.CollectionId;
 import io.debezium.sink.column.ColumnDescriptor;
 import io.debezium.sink.field.FieldDescriptor;
@@ -42,6 +46,13 @@ import io.debezium.time.ZonedTimestamp;
  * @author Andrew Love
  */
 public class Db2iDatabaseDialect extends GeneralDatabaseDialect {
+
+    @Override
+    public TargetTemporalCapabilities getTargetTemporalCapabilities() {
+        return TargetTemporalCapabilities.defaults(getMaxTimePrecision(), getMaxTimestampPrecision())
+                .withDateRange(TemporalRange.dateYears(1, 9999))
+                .withTimestampRange(TemporalRange.timestampYears(1, 9999));
+    }
 
     private static final DateTimeFormatter ISO_LOCAL_DATE_TIME_WITH_SPACE = new DateTimeFormatterBuilder()
             .parseCaseInsensitive()
@@ -127,6 +138,13 @@ public class Db2iDatabaseDialect extends GeneralDatabaseDialect {
         registerType(TimeType.INSTANCE);
         registerType(NanoTimeType.INSTANCE);
         registerType(MicroTimeType.INSTANCE);
+        registerType(new StructuredTimestampType());
+        registerType(new StructuredZonedTimestampType());
+    }
+
+    @Override
+    public int getMaxTimestampPrecision() {
+        return 12;
     }
 
     @Override

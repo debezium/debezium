@@ -16,8 +16,8 @@ import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.Struct;
 import org.hibernate.engine.jdbc.Size;
 
-import io.debezium.connector.jdbc.dialect.DatabaseDialect;
 import io.debezium.connector.jdbc.type.debezium.StructuredTemporalSupport;
+import io.debezium.sink.column.ColumnDescriptor;
 import io.debezium.sink.valuebinding.ValueBindDescriptor;
 import io.debezium.time.StructuredTemporal;
 
@@ -30,12 +30,7 @@ public class StructuredZonedTimeType extends io.debezium.connector.jdbc.type.deb
 
     @Override
     public String getTypeName(Schema schema, boolean isKey) {
-        final int precision = getTimePrecision(schema);
-        final DatabaseDialect dialect = getDialect();
-        if (precision > 0) {
-            return dialect.getJdbcTypeName(Types.TIME_WITH_TIMEZONE, Size.precision(precision));
-        }
-        return dialect.getJdbcTypeName(Types.TIME_WITH_TIMEZONE, Size.precision(dialect.getMaxTimePrecision()));
+        return getDialect().getJdbcTypeName(Types.TIME_WITH_TIMEZONE, Size.precision(getSchemaTimePrecision(schema)));
     }
 
     @Override
@@ -49,5 +44,26 @@ public class StructuredZonedTimeType extends io.debezium.connector.jdbc.type.deb
                 ZoneOffset.ofTotalSeconds(struct.getInt32(StructuredTemporal.OFFSET_SECONDS_FIELD)));
         final ZonedDateTime zonedDateTime = offsetTime.atDate(LocalDate.EPOCH).toZonedDateTime();
         return List.of(new ValueBindDescriptor(index, zonedDateTime, Types.TIME_WITH_TIMEZONE));
+    }
+
+    @Override
+    public List<ValueBindDescriptor> bind(int index, ColumnDescriptor column, Schema schema, Object value) {
+        if (value == null) {
+            return List.of(new ValueBindDescriptor(index, null));
+        }
+        validate(column, schema, value);
+        final Struct struct = requireStruct(value);
+        final int precision = getDialect().getTargetTemporalCapabilities().targetTimePrecision(column);
+        final OffsetTime offsetTime = OffsetTime.of(
+                StructuredTemporalSupport.toLocalTime(struct, precision, getPrecisionLossHandlingMode()),
+                ZoneOffset.ofTotalSeconds(struct.getInt32(StructuredTemporal.OFFSET_SECONDS_FIELD)));
+        final ZonedDateTime zonedDateTime = offsetTime.atDate(LocalDate.EPOCH).toZonedDateTime();
+        return List.of(new ValueBindDescriptor(index, zonedDateTime, Types.TIME_WITH_TIMEZONE));
+    }
+
+    @Override
+    protected int getSchemaTimePrecision(Schema schema) {
+        final int precision = getTimePrecision(schema);
+        return precision >= 0 ? precision : getDialect().getMaxTimePrecision();
     }
 }

@@ -6,22 +6,42 @@
 package io.debezium.connector.jdbc.type.debezium;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatCode;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 import java.sql.Types;
+import java.time.LocalDateTime;
+import java.time.LocalTime;
+import java.time.OffsetDateTime;
+import java.time.OffsetTime;
+import java.time.ZoneOffset;
+import java.util.stream.Stream;
 
+import org.apache.kafka.connect.data.Schema;
+import org.apache.kafka.connect.data.Struct;
+import org.apache.kafka.connect.errors.ConnectException;
 import org.hibernate.engine.jdbc.Size;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 
+import io.debezium.connector.jdbc.JdbcSinkConnectorConfig;
+import io.debezium.connector.jdbc.JdbcSinkConnectorConfig.TemporalPrecisionLossHandlingMode;
 import io.debezium.connector.jdbc.dialect.DatabaseDialect;
+import io.debezium.connector.jdbc.type.JdbcType;
+import io.debezium.connector.jdbc.type.debezium.TargetTemporalCapabilities.ZonedTimestampSupport;
 import io.debezium.sink.SinkConnectorConfig;
+import io.debezium.sink.column.ColumnDescriptor;
 import io.debezium.time.StructuredTime;
 import io.debezium.time.StructuredTimestamp;
+import io.debezium.time.StructuredZonedTime;
 import io.debezium.time.StructuredZonedTimestamp;
 
 @Tag("UnitTests")
@@ -62,6 +82,18 @@ class StructuredTemporalPrecisionTest {
                 .build();
 
         assertThat(type.getTypeName(schema, false)).isEqualTo("timestamp(6)");
+    }
+
+    @Test
+    @DisplayName("Should prefer structured precision metadata over propagated source metadata")
+    void shouldPreferStructuredPrecisionMetadata() {
+        final var type = new StructuredTimestampType();
+        type.configure(config(), timestampDialect());
+        final var schema = StructuredTimestamp.builder(7)
+                .parameter("__debezium.source.column.scale", "3")
+                .build();
+
+        assertThat(type.getTypeName(schema, false)).isEqualTo("timestamp(7)");
     }
 
     @Test
@@ -112,10 +144,177 @@ class StructuredTemporalPrecisionTest {
         assertThat(type.getTypeName(schema, false)).isEqualTo("timestamptz(3)");
     }
 
+    @Test
+    @DisplayName("Should fail only when discarded timestamp digits are non-zero")
+    void shouldFailOnlyForNonZeroDiscardedDigits() {
+        final var capabilities = TargetTemporalCapabilities.defaults(9, 9);
+        final var type = configuredTimestampType(TemporalPrecisionLossHandlingMode.FAIL, capabilities);
+        final var schema = StructuredTimestamp.builder(9).build();
+        final var column = timestampColumn(6);
+        final var exactValue = StructuredTimestamp.from(schema, 2026, 7, 17, 12, 13, 14, 123_456_000, 9);
+        final var lossyValue = StructuredTimestamp.from(schema, 2026, 7, 17, 12, 13, 14, 123_456_789, 9);
+
+        assertThatCode(() -> type.validate(column, schema, exactValue)).doesNotThrowAnyException();
+        assertThatThrownBy(() -> type.validate(column, schema, lossyValue))
+                .isInstanceOf(ConnectException.class)
+                .hasMessageContaining("target column 'ts'")
+                .hasMessageContaining("precision 6");
+    }
+
+    @Test
+    @DisplayName("Should explicitly truncate and round timestamp fractions")
+    void shouldApplyConfiguredPrecisionReduction() {
+        final var capabilities = TargetTemporalCapabilities.defaults(9, 9);
+        final var schema = StructuredTimestamp.builder(9).build();
+        final var column = timestampColumn(6);
+        final var value = StructuredTimestamp.from(schema, 2026, 7, 17, 12, 13, 14, 123_456_789, 9);
+
+        final var truncateType = configuredTimestampType(TemporalPrecisionLossHandlingMode.TRUNCATE, capabilities);
+        final var roundType = configuredTimestampType(TemporalPrecisionLossHandlingMode.ROUND, capabilities);
+
+        assertThat(truncateType.bind(1, column, schema, value).get(0).getValue())
+                .isEqualTo(LocalDateTime.of(2026, 7, 17, 12, 13, 14, 123_456_000));
+        assertThat(roundType.bind(1, column, schema, value).get(0).getValue())
+                .isEqualTo(LocalDateTime.of(2026, 7, 17, 12, 13, 14, 123_457_000));
+    }
+
+    @Test
+    @DisplayName("Should explicitly reduce picoseconds for nanosecond targets")
+    void shouldReducePicosecondsForNanosecondTargets() {
+        final var capabilities = TargetTemporalCapabilities.defaults(9, 9);
+        final var schema = StructuredTimestamp.builder(12).build();
+        final var column = timestampColumn(9);
+        final var value = StructuredTimestamp.fromPicoseconds(schema, 2026, 7, 17, 12, 13, 14, 123_456_789_600L, 12);
+
+        final var failType = configuredTimestampType(TemporalPrecisionLossHandlingMode.FAIL, capabilities);
+        final var truncateType = configuredTimestampType(TemporalPrecisionLossHandlingMode.TRUNCATE, capabilities);
+        final var roundType = configuredTimestampType(TemporalPrecisionLossHandlingMode.ROUND, capabilities);
+
+        assertThatThrownBy(() -> failType.bind(1, column, schema, value))
+                .isInstanceOf(ConnectException.class)
+                .hasMessageContaining("precision 9");
+        assertThat(truncateType.bind(1, column, schema, value).get(0).getValue())
+                .isEqualTo(LocalDateTime.of(2026, 7, 17, 12, 13, 14, 123_456_789));
+        assertThat(roundType.bind(1, column, schema, value).get(0).getValue())
+                .isEqualTo(LocalDateTime.of(2026, 7, 17, 12, 13, 14, 123_456_790));
+    }
+
+    @Test
+    @DisplayName("Should carry a rounded timestamp fraction into the next second")
+    void shouldCarryRoundedFraction() {
+        final var type = configuredTimestampType(
+                TemporalPrecisionLossHandlingMode.ROUND, TargetTemporalCapabilities.defaults(9, 9));
+        final var schema = StructuredTimestamp.builder(9).build();
+        final var value = StructuredTimestamp.from(schema, 2026, 7, 17, 12, 13, 14, 999_999_999, 9);
+
+        assertThat(type.bind(1, timestampColumn(6), schema, value).get(0).getValue())
+                .isEqualTo(LocalDateTime.of(2026, 7, 17, 12, 13, 15));
+    }
+
+    @ParameterizedTest(name = "{0}")
+    @MethodSource("structuredTemporalRoundCases")
+    @DisplayName("Should apply the round contract to every structured temporal type")
+    void shouldRoundEveryStructuredTemporalType(String name, JdbcType type, Schema schema, Struct value,
+                                                ColumnDescriptor column, Object expected) {
+        final var capabilities = TargetTemporalCapabilities.defaults(9, 9)
+                .withZonedTimestampSupport(ZonedTimestampSupport.OFFSET);
+        type.configure(jdbcConfig(TemporalPrecisionLossHandlingMode.ROUND), temporalDialect(capabilities));
+
+        assertThat(type.bind(1, column, schema, value).get(0).getValue()).isEqualTo(expected);
+    }
+
+    @ParameterizedTest(name = "{0}")
+    @MethodSource("structuredTemporalRoundCarryCases")
+    @DisplayName("Should carry rounded fractions for every structured temporal type")
+    void shouldCarryRoundForEveryStructuredTemporalType(String name, JdbcType type, Schema schema, Struct value,
+                                                        ColumnDescriptor column, Object expected) {
+        final var capabilities = TargetTemporalCapabilities.defaults(9, 9)
+                .withZonedTimestampSupport(ZonedTimestampSupport.OFFSET);
+        type.configure(jdbcConfig(TemporalPrecisionLossHandlingMode.ROUND), temporalDialect(capabilities));
+
+        assertThat(type.bind(1, column, schema, value).get(0).getValue()).isEqualTo(expected);
+    }
+
+    @ParameterizedTest(name = "{0}")
+    @MethodSource("structuredTemporalDefaultRoundCases")
+    @DisplayName("Should apply the round contract to structured temporal defaults")
+    void shouldRoundEveryStructuredTemporalDefault(String name, JdbcType type, Schema schema, Struct value, String expected) {
+        final var capabilities = TargetTemporalCapabilities.defaults(6, 6)
+                .withZonedTimestampSupport(ZonedTimestampSupport.OFFSET);
+        type.configure(jdbcConfig(TemporalPrecisionLossHandlingMode.ROUND), temporalDialect(capabilities));
+
+        assertThat(type.getDefaultValueBinding(schema, value)).isEqualTo(expected);
+    }
+
+    @Test
+    @DisplayName("Should reject zoned timestamp metadata that the target cannot preserve")
+    void shouldRejectUnsupportedZonedTimestampMetadata() {
+        final var schema = StructuredZonedTimestamp.builder(9).build();
+        final var offsetValue = StructuredZonedTimestamp.from(
+                schema, OffsetDateTime.of(2026, 7, 17, 12, 13, 14, 0, ZoneOffset.ofHours(9)), null, 9);
+        final var regionValue = StructuredZonedTimestamp.from(
+                schema, OffsetDateTime.of(2026, 7, 17, 12, 13, 14, 0, ZoneOffset.ofHours(9)), "Asia/Seoul", 9);
+        final var fixedUtcValue = StructuredZonedTimestamp.from(
+                schema, OffsetDateTime.of(2026, 7, 17, 12, 13, 14, 0, ZoneOffset.UTC), "Z", 9);
+
+        final var noZoneType = configuredZonedTimestampType(TargetTemporalCapabilities.defaults(9, 9));
+        assertThatCode(() -> noZoneType.validate(timestampColumn(9), schema, fixedUtcValue)).doesNotThrowAnyException();
+        assertThatThrownBy(() -> noZoneType.validate(timestampColumn(9), schema, offsetValue))
+                .isInstanceOf(ConnectException.class)
+                .hasMessageContaining("offset 32400");
+
+        final var offsetOnlyType = configuredZonedTimestampType(
+                TargetTemporalCapabilities.defaults(9, 9).withZonedTimestampSupport(ZonedTimestampSupport.OFFSET));
+        assertThatThrownBy(() -> offsetOnlyType.validate(timestampColumn(9), schema, regionValue))
+                .isInstanceOf(ConnectException.class)
+                .hasMessageContaining("region 'Asia/Seoul'");
+    }
+
+    @Test
+    @DisplayName("Should use dialect precision when JDBC metadata is unreliable")
+    void shouldUseDialectPrecisionForUnreliableMetadata() {
+        final var capabilities = TargetTemporalCapabilities.defaults(6, 6)
+                .withTimestampColumnPrecisionReliable(false);
+
+        assertThat(capabilities.targetTimestampPrecision(timestampColumn(0))).isEqualTo(6);
+    }
+
     private SinkConnectorConfig config() {
         final SinkConnectorConfig config = mock(SinkConnectorConfig.class);
         when(config.useTimeZone()).thenReturn("UTC");
         return config;
+    }
+
+    private StructuredTimestampType configuredTimestampType(TemporalPrecisionLossHandlingMode mode, TargetTemporalCapabilities capabilities) {
+        final var type = new StructuredTimestampType();
+        type.configure(jdbcConfig(mode), temporalDialect(capabilities));
+        return type;
+    }
+
+    private StructuredZonedTimestampType configuredZonedTimestampType(TargetTemporalCapabilities capabilities) {
+        final var type = new StructuredZonedTimestampType();
+        type.configure(jdbcConfig(TemporalPrecisionLossHandlingMode.FAIL), temporalDialect(capabilities));
+        return type;
+    }
+
+    private JdbcSinkConnectorConfig jdbcConfig(TemporalPrecisionLossHandlingMode mode) {
+        final JdbcSinkConnectorConfig config = mock(JdbcSinkConnectorConfig.class);
+        when(config.useTimeZone()).thenReturn("UTC");
+        when(config.getTemporalPrecisionLossHandlingMode()).thenReturn(mode);
+        return config;
+    }
+
+    private DatabaseDialect temporalDialect(TargetTemporalCapabilities capabilities) {
+        final DatabaseDialect dialect = mock(DatabaseDialect.class);
+        when(dialect.getTargetTemporalCapabilities()).thenReturn(capabilities);
+        when(dialect.getMaxTimePrecision()).thenReturn(capabilities.maxTimePrecision());
+        when(dialect.getMaxTimestampPrecision()).thenReturn(capabilities.maxTimestampPrecision());
+        when(dialect.getDefaultTimePrecision()).thenReturn(capabilities.maxTimePrecision());
+        when(dialect.getDefaultTimestampPrecision()).thenReturn(capabilities.maxTimestampPrecision());
+        when(dialect.getFormattedTime(any())).thenAnswer(invocation -> invocation.getArgument(0).toString());
+        when(dialect.getFormattedDateTime(any())).thenAnswer(invocation -> invocation.getArgument(0).toString());
+        when(dialect.getFormattedTimeWithTimeZone(any(String.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        return dialect;
     }
 
     private DatabaseDialect timestampDialect() {
@@ -131,6 +330,7 @@ class StructuredTemporalPrecisionTest {
 
     private DatabaseDialect timeDialect() {
         final DatabaseDialect dialect = mock(DatabaseDialect.class);
+        when(dialect.getMaxTimePrecision()).thenReturn(9);
         when(dialect.getDefaultTimestampPrecision()).thenReturn(6);
         when(dialect.getDefaultTimePrecision()).thenReturn(6);
         when(dialect.getJdbcTypeName(eq(Types.TIME), any(Size.class)))
@@ -140,5 +340,90 @@ class StructuredTemporalPrecisionTest {
 
     private Integer size(Size size) {
         return size.getPrecision();
+    }
+
+    private static Stream<Arguments> structuredTemporalRoundCases() {
+        final var timeSchema = StructuredTime.builder(9).build();
+        final var timestampSchema = StructuredTimestamp.builder(9).build();
+        final var zonedTimeSchema = StructuredZonedTime.builder(9).build();
+        final var zonedTimestampSchema = StructuredZonedTimestamp.builder(9).build();
+        final var offset = ZoneOffset.ofHours(9);
+
+        return Stream.of(
+                Arguments.of("time", new StructuredTimeType(), timeSchema,
+                        StructuredTime.from(timeSchema, LocalTime.of(12, 13, 14, 123_456_789), 9), timeColumn(6),
+                        LocalTime.of(12, 13, 14, 123_457_000)),
+                Arguments.of("timestamp", new StructuredTimestampType(), timestampSchema,
+                        StructuredTimestamp.from(timestampSchema, 2026, 7, 17, 12, 13, 14, 123_456_789, 9), timestampColumn(6),
+                        LocalDateTime.of(2026, 7, 17, 12, 13, 14, 123_457_000)),
+                Arguments.of("zoned time", new StructuredZonedTimeType(), zonedTimeSchema,
+                        StructuredZonedTime.from(zonedTimeSchema, OffsetTime.of(12, 13, 14, 123_456_789, offset), 9), timeColumn(6),
+                        OffsetTime.of(12, 13, 14, 123_457_000, offset)),
+                Arguments.of("zoned timestamp", new StructuredZonedTimestampType(), zonedTimestampSchema,
+                        StructuredZonedTimestamp.from(zonedTimestampSchema,
+                                OffsetDateTime.of(2026, 7, 17, 12, 13, 14, 123_456_789, offset), null, 9),
+                        timestampColumn(6), OffsetDateTime.of(2026, 7, 17, 12, 13, 14, 123_457_000, offset)));
+    }
+
+    private static Stream<Arguments> structuredTemporalRoundCarryCases() {
+        final var timeSchema = StructuredTime.builder(9).build();
+        final var timestampSchema = StructuredTimestamp.builder(9).build();
+        final var zonedTimeSchema = StructuredZonedTime.builder(9).build();
+        final var zonedTimestampSchema = StructuredZonedTimestamp.builder(9).build();
+        final var offset = ZoneOffset.ofHours(9);
+
+        return Stream.of(
+                Arguments.of("time", new StructuredTimeType(), timeSchema,
+                        StructuredTime.from(timeSchema, LocalTime.of(23, 59, 59, 999_999_600), 9), timeColumn(6), LocalTime.MIDNIGHT),
+                Arguments.of("timestamp", new StructuredTimestampType(), timestampSchema,
+                        StructuredTimestamp.from(timestampSchema, 2026, 7, 17, 23, 59, 59, 999_999_600, 9), timestampColumn(6),
+                        LocalDateTime.of(2026, 7, 18, 0, 0)),
+                Arguments.of("zoned time", new StructuredZonedTimeType(), zonedTimeSchema,
+                        StructuredZonedTime.from(zonedTimeSchema, OffsetTime.of(23, 59, 59, 999_999_600, offset), 9), timeColumn(6),
+                        OffsetTime.of(LocalTime.MIDNIGHT, offset)),
+                Arguments.of("zoned timestamp", new StructuredZonedTimestampType(), zonedTimestampSchema,
+                        StructuredZonedTimestamp.from(zonedTimestampSchema,
+                                OffsetDateTime.of(2026, 7, 17, 23, 59, 59, 999_999_600, offset), null, 9),
+                        timestampColumn(6), OffsetDateTime.of(2026, 7, 18, 0, 0, 0, 0, offset)));
+    }
+
+    private static Stream<Arguments> structuredTemporalDefaultRoundCases() {
+        final var timeSchema = StructuredTime.builder(9).build();
+        final var timestampSchema = StructuredTimestamp.builder(9).build();
+        final var zonedTimeSchema = StructuredZonedTime.builder(9).build();
+        final var zonedTimestampSchema = StructuredZonedTimestamp.builder(9).build();
+        final var offset = ZoneOffset.ofHours(9);
+
+        return Stream.of(
+                Arguments.of("time", new StructuredTimeType(), timeSchema,
+                        StructuredTime.from(timeSchema, LocalTime.of(12, 13, 14, 123_456_789), 9), "12:13:14.123457"),
+                Arguments.of("timestamp", new StructuredTimestampType(), timestampSchema,
+                        StructuredTimestamp.from(timestampSchema, 2026, 7, 17, 12, 13, 14, 123_456_789, 9),
+                        "2026-07-17T12:13:14.123457"),
+                Arguments.of("zoned time", new StructuredZonedTimeType(), zonedTimeSchema,
+                        StructuredZonedTime.from(zonedTimeSchema, OffsetTime.of(12, 13, 14, 123_456_789, offset), 9),
+                        "12:13:14.123457+09:00"),
+                Arguments.of("zoned timestamp", new StructuredZonedTimestampType(), zonedTimestampSchema,
+                        StructuredZonedTimestamp.from(zonedTimestampSchema,
+                                OffsetDateTime.of(2026, 7, 17, 12, 13, 14, 123_456_789, offset), null, 9),
+                        "2026-07-17T12:13:14.123457+09:00"));
+    }
+
+    private static ColumnDescriptor timeColumn(int precision) {
+        return ColumnDescriptor.builder()
+                .columnName("time_value")
+                .jdbcType(Types.TIME)
+                .typeName("time")
+                .scale(precision)
+                .build();
+    }
+
+    private static ColumnDescriptor timestampColumn(int precision) {
+        return ColumnDescriptor.builder()
+                .columnName("ts")
+                .jdbcType(Types.TIMESTAMP)
+                .typeName("timestamp")
+                .scale(precision)
+                .build();
     }
 }
