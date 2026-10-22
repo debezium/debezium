@@ -157,6 +157,11 @@ public abstract class BinlogBlockingSnapshotIT<C extends SourceConnector>
     }
 
     @Override
+    protected String signalExcludingColumnIncludeList() {
+        return tableDataCollectionId() + "\\." + pkFieldName() + "," + tableDataCollectionId() + "\\." + valueFieldName();
+    }
+
+    @Override
     protected List<String> tableDataCollectionIds() {
         return List.of(tableNameId().toString(), tableNameId("b").toString());
     }
