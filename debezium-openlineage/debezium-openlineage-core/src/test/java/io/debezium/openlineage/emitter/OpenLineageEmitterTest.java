@@ -32,6 +32,7 @@ import io.debezium.openlineage.OpenLineageContext;
 import io.debezium.openlineage.OpenLineageJobIdentifier;
 import io.debezium.openlineage.dataset.DatasetMetadata;
 import io.debezium.openlineage.dataset.DefaultDatasetNamespaceResolverFactory;
+import io.debezium.openlineage.dataset.TestDatasetNamespaceResolverProvider;
 import io.openlineage.client.OpenLineage;
 
 @ExtendWith(MockitoExtension.class)
@@ -126,6 +127,39 @@ public class OpenLineageEmitterTest {
         OpenLineage.RunEvent event = eventCaptor.getValue();
 
         assertEquals(OpenLineage.RunEvent.EventType.COMPLETE, event.getEventType());
+    }
+
+    @Test
+    void testEmitWithSinkProvidedOutputDataset() {
+        ConnectorContext sinkContext = new ConnectorContext(
+                "test-sink-connector",
+                TestDatasetNamespaceResolverProvider.CONNECTOR_NAME,
+                "0",
+                "3.7.0.Final",
+                UUID.randomUUID(),
+                Map.of());
+        OpenLineageEmitter sinkEmitter = new OpenLineageEmitter(
+                sinkContext,
+                emitter.getContext(),
+                eventEmitter,
+                new DefaultDatasetNamespaceResolverFactory());
+
+        DatasetMetadata.FieldDefinition field = new DatasetMetadata.FieldDefinition("id", "int", "Identifier", Collections.emptyList());
+        DatasetMetadata outputDataset = new DatasetMetadata(
+                "sink_collection",
+                DatasetMetadata.DatasetKind.OUTPUT,
+                DatasetMetadata.TABLE_DATASET_TYPE,
+                DatasetMetadata.DataStore.SINK_PROVIDED,
+                List.of(field));
+
+        sinkEmitter.emit(DebeziumTaskState.RUNNING, List.of(outputDataset));
+
+        verify(eventEmitter).emit(eventCaptor.capture());
+        OpenLineage.RunEvent event = eventCaptor.getValue();
+
+        assertEquals(1, event.getOutputs().size());
+        assertEquals("sink_collection", event.getOutputs().get(0).getName());
+        assertEquals(TestDatasetNamespaceResolverProvider.RESOLVED_NAMESPACE, event.getOutputs().get(0).getNamespace());
     }
 
 }
