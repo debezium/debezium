@@ -12,7 +12,7 @@
 :connector-name: PostgreSQL
 :include-list-example: public.inventory
 :collection-container: schema
-:supports-skipping-unchanged-events:
+:unchanged-events-metric-note:
 
 ifdef::community[]
 
