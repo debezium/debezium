@@ -1007,7 +1007,9 @@ include::{partialsdir}/modules/all-connectors/ref-connector-monitoring-increment
 
 include::{partialsdir}/modules/all-connectors/frag-common-mbean-name.adoc[leveloffset=+1,tags=common-streaming]
 
+:unchanged-events-metric-note: {connector-name} does not support skipping unchanged events, so this metric is always `0` when the property is `true`.
 include::{partialsdir}/modules/all-connectors/ref-connector-monitoring-streaming-metrics.adoc[leveloffset=+1]
+:unchanged-events-metric-note!:
 
 [[cockroachdb-connector-properties]]
 === Connector configuration properties
