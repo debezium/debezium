@@ -7,7 +7,7 @@ package io.debezium.connector.mariadb.jdbc;
 
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.util.Calendar;
+import java.time.LocalDateTime;
 import java.util.Objects;
 
 import io.debezium.connector.binlog.jdbc.BinlogFieldReader;
@@ -58,8 +58,10 @@ public class MariaDbFieldReader extends BinlogFieldReader {
         if (isStructuredTemporalMode()) {
             return MariaDbValueConverters.stringToBinlogDateTimeValue(value);
         }
+        // The driver returns a DATETIME string in the JVM's default time zone, which changes a value that does not exist
+        // in that time zone, so the value is read as a LocalDateTime instead
         return MariaDbValueConverters.containsZeroValuesInDatePart(value, column, table)
                 ? null
-                : rs.getTimestamp(columnIndex, Calendar.getInstance());
+                : rs.getObject(columnIndex, LocalDateTime.class);
     }
 }

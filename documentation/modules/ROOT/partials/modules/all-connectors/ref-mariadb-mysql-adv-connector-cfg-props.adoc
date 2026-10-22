@@ -349,6 +349,14 @@ The connector then stops.
 Instead, it logs the problematic event and its position, and then skips the event.
 
 `ignore`:::: The connector ignores the problematic event, and does not generate a log entry.
++
+The connector also applies this setting to `DATE` and `DATETIME` values that are not valid dates, such as `2020-02-31` stored with the `ALLOW_INVALID_DATES` SQL mode, in both snapshots and streaming.
+With `fail`, the connector stops.
+With `warn` or `ignore`, the connector emits such a value as the epoch, `1970-01-01`.
+To capture such values as they are stored, set xref:{context}-property-time-precision-mode[`time.precision.mode`] to `structured`.
+ifdef::MYSQL[]
+When xref:{context}-property-snapshot-fetch-size[`snapshot.fetch.size`] is set to a positive value, the MySQL server returns such values to the snapshot as zero dates, so the connector emits them in the same way as other zero values.
+endif::MYSQL[]
 
 
 

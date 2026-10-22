@@ -46,8 +46,8 @@ public abstract class BinlogZeroDateFallbackConverterIT<C extends SourceConnecto
     // Pre-computed wire-format constants used across all scenarios.
     private static final int EPOCH_DAYS_REAL_1970 = 0;
     private static final int EPOCH_DAYS_NORMAL = (int) LocalDate.parse("2024-06-15").toEpochDay();
-    private static final long EPOCH_MS_REAL_1970 = LocalDateTime.parse("1970-01-01T00:00:00").atZone(ZoneId.systemDefault()).toInstant().toEpochMilli();
-    private static final long EPOCH_MS_NORMAL = LocalDateTime.parse("2024-06-15T12:34:56").atZone(ZoneId.systemDefault()).toInstant().toEpochMilli();
+    private static final long EPOCH_MS_REAL_1970 = 0L;
+    private static final long EPOCH_MS_NORMAL = LocalDateTime.parse("2024-06-15T12:34:56").toInstant(ZoneOffset.UTC).toEpochMilli();
     private static final String ISO_REAL_1970 = "1970-01-02T00:00:00Z";
     private static final String ISO_NORMAL = "2024-06-15T12:34:56Z";
 

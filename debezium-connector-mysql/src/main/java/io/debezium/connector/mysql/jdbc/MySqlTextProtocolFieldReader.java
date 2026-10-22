@@ -10,7 +10,7 @@ import java.sql.Blob;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.time.Duration;
-import java.util.Calendar;
+import java.time.LocalDateTime;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -94,7 +94,7 @@ public class MySqlTextProtocolFieldReader extends AbstractFieldReader {
                 return MySqlValueConverters.stringToBinlogDateTimeValue(value);
             }
             return MySqlValueConverters.containsZeroValuesInDatePart(value, column, table) ? null
-                    : rs.getTimestamp(columnIndex, Calendar.getInstance());
+                    : rs.getObject(columnIndex, LocalDateTime.class);
         }
         catch (UnsupportedEncodingException e) {
             logInvalidValue(rs, columnIndex, b);
