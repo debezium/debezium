@@ -3467,7 +3467,7 @@ To use this property you must also configure the related `update.capture.table.p
 
 |[[db2-property-update-capture-table-prune-lsn-decrement]]<<db2-property-update-capture-table-prune-lsn-decrement, update.capture.table.prune.lsn.decrement>>
 |true (enabled)
-Specifies whether the connector decrements the prune LSN/syncpoint by one before updating the prune table.
+Specifies whether the connector decrements the prune LSN by one before updating the prune table.
 
 When enabled, the connector preserves the last processed LSN in the change tables. 
 Preserving this record helps prevent the connector from running unnecessary snapshots when the last processed LSN is removed in the change table.
