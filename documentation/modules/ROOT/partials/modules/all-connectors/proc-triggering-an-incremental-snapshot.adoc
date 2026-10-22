@@ -48,7 +48,7 @@ tag::sql-based-snapshot[]
 +
 [source,sql,indent=0,subs="+attributes,+quotes"]
 ----
-INSERT INTO _<signalTable>_ (id, type, data) VALUES (_'<id>'_, _'<snapshotType>'_, '{"data-collections": ["_<tableName>_","_<tableName>_"],"type":"_<snapshotType>_","additional-condition":"_<additional-condition>_"}');
+INSERT INTO _<signalTable>_ (id, type, data) VALUES (_'<id>'_, _'<snapshotType>'_, '{"data-collections": ["_<tableName>_","_<tableName>_"],"type":"_<snapshotType>_"}');
 ----
 +
 For example,
@@ -59,8 +59,7 @@ INSERT INTO myschema.debezium_signal (id, type, data) // <1>
 values ('ad-hoc-1',   // <2>
     'execute-snapshot',  // <3>
     '{"data-collections": ["schema1.table1", "schema2.table2"], // <4>
-    "type":"incremental"}, // <5>
-    "additional-condition":"color=blue"}'); // <6>
+    "type":"incremental"}'); // <5>
 ----
 end::sql-based-snapshot[]
 
@@ -123,58 +122,7 @@ The array lists regular expressions which match {data-collection}s by their full
 Currently, the only valid option is the default value, `incremental`. +
 If you do not specify a value, the connector runs an incremental snapshot.
 
-|6
-|`additional-condition`
-| An optional string, which specifies a condition based on the column(s) of the {data-collection}(s), to capture a
-subset of the contents of the {data-collection}s.
-For more information about the `additional-condition` parameter, see xref:{context}-incremental-snapshots-additional-condition[].
 |===
-
-[id="{context}-incremental-snapshots-additional-condition"]
-.Ad hoc incremental snapshots with `additional-condition`
-
-If you want a snapshot to include only a subset of the content in a {data-collection}, you can modify the signal request by appending an `additional-condition` parameter to the snapshot signal.
-
-The SQL query for a typical snapshot takes the following form:
-
-[source,sql,subs="+attributes,+quotes"]
-----
-SELECT * FROM _<tableName>_ ....
-----
-
-By adding an `additional-condition` parameter, you append a `WHERE` condition to the SQL query, as in the following example:
-
-[source,sql,subs="+attributes,+quotes"]
-----
-SELECT * FROM _<tableName>_ WHERE _<additional-condition>_ ....
-----
-
-The following example shows a SQL query to send an ad hoc incremental snapshot request with an additional condition to the signaling {data-collection}:
-[source,sql,indent=0,subs="+attributes,+quotes"]
-----
-INSERT INTO _<signalTable>_ (id, type, data) VALUES (_'<id>'_, _'<snapshotType>'_, '{"data-collections": ["_<tableName>_","_<tableName>_"],"type":"_<snapshotType>_","additional-condition":"_<additional-condition>_"}');
-----
-
-For example, suppose you have a `products` {data-collection} that contains the following columns:
-
-* `id` (primary key)
-* `color`
-* `quantity`
-
-If you want an incremental snapshot of the `products` {data-collection} to include only the data items where `color=blue`, you can use the following SQL statement to trigger the snapshot:
-
-[source,sql,indent=0,subs="+attributes"]
-----
-INSERT INTO myschema.debezium_signal (id, type, data) VALUES('ad-hoc-1', 'execute-snapshot', '{"data-collections": ["schema1.products"],"type":"incremental", "additional-condition":"color=blue"}');
-----
-
-The `additional-condition` parameter also enables you to pass conditions that are based on more than on column.
-For example, using the `products` {data-collection} from the previous example, you can submit a query that triggers an incremental snapshot that includes the data of only those items for which `color=blue` and `quantity>10`:
-
-[source,sql,indent=0,subs="+attributes"]
-----
-INSERT INTO myschema.debezium_signal (id, type, data) VALUES('ad-hoc-1', 'execute-snapshot', '{"data-collections": ["schema1.products"],"type":"incremental", "additional-condition":"color=blue AND quantity>10"}');
-----
 
 end::sql-based-snapshot[]
 
