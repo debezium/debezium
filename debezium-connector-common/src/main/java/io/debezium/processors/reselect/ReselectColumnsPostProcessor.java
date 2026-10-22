@@ -5,6 +5,7 @@
  */
 package io.debezium.processors.reselect;
 
+import java.math.BigDecimal;
 import java.nio.ByteBuffer;
 import java.sql.SQLException;
 import java.util.ArrayList;
@@ -15,10 +16,12 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.function.IntFunction;
 import java.util.function.Predicate;
 import java.util.regex.Pattern;
 
 import org.apache.kafka.common.config.ConfigDef;
+import org.apache.kafka.connect.data.Decimal;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.Schema.Type;
 import org.apache.kafka.connect.data.Struct;
@@ -26,6 +29,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import io.debezium.DebeziumException;
+import io.debezium.annotation.VisibleForTesting;
 import io.debezium.bean.StandardBeanNames;
 import io.debezium.bean.spi.BeanRegistry;
 import io.debezium.bean.spi.BeanRegistryAware;
@@ -113,8 +117,6 @@ public class ReselectColumnsPostProcessor implements PostProcessor, BeanRegistry
     private ByteBuffer unavailableValuePlaceholderBytes;
     private Map<String, String> unavailableValuePlaceholderMap;
     private String unavailableValuePlaceholderJson;
-    private List<Integer> unavailablePlaceholderIntArray;
-    private List<Long> unavailablePlaceholderLongArray;
     private RelationalDatabaseSchema schema;
     private RelationalDatabaseConnectorConfig connectorConfig;
     private CustomConverterRegistry customConverterRegistry;
@@ -408,12 +410,6 @@ public class ReselectColumnsPostProcessor implements PostProcessor, BeanRegistry
         this.unavailableValuePlaceholderBytes = ByteBuffer.wrap(connectorConfig.getUnavailableValuePlaceholder());
         this.unavailableValuePlaceholderMap = Map.of(this.unavailableValuePlaceholder, this.unavailableValuePlaceholder);
         this.unavailableValuePlaceholderJson = "{\"" + this.unavailableValuePlaceholder + "\":\"" + this.unavailableValuePlaceholder + "\"}";
-        unavailablePlaceholderIntArray = new ArrayList<>(unavailableValuePlaceholderBytes.limit());
-        unavailablePlaceholderLongArray = new ArrayList<>(unavailableValuePlaceholderBytes.limit());
-        for (byte b : unavailableValuePlaceholderBytes.array()) {
-            unavailablePlaceholderIntArray.add((int) b);
-            unavailablePlaceholderLongArray.add((long) b);
-        }
 
         this.valueConverterProvider = beanRegistry.lookupByName(StandardBeanNames.VALUE_CONVERTER, ValueConverterProvider.class);
         this.jdbcConnection = beanRegistry.lookupByName(StandardBeanNames.JDBC_CONNECTION, JdbcConnection.class);
@@ -459,7 +455,8 @@ public class ReselectColumnsPostProcessor implements PostProcessor, BeanRegistry
         return columnSelections;
     }
 
-    private boolean isUnavailableValueHolder(org.apache.kafka.connect.data.Field field, Object value) {
+    @VisibleForTesting
+    boolean isUnavailableValueHolder(org.apache.kafka.connect.data.Field field, Object value) {
         if (unavailableValuePlaceholder != null) {
             if (field.schema().type() == Schema.Type.ARRAY && value != null) {
                 // Special use case to inspect by element
@@ -506,14 +503,45 @@ public class ReselectColumnsPostProcessor implements PostProcessor, BeanRegistry
 
     private boolean isUnavailableArrayValueHolder(Schema schema, Object value) {
         assert schema.type() == Type.ARRAY;
-        switch (schema.valueSchema().type()) {
+        // Single-element placeholders (string, bytes) are matched by the caller; numeric elements carry one element per placeholder byte.
+        final Schema elementSchema = schema.valueSchema();
+        switch (elementSchema.type()) {
+            case INT16:
+                return isPlaceholderBytesPerElement(value, b -> (short) b);
             case INT32:
-                return unavailablePlaceholderIntArray.equals(value);
+                return isPlaceholderBytesPerElement(value, b -> b);
             case INT64:
-                return unavailablePlaceholderLongArray.equals(value);
+                return isPlaceholderBytesPerElement(value, b -> (long) b);
+            case FLOAT32:
+                return isPlaceholderBytesPerElement(value, b -> (float) b);
+            case FLOAT64:
+                return isPlaceholderBytesPerElement(value, b -> (double) b);
+            case BYTES:
+                if (!Decimal.LOGICAL_NAME.equals(elementSchema.name())) {
+                    return false;
+                }
+                final int scale = Integer.parseInt(elementSchema.parameters().get(Decimal.SCALE_FIELD));
+                return isPlaceholderBytesPerElement(value, b -> BigDecimal.valueOf(b).setScale(scale));
+            case STRUCT:
+                if (!VariableScaleDecimal.LOGICAL_NAME.equals(elementSchema.name())) {
+                    return false;
+                }
+                return isPlaceholderBytesPerElement(value, b -> VariableScaleDecimal.fromLogical(elementSchema, BigDecimal.valueOf(b)));
             default:
                 return false;
         }
+    }
+
+    private boolean isPlaceholderBytesPerElement(Object value, IntFunction<Object> elementMapper) {
+        if (!(value instanceof List<?> elements) || elements.size() != unavailableValuePlaceholderBytes.limit()) {
+            return false;
+        }
+        for (int i = 0; i < elements.size(); i++) {
+            if (!elementMapper.apply(unavailableValuePlaceholderBytes.get(i)).equals(elements.get(i))) {
+                return false;
+            }
+        }
+        return true;
     }
 
     private Object getConvertedValue(TableId tableId, Column column, org.apache.kafka.connect.data.Field field, Object value) {
