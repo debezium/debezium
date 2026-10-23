@@ -20,6 +20,9 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import io.debezium.connector.oracle.antlr.OracleDdlParser;
+import io.debezium.connector.oracle.relational.OracleColumn;
+import io.debezium.connector.oracle.relational.OracleRelationalMetadataFactory;
+import io.debezium.connector.oracle.relational.OracleTable;
 import io.debezium.connector.oracle.util.TestHelper;
 import io.debezium.doc.FixFor;
 import io.debezium.relational.Column;
@@ -48,7 +51,7 @@ public class OracleDdlParserTest {
     void setUp() {
         final OracleConnectorConfig config = new OracleConnectorConfig(TestHelper.defaultConfig().build());
         parser = new OracleDdlParser(true, null, config.getTableFilters().dataCollectionFilter());
-        tables = new Tables();
+        tables = new Tables(false, config);
     }
 
     @Test
@@ -278,9 +281,9 @@ public class OracleDdlParserTest {
         parser.setCurrentDatabase(PDB_NAME);
         parser.setCurrentSchema("SCOTT");
 
-        Table table = Table.editor()
+        Table table = OracleRelationalMetadataFactory.INSTANCE.tableEditor()
                 .tableId(new TableId(PDB_NAME, "SCOTT", "T_DBZ_TEST1"))
-                .addColumn(Column.editor().name("ID").create())
+                .addColumn(OracleRelationalMetadataFactory.INSTANCE.columnEditor().name("ID").create())
                 .create();
         tables.overwriteTable(table);
 
@@ -294,6 +297,8 @@ public class OracleDdlParserTest {
         assertThat(eventTypes).containsExactly(DdlParserListener.EventType.ALTER_TABLE);
 
         table = tables.forTable(new TableId(PDB_NAME, "SCOTT", "T_DBZ_TEST1"));
+        assertThat(table).isInstanceOf(OracleTable.class);
+        assertThat(table.columns()).allMatch(OracleColumn.class::isInstance);
         List<String> columnNames = table.retrieveColumnNames();
         assertThat(columnNames).contains("ID", "T_VARCHAR2");
         assertThat(table.columnWithName("T_VARCHAR2").typeName()).isEqualTo("VARCHAR2");
@@ -306,10 +311,10 @@ public class OracleDdlParserTest {
         parser.setCurrentDatabase(PDB_NAME);
         parser.setCurrentSchema("SCOTT");
 
-        Table table = Table.editor()
+        Table table = OracleRelationalMetadataFactory.INSTANCE.tableEditor()
                 .tableId(new TableId(PDB_NAME, "SCOTT", "T_DBZ_TEST1"))
-                .addColumn(Column.editor().name("ID").create())
-                .addColumn(Column.editor().name("T_VARCHAR2").type("VARCHAR2").length(10).create())
+                .addColumn(OracleRelationalMetadataFactory.INSTANCE.columnEditor().name("ID").create())
+                .addColumn(OracleRelationalMetadataFactory.INSTANCE.columnEditor().name("T_VARCHAR2").type("VARCHAR2").length(10).create())
                 .create();
         tables.overwriteTable(table);
 
@@ -323,6 +328,8 @@ public class OracleDdlParserTest {
         assertThat(eventTypes).containsExactly(DdlParserListener.EventType.ALTER_TABLE);
 
         table = tables.forTable(new TableId(PDB_NAME, "SCOTT", "T_DBZ_TEST1"));
+        assertThat(table).isInstanceOf(OracleTable.class);
+        assertThat(table.columns()).allMatch(OracleColumn.class::isInstance);
         List<String> columnNames = table.retrieveColumnNames();
         assertThat(columnNames).contains("ID", "T_VARCHAR2");
         assertThat(table.columnWithName("T_VARCHAR2").typeName()).isEqualTo("VARCHAR2");
@@ -335,10 +342,10 @@ public class OracleDdlParserTest {
         parser.setCurrentDatabase(PDB_NAME);
         parser.setCurrentSchema("SCOTT");
 
-        Table table = Table.editor()
+        Table table = OracleRelationalMetadataFactory.INSTANCE.tableEditor()
                 .tableId(new TableId(PDB_NAME, "SCOTT", "T_DBZ_TEST1"))
-                .addColumn(Column.editor().name("ID").create())
-                .addColumn(Column.editor().name("T_VARCHAR2").type("VARCHAR2").length(10).create())
+                .addColumn(OracleRelationalMetadataFactory.INSTANCE.columnEditor().name("ID").create())
+                .addColumn(OracleRelationalMetadataFactory.INSTANCE.columnEditor().name("T_VARCHAR2").type("VARCHAR2").length(10).create())
                 .create();
         tables.overwriteTable(table);
 
@@ -352,6 +359,8 @@ public class OracleDdlParserTest {
         assertThat(eventTypes).containsExactly(DdlParserListener.EventType.ALTER_TABLE);
 
         table = tables.forTable(new TableId(PDB_NAME, "SCOTT", "T_DBZ_TEST1"));
+        assertThat(table).isInstanceOf(OracleTable.class);
+        assertThat(table.columns()).allMatch(OracleColumn.class::isInstance);
         List<String> columnNames = table.retrieveColumnNames();
         assertThat(columnNames).contains("ID");
     }

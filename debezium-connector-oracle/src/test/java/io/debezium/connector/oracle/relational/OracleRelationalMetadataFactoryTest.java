@@ -91,10 +91,14 @@ public class OracleRelationalMetadataFactoryTest {
     @FixFor("debezium/dbz#2843")
     void shouldNotEqualBaseTypesWithSameState() {
         final Column column = dataColumn(OracleRelationalMetadataFactory.INSTANCE.columnEditor());
-        assertThat(column).isNotEqualTo(dataColumn(Column.editor()));
+        final Column plainColumn = dataColumn(Column.editor());
+        assertThat(column).isNotEqualTo(plainColumn);
+        assertThat(plainColumn).isNotEqualTo(column);
 
         final Table table = OracleRelationalMetadataFactory.INSTANCE.tableEditor().tableId(TABLE_ID).addColumn(column).create();
-        assertThat(table).isNotEqualTo(Table.editor().tableId(TABLE_ID).addColumn(column).create());
+        final Table plainTable = Table.editor().tableId(TABLE_ID).addColumn(column).create();
+        assertThat(table).isNotEqualTo(plainTable);
+        assertThat(plainTable).isNotEqualTo(table);
     }
 
     private static Column dataColumn(ColumnEditor editor) {
