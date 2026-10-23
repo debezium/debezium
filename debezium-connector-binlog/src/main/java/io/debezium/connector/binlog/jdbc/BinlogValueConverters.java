@@ -484,8 +484,7 @@ public abstract class BinlogValueConverters extends JdbcValueConverters {
      */
     protected Object convertJson(Column column, Field fieldDefn, Object data) {
         if (data == UNAVAILABLE_VALUE) {
-            // Without a placeholder, an unavailable value is converted like a missing one
-            return unavailableValuePlaceholderString != null ? unavailableValuePlaceholderString : convertJson(column, fieldDefn, null);
+            return unavailableValuePlaceholderString;
         }
         return convertValue(column, fieldDefn, data, "{}", (r) -> {
             if (data instanceof byte[]) {
