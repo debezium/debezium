@@ -1458,7 +1458,17 @@ public abstract class BinlogStreamingChangeEventSource<P extends BinlogPartition
                 client.disconnect();
                 client.setBinlogFilename(position.getFilename());
                 client.setBinlogPosition(position.getPosition());
-                client.connect();
+                // In GTID mode the client's executed GTID set already contains the transaction being re-read (the XID
+                // added it before this rewind ran). Without this flag the dump command carries an empty filename and
+                // position 4 plus that set, so the server skips the whole transaction and the rest of it, including its
+                // END, is never emitted. Ask the server to start from the recorded filename/position instead.
+                client.setUseBinlogFilenamePositionInGtidMode(true);
+                try {
+                    client.connect();
+                }
+                finally {
+                    client.setUseBinlogFilenamePositionInGtidMode(false);
+                }
             }
         }
         catch (IOException e) {
