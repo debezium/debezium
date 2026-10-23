@@ -1347,10 +1347,10 @@ public abstract class BinlogStreamingChangeEventSource<P extends BinlogPartition
 
     /**
      * Fails for a row image that omits columns of the table, as the binlog contains when a client sets
-     * {@code binlog_row_image} to {@code MINIMAL} or {@code NOBLOB} for its session, or when MariaDB writes an update or a
-     * delete of a table with generated columns. The connector checks the variable of the server when it starts, but cannot
-     * represent the omitted columns. Only when the server uses {@code NOBLOB} may BLOB and TEXT columns be omitted, as they
-     * are emitted with the unavailable value placeholder.
+     * {@code binlog_row_image} to {@code MINIMAL} or {@code NOBLOB}, or MariaDB's {@code FULL_NODUP}, for its session, or
+     * when MariaDB writes an update or a delete of a table with generated columns. The connector checks the variable of the
+     * server when it starts, but cannot represent the omitted columns. Only when the server uses {@code NOBLOB} may BLOB and
+     * TEXT columns be omitted, as they are emitted with the unavailable value placeholder.
      *
      * @param table the table the rows belong to; may be null
      * @param tableNumber the number of the table in the binlog
@@ -1376,7 +1376,7 @@ public abstract class BinlogStreamingChangeEventSource<P extends BinlogPartition
         }
         final String message = "Incomplete row image (" + image + ") for table " + table.id() + ": it contains " + (columnCount - omittedColumns)
                 + " of its " + columnCount + " columns. The connector requires binlog_row_image=FULL, or NOBLOB on the database server. "
-                + "A client may have set binlog_row_image=MINIMAL or NOBLOB for its session, "
+                + "A client may have set binlog_row_image=MINIMAL or NOBLOB, or FULL_NODUP on MariaDB, for its session, "
                 + "or MariaDB may omit generated columns from updates and deletes.";
         LOGGER.error(message);
         throw new DebeziumException(message);
