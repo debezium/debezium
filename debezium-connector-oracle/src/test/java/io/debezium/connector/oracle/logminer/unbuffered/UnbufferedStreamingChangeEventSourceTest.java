@@ -57,6 +57,7 @@ import io.debezium.connector.oracle.logminer.LogMinerStreamingChangeEventSourceM
 import io.debezium.connector.oracle.logminer.TransactionCommitConsumer;
 import io.debezium.connector.oracle.logminer.events.EventType;
 import io.debezium.connector.oracle.logminer.events.LogMinerEventRow;
+import io.debezium.connector.oracle.relational.OracleRelationalMetadataFactory;
 import io.debezium.connector.oracle.util.TestHelper;
 import io.debezium.data.Envelope.Operation;
 import io.debezium.doc.FixFor;
@@ -64,7 +65,6 @@ import io.debezium.embedded.async.AbstractAsyncEngineConnectorTest;
 import io.debezium.pipeline.DataChangeEvent;
 import io.debezium.pipeline.EventDispatcher;
 import io.debezium.pipeline.source.spi.ChangeEventSource.ChangeEventSourceContext;
-import io.debezium.relational.Column;
 import io.debezium.relational.CustomConverterRegistry;
 import io.debezium.relational.Table;
 import io.debezium.relational.TableId;
@@ -268,10 +268,10 @@ public class UnbufferedStreamingChangeEventSourceTest extends AbstractAsyncEngin
                 sensitivity,
                 false, new CustomConverterRegistry(emptyList()), new OracleTaskContext(configuration, connectorConfig));
 
-        final Table table = Table.editor()
+        final Table table = OracleRelationalMetadataFactory.INSTANCE.tableEditor()
                 .tableId(TableId.parse("ORCLPDB1.DEBEZIUM." + TABLE_NAME))
-                .addColumn(Column.editor().name("ID").create())
-                .addColumn(Column.editor().name("DATA").create())
+                .addColumn(OracleRelationalMetadataFactory.INSTANCE.columnEditor().name("ID").create())
+                .addColumn(OracleRelationalMetadataFactory.INSTANCE.columnEditor().name("DATA").create())
                 .create();
 
         schema.refresh(table);

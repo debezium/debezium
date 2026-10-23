@@ -15,10 +15,10 @@ import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 
 import io.debezium.config.Configuration;
+import io.debezium.connector.oracle.relational.OracleRelationalMetadataFactory;
 import io.debezium.connector.oracle.util.TestHelper;
 import io.debezium.doc.FixFor;
 import io.debezium.relational.Attribute;
-import io.debezium.relational.Column;
 import io.debezium.relational.CustomConverterRegistry;
 import io.debezium.relational.Table;
 import io.debezium.relational.TableId;
@@ -75,9 +75,9 @@ public class OracleDatabaseSchemaTest {
         assertThat(schema.getTableIdByObjectId(250282L, null)).isNull();
 
         final TableId tableId = TableId.parse("ORCLPDB1.DEBEZIUM.DBZ2798");
-        schema.refresh(Table.editor()
+        schema.refresh(OracleRelationalMetadataFactory.INSTANCE.tableEditor()
                 .tableId(tableId)
-                .addColumn(Column.editor().name("ID").type("VARCHAR2(50)").create())
+                .addColumn(OracleRelationalMetadataFactory.INSTANCE.columnEditor().name("ID").type("VARCHAR2(50)").create())
                 .addAttribute(Attribute.editor().name(OracleDatabaseSchema.ATTRIBUTE_OBJECT_ID).value(250282L).create())
                 .addAttribute(Attribute.editor().name(OracleDatabaseSchema.ATTRIBUTE_DATA_OBJECT_ID).value(250282L).create())
                 .create());
@@ -103,10 +103,10 @@ public class OracleDatabaseSchemaTest {
                 sensitivity,
                 false, new CustomConverterRegistry(List.of()), new OracleTaskContext(configuration, connectorConfig));
 
-        Table table = Table.editor()
+        Table table = OracleRelationalMetadataFactory.INSTANCE.tableEditor()
                 .tableId(TableId.parse("ORCLPDB1.DEBEZIUM.TEST_TABLE"))
-                .addColumn(Column.editor().name("ID").create())
-                .addColumn(Column.editor().name("DATA").create())
+                .addColumn(OracleRelationalMetadataFactory.INSTANCE.columnEditor().name("ID").create())
+                .addColumn(OracleRelationalMetadataFactory.INSTANCE.columnEditor().name("DATA").create())
                 .create();
 
         schema.refresh(table);
