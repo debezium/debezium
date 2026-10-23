@@ -7,6 +7,7 @@ package io.debezium.document;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import java.math.BigInteger;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -58,6 +59,14 @@ public class DocumentTest {
                 .map(v -> v.asInteger())
                 .collect(Collectors.toList());
         assertThat(values).containsExactly(1, 2, 3);
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2934")
+    public void shouldWidenToBigIntegerWhenIncrementOverflowsLong() {
+        doc = Document.create("counter", Long.MAX_VALUE);
+        doc.increment("counter", 1);
+        assertThat(doc.getField("counter").getValue()).isEqualTo(BigInteger.valueOf(Long.MAX_VALUE).add(BigInteger.ONE));
     }
 
     protected void assertPair(Iterator<Map.Entry<Path, Value>> iterator, String path, Object value) {
