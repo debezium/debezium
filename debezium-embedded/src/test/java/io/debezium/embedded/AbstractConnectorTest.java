@@ -462,7 +462,7 @@ public abstract class AbstractConnectorTest implements Testing {
                     lastEngineFailure.set(error);
                 }
                 if (!success) {
-                    // we only unblock if there was an error; in all other cases we're unblocking when a task has been started
+                    // we only unblock if there was an error; in all other cases we're unblocking when tasks polling has started
                     latch.countDown();
                 }
             }
@@ -472,9 +472,16 @@ public abstract class AbstractConnectorTest implements Testing {
         DebeziumEngine.ConnectorCallback wrapperConnectorCallback = new DebeziumEngine.ConnectorCallback() {
             @Override
             public void taskStarted() {
-                // if this is called, it means a task has been started successfully so we can continue
                 if (connectorCallback != null) {
                     connectorCallback.taskStarted();
+                }
+            }
+
+            @Override
+            public void pollingStarted() {
+                // all tasks have started and the engine can be stopped, so we can continue
+                if (connectorCallback != null) {
+                    connectorCallback.pollingStarted();
                 }
                 latch.countDown();
             }
