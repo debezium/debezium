@@ -172,6 +172,16 @@ public class TablesTest {
         assertThat(labeledTable(tableId, "orders")).isEqualTo(table).hasSameHashCodeAs(table);
     }
 
+    @Test
+    @FixFor("debezium/dbz#2843")
+    public void shouldKeepEqualitySymmetricBetweenPlainAndExtendedTables() {
+        final Table plain = Table.editor().tableId(tableId).addColumn(column("id")).setPrimaryKeyNames("id").create();
+        final ExtendedTable table = labeledTable(tableId, null);
+
+        assertThat(plain.equals(table)).isFalse();
+        assertThat(table.equals(plain)).isFalse();
+    }
+
     private static ExtendedTable labeledTable(TableId id, String label) {
         final ExtendedTableEditor editor = ExtendedRelationalMetadataFactory.INSTANCE.tableEditor();
         editor.tableId(id).addColumn(column("id")).setPrimaryKeyNames("id");

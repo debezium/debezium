@@ -104,6 +104,26 @@ public class ColumnImplSubclassTest {
 
     @Test
     @FixFor("debezium/dbz#2843")
+    public void shouldNotInternPlainColumnAsEqualExtendedColumn() {
+        // An extended column pooled first, as another connector sharing the pool would leave it
+        final ExtendedColumn column = column("id", "us");
+        final Column plain = plainColumn("id");
+
+        assertThat(plain).isNotSameAs(column).isExactlyInstanceOf(ColumnImpl.class);
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2843")
+    public void shouldKeepEqualitySymmetricBetweenPlainAndExtendedColumns() {
+        final Column plain = plainColumn("id");
+        final ExtendedColumn column = column("id", null);
+
+        assertThat(plain.equals(column)).isFalse();
+        assertThat(column.equals(plain)).isFalse();
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2843")
     public void shouldNotInternColumnsThatDifferOnlyByExtension() {
         final ExtendedColumn us = column("id", "us");
         final ExtendedColumn eu = column("id", "eu");

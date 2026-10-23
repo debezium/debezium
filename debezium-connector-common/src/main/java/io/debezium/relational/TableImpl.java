@@ -23,11 +23,12 @@ import io.debezium.util.Strings;
  * The default {@link Table} implementation.
  * <p>
  * A connector that needs to carry additional table metadata subclasses this class, adds its own fields,
- * and creates instances from its own {@link TableEditorImpl} subclass. Such a subclass must override
- * {@link #equals(Object)} to accept only instances of its own type and compare its own fields after the base
- * fields, because {@link Tables} and {@link Interner} rely on equality to detect a changed table and an
- * equal TableImpl must never stand in for the subclass. It must override {@link #hashCode()} to combine the base
- * hash code with the same fields, and should override {@link #edit()} and {@link #appendExtensions(StringBuilder, String)}.
+ * and creates instances from its own {@link TableEditorImpl} subclass. Equality requires the same class, so
+ * a TableImpl and a subclass instance are never equal in either direction, because {@link Tables} and
+ * {@link Interner} rely on equality to detect a changed table and one must never stand in for the other.
+ * A subclass that adds fields must override {@link #equals(Object)} to compare them after the base fields and
+ * {@link #hashCode()} to combine the base hash code with the same fields. It should also override
+ * {@link #edit()} and {@link #appendExtensions(StringBuilder, String)}.
  * The extra fields add metadata and never change identity, which stays with the table identifier.
  */
 public class TableImpl implements Table {
@@ -146,8 +147,10 @@ public class TableImpl implements Table {
         if (obj == this) {
             return true;
         }
-        if (obj instanceof Table) {
-            Table that = (Table) obj;
+        // Only the same class is equal, so equality stays symmetric with subclasses and a TableImpl
+        // and a subclass instance never stand in for each other
+        if (obj != null && obj.getClass() == getClass()) {
+            final Table that = (Table) obj;
             return this.id().equals(that.id())
                     && this.columns().equals(that.columns())
                     && this.primaryKeyColumnNames().equals(that.primaryKeyColumnNames())
