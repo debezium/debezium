@@ -190,6 +190,7 @@ public class TransactionMetadataIT extends AbstractAsyncEngineConnectorTest {
 
     @Test
     @FixFor("debezium/dbz#2353")
+    @SkipWhenDecoderPluginNameIsNot(value = SkipWhenDecoderPluginNameIsNot.DecoderPluginName.PGOUTPUT, reason = "The commit LSN is taken from the pgoutput BEGIN message (final_lsn); other decoders do not provide it")
     void transactionMetadataContainsCommitLsn() throws InterruptedException {
         // The commit LSN (pgoutput Begin.final_lsn) must be exposed on every event of a
         // transaction: on the BEGIN and END transaction-metadata records, and on both the
