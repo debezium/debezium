@@ -197,6 +197,8 @@ public class MongoDbContainer extends GenericContainer<MongoDbContainer> {
 
         withNetwork(builder.network);
         withNetworkAliases(name);
+        // This environment variable is necessary for 6.19+ host Linux machine ref: https://jira.mongodb.org/browse/SERVER-121912
+        withEnv("GLIBC_TUNABLES", "glibc.pthread.rseq=1");
     }
 
     @Override
