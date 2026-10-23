@@ -226,7 +226,7 @@ public class DefaultRecordWriter implements RecordWriter {
                 readFailure.addSuppressed(alterFailure);
                 throw readFailure;
             }
-            LOGGER.warn("Alter of table '{}' failed, rechecking schema before failing", collectionId.toFullIdentiferString(), alterFailure);
+            LOGGER.warn("Alter of table '{}' failed, rechecking schema before failing", collectionId.toFullIdentiferString());
             if (dialect.resolveMissingFields(record, currentTable).isEmpty()) {
                 return currentTable;
             }
