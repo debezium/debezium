@@ -108,14 +108,7 @@ public final class MathOps {
     }
 
     public static Number add(Short first, long second) {
-        long sum = first.longValue() + second;
-        if (Short.MAX_VALUE >= sum && Short.MIN_VALUE <= sum) {
-            return Short.valueOf((short) sum);
-        }
-        if (Integer.MAX_VALUE >= sum && Integer.MIN_VALUE <= sum) {
-            return Integer.valueOf((int) sum);
-        }
-        return Long.valueOf(sum);
+        return addLongs(first.longValue(), second);
     }
 
     public static Number add(Short first, float second) {
@@ -216,14 +209,7 @@ public final class MathOps {
     }
 
     public static Number add(Integer first, long second) {
-        long sum = first.longValue() + second;
-        if (Short.MAX_VALUE >= sum && Short.MIN_VALUE <= sum) {
-            return Short.valueOf((short) sum);
-        }
-        if (Integer.MAX_VALUE >= sum && Integer.MIN_VALUE <= sum) {
-            return Integer.valueOf((int) sum);
-        }
-        return Long.valueOf(sum);
+        return addLongs(first.longValue(), second);
     }
 
     public static Number add(Integer first, float second) {
@@ -302,36 +288,15 @@ public final class MathOps {
     }
 
     public static Number add(Long first, short second) {
-        long sum = first.longValue() + second;
-        if (Short.MAX_VALUE >= sum && Short.MIN_VALUE <= sum) {
-            return Short.valueOf((short) sum);
-        }
-        if (Integer.MAX_VALUE >= sum && Integer.MIN_VALUE <= sum) {
-            return Integer.valueOf((int) sum);
-        }
-        return Long.valueOf(sum);
+        return addLongs(first.longValue(), second);
     }
 
     public static Number add(Long first, int second) {
-        long sum = first.longValue() + second;
-        if (Short.MAX_VALUE >= sum && Short.MIN_VALUE <= sum) {
-            return Short.valueOf((short) sum);
-        }
-        if (Integer.MAX_VALUE >= sum && Integer.MIN_VALUE <= sum) {
-            return Integer.valueOf((int) sum);
-        }
-        return Long.valueOf(sum);
+        return addLongs(first.longValue(), second);
     }
 
     public static Number add(Long first, long second) {
-        long sum = first.longValue() + second;
-        if (Short.MAX_VALUE >= sum && Short.MIN_VALUE <= sum) {
-            return Short.valueOf((short) sum);
-        }
-        if (Integer.MAX_VALUE >= sum && Integer.MIN_VALUE <= sum) {
-            return Integer.valueOf((int) sum);
-        }
-        return Long.valueOf(sum);
+        return addLongs(first.longValue(), second);
     }
 
     public static Number add(Long first, float second) {
@@ -901,6 +866,24 @@ public final class MathOps {
     }
 
     private MathOps() {
+    }
+
+    private static Number addLongs(long first, long second) {
+        final long sum;
+        try {
+            sum = Math.addExact(first, second);
+        }
+        catch (ArithmeticException e) {
+            // The exact sum does not fit in a long, so widen to BigInteger instead of wrapping around
+            return BigInteger.valueOf(first).add(BigInteger.valueOf(second));
+        }
+        if (Short.MAX_VALUE >= sum && Short.MIN_VALUE <= sum) {
+            return Short.valueOf((short) sum);
+        }
+        if (Integer.MAX_VALUE >= sum && Integer.MIN_VALUE <= sum) {
+            return Integer.valueOf((int) sum);
+        }
+        return Long.valueOf(sum);
     }
 
     private static Number floatOrDouble(double sum) {
