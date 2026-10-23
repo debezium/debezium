@@ -14,7 +14,6 @@ import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.function.BiConsumer;
@@ -135,7 +134,7 @@ public class RocksDbTableMappingStorage<V> extends AbstractCachedTableMappingSto
         try {
             byte[] key = serializeTableId(tableId);
             byte[] value = db.get(key);
-            return value != null ? deserializeValue(tableId, value) : null;
+            return value != null ? deserializeValue(value) : null;
         }
         catch (RocksDBException | IOException | ClassNotFoundException e) {
             throw new DebeziumException("Failed to get value from RocksDb", e);
@@ -248,7 +247,7 @@ public class RocksDbTableMappingStorage<V> extends AbstractCachedTableMappingSto
             iterator.seekToFirst();
             while (iterator.isValid()) {
                 TableId tableId = deserializeTableId(iterator.key());
-                V value = deserializeValue(tableId, iterator.value());
+                V value = deserializeValue(iterator.value());
                 action.accept(tableId, value);
                 iterator.next();
             }
@@ -352,11 +351,11 @@ public class RocksDbTableMappingStorage<V> extends AbstractCachedTableMappingSto
      * Uses custom deserialization for Table and TableSchema objects.
      */
     @SuppressWarnings("unchecked")
-    private V deserializeValue(TableId tableId, byte[] bytes) throws IOException, ClassNotFoundException {
+    private V deserializeValue(byte[] bytes) throws IOException, ClassNotFoundException {
         // Check type marker in first byte
         if (bytes.length > 0) {
             if (bytes[0] == TABLE_JSON_MARKER) {
-                return (V) deserializeTableFromJson(tableId, bytes);
+                return (V) deserializeTableFromJson(bytes);
             }
             if (bytes[0] == TABLE_BINARY_MARKER) {
                 return (V) deserializeTable(bytes);
@@ -373,23 +372,46 @@ public class RocksDbTableMappingStorage<V> extends AbstractCachedTableMappingSto
     }
 
     /**
-     * Serializes a Table to bytes as the connector's JSON table document, prefixed with a type marker.
-     * The table identifier is not part of the value; it is the entry's key.
+     * Serializes a Table to bytes as a type marker, the table identifier and the connector's JSON table document.
+     * The identifier is stored in the value because the entry's key may be normalized to lower case when table
+     * identifiers are case-insensitive, and the table must come back with its original identifier.
      */
-    private byte[] serializeTableAsJson(io.debezium.relational.Table table) {
-        final byte[] json = DocumentWriter.defaultWriter().writeAsBytes(tableSerializer.toDocument(table));
-        final byte[] bytes = new byte[json.length + 1];
-        bytes[0] = TABLE_JSON_MARKER;
-        System.arraycopy(json, 0, bytes, 1, json.length);
-        return bytes;
+    private byte[] serializeTableAsJson(io.debezium.relational.Table table) throws IOException {
+        try (ByteArrayOutputStream baos = new ByteArrayOutputStream();
+                DataOutputStream dos = new DataOutputStream(baos)) {
+
+            dos.writeByte(TABLE_JSON_MARKER);
+
+            final var tableId = table.id();
+            writeNullableString(dos, tableId.catalog());
+            writeNullableString(dos, tableId.schema());
+            dos.writeUTF(tableId.table());
+
+            dos.write(DocumentWriter.defaultWriter().writeAsBytes(tableSerializer.toDocument(table)));
+            return baos.toByteArray();
+        }
     }
 
     /**
      * Deserializes a Table stored as a JSON table document, rebuilding it through the connector's metadata factory.
      */
-    private io.debezium.relational.Table deserializeTableFromJson(TableId tableId, byte[] bytes) throws IOException {
-        final var document = DocumentReader.defaultReader().read(Arrays.copyOfRange(bytes, 1, bytes.length));
-        return tableSerializer.fromDocument(tableId, document);
+    private io.debezium.relational.Table deserializeTableFromJson(byte[] bytes) throws IOException {
+        try (ByteArrayInputStream bais = new ByteArrayInputStream(bytes);
+                DataInputStream dis = new DataInputStream(bais)) {
+
+            final byte marker = dis.readByte();
+            if (marker != TABLE_JSON_MARKER) {
+                throw new IOException("Invalid table serialization marker: " + marker);
+            }
+
+            final String catalog = readNullableString(dis);
+            final String schema = readNullableString(dis);
+            final String table = dis.readUTF();
+            final var tableId = new TableId(catalog, schema, table);
+
+            final var document = DocumentReader.defaultReader().read(dis.readAllBytes());
+            return tableSerializer.fromDocument(tableId, document);
+        }
     }
 
     /**
