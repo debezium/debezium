@@ -180,12 +180,17 @@ public class CappedLogFileSessionSelector implements LogFileSessionSelector {
                 if (!lastThreadLog.isCurrent()) {
                     allThreadsMineOnline = false;
 
-                    // When last log is an archive, cap the upper boundary to the logs next scn, but
-                    // only if its next scn value is less than the current effective upper boundary.
-                    // This guarantees we get the smallest upper position across all threads.
-                    final Scn lastLogNextScn = lastThreadLog.getNextScn();
-                    if (lastLogNextScn.compareTo(effectiveUpperBoundary) < 0) {
-                        effectiveUpperBoundary = lastLogNextScn;
+                    // When last log is an archive, cap the upper boundary to the last SCN the log can
+                    // hold, but only if that is less than the current effective upper boundary. This
+                    // guarantees we get the smallest upper position across all threads.
+                    //
+                    // A log's next SCN is exclusive, being the first SCN of the thread's next log, which
+                    // is not in this window. Capping at the next SCN would let other threads return
+                    // changes at that SCN, moving the read position onto it and skipping this thread's
+                    // changes at that same SCN once its next log is mined.
+                    final Scn lastLogLastScn = lastThreadLog.getLastScn();
+                    if (lastLogLastScn.compareTo(effectiveUpperBoundary) < 0) {
+                        effectiveUpperBoundary = lastLogLastScn;
                     }
                 }
             }
@@ -342,7 +347,7 @@ public class CappedLogFileSessionSelector implements LogFileSessionSelector {
 
     private static boolean isWindowTopAtOrBelow(List<LogFile> windowLogs, Scn boundary) {
         final LogFile lastWindowLog = windowLogs.get(windowLogs.size() - 1);
-        return !lastWindowLog.isCurrent() && lastWindowLog.getNextScn().compareTo(boundary) <= 0;
+        return !lastWindowLog.isCurrent() && lastWindowLog.getLastScn().compareTo(boundary) <= 0;
     }
 
     private void recordEffectiveUpperBoundary(Scn effectiveUpperBoundary) {

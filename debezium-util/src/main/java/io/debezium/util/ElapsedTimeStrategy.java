@@ -187,19 +187,22 @@ public interface ElapsedTimeStrategy {
                 if (current >= nextTimestamp) {
                     do {
                         // Compute how long to delay ...
-                        long nextDelay = (long) (previousDelay * multiplier);
+                        final long nextDelay = (long) (previousDelay * multiplier);
                         if (nextDelay >= maxDelayInMilliseconds) {
                             previousDelay = maxDelayInMilliseconds;
                             // If we're not there yet, then we know the increment is linear from here ...
                             if (nextTimestamp < current) {
-                                long multiple = 1 + (current - nextTimestamp) / maxDelayInMilliseconds;
+                                final long multiple = 1 + (current - nextTimestamp) / maxDelayInMilliseconds;
                                 nextTimestamp += multiple * maxDelayInMilliseconds;
+                            }
+                            else {
+                                nextTimestamp += previousDelay;
                             }
                         }
                         else {
                             previousDelay = nextDelay;
+                            nextTimestamp += previousDelay;
                         }
-                        nextTimestamp += previousDelay;
                     } while (nextTimestamp <= current);
                     return true;
                 }

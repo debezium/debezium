@@ -37,6 +37,8 @@ import io.debezium.connector.base.QueueProviderService;
 import io.debezium.connector.common.BaseSourceTask;
 import io.debezium.connector.common.CdcSourceTaskContext;
 import io.debezium.connector.common.DebeziumHeaderProducer;
+import io.debezium.connector.mongodb.MongoDbConnectorConfig.CaptureScope;
+import io.debezium.connector.mongodb.MongoDbConnectorConfig.CursorPipelineOrder;
 import io.debezium.connector.mongodb.connection.ConnectionStrings;
 import io.debezium.connector.mongodb.connection.MongoDbConnection;
 import io.debezium.connector.mongodb.connection.MongoDbConnectionContext;
@@ -100,12 +102,27 @@ public final class MongoDbConnectorTask extends BaseSourceTask<MongoDbPartition,
 
     @Override
     public ChangeEventSourceCoordinator<MongoDbPartition, MongoDbOffsetContext> start(Configuration config) {
+        try {
+            return startTask(config);
+        }
+        catch (RuntimeException | Error initializationException) {
+            try {
+                closeResources();
+            }
+            catch (RuntimeException | Error resourceReleasingException) {
+                initializationException.addSuppressed(resourceReleasingException);
+            }
+            throw initializationException;
+        }
+    }
+
+    private ChangeEventSourceCoordinator<MongoDbPartition, MongoDbOffsetContext> startTask(Configuration config) {
         final MongoDbConnectorConfig connectorConfig = new MongoDbConnectorConfig(config);
         final SchemaNameAdjuster schemaNameAdjuster = connectorConfig.schemaNameAdjuster();
 
         this.taskName = "task" + config.getInteger(MongoDbConnectorConfig.TASK_ID);
 
-        this.connectionContext = new MongoDbConnectionContext(config);
+        this.connectionContext = taskContext.getConnectionContext();
 
         final Schema structSchema = connectorConfig.getSourceInfoStructMaker().schema();
         this.schema = new MongoDbSchema(connectorConfig, taskContext, connectorConfig.getTopicNamingStrategy(MongoDbConnectorConfig.TOPIC_NAMING_STRATEGY),
@@ -117,6 +134,19 @@ public final class MongoDbConnectorTask extends BaseSourceTask<MongoDbPartition,
         PreviousContext previousLogContext = taskContext.configureLoggingContext(taskName);
 
         try {
+            final var captureScope = connectorConfig.getCaptureScope();
+            if ((connectorConfig.getCaptureModePreImage().isRequired() || connectorConfig.getCaptureModePostImage().isRequired())
+                    && (captureScope == CaptureScope.DEPLOYMENT || captureScope == CaptureScope.DATABASE)
+                    && connectorConfig.getCursorPipelineOrder() == CursorPipelineOrder.USER_FIRST
+                    && !taskContext.getFilters().getConfig().getUserPipeline().getStages().isEmpty()) {
+                // User stages run before the namespace filters. MongoDB can check required images before these
+                // filters remove excluded events, including when validating a saved resume token.
+                LOGGER.warn("Required images are enabled with cursor.pipeline.order=user_first and capture.scope={}. "
+                        + "Events excluded by the namespace filters can still cause missing-image errors. "
+                        + "Ensure that required images are recorded and retained within the change stream scope, "
+                        + "or consider capture.scope=collection or cursor.pipeline.order=internal_first.", captureScope.getValue());
+            }
+
             // Service providers
             registerServiceProviders(connectorConfig.getServiceRegistry());
 
@@ -162,15 +192,18 @@ public final class MongoDbConnectorTask extends BaseSourceTask<MongoDbPartition,
                     signalProcessor,
                     connectorConfig.getServiceRegistry().tryGetService(DebeziumHeaderProducer.class));
 
-            validate(connectorConfig, MongoDbConnections.create(config, dispatcher, previousOffsets.getTheOnlyPartition()), previousOffsets,
-                    snapshotterService.getSnapshotter());
+            try (var connection = MongoDbConnections.create(connectionContext, dispatcher, previousOffsets.getTheOnlyPartition())) {
+                validate(connectorConfig, connection, previousOffsets, snapshotterService.getSnapshotter());
+            }
 
             // Validate guardrail limits for captured collections to prevent loading excessive collection schemas into memory
             if (connectorConfig.getGuardrailCollectionsMax() <= 0) {
                 LOGGER.info("Guardrail validation skipped");
             }
             else {
-                validateGuardrailLimits(connectorConfig, MongoDbConnections.create(config, dispatcher, previousOffsets.getTheOnlyPartition()));
+                try (var connection = MongoDbConnections.create(connectionContext, dispatcher, previousOffsets.getTheOnlyPartition())) {
+                    validateGuardrailLimits(connectorConfig, connection);
+                }
             }
 
             NotificationService<MongoDbPartition, MongoDbOffsetContext> notificationService = new NotificationService<>(getNotificationChannels(),
@@ -289,16 +322,24 @@ public final class MongoDbConnectorTask extends BaseSourceTask<MongoDbPartition,
     public void doStop() {
         PreviousContext previousLogContext = this.taskContext.configureLoggingContext(taskName);
         try {
-            if (schema != null) {
-                schema.close();
-            }
+            closeResources();
+        }
+        finally {
+            previousLogContext.restore();
+        }
+    }
 
+    @SuppressWarnings("try")
+    private void closeResources() {
+        try (var ownedContext = taskContext; var ownedSchema = schema) {
             if (queue != null) {
                 queue.close();
             }
         }
         finally {
-            previousLogContext.restore();
+            schema = null;
+            queue = null;
+            connectionContext = null;
         }
     }
 
@@ -377,6 +418,9 @@ public final class MongoDbConnectorTask extends BaseSourceTask<MongoDbPartition,
     // authentication/authorization failures: those are permanent misconfigurations that would otherwise spin on
     // every restart until retries are exhausted (cf. debezium/dbz#2139).
     private static boolean isCommunicationFailure(Throwable throwable) {
+        if (MongoUtils.isRequiredImageMissing(throwable)) {
+            return false;
+        }
         boolean communicationFailure = false;
         for (Throwable cause = throwable; cause != null; cause = cause.getCause()) {
             if (isAuthenticationFailure(cause)) {

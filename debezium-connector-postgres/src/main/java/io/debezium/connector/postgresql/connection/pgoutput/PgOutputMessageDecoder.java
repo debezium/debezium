@@ -7,9 +7,8 @@ package io.debezium.connector.postgresql.connection.pgoutput;
 
 import static java.util.stream.Collectors.toMap;
 
-import java.io.ByteArrayOutputStream;
+import java.nio.BufferUnderflowException;
 import java.nio.ByteBuffer;
-import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.sql.DatabaseMetaData;
 import java.sql.SQLException;
@@ -150,7 +149,13 @@ public class PgOutputMessageDecoder extends AbstractMessageDecoder {
             if (type == MessageType.LOGICAL_DECODING_MESSAGE && walPosition.skipProcessedLogicalMessage(lastReceivedLsn)) {
                 return true;
             }
-            final boolean candidateForSkipping = super.shouldMessageBeSkipped(buffer, lastReceivedLsn, startLsn, walPosition);
+            // BEGIN, COMMIT, RELATION, ORIGIN and logical decoding messages are not events
+            // lsn_events_processed counts, so they must not use up a skip meant for the
+            // already-processed rows at the stored LSN.
+            final boolean candidateForSkipping = switch (type) {
+                case BEGIN, COMMIT, RELATION, ORIGIN, LOGICAL_DECODING_MESSAGE -> walPosition.skipMessage(lastReceivedLsn, false);
+                default -> super.shouldMessageBeSkipped(buffer, lastReceivedLsn, startLsn, walPosition);
+            };
             switch (type) {
                 case COMMIT:
                 case BEGIN:
@@ -721,21 +726,28 @@ public class PgOutputMessageDecoder extends AbstractMessageDecoder {
     /**
      * Reads the replication stream up to the next null-terminator byte and returns the contents as a string.
      *
-     * <p>This method uses {@link ByteArrayOutputStream} which starts with a 32-byte internal buffer
-     * and grows by doubling. It is intended for short protocol-level identifiers (schema, table,
-     * column names, prefixes) and should not be used for reading column <em>values</em>, where
-     * arbitrarily large payloads would cause excessive buffer copying and memory overhead.
+     * <p>This method capture current buffer position, then it scans the buffer for a byte of value 0. It creates a string directy from
+     * the buffer underlying array using offset = arrayOffset + captured positon and a length
+     * of NULL byte position - original position - 1 (for the null byte).
+     *
+     * <p>The method doesn't copy the data into any intermediate buffers, the only data copying will happen inside {@code new String()}.
      *
      * @param buffer The replication stream buffer
      * @return string read from the replication stream
      */
     private static String readString(ByteBuffer buffer) {
-        ByteArrayOutputStream baos = new ByteArrayOutputStream();
-        byte b;
-        while ((b = buffer.get()) != 0) {
-            baos.write(b);
+        requireHeapBuffer(buffer);
+
+        final var position = buffer.position();
+
+        while (buffer.get() != 0) {
+            // Scan to a null terminator; get() throws BufferedUnderflowException if we reach the end of the buffer and null was not found
         }
-        return baos.toString(StandardCharsets.UTF_8);
+
+        return new String(buffer.array(),
+                buffer.arrayOffset() + position,
+                buffer.position() - position - 1,
+                StandardCharsets.UTF_8);
     }
 
     /**
@@ -745,10 +757,28 @@ public class PgOutputMessageDecoder extends AbstractMessageDecoder {
      * @return the column value as a string read from the replication stream
      */
     private static String readColumnValueAsString(ByteBuffer buffer) {
-        int length = buffer.getInt();
-        byte[] value = new byte[length];
-        buffer.get(value, 0, length);
-        return new String(value, Charset.forName("UTF-8"));
+        requireHeapBuffer(buffer);
+
+        final var length = buffer.getInt();
+        if (length < 0 || length > buffer.remaining()) {
+            throw new BufferUnderflowException();
+        }
+
+        final var value = new String(buffer.array(),
+                buffer.arrayOffset() + buffer.position(),
+                length,
+                StandardCharsets.UTF_8);
+        buffer.position(buffer.position() + length);
+        return value;
+    }
+
+    private static void requireHeapBuffer(ByteBuffer buffer) {
+        // Postgres JDBC driver generally returns heap byte buffers.
+        // This check is here to assert in case a driver ever changes behavior.
+        if (!buffer.hasArray()) {
+            throw new DebeziumException("pgoutput decoding requires a heap ByteBuffer, but the driver returned "
+                    + buffer.getClass().getName());
+        }
     }
 
     /**
@@ -768,8 +798,11 @@ public class PgOutputMessageDecoder extends AbstractMessageDecoder {
 
             final io.debezium.relational.Column column = table.columns().get(i);
             final String columnName = column.name();
-            final String typeName = column.typeName();
-            final PostgresType columnType = typeRegistry.get(table.id().schema(), typeName);
+            // Resolve the column's type by its OID, which the relation message established as the
+            // authoritative identity, rather than by (table schema + unqualified type name). A name-based
+            // lookup confuses types that share an unqualified name across schemas: a cross-schema domain
+            // such as oracle.date would fall back to pg_catalog.date and parse its value as the wrong type.
+            final PostgresType columnType = typeRegistry.get(column.nativeType());
             final String typeExpression = column.typeExpression();
             final boolean optional = column.isOptional();
 

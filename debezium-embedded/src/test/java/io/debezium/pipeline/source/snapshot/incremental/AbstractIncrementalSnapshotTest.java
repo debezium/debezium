@@ -48,6 +48,7 @@ import io.debezium.junit.EqualityCheck;
 import io.debezium.junit.SkipWhenConnectorUnderTest;
 import io.debezium.junit.SkipWhenConnectorUnderTest.Connector;
 import io.debezium.junit.logging.LogInterceptor;
+import io.debezium.pipeline.notification.IncrementalSnapshotNotificationService;
 import io.debezium.pipeline.notification.channels.SinkNotificationChannel;
 import io.debezium.pipeline.signal.actions.snapshotting.StopSnapshot;
 import io.debezium.util.Testing;
@@ -1237,6 +1238,49 @@ public abstract class AbstractIncrementalSnapshotTest<T extends SourceConnector>
         }
     }
 
+    @Test
+    @FixFor("debezium/dbz#1339")
+    public void stoppingSingleCollectionShouldReportAbortedWithSignalId() throws Exception {
+        // We will use chunk size of 1 to have very small batches to guarantee that when we stop
+        // we are still within the incremental snapshot rather than it being performed with one
+        // round trip to the database
+        populateTable();
+        // Started with expectNoRecords = false: with the sink channel enabled the connector emits a
+        // notification as soon as it starts, so assertNoRecordsToConsume() would fail.
+        startConnector(x -> additionalConfiguration().apply(x)
+                .with(CommonConnectorConfig.NOTIFICATION_ENABLED_CHANNELS, "sink")
+                .with(SinkNotificationChannel.NOTIFICATION_TOPIC, "io.debezium.notification"),
+                loggingCompletion(), false);
+
+        waitForStreamingRunning(connector(), server(), getStreamingNamespace(), task());
+
+        sendAdHocSnapshotSignal();
+
+        // Wait until the snapshot emits data, so the collection is the current one when the stop arrives
+        consumeRecordsByTopicUntil((recordsConsumed, record) -> topicName().equals(record.topic()));
+
+        sendAdHocSnapshotStopSignal(tableDataCollectionId());
+
+        final SourceRecords sourceRecords = consumeRecordsByTopicUntil(incrementalSnapshotAborted());
+
+        final List<Struct> notifications = sourceRecords.recordsForTopic("io.debezium.notification").stream()
+                .map(s -> ((Struct) s.value()))
+                .filter(s -> s.getString("aggregate_type").equals(IncrementalSnapshotNotificationService.INCREMENTAL_SNAPSHOT))
+                .toList();
+
+        // A snapshot that was stopped must not also report itself as completed
+        assertThat(notifications).extracting(s -> s.getString("type"))
+                .contains("ABORTED")
+                .doesNotContain("COMPLETED");
+
+        final Struct abortedNotification = notifications.stream()
+                .filter(s -> s.getString("type").equals("ABORTED"))
+                .findFirst().get();
+
+        // The correlation id comes from the signal that started the snapshot, not from the one that stopped it
+        assertThat(abortedNotification.getString("id")).isEqualTo("ad-hoc");
+    }
+
     private void assertOpenCloseEventCount(JdbcConnection.ResultSetConsumer consumer) throws SQLException {
         try (JdbcConnection connection = databaseConnection()) {
             connection.query("SELECT count(id) from " + signalTableName() + " where type='snapshot-window-close'", consumer);
@@ -1268,6 +1312,12 @@ public abstract class AbstractIncrementalSnapshotTest<T extends SourceConnector>
         if (notificationRecords != null) {
             notifications.addAll(notificationRecords);
         }
+    }
+
+    private static BiPredicate<Integer, SourceRecord> incrementalSnapshotAborted() {
+        return (recordsConsumed, record) -> record.topic().equals("io.debezium.notification") &&
+                ((Struct) record.value()).getString("aggregate_type").equals("Incremental Snapshot") &&
+                ((Struct) record.value()).getString("type").equals("ABORTED");
     }
 
     private void assertCorrectIncrementalSnapshotNotification(List<SourceRecord> notifications) {

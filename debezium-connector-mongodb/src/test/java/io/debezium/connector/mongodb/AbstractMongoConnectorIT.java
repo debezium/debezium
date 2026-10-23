@@ -17,6 +17,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.ServiceLoader;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
 
@@ -26,6 +27,7 @@ import javax.management.MalformedObjectNameException;
 import javax.management.ObjectName;
 
 import org.awaitility.Awaitility;
+import org.bson.BsonDocument;
 import org.bson.Document;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.AfterEach;
@@ -33,12 +35,14 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 
 import com.mongodb.client.ClientSession;
+import com.mongodb.client.MongoChangeStreamCursor;
 import com.mongodb.client.MongoClient;
 import com.mongodb.client.MongoCollection;
 import com.mongodb.client.MongoCursor;
 import com.mongodb.client.MongoDatabase;
 import com.mongodb.client.MongoIterable;
 import com.mongodb.client.model.InsertOneOptions;
+import com.mongodb.client.model.changestream.ChangeStreamDocument;
 
 import io.debezium.config.Configuration;
 import io.debezium.connector.mongodb.junit.MongoDbDatabaseProvider;
@@ -285,6 +289,17 @@ public abstract class AbstractMongoConnectorIT extends AbstractAsyncEngineConnec
 
     protected MongoClient connect() {
         return TestHelper.connect(mongo);
+    }
+
+    protected ChangeStreamDocument<BsonDocument> readChangeStreamEvent(MongoChangeStreamCursor<ChangeStreamDocument<BsonDocument>> cursor) {
+        final var event = new AtomicReference<ChangeStreamDocument<BsonDocument>>();
+        Awaitility.await("Receiving a change stream event")
+                .atMost(waitTimeForRecords() * 30L, TimeUnit.SECONDS)
+                .until(() -> {
+                    event.set(cursor.tryNext());
+                    return event.get() != null;
+                });
+        return event.get();
     }
 
     private static boolean collectionExists(MongoDatabase database, String collectionName) {

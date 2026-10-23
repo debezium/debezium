@@ -588,9 +588,10 @@ public class SqlServerConnectorConfig extends HistorizedRelationalDatabaseConnec
             applicationIntent = config.getString(DATABASE_CONFIG_PREFIX + "applicationIntent");
         }
         this.readOnlyDatabaseConnection = READ_ONLY_INTENT.equals(applicationIntent);
-        if (readOnlyDatabaseConnection) {
+        if (readOnlyDatabaseConnection && !config.hasKey(SNAPSHOT_ISOLATION_MODE)) {
             this.snapshotIsolationMode = SnapshotIsolationMode.SNAPSHOT;
-            LOGGER.info("JDBC connection has set applicationIntent = ReadOnly, switching snapshot isolation mode to {}", SnapshotIsolationMode.SNAPSHOT.name());
+            LOGGER.info("JDBC connection has set applicationIntent = ReadOnly and no snapshot isolation mode is configured, defaulting to {}",
+                    SnapshotIsolationMode.SNAPSHOT.name());
         }
         else {
             this.snapshotIsolationMode = SnapshotIsolationMode.parse(config.getString(SNAPSHOT_ISOLATION_MODE), SNAPSHOT_ISOLATION_MODE.defaultValueAsString());
@@ -723,8 +724,13 @@ public class SqlServerConnectorConfig extends HistorizedRelationalDatabaseConnec
         return new HistoryRecordComparator() {
             @Override
             protected boolean isPositionAtOrBefore(Document recorded, Document desired) {
-                return Lsn.valueOf(recorded.getString(SourceInfo.CHANGE_LSN_KEY))
-                        .compareTo(Lsn.valueOf(desired.getString(SourceInfo.CHANGE_LSN_KEY))) < 1;
+                final Lsn recordedChangeLsn = Lsn.valueOf(recorded.getString(SourceInfo.CHANGE_LSN_KEY));
+                final Lsn desiredChangeLsn = Lsn.valueOf(desired.getString(SourceInfo.CHANGE_LSN_KEY));
+                if (!recordedChangeLsn.isAvailable() || !desiredChangeLsn.isAvailable()) {
+                    return Lsn.valueOf(recorded.getString(SourceInfo.COMMIT_LSN_KEY))
+                            .compareTo(Lsn.valueOf(desired.getString(SourceInfo.COMMIT_LSN_KEY))) < 1;
+                }
+                return recordedChangeLsn.compareTo(desiredChangeLsn) < 1;
             }
         };
     }

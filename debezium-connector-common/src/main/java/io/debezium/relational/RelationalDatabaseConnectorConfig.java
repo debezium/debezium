@@ -40,6 +40,7 @@ import io.debezium.relational.Tables.ColumnNameFilterFactory;
 import io.debezium.relational.Tables.TableFilter;
 import io.debezium.schema.FieldNameSelector;
 import io.debezium.schema.FieldNameSelector.FieldNamer;
+import io.debezium.service.spi.InstanceResolver;
 import io.debezium.spi.schema.DataCollectionId;
 import io.debezium.util.Strings;
 
@@ -584,6 +585,7 @@ public abstract class RelationalDatabaseConnectorConfig extends CommonConnectorC
     private final TemporalPrecisionMode temporalPrecisionMode;
     private final KeyMapper keyMapper;
     private final TableIdToStringMapper tableIdMapper;
+    private final boolean useCatalogBeforeSchema;
     private final JdbcConfiguration jdbcConfig;
     private final String heartbeatActionQuery;
     private final FieldNamer<Column> fieldNamer;
@@ -597,6 +599,7 @@ public abstract class RelationalDatabaseConnectorConfig extends CommonConnectorC
         this.temporalPrecisionMode = TemporalPrecisionMode.parse(config.getString(TIME_PRECISION_MODE));
         this.keyMapper = CustomKeyMapper.getInstance(config.getString(MSG_KEY_COLUMNS), tableIdMapper);
         this.tableIdMapper = tableIdMapper;
+        this.useCatalogBeforeSchema = useCatalogBeforeSchema;
 
         this.jdbcConfig = JdbcConfiguration.adapt(
                 config.subset(ConfigurationNames.DATABASE_CONFIG_PREFIX, true).merge(config.subset(DRIVER_CONFIG_PREFIX, true)));
@@ -723,6 +726,13 @@ public abstract class RelationalDatabaseConnectorConfig extends CommonConnectorC
         return tableIdMapper;
     }
 
+    /**
+     * Whether the first of two parts of a table id is the catalog rather than the schema.
+     */
+    public boolean useCatalogBeforeSchema() {
+        return useCatalogBeforeSchema;
+    }
+
     private static int validateTableExcludeList(Configuration config, Field field, ValidationOutput problems) {
         return ConnectorConfigValidationHelper.validateExcludeField(config, TABLE_INCLUDE_LIST, TABLE_EXCLUDE_LIST, problems);
     }
@@ -809,7 +819,8 @@ public abstract class RelationalDatabaseConnectorConfig extends CommonConnectorC
      */
     @SuppressWarnings("unchecked")
     public TableMappingStorage<TableSchema> createSchemaStorage(boolean tableIdCaseInsensitive) {
-        TableMappingStorage<TableSchema> storage = getConfig().getInstance(SCHEMA_STORAGE_CLASS, TableMappingStorage.class);
+        TableMappingStorage<TableSchema> storage = serviceRegistry.getService(InstanceResolver.class)
+                .resolve(TableMappingStorage.class, SCHEMA_STORAGE_CLASS.name(), () -> getConfig().getInstance(SCHEMA_STORAGE_CLASS, TableMappingStorage.class));
         storage.configure(this, tableIdCaseInsensitive, TableMappingStorage.Type.SCHEMAS);
         return storage;
     }
@@ -822,7 +833,8 @@ public abstract class RelationalDatabaseConnectorConfig extends CommonConnectorC
      */
     @SuppressWarnings("unchecked")
     public TableMappingStorage<Table> createTableStorage(boolean tableIdCaseInsensitive) {
-        TableMappingStorage<Table> storage = getConfig().getInstance(TABLE_STORAGE_CLASS, TableMappingStorage.class);
+        TableMappingStorage<Table> storage = serviceRegistry.getService(InstanceResolver.class)
+                .resolve(TableMappingStorage.class, TABLE_STORAGE_CLASS.name(), () -> getConfig().getInstance(TABLE_STORAGE_CLASS, TableMappingStorage.class));
         storage.configure(this, tableIdCaseInsensitive, TableMappingStorage.Type.TABLES);
         return storage;
     }

@@ -19,7 +19,7 @@ public class InformixContainer extends JdbcDatabaseContainer<InformixContainer> 
     public static final String DOCKER_IMAGE = parameterWithDefault("test.docker.image.informix", "quay.io/rh_integration/dbz-informix:14");
     private static final String INFORMIX_USERNAME = parameterWithDefault("test.database.informix.username", "informix");
     private static final String INFORMIX_PASSWORD = parameterWithDefault("test.database.informix.password", "in4mix");
-    public static final String INFORMIX_DBNAME = parameterWithDefault("test.database.informix.dbz.dbname", "testdb");
+    public static final String INFORMIX_DBNAME = parameterWithDefault("test.database.informix.dbname", "testdb");
 
     public static final int INFORMIX_PORT = 9088;
     private static final int INFORMIX_DEFAULT_STARTUP_TIMEOUT_SECONDS = 240;

@@ -7,7 +7,6 @@ package io.debezium.testing.system.tools.registry.builders;
 
 import static io.debezium.testing.system.tools.ConfigProperties.APICURIO_TLS_ENABLED;
 import static io.debezium.testing.system.tools.kafka.builders.FabricKafkaConnectBuilder.KAFKA_CERT_SECRET;
-import static io.debezium.testing.system.tools.kafka.builders.FabricKafkaConnectBuilder.KAFKA_CLIENT_CERT_SECRET;
 
 import io.apicurio.registry.operator.api.v1.ApicurioRegistry3;
 import io.apicurio.registry.operator.api.v1.spec.KafkaSqlTLSSpec;
@@ -51,11 +50,13 @@ public class FabricApicurioBuilder {
     }
 
     public FabricApicurioBuilder withTls() {
+        // The Kafka listener is TLS-encrypted only (no client authentication), so Apicurio needs just a
+        // truststore to verify the broker's server certificate.
         KafkaSqlTLSSpec tlsSpec = KafkaSqlTLSSpec.builder()
-                .keystoreSecretRef(SecretKeyRef.builder()
-                        .name(KAFKA_CLIENT_CERT_SECRET)
-                        .build())
                 .truststoreSecretRef(SecretKeyRef.builder()
+                        .name(KAFKA_CERT_SECRET)
+                        .build())
+                .truststorePasswordSecretRef(SecretKeyRef.builder()
                         .name(KAFKA_CERT_SECRET)
                         .build())
                 .build();

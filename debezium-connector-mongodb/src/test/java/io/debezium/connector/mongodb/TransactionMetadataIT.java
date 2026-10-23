@@ -9,11 +9,14 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import java.util.List;
 
+import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceRecord;
+import org.bson.BsonDocument;
 import org.bson.Document;
 import org.junit.jupiter.api.Test;
 
 import io.debezium.connector.mongodb.MongoDbConnectorConfig.SnapshotMode;
+import io.debezium.data.Envelope;
 import io.debezium.doc.FixFor;
 import io.debezium.schema.AbstractTopicNamingStrategy;
 import io.debezium.util.Collect;
@@ -61,6 +64,27 @@ public class TransactionMetadataIT extends AbstractMongoConnectorIT {
         final List<SourceRecord> txs = records.recordsForTopic("mongo1.transaction");
         assertThat(c1s).hasSize(7);
         assertThat(txs).hasSize(2);
+        assertThat(c1s).allSatisfy(record -> {
+            final var source = ((Struct) record.value()).getStruct(Envelope.FieldName.SOURCE);
+            final var payloadToken = BsonDocument.parse(source.getString(SourceInfo.RESUME_TOKEN));
+            final var offsetToken = ResumeTokens.fromBase64((String) record.sourceOffset().get(SourceInfo.RESUME_TOKEN));
+            assertThat(payloadToken).isEqualTo(offsetToken);
+        });
+
+        // The six writes in the transaction share a timestamp, but each has its own resume token.
+        final List<SourceRecord> transactionRecords = c1s.subList(0, documentsToInsert.size());
+        final var firstOffset = transactionRecords.get(0).sourceOffset();
+        final var transactionTimestamp = firstOffset.get(SourceInfo.TIMESTAMP);
+        final var transactionOrder = firstOffset.get(SourceInfo.ORDER);
+        assertThat(transactionTimestamp).isNotNull();
+        assertThat(transactionOrder).isNotNull();
+        assertThat(transactionRecords.stream()
+                .map(record -> ((Struct) record.value()).getStruct(Envelope.FieldName.SOURCE).getString(SourceInfo.RESUME_TOKEN)))
+                .doesNotHaveDuplicates();
+        assertThat(transactionRecords).allSatisfy(record -> {
+            assertThat(record.sourceOffset().get(SourceInfo.TIMESTAMP)).isEqualTo(transactionTimestamp);
+            assertThat(record.sourceOffset().get(SourceInfo.ORDER)).isEqualTo(transactionOrder);
+        });
 
         final List<SourceRecord> all = records.allRecordsInOrder();
         final String txId1 = assertBeginTransaction(all.get(0));

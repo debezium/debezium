@@ -5,6 +5,7 @@
  */
 package io.debezium.connector.mongodb;
 
+import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.function.Consumer;
@@ -13,6 +14,7 @@ import java.util.function.Predicate;
 import org.bson.BsonDocument;
 import org.bson.BsonTimestamp;
 import org.bson.Document;
+import org.bson.conversions.Bson;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -215,37 +217,55 @@ public class MongoUtils {
     public static ChangeStreamIterable<BsonDocument> openChangeStream(MongoClient client, MongoDbTaskContext taskContext) {
         var config = taskContext.getConfig();
         final ChangeStreamPipeline pipeline = new ChangeStreamPipelineFactory(config, taskContext.getFilters().getConfig()).create();
+        return openChangeStream(client, config, pipeline.getStages());
+    }
+
+    /**
+     * Opens a change stream scoped to the configured {@code capture.scope}/{@code capture.target}, using the
+     * given pipeline and applying the configured document options.
+     *
+     * @param client mongodb client
+     * @param config connector configuration
+     * @param pipeline aggregation pipeline stages to apply on top of the change stream
+     * @return change stream iterable
+     */
+    public static ChangeStreamIterable<BsonDocument> openChangeStream(MongoClient client, MongoDbConnectorConfig config, List<? extends Bson> pipeline) {
         final ChangeStreamIterable<BsonDocument> stream;
 
         // capture scope is database
         if (config.getCaptureScope() == MongoDbConnectorConfig.CaptureScope.DATABASE) {
             var database = config.getCaptureTarget().orElseThrow();
             LOGGER.info("Change stream is restricted to '{}' database", database);
-            stream = client.getDatabase(database).watch(pipeline.getStages(), BsonDocument.class);
+            stream = client.getDatabase(database).watch(pipeline, BsonDocument.class);
         }
         // capture scope is collection
         else if (config.getCaptureScope() == MongoDbConnectorConfig.CaptureScope.COLLECTION) {
-            var captureTarget = config.getCaptureTarget().orElseThrow();
-            var database = captureTarget.split("\\.")[0];
-            var collection = captureTarget.split("\\.")[1];
-            LOGGER.info("Change stream is restricted to '{}' collection", collection);
-            stream = client.getDatabase(database).getCollection(collection).watch(pipeline.getStages(), BsonDocument.class);
+            var collectionId = CollectionId.parse(config.getCaptureTarget().orElseThrow());
+            LOGGER.info("Change stream is restricted to '{}' collection", collectionId.name());
+            stream = client.getDatabase(collectionId.dbName()).getCollection(collectionId.name()).watch(pipeline, BsonDocument.class);
         }
         // capture scope is deployment
         else {
-            stream = client.watch(pipeline.getStages(), BsonDocument.class);
+            stream = client.watch(pipeline, BsonDocument.class);
         }
 
-        if (config.getCaptureMode().isFullUpdate()) {
-            if (config.getCaptureModeFullUpdateType().isPostImage()) {
-                stream.fullDocument(FullDocument.WHEN_AVAILABLE);
+        // An explicit zero would suppress documents in the initial aggregate response.
+        if (config.getQueryFetchSize() > 0) {
+            stream.batchSize(config.getQueryFetchSize());
+        }
+
+        final var postImageMode = config.getCaptureModePostImage();
+        if (postImageMode.isEnabled()) {
+            if (postImageMode.isPostImage()) {
+                stream.fullDocument(postImageMode.isRequired() ? FullDocument.REQUIRED : FullDocument.WHEN_AVAILABLE);
             }
             else {
                 stream.fullDocument(FullDocument.UPDATE_LOOKUP);
             }
         }
-        if (config.getCaptureMode().isIncludePreImage()) {
-            stream.fullDocumentBeforeChange(FullDocumentBeforeChange.WHEN_AVAILABLE);
+        final var preImageMode = config.getCaptureModePreImage();
+        if (preImageMode.isEnabled()) {
+            stream.fullDocumentBeforeChange(preImageMode.isRequired() ? FullDocumentBeforeChange.REQUIRED : FullDocumentBeforeChange.WHEN_AVAILABLE);
         }
         return stream;
     }
@@ -261,6 +281,42 @@ public class MongoUtils {
             result = database.runCommand(new Document("isMaster", 1), BsonDocument.class);
         }
         return result.getTimestamp("operationTime");
+    }
+
+    /**
+     * Detect missing required images in an exception or its causes. Reopening the stream or re-enabling
+     * image recording cannot restore these images.
+     *
+     * <p>The server reports NoMatchingDocument (47), which is also used by unrelated operations such as
+     * PersistentTaskStore.update (see the sources below). The code alone does not identify image errors.
+     *
+     * <p>In the linked MongoDB 6.0, 7.0 and 8.0 sources, the image error messages are English string literals
+     * with no locale-dependent selection. Their wording is not a stable API: the post-image message in
+     * 6.0.0 mentions update, delete and replace events, whereas 7.0.0 and 8.0.0 mention only update events.
+     * Match the shared image-specific fragment, allowing server/driver prefixes and event details to vary.
+     * Even this fragment could change in a future server version; keep the versioned message tests and
+     * real-server required-image tests when upgrading MongoDB.
+     *
+     * @param throwable the exception to inspect; may be null
+     * @return true if a cause has both the expected error code and required-image message fragment
+     * @see <a href="https://github.com/mongodb/mongo/blob/r8.0.0/src/mongo/base/error_codes.yml#L87">NoMatchingDocument error code</a>
+     * @see <a href="https://github.com/mongodb/mongo/blob/r8.0.0/src/mongo/db/persistent_task_store.h#L220">Unrelated use of NoMatchingDocument</a>
+     * @see <a href="https://github.com/mongodb/mongo/blob/r8.0.0/src/mongo/db/pipeline/document_source_change_stream_add_pre_image.cpp#L110">Pre-image error</a>
+     * @see <a href="https://github.com/mongodb/mongo/blob/r6.0.0/src/mongo/db/pipeline/document_source_change_stream_add_post_image.cpp#L100">MongoDB 6.0.0 post-image error</a>
+     * @see <a href="https://github.com/mongodb/mongo/blob/r7.0.0/src/mongo/db/pipeline/document_source_change_stream_add_post_image.cpp#L93">MongoDB 7.0.0 post-image error</a>
+     * @see <a href="https://github.com/mongodb/mongo/blob/r8.0.0/src/mongo/db/pipeline/document_source_change_stream_add_post_image.cpp#L109">MongoDB 8.0.0 post-image error</a>
+     */
+    public static boolean isRequiredImageMissing(Throwable throwable) {
+        for (Throwable cause = throwable; cause != null; cause = cause.getCause()) {
+            if (cause instanceof MongoException mongoException && mongoException.getCode() == 47) {
+                final var message = mongoException.getMessage();
+                if (message != null && (message.contains("Change stream was configured to require a pre-image")
+                        || message.contains("Change stream was configured to require a post-image"))) {
+                    return true;
+                }
+            }
+        }
+        return false;
     }
 
     private MongoUtils() {

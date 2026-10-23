@@ -305,6 +305,8 @@ public class UnbufferedLogMinerStreamingChangeEventSource extends AbstractLogMin
 
             clearSchemaChangeQueue();
 
+            dispatchHeartbeatEvent();
+
             return lastCommitScn;
         }
     }

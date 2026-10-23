@@ -36,6 +36,7 @@ Alfusainey Jallow
 Alisa Houskova
 Alvar Viana
 Alvar Viana Gomez
+Aly Ayman
 Aman Garg
 Amirmohammad Sadat Shokouhi
 Amit Sela
@@ -97,13 +98,16 @@ Auke van Leeuwen
 Avinash Vishwakarma
 Aviral Srivastava
 Aykut Farsak
+Ayodya Enhanayoan
 Aziza Kalmasova
 baabgai
 Babur Duisenov
+Bahaa Zaid
 Balint Bene
 Balázs Németh
 Balázs Sipos
 Barbara Lócsi
+Barnabas Kralik
 Barry LaFond
 Bartosz Miedlar
 battmush
@@ -152,6 +156,7 @@ Cheng Pan
 Chijioke Ibekwe
 Ching Tsai
 Chirag Kava
+chiselko6
 Choi Jang Ho
 Chris Baumbauer
 Chris Beard
@@ -192,6 +197,7 @@ Dana Stott
 Daniel Eriksson
 Daniel Petisme
 Daniele Licini
+Daniil Zabludovsky
 dario
 Dario Rodrigues
 Dave Charron
@@ -205,6 +211,7 @@ David Jerome
 David Leibovic
 David Remy
 David Seapy
+David Shubov
 David Szabo
 Davyd Eliosidze
 Dayron Perez Roldan
@@ -218,6 +225,7 @@ Dennis Campagna
 Dennis Persson
 Derek Moore
 Dhrubajyoti G
+Dilraj vyas
 dingqianwen
 Divyansh Agrawal
 Divyanshu Kumar
@@ -253,6 +261,7 @@ Erik Malm
 Erlend Hamnaberg
 Ethan Zou
 Eugene Abramchuk
+Evan Volgas
 Ewen Cheslack-Postava
 exgoya
 Ezer Karavani
@@ -268,6 +277,7 @@ Fatih Güçlü Akkaya
 Felix Eckhardt
 Filip Leski
 Fintan Bolton
+forestbupt
 Fr0z3Nn
 Frank Koornstra
 Frank Mormino
@@ -356,6 +366,7 @@ Jackey Zhang
 Jacob Barrieault
 Jacob Falzon
 Jacob Gminder
+Jaeyeon Park
 Jakub Cechacek
 Jakub Małek
 Jakub Zalas
@@ -364,6 +375,7 @@ James Johnston
 Jan Doms
 Jan Hendrik Dolling
 Jan Lieskovsky
+Jan Mohr
 Jan Uyttenhove
 Jan Werner
 Jan-Hendrik Dolling
@@ -374,6 +386,7 @@ Jason Schweier
 Jason Speck
 Javier Holguera
 Jean Vintache
+Jeongkyun An
 Jeremy Finzel
 Jeremy Ford
 Jeremy Vigny
@@ -416,8 +429,10 @@ Joseph Koshakow
 Josh Arenberg
 Josh Ribera
 Josh Stanfield
+Josip Vukoja
 José Felipe
 Joy Gao
+João Almeida
 Juan Antonio Pedraza
 Juan Fiallo
 Juanma Barea
@@ -440,6 +455,7 @@ Katsumi Miyajima
 Kaushik Iyer
 Kaustuv Chakrabarti
 Kavya Ramaiah
+kawata-t
 Kazuki MATSUDA / 松田一樹
 Keith Barber
 Keri Harris
@@ -452,6 +468,7 @@ Kosta Kostelnik
 Krizhan Mariampillai
 Krzysztof Grzechnik
 Kunal Bhatnagar
+Kurtis Ley
 Kyley Jex
 Lairen Hightower
 laoflch
@@ -558,6 +575,7 @@ Ming Luo
 Minh Son Nguyen
 Minjae Lee
 Mohamed El Shaer
+Mohamed Elkholy
 Mohamed Pudukulathan
 Mohammad Akhil
 Mohammad Yousuf Minhaj Zia
@@ -567,6 +585,7 @@ Moustapha Mahfoud
 moyq5
 Muhammad Sufyian
 My Lang Pangzi
+MyungJoo Song
 Nagasree Valaboju
 Nancy Xu
 Nansen
@@ -590,6 +609,7 @@ Nikolay Angelov
 Nils Hartmann
 Nir Levy
 Nishant Singh
+Niteesh Kumar Pandey
 Nitin Agarwal
 Nitin Chhabra
 Oladele Oluwaseun
@@ -764,6 +784,7 @@ Stephen Powis
 Steven Jenkins De Haro
 Steven Siahetiong
 Subodh Kant Chaturvedi
+Sudeep HM
 Sujal Shrestha
 Sumit Jha
 Sun Xiao Jian
@@ -848,6 +869,7 @@ Wu Zhenhua
 Xiang Qiu Min
 Xianming Zhou
 Xiao Fu
+Xiaochong(Eddy) Wei
 Xiaojian Sun
 Xiaolin Zhang
 Xiaopu Zhu
@@ -887,6 +909,7 @@ Zhongqiang Gong
 Zihan Dai
 Zongwen Li
 Zoran Regvart
+Éder Júlio Costa
 Ünal Sürmeli
 Đỗ Ngọc Sơn
 حمود سمبول

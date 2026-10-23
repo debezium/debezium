@@ -33,8 +33,8 @@ import io.debezium.data.Envelope;
  * Integration tests for {@link ZeroDateFallbackConverter}.
  *
  * <p>Verifies the converter's behavior across four scenarios over a fixture table {@code dt_full}
- * with 9 DATE/DATETIME/TIMESTAMP columns (no default / epoch default / non-epoch default) and 3
- * rows (real-1970 / zero-date / normal). Snapshot-only; streaming-path coverage is provided by
+ * with 15 DATE/DATETIME/TIMESTAMP columns (no default / epoch default / non-epoch default / null default / now default)
+ * and 3 rows (real-1970 / zero-date / normal). Snapshot-only; streaming-path coverage is provided by
  * {@code RowDeserializersTest} and the lambda input-type unit tests.
  *
  * @author minleejae
@@ -46,8 +46,8 @@ public abstract class BinlogZeroDateFallbackConverterIT<C extends SourceConnecto
     // Pre-computed wire-format constants used across all scenarios.
     private static final int EPOCH_DAYS_REAL_1970 = 0;
     private static final int EPOCH_DAYS_NORMAL = (int) LocalDate.parse("2024-06-15").toEpochDay();
-    private static final long EPOCH_MS_REAL_1970 = LocalDateTime.parse("1970-01-01T00:00:00").atZone(ZoneId.systemDefault()).toInstant().toEpochMilli();
-    private static final long EPOCH_MS_NORMAL = LocalDateTime.parse("2024-06-15T12:34:56").atZone(ZoneId.systemDefault()).toInstant().toEpochMilli();
+    private static final long EPOCH_MS_REAL_1970 = 0L;
+    private static final long EPOCH_MS_NORMAL = LocalDateTime.parse("2024-06-15T12:34:56").toInstant(ZoneOffset.UTC).toEpochMilli();
     private static final String ISO_REAL_1970 = "1970-01-02T00:00:00Z";
     private static final String ISO_NORMAL = "2024-06-15T12:34:56Z";
 
@@ -112,21 +112,41 @@ public abstract class BinlogZeroDateFallbackConverterIT<C extends SourceConnecto
         assertRow(recs, 2, "d_no_default", sentinelDays);
         assertRow(recs, 2, "d_epoch_default", sentinelDays);
         assertRow(recs, 2, "d_other_default", sentinelDays);
+        assertRow(recs, 2, "d_null_default", sentinelDays);
+        assertRow(recs, 2, "d_now_default", sentinelDays);
+
         assertRow(recs, 2, "dt_no_default", sentinelMs);
         assertRow(recs, 2, "dt_epoch_default", sentinelMs);
         assertRow(recs, 2, "dt_other_default", sentinelMs);
+        assertRow(recs, 2, "dt_null_default", sentinelMs);
+        assertRow(recs, 2, "dt_now_default", sentinelMs);
+
         assertRow(recs, 2, "ts_no_default", sentinelIso);
         assertRow(recs, 2, "ts_epoch_default", sentinelIso);
         assertRow(recs, 2, "ts_other_default", sentinelIso);
+        assertRow(recs, 2, "ts_null_default", sentinelIso);
+        assertRow(recs, 2, "ts_now_default", sentinelIso);
 
         // Real-1970 row: unchanged.
         assertRow(recs, 1, "d_no_default", EPOCH_DAYS_REAL_1970);
+        assertRow(recs, 1, "d_null_default", EPOCH_DAYS_REAL_1970);
+        assertRow(recs, 1, "d_now_default", EPOCH_DAYS_REAL_1970);
         assertRow(recs, 1, "dt_no_default", EPOCH_MS_REAL_1970);
+        assertRow(recs, 1, "dt_null_default", EPOCH_MS_REAL_1970);
+        assertRow(recs, 1, "dt_now_default", EPOCH_MS_REAL_1970);
         assertRow(recs, 1, "ts_no_default", ISO_REAL_1970);
+        assertRow(recs, 1, "ts_null_default", ISO_REAL_1970);
+        assertRow(recs, 1, "ts_now_default", ISO_REAL_1970);
         // Normal row: unchanged.
         assertRow(recs, 3, "d_no_default", EPOCH_DAYS_NORMAL);
+        assertRow(recs, 3, "d_null_default", EPOCH_DAYS_NORMAL);
+        assertRow(recs, 3, "d_now_default", EPOCH_DAYS_NORMAL);
         assertRow(recs, 3, "dt_no_default", EPOCH_MS_NORMAL);
+        assertRow(recs, 3, "dt_null_default", EPOCH_MS_NORMAL);
+        assertRow(recs, 3, "dt_now_default", EPOCH_MS_NORMAL);
         assertRow(recs, 3, "ts_no_default", ISO_NORMAL);
+        assertRow(recs, 3, "ts_null_default", ISO_NORMAL);
+        assertRow(recs, 3, "ts_now_default", ISO_NORMAL);
     }
 
     /**
@@ -211,32 +231,52 @@ public abstract class BinlogZeroDateFallbackConverterIT<C extends SourceConnecto
     private void assertScenarioDefault(List<SourceRecord> recs) {
         // All temporal columns are optional under the default NULL policy.
         for (String name : new String[]{
-                "d_no_default", "d_epoch_default", "d_other_default",
-                "dt_no_default", "dt_epoch_default", "dt_other_default",
-                "ts_no_default", "ts_epoch_default", "ts_other_default" }) {
+                "d_no_default", "d_epoch_default", "d_other_default", "d_null_default", "d_now_default",
+                "dt_no_default", "dt_epoch_default", "dt_other_default", "dt_null_default", "dt_now_default",
+                "ts_no_default", "ts_epoch_default", "ts_other_default", "ts_null_default", "ts_now_default" }) {
             assertSchemaOptional(recs, name, true);
         }
 
         // Real-1970 row (id=1): genuine values flow through, NOT replaced with NULL.
         assertRow(recs, 1, "d_no_default", EPOCH_DAYS_REAL_1970);
+        assertRow(recs, 1, "d_null_default", EPOCH_DAYS_REAL_1970);
+        assertRow(recs, 1, "d_now_default", EPOCH_DAYS_REAL_1970);
         assertRow(recs, 1, "dt_no_default", EPOCH_MS_REAL_1970);
+        assertRow(recs, 1, "dt_null_default", EPOCH_MS_REAL_1970);
+        assertRow(recs, 1, "dt_now_default", EPOCH_MS_REAL_1970);
         assertRow(recs, 1, "ts_no_default", ISO_REAL_1970);
+        assertRow(recs, 1, "ts_null_default", ISO_REAL_1970);
+        assertRow(recs, 1, "ts_now_default", ISO_REAL_1970);
 
         // Zero-date row (id=2): every temporal column emits null.
         assertRow(recs, 2, "d_no_default", null);
         assertRow(recs, 2, "d_epoch_default", null);
         assertRow(recs, 2, "d_other_default", null);
+        assertRow(recs, 2, "d_null_default", null);
+        assertRow(recs, 2, "d_now_default", null);
+
         assertRow(recs, 2, "dt_no_default", null);
         assertRow(recs, 2, "dt_epoch_default", null);
         assertRow(recs, 2, "dt_other_default", null);
+        assertRow(recs, 2, "dt_null_default", null);
+        assertRow(recs, 2, "dt_now_default", null);
+
         assertRow(recs, 2, "ts_no_default", null);
         assertRow(recs, 2, "ts_epoch_default", null);
         assertRow(recs, 2, "ts_other_default", null);
+        assertRow(recs, 2, "ts_null_default", null);
+        assertRow(recs, 2, "ts_now_default", null);
 
         // Normal row (id=3): genuine values unaffected.
         assertRow(recs, 3, "d_no_default", EPOCH_DAYS_NORMAL);
+        assertRow(recs, 3, "d_null_default", EPOCH_DAYS_NORMAL);
+        assertRow(recs, 3, "d_now_default", EPOCH_DAYS_NORMAL);
         assertRow(recs, 3, "dt_no_default", EPOCH_MS_NORMAL);
+        assertRow(recs, 3, "dt_null_default", EPOCH_MS_NORMAL);
+        assertRow(recs, 3, "dt_now_default", EPOCH_MS_NORMAL);
         assertRow(recs, 3, "ts_no_default", ISO_NORMAL);
+        assertRow(recs, 3, "ts_null_default", ISO_NORMAL);
+        assertRow(recs, 3, "ts_now_default", ISO_NORMAL);
     }
 
     private static void assertSchemaOptional(List<SourceRecord> recs, String fieldName, boolean expectedOptional) {

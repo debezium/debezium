@@ -24,8 +24,10 @@ import io.debezium.antlr.AntlrDdlParser;
 import io.debezium.antlr.AntlrDdlParserListener;
 import io.debezium.antlr.DataTypeResolver;
 import io.debezium.antlr.DataTypeResolver.DataTypeEntry;
+import io.debezium.connector.binlog.BinlogConnectorConfig.RealHandlingMode;
 import io.debezium.connector.binlog.charset.BinlogCharsetRegistry;
 import io.debezium.connector.binlog.jdbc.BinlogSystemVariables;
+import io.debezium.connector.binlog.util.StringLiteralParser;
 import io.debezium.connector.mysql.antlr.listener.legacy.MySqlAntlrDdlParserListener;
 import io.debezium.ddl.parser.mysql.legacy.MySqlLexer;
 import io.debezium.ddl.parser.mysql.legacy.MySqlParser;
@@ -50,7 +52,7 @@ public class MySqlPtAntlrDdlParser extends AntlrDdlParser<MySqlLexer, MySqlParse
     private final ConcurrentMap<String, String> charsetNameForDatabase = new ConcurrentHashMap<>();
     private final TableFilter tableFilter;
     private final BinlogCharsetRegistry charsetRegistry;
-    private final DataTypeResolver dataTypeResolver = initializeDataTypeResolver();
+    private final DataTypeResolver dataTypeResolver;
 
     @VisibleForTesting
     public MySqlPtAntlrDdlParser() {
@@ -64,10 +66,16 @@ public class MySqlPtAntlrDdlParser extends AntlrDdlParser<MySqlLexer, MySqlParse
 
     public MySqlPtAntlrDdlParser(boolean throwErrorsFromTreeWalk, boolean includeViews, boolean includeComments,
                                  TableFilter tableFilter, BinlogCharsetRegistry charsetRegistry) {
+        this(throwErrorsFromTreeWalk, includeViews, includeComments, tableFilter, charsetRegistry, RealHandlingMode.DOUBLE);
+    }
+
+    public MySqlPtAntlrDdlParser(boolean throwErrorsFromTreeWalk, boolean includeViews, boolean includeComments,
+                                 TableFilter tableFilter, BinlogCharsetRegistry charsetRegistry, RealHandlingMode realHandlingMode) {
         super(throwErrorsFromTreeWalk, includeViews, includeComments);
         systemVariables = new BinlogSystemVariables();
         this.tableFilter = tableFilter;
         this.charsetRegistry = charsetRegistry;
+        this.dataTypeResolver = initializeDataTypeResolver(realHandlingMode);
     }
 
     @Override
@@ -105,7 +113,7 @@ public class MySqlPtAntlrDdlParser extends AntlrDdlParser<MySqlLexer, MySqlParse
         return dataTypeResolver;
     }
 
-    private DataTypeResolver initializeDataTypeResolver() {
+    private DataTypeResolver initializeDataTypeResolver(RealHandlingMode realHandlingMode) {
         DataTypeResolver.Builder dataTypeResolverBuilder = new DataTypeResolver.Builder();
 
         dataTypeResolverBuilder.registerDataTypes(MySqlParser.StringDataTypeContext.class.getCanonicalName(), Arrays.asList(
@@ -163,7 +171,8 @@ public class MySqlPtAntlrDdlParser extends AntlrDdlParser<MySqlLexer, MySqlParse
                         .setSuffixTokens(MySqlParser.SIGNED, MySqlParser.UNSIGNED, MySqlParser.ZEROFILL),
                 new DataTypeEntry(Types.BIGINT, MySqlParser.INT8)
                         .setSuffixTokens(MySqlParser.SIGNED, MySqlParser.UNSIGNED, MySqlParser.ZEROFILL),
-                new DataTypeEntry(Types.REAL, MySqlParser.REAL)
+                // REAL defaults to DOUBLE, but can be mapped to FLOAT for REAL_AS_FLOAT compatibility.
+                new DataTypeEntry(realHandlingMode.asJdbcType(), MySqlParser.REAL)
                         .setSuffixTokens(MySqlParser.SIGNED, MySqlParser.UNSIGNED, MySqlParser.ZEROFILL),
                 new DataTypeEntry(Types.DOUBLE, MySqlParser.DOUBLE)
                         .setSuffixTokens(MySqlParser.PRECISION, MySqlParser.SIGNED, MySqlParser.UNSIGNED, MySqlParser.ZEROFILL),
@@ -426,6 +435,7 @@ public class MySqlPtAntlrDdlParser extends AntlrDdlParser<MySqlLexer, MySqlParse
      */
     public static List<String> extractEnumAndSetOptions(List<String> enumValues) {
         return enumValues.stream()
+                .map(literal -> StringLiteralParser.normalizeQuotes(literal, false))
                 .map(MySqlPtAntlrDdlParser::withoutQuotes)
                 .map(MySqlPtAntlrDdlParser::unescapeOption)
                 .collect(Collectors.toList());
@@ -454,13 +464,7 @@ public class MySqlPtAntlrDdlParser extends AntlrDdlParser<MySqlLexer, MySqlParse
             charsetName = withoutQuotes(charsetNode.getText());
         }
         else if (collationNode != null && collationNode.getText() != null) {
-            final String collationName = withoutQuotes(collationNode.getText()).toLowerCase();
-            for (int index = 0; index < charsetRegistry.getCharsetMapSize(); index++) {
-                if (collationName.equals(charsetRegistry.getCollationNameForCollationIndex(index))) {
-                    charsetName = charsetRegistry.getCharsetNameForCollationIndex(index);
-                    break;
-                }
-            }
+            charsetName = charsetRegistry.getCharsetNameForCollation(withoutQuotes(collationNode.getText()));
         }
         return charsetName;
     }

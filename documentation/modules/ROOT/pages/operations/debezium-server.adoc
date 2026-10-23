@@ -829,7 +829,7 @@ To use all available cores on given machine, set the placeholder value, `AVAILAB
 |1000
 |Maximum time, in milliseconds, that the engine allows for processing pending records after a task shutdown is called.
 
-|[[debezium-server-property-task-management-timeout.ms]]<<debezium-server-property-task-management-timeout.ms, `+task.management.timeout.ms+`>>
+|[[debezium-server-property-task-management-timeout-ms]]<<debezium-server-property-task-management-timeout-ms, `+task.management.timeout.ms+`>>
 |180,000 (3 min)
 |Time, in milliseconds, that the engine waits for a task's lifecycle management operations (starting and stopping) to complete.
 |===
@@ -1988,10 +1988,11 @@ This means that all Kafka producer https://kafka.apache.org/documentation/#produ
 At least `bootstrap.servers`, `key.serializer` and `value.serializer` properties must be provided. The `topic` is set by {prodname}.
 
 |[[kafka-producer-wait-message-delivery-timeout-ms]]<<kafka-producer-wait-message-delivery-timeout-ms, `debezium.sink.kafka.wait.message.delivery.timeout.ms`>>
-|`30000`
-|The maximum time, in milliseconds, that the server waits for a request to complete and return metadata for a record.
-The specified timeout also governs the interval that the server waits for Kafka to respond to a request.
-Set the value to `0` to disable the timeout.
+|`0`
+|The maximum time, in milliseconds, that the sink waits for a Kafka send to be confirmed as delivered.
+By default (`0`), the sink waits indefinitely and relies entirely on the underlying Kafka producer's own `delivery.timeout.ms` to bound and ultimately fail a stuck send.
+If set to a value greater than `0`, it should be greater than or equal to the effective `delivery.timeout.ms` of the producer, whether that is set explicitly via `debezium.sink.kafka.producer.delivery.timeout.ms` or left at its own default.
+A smaller value can cause the sink to report a delivery failure while the producer is still retrying the send in the background.
 |===
 
 // Type: reference
@@ -2606,6 +2607,61 @@ Use this option when you want to map the value of a specific static constant to 
 endif::community[]
 
 ifdef::community[]
+[id="debezium-server-elasticsearch-sink-configuration"]
+==== Elasticsearch
+
+The Elasticsearch sink writes change events as documents to Elasticsearch indices.
+It uses the xref:connectors/elasticsearch.adoc[{prodname} Elasticsearch connector], so the document identity, write methods, delete and truncate handling, mapping management, and bulk batching behave the same as when the connector runs in Kafka Connect.
+
+The sink consumes the {prodname} change event envelope directly, so the `debezium.format.key` and `debezium.format.value` settings do not affect the documents that it writes.
+
+[NOTE]
+====
+The Elasticsearch connector is an incubating feature.
+Its configuration properties and behavior may change in a future release.
+====
+
+[cols="35%a,10%a,55%a",options="header"]
+|===
+|Property
+|Default
+|Description
+
+|[[elasticsearch-type]]<<elasticsearch-type, `debezium.sink.type`>>
+|
+|Must be set to `elasticsearch`.
+
+|[[elasticsearch-props]]<<elasticsearch-props, `debezium.sink.elasticsearch.*`>>
+|
+|All Elasticsearch connector configuration properties can be set using the `debezium.sink.elasticsearch.` prefix.
+For the full list of available properties, including connection, authentication, and mapping options, see the xref:connectors/elasticsearch.adoc#elasticsearch-connector-properties[{prodname} Elasticsearch connector configuration properties].
+
+|===
+
+[IMPORTANT]
+====
+Although the Elasticsearch sink reuses the {prodname} Elasticsearch sink connector, {prodname} Server does not currently provide the same delivery guarantees that are available when running the connector in other runtimes such as Kafka Connect.
+In particular, the dead letter queue that the connector configures through the `errors.*` properties is a Kafka Connect feature.
+Under {prodname} Server a record that Elasticsearch rejects stops the server, so that no event is committed past a failed write.
+====
+
+.Example Elasticsearch sink configuration
+[source,properties]
+----
+debezium.sink.type=elasticsearch
+debezium.sink.elasticsearch.connection.url=http://localhost:9200
+debezium.sink.elasticsearch.connection.auth.mode=basic
+debezium.sink.elasticsearch.connection.username=elastic
+debezium.sink.elasticsearch.connection.password=changeme
+debezium.sink.elasticsearch.primary.key.mode=record_key
+debezium.sink.elasticsearch.write.method=upsert
+debezium.sink.elasticsearch.delete.enabled=true
+----
+
+
+endif::community[]
+
+ifdef::community[]
 [id="debezium-server-jdbc-sink-configuration"]
 ==== JDBC
 
@@ -2942,42 +2998,6 @@ The readable source partition and offset remain available in `source_position` i
 Set the value to `event` to write an envelope with `operation=tombstone`, the original key, and a null value.
 Set the value to `drop` to skip tombstones intentionally.
 
-|[[zerobus-filter-destination-regex]]<<zerobus-filter-destination-regex, `debezium.sink.zerobus.filter.destination.regex`>>
-|No default value.
-|An optional regular expression that the complete Debezium destination must match for the envelope to be ingested.
-
-|[[zerobus-filter-operations]]<<zerobus-filter-operations, `debezium.sink.zerobus.filter.operations`>>
-|No default value.
-|An optional comma-separated operation allowlist.
-The canonical Debezium codes are `c`, `r`, `u`, `d`, `t`, and `m`.
-The aliases `create`, `read`, `update`, `delete`, `truncate`, `message`, `change`, and `tombstone` are also accepted.
-
-|[[zerobus-filter-header-name]]<<zerobus-filter-header-name, `debezium.sink.zerobus.filter.header.name`>>
-|No default value.
-|The name of the record header to evaluate.
-Configure this property together with <<zerobus-filter-header-value-regex, `filter.header.value.regex`>>.
-
-|[[zerobus-filter-header-value-regex]]<<zerobus-filter-header-value-regex, `debezium.sink.zerobus.filter.header.value.regex`>>
-|No default value.
-|An optional regular expression that the complete value of the configured header must match.
-Configure this property together with <<zerobus-filter-header-name, `filter.header.name`>>.
-
-|[[zerobus-filter-value-json-pointer]]<<zerobus-filter-value-json-pointer, `debezium.sink.zerobus.filter.value.json.pointer`>>
-|No default value.
-|A JSON Pointer that selects a field from the serialized event value for filtering.
-The pointer must begin with `/`.
-Configure this property together with <<zerobus-filter-value-regex, `filter.value.regex`>>.
-
-|[[zerobus-filter-value-regex]]<<zerobus-filter-value-regex, `debezium.sink.zerobus.filter.value.regex`>>
-|No default value.
-|An optional regular expression that the complete value selected by the configured JSON Pointer must match.
-Configure this property together with <<zerobus-filter-value-json-pointer, `filter.value.json.pointer`>>.
-
-|[[zerobus-filter-malformed-mode]]<<zerobus-filter-malformed-mode, `debezium.sink.zerobus.filter.malformed.mode`>>
-|`fail`
-|Specifies how the sink handles an event value that it cannot parse or evaluate for value filtering.
-Set the value to `fail` to stop the batch, or to `drop` to skip the event.
-
 |[[zerobus-max-inflight]]<<zerobus-max-inflight, `debezium.sink.zerobus.max.inflight.records`>>
 |`50000`
 |Maximum number of un-acknowledged records per stream.
@@ -3037,7 +3057,7 @@ If you specify a value for the property, the configured value takes precedence.
 ====== Envelope row contract
 
 Set <<zerobus-payload-mode, `debezium.sink.zerobus.payload.mode`>> to `envelope` to preserve the change event for downstream materialization instead of mapping it directly onto the target table columns.
-The `max.record.bytes`, `json.flexible.fields.encoding`, `idempotency.mode`, `tombstone.handling.mode`, and `filter.*` properties apply only to this payload mode.
+The `max.record.bytes`, `json.flexible.fields.encoding`, `idempotency.mode`, and `tombstone.handling.mode` properties apply only to this payload mode.
 
 JSON and Protobuf envelope records expose the same logical fields:
 
@@ -3081,10 +3101,18 @@ Entry names use the `partition.` and `offset.` prefixes.
 For JSON records, <<zerobus-json-flexible-fields-encoding, `json.flexible.fields.encoding`>> controls whether `key`, `value`, `source_position`, and `headers` are canonical JSON strings or nested JSON values.
 For Protobuf records, the sink supplies the descriptor to Zerobus and encodes these flexible fields as canonical JSON strings.
 
-The sink applies configured include filters in the following order: destination, operation, header, and value.
-Every configured regular expression must match the complete selected value.
-An event that does not match is skipped and is considered processed when the rest of the batch succeeds.
-If <<zerobus-filter-operations, `filter.operations`>> is configured, a tombstone is ingested only when the allowlist includes `tombstone`, even if <<zerobus-tombstone-handling-mode, `tombstone.handling.mode`>> is `event`.
+The sink does not provide its own event filter.
+To ingest only some events, use the following mechanisms:
+
+* To skip create, update, delete, or truncate events, set the `debezium.source.skipped.operations` connector property.
+To skip the read events of the initial snapshot, set `debezium.source.snapshot.mode` to `no_data`.
+* To skip tombstones, set <<zerobus-tombstone-handling-mode, `tombstone.handling.mode`>> to `drop`.
+* To filter events by topic, by header, or by the value of a field, apply the Kafka Connect `Filter` transformation with a predicate, as described in <<debezium-transforms-name-predicate, `debezium.transforms.<name>.predicate`>>.
+Use the `TopicNameMatches` predicate to match the destination, the `HasHeaderKey` predicate to match the presence of a header, and the {link-prefix}:{link-smt-predicates}#field-value-matches[`FieldValueMatches`] predicate to match a field of the event value by its dot path, for example `after.status`.
+The `Filter` transformation drops the events that match the predicate.
+To keep only the matching events instead, set <<debezium-transforms-name-negate, `debezium.transforms.<name>.negate`>> to `true`.
+
+Events that the `Filter` transformation drops still commit their source offsets, so the source position keeps advancing even when a batch contains only dropped events.
 
 The sink provides an at-least-once delivery guarantee.
 For each contiguous target-table group, the sink serializes and validates every record before ingestion, ingests the group, and waits for Zerobus to acknowledge the final record.
@@ -3092,7 +3120,7 @@ The sink commits source offsets only after every target-table group in the batch
 If a later group fails, an earlier acknowledged group can be replayed because the source batch remains uncommitted.
 Use `idempotency_key` to deduplicate such replays downstream.
 
-The following example configures the JSON envelope contract, deterministic identities, explicit tombstones, and an operation allowlist:
+The following example configures the JSON envelope contract, deterministic identities, and explicit tombstones:
 
 [source,properties]
 ----
@@ -3108,7 +3136,6 @@ debezium.sink.zerobus.max.record.bytes=10000000
 debezium.sink.zerobus.json.flexible.fields.encoding=string
 debezium.sink.zerobus.idempotency.mode=source
 debezium.sink.zerobus.tombstone.handling.mode=event
-debezium.sink.zerobus.filter.operations=c,r,u,d,t,m,tombstone
 ----
 
 [id="debezium-server-zerobus-grpc-injection-points"]

@@ -1,0 +1,35 @@
+= {prodname} on Quarkus
+
+{prodname} has a series of Quarkus Extensions to address use cases that can be solved with Change Data Capture pattern. In particular {prodname} supports the following extensions:
+
+- **{prodname} Runtime Extensions**: capture CDC events in your Quarkus Application
+- **{prodname} Outbox Pattern**: create reliable microservices with the Outbox Pattern
+- **{prodname} Hibernate Cache Invalidation**: invalidate Hibernate 2LC with Debezium
+
+== {prodname} Runtime Extensions
+
+Quarkus provides native Change Data Capture integration with {prodname} through dedicated extensions for each supported database.
+These extensions integrate {prodname} Runtime along with Connectors with the Quarkus lifecycle, allowing you to consume change events directly in your application code using CDI and annotations.
+
+The Quarkus {prodname} extensions provide:
+
+- Run {prodname} source connectors directly inside your Quarkus application
+- Processing change events without Kafka
+- Automatic CDC-ready databases via Dev Services
+- GraalVM/Mandrel native image support
+
+For detailed setup instructions and configuration options, see xref:quarkus/quarkus-debezium-engine-extension.adoc[the documentation].
+
+== {prodname} Outbox Pattern
+
+In microservice-based architectures, services are often required not only to update their own local data stores but also to propagate information about these changes to other services. The Outbox Pattern defines a mechanism for performing both operations in a safe and consistent manner. It guarantees immediate "read-your-own-writes" semantics within the originating service, while enabling reliable, eventually consistent data dissemination across service boundaries.
+
+To learn how to integrate the Outbox Pattern into your Quarkus application, see xref:quarkus/outbox.adoc[Outbox Quarkus Extension].
+
+== {prodname} Hibernate Cache Invalidation
+
+The second-level cache (L2C) in Hibernate ORM enhances application performance by retaining entities beyond individual sessions and transactions. However, the Hibernate cache is susceptible to staleness when database changes are not synchronized across application instances, as in microservices scenarios, or when data is modified directly by external parties.
+
+By leveraging change data capture (CDC), the {prodname} Hibernate Cache Invalidation extension for Quarkus automatically invalidates affected L2 cache entries, helping prevent cache staleness.
+
+For instructions on enabling automatic cache invalidation in your Quarkus application, see xref:quarkus/hibernate-cache.adoc[Hibernate Second-Level Cache Invalidation].

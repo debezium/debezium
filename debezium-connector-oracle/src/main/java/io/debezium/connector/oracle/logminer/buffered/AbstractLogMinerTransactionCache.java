@@ -37,6 +37,15 @@ public abstract class AbstractLogMinerTransactionCache<T extends Transaction> im
     private final Set<String> abandonedTransactions = new HashSet<>();
     private final Map<String, LogMinerEvent> lastEnqueuedEventByTransactionId = new HashMap<>();
 
+    // Running total of the events cached across all transactions, maintained by the implementations
+    // so that it does not have to be computed by iterating all transactions on every enqueued event
+    protected int transactionEvents;
+
+    @Override
+    public int getTransactionEvents() {
+        return transactionEvents;
+    }
+
     @Override
     public void abandon(T transaction) {
         abandonedTransactions.add(transaction.getTransactionId());
@@ -271,7 +280,7 @@ public abstract class AbstractLogMinerTransactionCache<T extends Transaction> im
                 fieldName, fieldValue, transactionId, rollbackEvent.getScn(), rollbackEvent.getTableId(), rollbackEvent.getRowIdAsString());
     }
 
-    private int compareTransactionScnDetails(T first, T second) {
+    protected int compareTransactionScnDetails(T first, T second) {
         int scnComparison = first.getStartScn().compareTo(second.getStartScn());
         if (scnComparison != 0) {
             return scnComparison;

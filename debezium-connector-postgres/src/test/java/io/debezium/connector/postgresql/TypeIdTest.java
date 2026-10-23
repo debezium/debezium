@@ -115,6 +115,22 @@ public class TypeIdTest {
     }
 
     @Test
+    @FixFor("debezium/dbz#2858")
+    public void shouldQuoteTypeNameStartingOrEndingWithQuoteChar() {
+        final var trailingQuote = new TypeId("s1", "status\"");
+        assertThat(trailingQuote.toDoubleQuotedString()).isEqualTo("\"s1\".\"status\"\"\"");
+        assertThat(TypeId.parse(trailingQuote.toDoubleQuotedString())).isEqualTo(trailingQuote);
+
+        final var leadingQuote = new TypeId("s1", "\"status");
+        assertThat(leadingQuote.toDoubleQuotedString()).isEqualTo("\"s1\".\"\"\"status\"");
+        assertThat(TypeId.parse(leadingQuote.toDoubleQuotedString())).isEqualTo(leadingQuote);
+
+        final var singleQuote = new TypeId("s1", "\"");
+        assertThat(singleQuote.toDoubleQuotedString()).isEqualTo("\"s1\".\"\"\"\"");
+        assertThat(TypeId.parse(singleQuote.toDoubleQuotedString())).isEqualTo(singleQuote);
+    }
+
+    @Test
     @FixFor("debezium/dbz#1334")
     public void shouldHandleNullAndEmptyStrings() {
         assertThat(TypeId.parse(null)).isNull();

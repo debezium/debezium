@@ -43,4 +43,4 @@ The command also defines the same `mysql` database and uses the same username an
 
 The following command can be used to manually start up a Docker container to run the MySQL command line client:
 
-    $ docker run -it --link database:mysql --rm mysql:8.2 sh -c 'exec mysql -h"$MYSQL_PORT_3306_TCP_ADDR" -P"$MYSQL_PORT_3306_TCP_PORT" -uroot -p"$MYSQL_ENV_MYSQL_ROOT_PASSWORD"'
+    $ docker run -it --link database:mysql --rm mysql:8.2 mysql -hmysql -P3306 -uroot -pdebezium-rocks

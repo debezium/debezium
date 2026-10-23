@@ -318,7 +318,11 @@ public class BufferedLogMinerStreamingChangeEventSource extends AbstractLogMiner
 
             logPendingTransactions();
 
-            return calculateNewStartScn(startScn, endScn, getOffsetContext().getCommitScn().getMaxCommittedScn());
+            final ProcessResult result = calculateNewStartScn(startScn, endScn, getOffsetContext().getCommitScn().getMaxCommittedScn());
+
+            dispatchHeartbeatEvent();
+
+            return result;
         }
     }
 
@@ -632,9 +636,6 @@ public class BufferedLogMinerStreamingChangeEventSource extends AbstractLogMiner
         if (dispatchTransactionCommittedEvent) {
             getEventDispatcher().dispatchTransactionCommittedEvent(getPartition(), getOffsetContext(), transaction.getChangeTime());
         }
-        else {
-            getEventDispatcher().dispatchHeartbeatEvent(getPartition(), getOffsetContext());
-        }
 
         getBatchMetrics().commitObserved();
 
@@ -646,7 +647,6 @@ public class BufferedLogMinerStreamingChangeEventSource extends AbstractLogMiner
             getMetrics().setBufferedEventCount(getTransactionCache().getTransactionEvents());
         }
         else if (removedDeferredTransaction) {
-            getEventDispatcher().dispatchHeartbeatEvent(getPartition(), getOffsetContext());
             getMetrics().setActiveTransactionCount(getTransactionCache().getTransactionCount());
             getMetrics().setBufferedEventCount(getTransactionCache().getTransactionEvents());
         }
@@ -869,9 +869,6 @@ public class BufferedLogMinerStreamingChangeEventSource extends AbstractLogMiner
 
         if (!getBatchMetrics().hasJdbcRows()) {
             // When no rows are processed, don't advance the SCN
-            // But always emit a heartbeat event in case the CTE query returned no data.
-            getEventDispatcher().dispatchHeartbeatEvent(getPartition(), getOffsetContext());
-
             return new ProcessResult(getLogMinerContext().getCurrentSessionStartScn(), startScn);
         }
 
@@ -945,7 +942,6 @@ public class BufferedLogMinerStreamingChangeEventSource extends AbstractLogMiner
 
             if (!offsetScn.isNull()) {
                 getOffsetContext().setScn(offsetScn);
-                getEventDispatcher().dispatchHeartbeatEvent(getPartition(), getOffsetContext());
             }
 
             getMetrics().setOffsetScn(getOffsetContext().getScn());
@@ -963,7 +959,6 @@ public class BufferedLogMinerStreamingChangeEventSource extends AbstractLogMiner
                     minCacheScnChangeTime);
 
             getOffsetContext().setScn(miningSessionStartScn);
-            getEventDispatcher().dispatchHeartbeatEvent(getPartition(), getOffsetContext());
 
             getMetrics().setOffsetScn(getOffsetContext().getScn());
             return new ProcessResult(miningSessionStartScn, getConfig().isLobEnabled() ? miningSessionStartScn : endScn);
@@ -975,7 +970,6 @@ public class BufferedLogMinerStreamingChangeEventSource extends AbstractLogMiner
             if (!maxCommittedScn.isNull()) {
                 // If transactions have been committed, advance to the max committed value
                 getOffsetContext().setScn(maxCommittedScn);
-                getEventDispatcher().dispatchHeartbeatEvent(getPartition(), getOffsetContext());
             }
 
             getMetrics().setOffsetScn(getOffsetContext().getScn());
@@ -1344,7 +1338,6 @@ public class BufferedLogMinerStreamingChangeEventSource extends AbstractLogMiner
 
                     getOffsetContext().setScn(thresholdScn);
                 }
-                getEventDispatcher().dispatchHeartbeatEvent(getPartition(), getOffsetContext());
             }
         }
     }
@@ -1533,11 +1526,7 @@ public class BufferedLogMinerStreamingChangeEventSource extends AbstractLogMiner
                 scnDetails -> getMetrics().setOldestScnDetails(scnDetails.scn(), scnDetails.changeTime()),
                 () -> getMetrics().setOldestScnDetails(Scn.NULL, null));
 
-        // notify dispatcher to keep offsets moving
-        if (getEventDispatcher().heartbeatsEnabled()) {
-            getEventDispatcher().dispatchHeartbeatEvent(getPartition(), getOffsetContext());
-        }
-        else {
+        if (!getEventDispatcher().heartbeatsEnabled()) {
             LOGGER.info("Heartbeats are not enabled, offsets will be updated on the next committed transaction");
         }
 

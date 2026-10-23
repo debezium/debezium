@@ -28,9 +28,13 @@ import io.debezium.antlr.DataTypeResolver;
 import io.debezium.antlr.DataTypeResolver.DataTypeEntry;
 import io.debezium.antlr.mysql.SqlMode;
 import io.debezium.antlr.mysql.SqlModes;
+import io.debezium.connector.binlog.BinlogConnectorConfig.RealHandlingMode;
 import io.debezium.connector.binlog.charset.BinlogCharsetRegistry;
 import io.debezium.connector.binlog.jdbc.BinlogSystemVariables;
+import io.debezium.connector.binlog.util.BinaryLiteralDefaults;
+import io.debezium.connector.binlog.util.StringLiteralParser;
 import io.debezium.connector.mysql.antlr.listener.MySqlAntlrDdlParserListener;
+import io.debezium.connector.mysql.charset.MySqlCharsetRegistry;
 import io.debezium.ddl.parser.mysql.generated.MySqlLexer;
 import io.debezium.ddl.parser.mysql.generated.MySqlParser;
 import io.debezium.ddl.parser.mysql.generated.MySqlParser.CharsetNameContext;
@@ -77,9 +81,10 @@ public class MySqlAntlrDdlParser extends AntlrDdlParser<MySqlLexer, MySqlParser>
             "_utf8", "_utf8mb3", "_utf8mb4");
 
     private final ConcurrentMap<String, String> charsetNameForDatabase = new ConcurrentHashMap<>();
+    private final BinaryLiteralDefaults binaryLiteralDefaults = new BinaryLiteralDefaults();
     private final TableFilter tableFilter;
     private final BinlogCharsetRegistry charsetRegistry;
-    private final DataTypeResolver dataTypeResolver = initializeDataTypeResolver();
+    private final DataTypeResolver dataTypeResolver;
 
     @VisibleForTesting
     public MySqlAntlrDdlParser() {
@@ -88,15 +93,21 @@ public class MySqlAntlrDdlParser extends AntlrDdlParser<MySqlLexer, MySqlParser>
 
     @VisibleForTesting
     public MySqlAntlrDdlParser(TableFilter tableFilter) {
-        this(true, false, false, tableFilter, null);
+        this(true, false, false, tableFilter, new MySqlCharsetRegistry());
     }
 
     public MySqlAntlrDdlParser(boolean throwErrorsFromTreeWalk, boolean includeViews, boolean includeComments,
                                TableFilter tableFilter, BinlogCharsetRegistry charsetRegistry) {
+        this(throwErrorsFromTreeWalk, includeViews, includeComments, tableFilter, charsetRegistry, RealHandlingMode.DOUBLE);
+    }
+
+    public MySqlAntlrDdlParser(boolean throwErrorsFromTreeWalk, boolean includeViews, boolean includeComments,
+                               TableFilter tableFilter, BinlogCharsetRegistry charsetRegistry, RealHandlingMode realHandlingMode) {
         super(throwErrorsFromTreeWalk, includeViews, includeComments);
         systemVariables = new BinlogSystemVariables();
         this.tableFilter = tableFilter;
         this.charsetRegistry = charsetRegistry;
+        this.dataTypeResolver = initializeDataTypeResolver(realHandlingMode);
     }
 
     @Override
@@ -118,6 +129,9 @@ public class MySqlAntlrDdlParser extends AntlrDdlParser<MySqlLexer, MySqlParser>
         // to distinguish charset introducers (e.g., _utf8mb3'text') from regular identifiers.
         // Oracle grammar requires runtime initialization (PT grammar hard-coded these in lexer).
         lexer.charSets.addAll(MYSQL_CHARSET_INTRODUCERS);
+        if (isSqlModeActive(SqlMode.NoBackslashEscapes)) {
+            lexer.sqlModes.add(SqlMode.NoBackslashEscapes);
+        }
 
         return lexer;
     }
@@ -129,17 +143,17 @@ public class MySqlAntlrDdlParser extends AntlrDdlParser<MySqlLexer, MySqlParser>
 
     @Override
     public DdlChanges parse(String ddlContent, Tables databaseTables) {
-        String normalizedDdl = DdlNormalizer.normalize(ddlContent, isAnsiQuotesMode());
+        String normalizedDdl = DdlNormalizer.normalize(ddlContent, isSqlModeActive(SqlMode.AnsiQuotes), isSqlModeActive(SqlMode.NoBackslashEscapes));
         return super.parse(normalizedDdl, databaseTables);
     }
 
-    private boolean isAnsiQuotesMode() {
+    private boolean isSqlModeActive(SqlMode mode) {
         String sqlMode = systemVariables.getVariable("sql_mode");
         if (sqlMode == null || sqlMode.isEmpty()) {
             return false;
         }
         Set<SqlMode> modes = SqlModes.sqlModeFromString(sqlMode);
-        return modes.contains(SqlMode.AnsiQuotes);
+        return modes.contains(mode);
     }
 
     @Override
@@ -157,7 +171,7 @@ public class MySqlAntlrDdlParser extends AntlrDdlParser<MySqlLexer, MySqlParser>
         return dataTypeResolver;
     }
 
-    private DataTypeResolver initializeDataTypeResolver() {
+    private DataTypeResolver initializeDataTypeResolver(RealHandlingMode realHandlingMode) {
         DataTypeResolver.Builder dataTypeResolverBuilder = new DataTypeResolver.Builder();
 
         // In the new Oracle grammar, all data types are unified in DataTypeContext
@@ -201,7 +215,8 @@ public class MySqlAntlrDdlParser extends AntlrDdlParser<MySqlLexer, MySqlParser>
                 new DataTypeEntry(Types.BIGINT, MySqlParser.BIGINT_SYMBOL)
                         .setSuffixTokens(MySqlParser.SIGNED_SYMBOL, MySqlParser.UNSIGNED_SYMBOL, MySqlParser.ZEROFILL_SYMBOL),
                 // Floating point types
-                new DataTypeEntry(Types.REAL, MySqlParser.REAL_SYMBOL)
+                // REAL defaults to DOUBLE, but can be mapped to FLOAT for REAL_AS_FLOAT compatibility.
+                new DataTypeEntry(realHandlingMode.asJdbcType(), MySqlParser.REAL_SYMBOL)
                         .setSuffixTokens(MySqlParser.SIGNED_SYMBOL, MySqlParser.UNSIGNED_SYMBOL, MySqlParser.ZEROFILL_SYMBOL),
                 new DataTypeEntry(Types.DOUBLE, MySqlParser.DOUBLE_SYMBOL)
                         .setSuffixTokens(MySqlParser.PRECISION_SYMBOL, MySqlParser.SIGNED_SYMBOL, MySqlParser.UNSIGNED_SYMBOL, MySqlParser.ZEROFILL_SYMBOL),
@@ -274,6 +289,21 @@ public class MySqlAntlrDdlParser extends AntlrDdlParser<MySqlLexer, MySqlParser>
      */
     public String parseName(MySqlParser.IdentifierContext identifierContext) {
         return withoutQuotes(identifierContext);
+    }
+
+    /**
+     * Decodes and concatenates text literal tokens, excluding charset introducers.
+     */
+    public String parseTextLiteral(MySqlParser.TextLiteralContext context) {
+        final var value = new StringBuilder();
+        final boolean noBackslashEscapes = isSqlModeActive(SqlMode.NoBackslashEscapes);
+        if (context.NCHAR_TEXT() != null) {
+            value.append(StringLiteralParser.parse(context.NCHAR_TEXT().getText().substring(1), noBackslashEscapes));
+        }
+        for (final var literal : context.textStringLiteral()) {
+            value.append(StringLiteralParser.parse(literal.getText(), noBackslashEscapes));
+        }
+        return value.toString();
     }
 
     /**
@@ -447,6 +477,15 @@ public class MySqlAntlrDdlParser extends AntlrDdlParser<MySqlLexer, MySqlParser>
     }
 
     /**
+     * Get the hexadecimal and bit-value literal defaults of the current CREATE TABLE or ALTER TABLE statement.
+     *
+     * @return the literal defaults; never null
+     */
+    public BinaryLiteralDefaults binaryLiteralDefaults() {
+        return binaryLiteralDefaults;
+    }
+
+    /**
      * Get the name of the character set for the current database, via the "character_set_database" system property.
      *
      * @return the name of the character set for the current database, or null if not known ...
@@ -467,6 +506,10 @@ public class MySqlAntlrDdlParser extends AntlrDdlParser<MySqlLexer, MySqlParser>
     public String charsetForTable(TableId tableId) {
         final String defaultDatabaseCharset = tableId.catalog() != null ? charsetNameForDatabase().get(tableId.catalog()) : null;
         return defaultDatabaseCharset != null ? defaultDatabaseCharset : currentDatabaseCharset();
+    }
+
+    public String getJavaEncodingForCharSet(String charsetName) {
+        return charsetRegistry.getJavaEncodingForCharSet(charsetName);
     }
 
     /**
@@ -492,6 +535,7 @@ public class MySqlAntlrDdlParser extends AntlrDdlParser<MySqlLexer, MySqlParser>
      */
     public static List<String> extractEnumAndSetOptions(List<String> enumValues) {
         return enumValues.stream()
+                .map(literal -> StringLiteralParser.normalizeQuotes(literal, false))
                 .map(MySqlAntlrDdlParser::withoutQuotes)
                 .map(MySqlAntlrDdlParser::unescapeOption)
                 .collect(Collectors.toList());
@@ -520,13 +564,7 @@ public class MySqlAntlrDdlParser extends AntlrDdlParser<MySqlLexer, MySqlParser>
             charsetName = withoutQuotes(charsetNode.getText());
         }
         else if (collationNode != null && collationNode.getText() != null) {
-            final String collationName = withoutQuotes(collationNode.getText()).toLowerCase();
-            for (int index = 0; index < charsetRegistry.getCharsetMapSize(); index++) {
-                if (collationName.equals(charsetRegistry.getCollationNameForCollationIndex(index))) {
-                    charsetName = charsetRegistry.getCharsetNameForCollationIndex(index);
-                    break;
-                }
-            }
+            charsetName = charsetRegistry.getCharsetNameForCollation(withoutQuotes(collationNode.getText()));
         }
         return charsetName;
     }

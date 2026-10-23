@@ -5,6 +5,7 @@
 [id="exporting-cloud-events"]
 = Exporting CloudEvents
 
+ifdef::community[]
 :toc:
 :toc-placement: macro
 :linkattrs:
@@ -12,6 +13,7 @@
 :source-highlighter: highlight.js
 
 toc::[]
+endif::community[]
 
 link:https://cloudevents.io/[CloudEvents] is a specification for describing event data in a common way.
 Its aim is to provide interoperability across services, platforms and systems.

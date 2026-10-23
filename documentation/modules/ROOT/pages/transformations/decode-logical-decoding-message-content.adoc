@@ -6,6 +6,7 @@
 [id="decode-logical-decoding-message-content"]
 = Decode Logical Decoding Message Content
 
+ifdef::community[]
 :toc:
 :toc-placement: macro
 :linkattrs:
@@ -13,6 +14,7 @@
 :source-highlighter: highlight.js
 
 toc::[]
+endif::community[]
 The `DecodeLogicalDecodingMessageContent` SMT converts the binary content of a PostgreSQL logical decoding message to a structured form.
 
 When the {prodname} PostgreSQL connector captures logical decoding messages, it emits {link-prefix}:{link-postgresql-connector}#postgresql-message-events[_message_ event records] to Kafka.

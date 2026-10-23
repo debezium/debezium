@@ -118,6 +118,64 @@ public class MariaDbOnlyAntlrDdlParserTest {
     }
 
     @Test
+    @FixFor("debezium/dbz#373")
+    public void shouldKeepCharsetForCollationWithoutCharsetPrefix() {
+        // MariaDB collations without a charset prefix select the variant of the current charset
+        parser.parse("create database db1 character set utf8mb3;", tables);
+        parser.parse("create table db1.a (id int primary key, v varchar(10)) collate uca1400_ai_ci;", tables);
+        parser.parse("create table db1.c (id int primary key, v varchar(10)) character set utf8mb4;", tables);
+        parser.parse("alter table db1.c collate uca1400_ai_ci;", tables);
+        parser.parse("alter table db1.c add column w varchar(10);", tables);
+        parser.parse("create table db1.d (id int primary key, v varchar(10)) character set utf8mb4;", tables);
+        parser.parse("alter table db1.d collate utf8mb4_uca1400_ai_ci, add column w varchar(10) collate latin1_general_nopad_ci;", tables);
+
+        assertThat(tables.forTable(new TableId("db1", null, "a")).columnWithName("v").charsetName()).isEqualTo("utf8mb3");
+        assertThat(tables.forTable(new TableId("db1", null, "c")).columnWithName("w").charsetName()).isEqualTo("utf8mb4");
+        assertThat(tables.forTable(new TableId("db1", null, "d")).defaultCharsetName()).isEqualTo("utf8mb4");
+        assertThat(tables.forTable(new TableId("db1", null, "d")).columnWithName("w").charsetName()).isEqualTo("latin1");
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2891")
+    public void shouldUseColumnCollationAfterOtherColumnAttributes() {
+        parser.parse("create database db1 character set utf8mb4;", tables);
+        parser.parse("create table db1.collate_test (id int primary key, " +
+                "before_attr varchar(32) collate latin1_bin not null, " +
+                "after_attr varchar(32) not null collate latin1_bin, " +
+                "without_prefix varchar(32) not null collate uca1400_ai_ci, " +
+                "to_modify varchar(32) not null, " +
+                "to_change varchar(32) not null) character set utf8mb4;", tables);
+        parser.parse("alter table db1.collate_test add column added varchar(32) not null collate latin1_bin;", tables);
+        parser.parse("alter table db1.collate_test modify column to_modify varchar(32) not null collate latin1_bin;", tables);
+        parser.parse("alter table db1.collate_test change column to_change renamed varchar(32) not null collate latin1_bin;", tables);
+
+        final var table = tables.forTable(new TableId("db1", null, "collate_test"));
+        assertThat(table.columnWithName("before_attr").charsetName()).isEqualTo("latin1");
+        assertThat(table.columnWithName("after_attr").charsetName()).isEqualTo("latin1");
+        assertThat(table.columnWithName("without_prefix").charsetName()).isEqualTo("utf8mb4");
+        assertThat(table.columnWithName("added").charsetName()).isEqualTo("latin1");
+        assertThat(table.columnWithName("to_modify").charsetName()).isEqualTo("latin1");
+        assertThat(table.columnWithName("renamed").charsetName()).isEqualTo("latin1");
+        assertThat(table.columnWithName("to_change")).isNull();
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2764")
+    public void shouldPreserveDdlWithNoBackslashEscapes() {
+        parser.parse("SET sql_mode = 'NO_BACKSLASH_ESCAPES'", tables);
+        final var ddl = "CREATE TABLE `t\\x` (v VARCHAR(64) DEFAULT n'한😀\\', /* \\' */ nullable INT DEFAULT \\N)";
+        final var changes = parser.parse(ddl, tables);
+
+        final var table = tables.forTable(new TableId(null, null, "t\\x"));
+        assertThat(table.columnWithName("v").defaultValueExpression()).contains("한😀\\");
+        assertThat(table.columnWithName("nullable").isOptional()).isTrue();
+        assertThat(getColumnSchema(table, "nullable").defaultValue()).isNull();
+        assertThat(changes.isEmpty()).isFalse();
+        changes.getEventsByDatabase((database, events) -> assertThat(events)
+                .extracting(event -> event.statement()).containsExactly(ddl));
+    }
+
+    @Test
     @FixFor("DBZ-4661")
     public void shouldSupportCreateTableWithEncryption() {
         parser.parse(

@@ -29,4 +29,10 @@ public class MongoDbErrorHandler extends ErrorHandler {
     protected Set<Class<? extends Exception>> communicationExceptions() {
         return Collect.unmodifiableSet(IOException.class, MongoException.class);
     }
+
+    @Override
+    protected boolean isRetriable(Throwable throwable) {
+        return !MongoUtils.isRequiredImageMissing(throwable) && super.isRetriable(throwable);
+    }
+
 }

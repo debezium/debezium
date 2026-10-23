@@ -30,6 +30,7 @@ public class CreateTableParserListener extends TableCommonParserListener {
 
     @Override
     public void enterCreateTable(MySqlParser.CreateTableContext ctx) {
+        parser.binaryLiteralDefaults().clear();
         TableId tableId = parser.parseQualifiedTableId(ctx.tableName());
 
         // Check if it's a LIKE statement (copy table)
@@ -80,6 +81,9 @@ public class CreateTableParserListener extends TableCommonParserListener {
                                 if (columnEditor.charsetNameOfTable() == null) {
                                     columnEditor.charsetNameOfTable(defaultCharsetName);
                                 }
+                                // The table declares its character set after the columns, so a literal default of a
+                                // column without a character set can only be converted now
+                                parser.binaryLiteralDefaults().convert(columnEditor, defaultCharsetName, parser::getJavaEncodingForCharSet);
                                 return columnEditor;
                             })
                     .map(ColumnEditor::create)
@@ -90,20 +94,6 @@ public class CreateTableParserListener extends TableCommonParserListener {
         super.exitCreateTable(ctx);
         // Clear tableEditor to prevent stale state from affecting subsequent statements
         tableEditor = null;
-    }
-
-    @Override
-    public void enterDefaultCharset(MySqlParser.DefaultCharsetContext ctx) {
-        parser.runIfNotNull(() -> {
-            if (ctx.charsetName() != null) {
-                String charsetName = parser.withoutQuotes(ctx.charsetName());
-                if ("default".equalsIgnoreCase(charsetName)) {
-                    charsetName = parser.charsetForTable(tableEditor.tableId());
-                }
-                tableEditor.setDefaultCharsetName(charsetName);
-            }
-        }, tableEditor);
-        super.enterDefaultCharset(ctx);
     }
 
     @Override

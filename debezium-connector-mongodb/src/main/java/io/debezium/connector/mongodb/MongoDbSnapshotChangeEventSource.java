@@ -17,6 +17,7 @@ import java.util.concurrent.CompletionService;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.ExecutorCompletionService;
 import java.util.concurrent.ExecutorService;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.regex.Pattern;
@@ -164,7 +165,7 @@ public class MongoDbSnapshotChangeEventSource extends AbstractSnapshotChangeEven
 
     private void doSnapshot(ChangeEventSourceContext sourceCtx, MongoDbOffsetContext prevOffsetCtx, MongoDbSnapshotContext snapshotCtx, SnapshottingTask snapshottingTask)
             throws Throwable {
-        try (MongoDbConnection mongo = MongoDbConnections.create(taskContext.getRawConfig(), dispatcher, snapshotCtx.partition)) {
+        try (MongoDbConnection mongo = MongoDbConnections.create(taskContext.getConnectionContext(), dispatcher, snapshotCtx.partition)) {
             initSnapshotStartOffsets(snapshotCtx, mongo);
             SnapshotReceiver<MongoDbPartition> snapshotReceiver = dispatcher.getSnapshotChangeEventReceiver();
             snapshotCtx.offset.preSnapshotStart(snapshottingTask.isOnDemand());
@@ -249,7 +250,16 @@ public class MongoDbSnapshotChangeEventSource extends AbstractSnapshotChangeEven
             }
         }
         finally {
-            executorService.shutdown();
+            executorService.shutdownNow();
+            try {
+                if (!executorService.awaitTermination(connectorConfig.getExecutorShutdownTimeout().toMillis(), TimeUnit.MILLISECONDS)) {
+                    LOGGER.warn("Snapshot workers did not stop within the configured shutdown timeout");
+                }
+            }
+            catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                LOGGER.warn("Interrupted while waiting for snapshot workers to stop");
+            }
         }
 
         snapshotContext.offset.stopInitialSnapshot();

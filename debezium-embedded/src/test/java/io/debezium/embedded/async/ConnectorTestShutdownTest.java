@@ -10,18 +10,22 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.io.IOException;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 
 import org.apache.kafka.connect.connector.Task;
 import org.apache.kafka.connect.source.SourceRecord;
 import org.junit.jupiter.api.Test;
 
+import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
 import io.debezium.connector.simple.SimpleSourceConnector;
+import io.debezium.doc.FixFor;
 import io.debezium.embedded.TestingDebeziumEngine;
 import io.debezium.engine.DebeziumEngine;
 
@@ -93,6 +97,17 @@ class ConnectorTestShutdownTest extends AbstractAsyncEngineConnectorTest {
         assertCleanupWaitsForTask();
     }
 
+    @Test
+    @FixFor("debezium/dbz#2932")
+    void shouldStopRightAfterStartWhenTasksStartAtDifferentTimes() throws Exception {
+        SlowStartTask.reset();
+        start(SlowStartConnector.class, Configuration.create().with(CommonConnectorConfig.TASKS_MAX, 2).build());
+        // One task reports it has started while the other is still starting; start() must not return in that window.
+        stopConnector();
+        assertConnectorNotRunning();
+        assertThat(engine).isNull();
+    }
+
     private void assertCleanupWaitsForTask() throws Exception {
         final var stillRunning = new AtomicReference<Boolean>();
         final var cleanup = CompletableFuture.runAsync(() -> stopConnector(stillRunning::set));
@@ -114,6 +129,35 @@ class ConnectorTestShutdownTest extends AbstractAsyncEngineConnectorTest {
         @Override
         public Class<? extends Task> taskClass() {
             return BlockingTask.class;
+        }
+    }
+
+    public static class SlowStartConnector extends DebeziumAsyncEngineTestUtils.MultiTaskSimpleSourceConnector {
+        @Override
+        public Class<? extends Task> taskClass() {
+            return SlowStartTask.class;
+        }
+    }
+
+    public static class SlowStartTask extends SimpleSourceConnector.SimpleConnectorTask {
+        private static final AtomicInteger startedTasks = new AtomicInteger();
+
+        private static void reset() {
+            startedTasks.set(0);
+        }
+
+        @Override
+        public void start(Map<String, String> props) {
+            // Every task except the first one is slow to start, keeping the engine in STARTING_TASKS for a while.
+            if (startedTasks.getAndIncrement() > 0) {
+                try {
+                    Thread.sleep(1000);
+                }
+                catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                }
+            }
+            super.start(props);
         }
     }
 

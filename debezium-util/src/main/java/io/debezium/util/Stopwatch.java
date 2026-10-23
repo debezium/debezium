@@ -11,7 +11,6 @@ import java.util.LongSummaryStatistics;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
 
@@ -421,36 +420,35 @@ public abstract class Stopwatch {
      */
     protected static Stopwatch createWith(BaseDurations duration, Runnable uponStart, Runnable uponStop) {
         return new Stopwatch() {
-            private final AtomicLong started = new AtomicLong(0L);
+            // Guarded by "this", so that the state change and its callbacks happen atomically
+            private long started = 0L;
 
             @Override
-            public Stopwatch start() {
-                started.getAndUpdate(existing -> {
-                    if (existing == 0L) {
-                        // Has not yet been started ...
-                        existing = System.nanoTime();
-                        if (uponStart != null) {
-                            uponStart.run();
-                        }
+            public synchronized Stopwatch start() {
+                if (started == 0L) {
+                    // Has not yet been started ...
+                    long now = System.nanoTime();
+                    if (now == 0L) {
+                        now = 1L;
                     }
-                    return existing;
-                });
+                    started = now;
+                    if (uponStart != null) {
+                        uponStart.run();
+                    }
+                }
                 return this;
             }
 
             @Override
-            public Stopwatch stop() {
-                started.getAndUpdate(existing -> {
-                    if (existing != 0L) {
-                        // Is running but has not yet been stopped ...
-                        duration.add(Duration.ofNanos(System.nanoTime() - existing));
-                        if (uponStop != null) {
-                            uponStop.run();
-                        }
-                        return 0L;
+            public synchronized Stopwatch stop() {
+                if (started != 0L) {
+                    // Is running but has not yet been stopped ...
+                    duration.add(Duration.ofNanos(System.nanoTime() - started));
+                    started = 0L;
+                    if (uponStop != null) {
+                        uponStop.run();
                     }
-                    return existing;
-                });
+                }
                 return this;
             }
 

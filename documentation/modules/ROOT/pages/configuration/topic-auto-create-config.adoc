@@ -5,6 +5,7 @@
 [id="customizing-debezium-automatically-created-topics"]
 = Customization of Kafka Connect automatic topic creation
 
+ifdef::community[]
 :toc:
 :toc-placement: macro
 :linkattrs:
@@ -12,6 +13,7 @@
 :source-highlighter: highlight.js
 
 toc::[]
+endif::community[]
 
 Kafka provides two mechanisms for creating topics automatically.
 You can enable automatic topic creation for the Kafka broker, and, beginning with Kafka 2.6.0, you can also enable Kafka Connect to create topics.

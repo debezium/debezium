@@ -9,7 +9,9 @@ package io.debezium.connector.postgresql.connection;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.ZoneOffset;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
@@ -46,6 +48,9 @@ public class PostgresDefaultValueConverter implements DefaultValueConverter {
 
     private static final Pattern LITERAL_DEFAULT_PATTERN = Pattern.compile("'([^']*(?:''[^']*)*)'");
     private static final Pattern FUNCTION_DEFAULT_PATTERN = Pattern.compile("^[(]?[A-Za-z0-9_.]+\\((?:.+(?:, ?.+)*)?\\)");
+    // Only a plain '{...}' literal, optionally cast to an array type; quotes, backslashes and nested braces are rejected
+    private static final Pattern STRING_ARRAY_DEFAULT_PATTERN = Pattern.compile("^'\\{([^'\"\\\\{}]*)\\}'(?:::[A-Za-z ]+(?:\\(\\d+\\))?\\[\\])?$");
+    private static final Pattern ARRAY_ELEMENT_SEPARATOR_PATTERN = Pattern.compile(",");
     private static final Set<String> CURRENT_DATE_TIMES = Collect.unmodifiableSet("current_timestamp",
             "current_time", "current_date", "localtime", "localtimestamp");
     private static final Set<String> TRIM_DATA_TYPES = Collect.unmodifiableSet("bit", "varbit", "bool", "numeric",
@@ -193,6 +198,8 @@ public class PostgresDefaultValueConverter implements DefaultValueConverter {
         result.put("time", (c, v) -> timestampUtils.toLocalTime(extractDefault(v, "00:00")));
         result.put("timestamp", (c, v) -> timestampUtils.toOffsetDateTime(extractDefault(v, "1970-01-01")));
         result.put("timestamptz", (c, v) -> timestampUtils.toOffsetDateTime(extractDefault(v, "1970-01-01")).atZoneSameInstant(ZoneOffset.UTC));
+        result.put("_text", (c, v) -> parseStringArrayDefault(v)); // Sample value: '{a,b}'::text[]
+        result.put("_varchar", (c, v) -> parseStringArrayDefault(v)); // Sample value: '{a,b}'::character varying[]
         result.put("interval", (c, v) -> new PGInterval(extractDefault(v, "epoch")));
 
         // Register any existing enum types
@@ -206,6 +213,31 @@ public class PostgresDefaultValueConverter implements DefaultValueConverter {
 
         // Other data types, such as box, bytea, and more are not handled.
         return result;
+    }
+
+    /**
+     * Parses a plain array literal default such as {@code '{a,b}'::text[]}. Any other form, such as {@code ARRAY[...]},
+     * quoted or escaped elements, nested arrays or {@code NULL} elements, yields {@code null} so that no default is
+     * propagated rather than a wrong one.
+     */
+    private static List<String> parseStringArrayDefault(String defaultValue) {
+        final Matcher matcher = STRING_ARRAY_DEFAULT_PATTERN.matcher(defaultValue.trim());
+        if (!matcher.matches()) {
+            return null;
+        }
+        final String content = matcher.group(1).trim();
+        final List<String> elements = new ArrayList<>();
+        if (content.isEmpty()) {
+            return elements;
+        }
+        for (String element : ARRAY_ELEMENT_SEPARATOR_PATTERN.split(content, -1)) {
+            final String trimmed = element.trim();
+            if (trimmed.isEmpty() || trimmed.equalsIgnoreCase("NULL")) {
+                return null;
+            }
+            elements.add(trimmed);
+        }
+        return elements;
     }
 
     private static String extractDefault(String defaultValue) {

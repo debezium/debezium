@@ -83,6 +83,23 @@ public class SqlServerOffsetContext extends CommonOffsetContext<SourceInfo> {
         return TxLogPosition.valueOf(sourceInfo.getCommitLsn(), sourceInfo.getChangeLsn(), 0, sourceInfo.getCommandId());
     }
 
+    /**
+     * Position to resume from on the first poll after start.
+     * <p>
+     * Direct mode cannot bind a missing command id. Offsets written before command id was stored, including
+     * 3.6 direct-mode offsets, have none. Those are rewound to {@code (commitLsn, command id -1)} with no change
+     * LSN, so the last transaction is read again from its first row. Keeping the old change LSN would start the
+     * query in the middle of that transaction, and a row ordered by command id can sit before the saved seqval.
+     * A stored command id is resumed as-is in both modes.
+     */
+    public TxLogPosition getResumePosition(boolean directMode) {
+        TxLogPosition position = getChangePosition();
+        if (!directMode || position.getCommandId() != null) {
+            return position;
+        }
+        return TxLogPosition.valueOf(position.getCommitLsn(), -1);
+    }
+
     public long getEventSerialNo() {
         return eventSerialNo;
     }
@@ -94,6 +111,14 @@ public class SqlServerOffsetContext extends CommonOffsetContext<SourceInfo> {
         else {
             eventSerialNo = eventCount;
         }
+        sourceInfo.setCommitLsn(position.getCommitLsn());
+        sourceInfo.setChangeLsn(position.getInTxLsn());
+        sourceInfo.setCommandId(position.getCommandId());
+        sourceInfo.setEventSerialNo(eventSerialNo);
+    }
+
+    void assignChangePosition(TxLogPosition position, long eventSerialNo) {
+        this.eventSerialNo = eventSerialNo;
         sourceInfo.setCommitLsn(position.getCommitLsn());
         sourceInfo.setChangeLsn(position.getInTxLsn());
         sourceInfo.setCommandId(position.getCommandId());

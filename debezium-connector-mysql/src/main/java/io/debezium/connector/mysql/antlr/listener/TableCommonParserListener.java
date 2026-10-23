@@ -77,4 +77,30 @@ public class TableCommonParserListener extends MySqlParserBaseListener {
         }, tableEditor);
         super.enterTableConstraintDef(ctx);
     }
+
+    @Override
+    public void enterDefaultCharset(MySqlParser.DefaultCharsetContext ctx) {
+        parser.runIfNotNull(() -> {
+            if (ctx.charsetName() != null) {
+                String charsetName = parser.withoutQuotes(ctx.charsetName());
+                if ("default".equalsIgnoreCase(charsetName)) {
+                    charsetName = parser.charsetForTable(tableEditor.tableId());
+                }
+                tableEditor.setDefaultCharsetName(charsetName);
+            }
+        }, tableEditor);
+        super.enterDefaultCharset(ctx);
+    }
+
+    @Override
+    public void enterDefaultCollation(MySqlParser.DefaultCollationContext ctx) {
+        // A collation implies its character set, e.g. ALTER TABLE ... COLLATE utf8mb4_bin
+        parser.runIfNotNull(() -> {
+            final var charsetName = parser.extractCharset(null, ctx.collationName());
+            if (charsetName != null) {
+                tableEditor.setDefaultCharsetName(charsetName);
+            }
+        }, tableEditor);
+        super.enterDefaultCollation(ctx);
+    }
 }

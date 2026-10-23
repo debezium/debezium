@@ -43,7 +43,6 @@ import io.debezium.annotation.NotThreadSafe;
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.connector.mongodb.CollectionId;
 import io.debezium.connector.mongodb.MongoDbCollectionSchema;
-import io.debezium.connector.mongodb.MongoDbConnector;
 import io.debezium.connector.mongodb.MongoDbConnectorConfig;
 import io.debezium.connector.mongodb.MongoDbOffsetContext;
 import io.debezium.connector.mongodb.MongoDbPartition;
@@ -100,7 +99,11 @@ public class MongoDbIncrementalSnapshotChangeEventSource
 
     protected final NotificationService<MongoDbPartition, ? extends OffsetContext> notificationService;
 
-    private final ExecutorService incrementalSnapshotThreadPool;
+    /**
+     * Created on demand by {@link #incrementalSnapshotThreadPool()} and shut down once the snapshot completes, so a
+     * connector that never runs an incremental snapshot does not hold on to any threads.
+     */
+    private ExecutorService incrementalSnapshotThreadPool;
 
     public MongoDbIncrementalSnapshotChangeEventSource(MongoDbConnectorConfig config,
                                                        MongoDbTaskContext taskContext,
@@ -120,8 +123,21 @@ public class MongoDbIncrementalSnapshotChangeEventSource
         this.signallingCollectionId = connectorConfig.getSignalingDataCollectionIds().isEmpty() ? null
                 : CollectionId.parse(connectorConfig.getSignalingDataCollectionIds().get(0));
         this.notificationService = notificationService;
-        this.incrementalSnapshotThreadPool = Threads.newFixedThreadPool(MongoDbConnector.class, config.getConnectorName(),
-                "incremental-snapshot", connectorConfig.getSnapshotMaxThreads());
+    }
+
+    private synchronized ExecutorService incrementalSnapshotThreadPool() {
+        if (incrementalSnapshotThreadPool == null) {
+            incrementalSnapshotThreadPool = taskContext.getIncrementalSnapshotExecutor();
+        }
+        return incrementalSnapshotThreadPool;
+    }
+
+    private synchronized void shutdownIncrementalSnapshotThreadPool() {
+        if (incrementalSnapshotThreadPool == null) {
+            return;
+        }
+        incrementalSnapshotThreadPool.shutdown();
+        incrementalSnapshotThreadPool = null;
     }
 
     @Override
@@ -252,7 +268,7 @@ public class MongoDbIncrementalSnapshotChangeEventSource
     @Override
     @SuppressWarnings("unchecked")
     public void init(MongoDbPartition partition, OffsetContext offsetContext) {
-        mongo = MongoDbConnections.create(taskContext.getRawConfig(), dispatcher, partition);
+        mongo = MongoDbConnections.create(taskContext.getConnectionContext(), dispatcher, partition);
 
         if (offsetContext == null) {
             LOGGER.info("Empty incremental snapshot change event source started, no action needed");
@@ -492,19 +508,17 @@ public class MongoDbIncrementalSnapshotChangeEventSource
             LOGGER.info("Removed current collection '{}' from incremental snapshot collection list.", stopCurrentTableId);
             collectionScanCompleted(partition);
             stopped.add(stopCurrentTableId.identifier());
+            context.nextDataCollection();
             // If snapshot has no more collections, abort; otherwise advance to the next collection.
             if (!context.snapshotRunning()) {
                 LOGGER.info("Incremental snapshot has stopped.");
                 progressListener.snapshotAborted(partition);
+                notificationService.incrementalSnapshotNotificationService().notifyAborted(context, partition, offsetContext, stopped);
+                context.unsetCorrelationId();
             }
             else {
                 LOGGER.info("Advancing to next available collection in the incremental snapshot.");
-                nextDataCollection(partition, offsetContext);
             }
-        }
-        notificationService.incrementalSnapshotNotificationService().notifyAborted(context, partition, offsetContext, stopped);
-        if (!context.snapshotRunning()) {
-            context.unsetCorrelationId();
         }
         LOGGER.info("Removed collections from incremental snapshot: '{}'", stopped);
     }
@@ -603,7 +617,7 @@ public class MongoDbIncrementalSnapshotChangeEventSource
                                           List<Future<?>> futureList, Object[] lastChunkKey) {
         final Object[] chunkStartKey = lastChunkKey;
         final Object[] chunkEndKey = keyFromRow(lastRow);
-        futureList.add(this.incrementalSnapshotThreadPool.submit(() -> {
+        futureList.add(incrementalSnapshotThreadPool().submit(() -> {
             queryChunk(collection, chunkStartKey, chunkEndKey);
         }));
         return chunkEndKey;
@@ -788,7 +802,12 @@ public class MongoDbIncrementalSnapshotChangeEventSource
     }
 
     protected void postIncrementalSnapshotCompleted() {
-        // no-op
+        shutdownIncrementalSnapshotThreadPool();
+    }
+
+    @Override
+    public void close() {
+        shutdownIncrementalSnapshotThreadPool();
     }
 
     @Override

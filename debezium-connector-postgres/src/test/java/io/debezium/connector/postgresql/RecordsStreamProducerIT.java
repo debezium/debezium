@@ -27,6 +27,8 @@ import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.time.Instant;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
@@ -37,6 +39,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.TimeZone;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -63,6 +66,8 @@ import org.awaitility.core.ConditionTimeoutException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.Timeout;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.EnumSource;
 import org.postgresql.util.PSQLException;
 
 import io.debezium.config.CommonConnectorConfig;
@@ -72,6 +77,7 @@ import io.debezium.connector.SnapshotRecord;
 import io.debezium.connector.postgresql.PostgresConnectorConfig.IntervalHandlingMode;
 import io.debezium.connector.postgresql.PostgresConnectorConfig.SchemaRefreshMode;
 import io.debezium.connector.postgresql.PostgresConnectorConfig.SnapshotMode;
+import io.debezium.connector.postgresql.connection.Lsn;
 import io.debezium.connector.postgresql.connection.PostgresConnection;
 import io.debezium.connector.postgresql.connection.ReplicationConnection;
 import io.debezium.connector.postgresql.junit.SkipWhenDecoderPluginNameIs;
@@ -106,6 +112,8 @@ import io.debezium.relational.TableId;
 import io.debezium.relational.Tables;
 import io.debezium.relational.Tables.TableFilter;
 import io.debezium.spatial.WkbWriter;
+import io.debezium.time.Date;
+import io.debezium.time.IsoTime;
 import io.debezium.time.MicroTime;
 import io.debezium.time.MicroTimestamp;
 import io.debezium.time.ZonedTime;
@@ -639,6 +647,94 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
                 Collections.singletonList(
                         new SchemaAndValueField("名前", SchemaBuilder.OPTIONAL_STRING_SCHEMA, "日本語テキスト")),
                 record, Envelope.FieldName.AFTER);
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2664")
+    void shouldStreamTemporalArraysPreservingEra() throws Exception {
+        // Runs under whichever logical decoder the build selects, which is the point: pgoutput hands the
+        // converter a PgArray, while decoderbufs would otherwise deserialize the elements itself.
+        TestHelper.execute("DROP TABLE IF EXISTS era_array_stream;");
+        TestHelper.execute("CREATE TABLE era_array_stream (pk SERIAL PRIMARY KEY, d DATE, "
+                + "ts_arr TIMESTAMP[], tstz_arr TIMESTAMPTZ[], d_arr DATE[]);");
+
+        startConnector();
+
+        final long bcMicros = LocalDateTime.of(0, 3, 7, 10, 30, 59).toInstant(ZoneOffset.UTC).getEpochSecond() * 1_000_000;
+        final long cutoverMicros = LocalDateTime.of(1582, 10, 4, 23, 59, 59).toInstant(ZoneOffset.UTC).getEpochSecond() * 1_000_000;
+
+        assertInsert(
+                "INSERT INTO era_array_stream (d, ts_arr, tstz_arr, d_arr) VALUES ("
+                        + "'0001-03-07 BC', "
+                        + "'{0001-03-07 10:30:59 BC,1582-10-04 23:59:59}', "
+                        + "'{0001-03-07 10:30:59+00 BC,1582-10-04 23:59:59+00}', "
+                        + "'{0001-03-07 BC,1582-10-04}');",
+                1,
+                Arrays.asList(
+                        new SchemaAndValueField("d", Date.builder().optional().build(),
+                                (int) LocalDate.of(0, 3, 7).toEpochDay()),
+                        new SchemaAndValueField("ts_arr",
+                                SchemaBuilder.array(MicroTimestamp.builder().optional().build()).optional().build(),
+                                Arrays.asList(bcMicros, cutoverMicros)),
+                        new SchemaAndValueField("tstz_arr",
+                                SchemaBuilder.array(ZonedTimestamp.builder().optional().build()).optional().build(),
+                                Arrays.asList("0000-03-07T10:30:59.000000Z", "1582-10-04T23:59:59.000000Z")),
+                        new SchemaAndValueField("d_arr",
+                                SchemaBuilder.array(Date.builder().optional().build()).optional().build(),
+                                Arrays.asList((int) LocalDate.of(0, 3, 7).toEpochDay(),
+                                        (int) LocalDate.of(1582, 10, 4).toEpochDay()))));
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2664")
+    void shouldStreamInfinityTemporalArrays() throws Exception {
+        // Infinity array elements are read as text -- the path this fix introduces -- and must emit exactly
+        // what the scalar column of the same type emits. Runs under whichever logical decoder the build selects.
+        TestHelper.execute("DROP TABLE IF EXISTS era_inf_stream;");
+        TestHelper.execute("CREATE TABLE era_inf_stream (pk SERIAL PRIMARY KEY, "
+                + "d DATE, d_arr DATE[], ts TIMESTAMP, ts_arr TIMESTAMP[], tstz TIMESTAMPTZ, tstz_arr TIMESTAMPTZ[]);");
+
+        startConnector();
+
+        for (String inf : Arrays.asList("infinity", "-infinity")) {
+            consumer.expects(1);
+            executeAndWait("INSERT INTO era_inf_stream (d, d_arr, ts, ts_arr, tstz, tstz_arr) VALUES ("
+                    + "'" + inf + "','{" + inf + "}',"
+                    + "'" + inf + "','{" + inf + "}',"
+                    + "'" + inf + "','{" + inf + "}');");
+            final Struct after = ((Struct) consumer.remove().value()).getStruct(Envelope.FieldName.AFTER);
+
+            assertArrayElementMatchesScalar(after, "d_arr", "d");
+            assertArrayElementMatchesScalar(after, "ts_arr", "ts");
+            assertArrayElementMatchesScalar(after, "tstz_arr", "tstz");
+        }
+    }
+
+    @ParameterizedTest
+    @EnumSource(value = TemporalPrecisionMode.class, names = { "ADAPTIVE", "CONNECT", "ISOSTRING", "STRUCTURED" })
+    @FixFor("debezium/dbz#2721")
+    void shouldStreamInfinityDateAsConnectorSentinel(TemporalPrecisionMode mode) throws Exception {
+        // Runs under whichever logical decoder the build selects; the snapshot counterpart asserts the same values
+        TestHelper.execute("DROP TABLE IF EXISTS inf_date_stream;");
+        TestHelper.execute("CREATE TABLE inf_date_stream (pk SERIAL PRIMARY KEY, d DATE, d_arr DATE[]);");
+
+        startConnector(config -> config.with(PostgresConnectorConfig.TIME_PRECISION_MODE, mode));
+
+        for (String inf : Arrays.asList("infinity", "-infinity")) {
+            consumer.expects(1);
+            executeAndWait("INSERT INTO inf_date_stream (d, d_arr) VALUES ('" + inf + "', '{" + inf + "}');");
+            final Struct after = ((Struct) consumer.remove().value()).getStruct(Envelope.FieldName.AFTER);
+            final boolean positive = "infinity".equals(inf);
+            assertInfinityDate(after.get("d"), mode, positive);
+            assertThat(after.getArray("d_arr")).hasSize(1);
+            assertInfinityDate(after.getArray("d_arr").get(0), mode, positive);
+        }
+    }
+
+    private static void assertArrayElementMatchesScalar(Struct after, String arrayField, String scalarField) {
+        final List<?> array = after.getArray(arrayField);
+        assertThat(array).as(arrayField).hasSize(1);
+        assertThat(array.get(0)).as(arrayField + " element vs scalar " + scalarField).isEqualTo(after.get(scalarField));
     }
 
     @Test
@@ -1577,6 +1673,51 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
         Awaitility.await().alias("WAL growing log message").pollInterval(1, TimeUnit.SECONDS).atMost(5 * TestHelper.waitTimeForRecords(), TimeUnit.SECONDS)
                 .until(() -> logInterceptor.containsWarnMessage(
                         "Received 10001 events which were all filtered out, so no offset could be committed. This prevents the replication slot from acknowledging the processed WAL offsets, causing a growing backlog of non-removeable WAL segments on the database server. Consider to either adjust your filter configuration or enable heartbeat events (via the heartbeat.interval.ms option) to avoid this situation."));
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2906")
+    public void shouldNotWarnOnFilteredEventsWhenHeartbeatIsEnabled() throws Exception {
+        final LogInterceptor logInterceptor = new LogInterceptor(PostgresStreamingChangeEventSource.class);
+        startConnector(config -> config
+                .with(Heartbeat.HEARTBEAT_INTERVAL, "100")
+                .with(PostgresConnectorConfig.POLL_INTERVAL_MS, "50")
+                .with(PostgresConnectorConfig.TABLE_INCLUDE_LIST, "s1\\.b")
+                .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NO_DATA),
+                false);
+        waitForStreamingToStart();
+
+        String statement = "CREATE SCHEMA s1;" +
+                "CREATE TABLE s1.a (pk SERIAL, aa integer, PRIMARY KEY(pk));" +
+                "CREATE TABLE s1.b (pk SERIAL, bb integer, PRIMARY KEY(pk));" +
+                "INSERT INTO s1.a (aa) VALUES (11);" +
+                "INSERT INTO s1.b (bb) VALUES (22);";
+
+        consumer = testConsumer(1);
+        executeAndWait(statement);
+
+        final int filteredCount = 10_100;
+        TestHelper.execute(
+                IntStream.range(0, filteredCount)
+                        .mapToObj(x -> "INSERT INTO s1.a (pk) VALUES (default);")
+                        .collect(Collectors.joining()));
+        final Lsn lsnAfterInserts;
+        try (PostgresConnection connection = TestHelper.create()) {
+            lsnAfterInserts = Lsn.valueOf(connection.currentXLogLocation());
+        }
+        final String warning = "events which were all filtered out";
+        Awaitility.await().alias("confirmed_flush_lsn did not reach the filtered inserts")
+                .pollInterval(1, TimeUnit.SECONDS)
+                .atMost(TestHelper.waitTimeForRecords() * 30L, TimeUnit.SECONDS)
+                .until(() -> {
+                    if (logInterceptor.containsWarnMessage(warning)) {
+                        return true;
+                    }
+                    final var slot = TestHelper.getDefaultReplicationSlot();
+                    final var flushed = slot == null ? null : slot.slotLastFlushedLsn();
+                    return flushed != null && flushed.compareTo(lsnAfterInserts) >= 0;
+                });
+        assertThat(logInterceptor.containsWarnMessage(warning)).isFalse();
     }
 
     @Test
@@ -3461,7 +3602,7 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
 
         List<SchemaAndValueField> expectedInsert = Arrays.asList(
                 new SchemaAndValueField(PK_FIELD, SchemaBuilder.int32().defaultValue(0).build(), 1),
-                new SchemaAndValueField("value", SchemaBuilder.array(Enum.builder("V1,V2"))
+                new SchemaAndValueField("value", SchemaBuilder.array(Enum.builder("V1,V2").optional().build())
                         .parameter(TestHelper.TYPE_NAME_PARAMETER_KEY, "_TEST_TYPE")
                         .parameter(TestHelper.TYPE_LENGTH_PARAMETER_KEY, String.valueOf(Integer.MAX_VALUE))
                         .parameter(TestHelper.TYPE_SCALE_PARAMETER_KEY, "0")
@@ -3477,7 +3618,7 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
 
         List<SchemaAndValueField> expectedUpdate = Arrays.asList(
                 new SchemaAndValueField(PK_FIELD, SchemaBuilder.int32().defaultValue(0).build(), 1),
-                new SchemaAndValueField("value", SchemaBuilder.array(Enum.builder("V1,V2"))
+                new SchemaAndValueField("value", SchemaBuilder.array(Enum.builder("V1,V2").optional().build())
                         .parameter(TestHelper.TYPE_NAME_PARAMETER_KEY, "_TEST_TYPE")
                         .parameter(TestHelper.TYPE_LENGTH_PARAMETER_KEY, String.valueOf(Integer.MAX_VALUE))
                         .parameter(TestHelper.TYPE_SCALE_PARAMETER_KEY, "0")
@@ -3558,6 +3699,50 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
         VerifyRecord.isValidDelete(deleteRec, PK_FIELD, 1);
         assertSourceInfo(deleteRec, "postgres", "public", "time_array_table");
         assertThat(consumer.isEmpty()).isTrue();
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2559")
+    @SkipWhenDecoderPluginNameIsNot(value = SkipWhenDecoderPluginNameIsNot.DecoderPluginName.PGOUTPUT, reason = "pgoutput builds time arrays from their text form")
+    public void shouldStreamFractionalTimeArrayIndependentOfJvmZone() throws Exception {
+        TimeZone original = TimeZone.getDefault();
+        TimeZone.setDefault(TimeZone.getTimeZone("GMT+3"));
+        try {
+            TestHelper.execute("CREATE TABLE time_precision_array_table (pk SERIAL, timea time(6)[] NOT NULL, primary key(pk));");
+            startConnector(config -> config
+                    .with(PostgresConnectorConfig.INCLUDE_UNKNOWN_DATATYPES, false)
+                    .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NO_DATA)
+                    .with(PostgresConnectorConfig.TIME_PRECISION_MODE, TemporalPrecisionMode.ISOSTRING)
+                    .with(PostgresConnectorConfig.TABLE_INCLUDE_LIST, "public.time_precision_array_table"), false);
+
+            waitForStreamingToStart();
+
+            consumer = testConsumer(3);
+            executeAndWait("INSERT INTO time_precision_array_table (timea) VALUES "
+                    + "('{\"02:59:59.999999\", \"02:59:59.999999\"}'), "
+                    + "('{\"03:00:00.000000\", \"03:00:00.000000\"}'), "
+                    + "('{\"03:00:00.123456\", \"03:00:00.123456\"}')");
+
+            SourceRecord early = assertRecordInserted("public.time_precision_array_table", PK_FIELD, 1);
+            assertRecordSchemaAndValues(List.of(fractionalTimeArrayField(
+                    "02:59:59.999999Z", "02:59:59.999999Z")), early, Envelope.FieldName.AFTER);
+            assertRecordSchemaAndValues(List.of(fractionalTimeArrayField(
+                    "03:00:00Z", "03:00:00Z")), consumer.remove(), Envelope.FieldName.AFTER);
+            assertRecordSchemaAndValues(List.of(fractionalTimeArrayField(
+                    "03:00:00.123456Z", "03:00:00.123456Z")), consumer.remove(), Envelope.FieldName.AFTER);
+            assertThat(consumer.isEmpty()).isTrue();
+        }
+        finally {
+            TimeZone.setDefault(original);
+        }
+    }
+
+    private static SchemaAndValueField fractionalTimeArrayField(String... values) {
+        return new SchemaAndValueField("timea",
+                SchemaBuilder.array(IsoTime.builder().optional().build()).build(),
+                Arrays.asList(values)).assertWithCondition((fieldName, expectedValue, actualValue) -> {
+                    assertThat(actualValue).isEqualTo(expectedValue);
+                });
     }
 
     @Test

@@ -27,11 +27,16 @@ import org.slf4j.LoggerFactory;
 import com.mongodb.MongoClientSettings;
 import com.mongodb.client.MongoClient;
 import com.mongodb.client.MongoClients;
+import com.mongodb.event.ClusterListener;
 
 import io.debezium.DebeziumException;
 import io.debezium.connector.mongodb.MongoDbConnectorConfig;
 
-public interface MongoDbClientFactory {
+public interface MongoDbClientFactory extends AutoCloseable {
+
+    @Override
+    default void close() {
+    }
 
     Logger LOGGER = LoggerFactory.getLogger(MongoDbClientFactory.class);
 
@@ -43,13 +48,35 @@ public interface MongoDbClientFactory {
     MongoClientSettings getMongoClientSettings();
 
     /**
-     * Creates native {@link MongoClient} instance
+     * Creates a native {@link MongoClient} instance. The caller must close it before closing this factory.
+     * Use {@link #openClient()} when factory shutdown can overlap with client use.
      *
      * @return mongo client
      */
     default MongoClient getMongoClient() {
         var clientSettings = getMongoClientSettings();
         return MongoClients.create(clientSettings);
+    }
+
+    /**
+     * Creates a client with an additional cluster listener, preserving the configured listeners.
+     */
+    default MongoClient getMongoClient(ClusterListener listener) {
+        return MongoClients.create(MongoClientSettings.builder(getMongoClientSettings())
+                .applyToClusterSettings(builder -> builder.addClusterListener(listener))
+                .build());
+    }
+
+    /**
+     * Opens a client whose close operation preserves the calling thread's interrupt status.
+     * Implementations can defer factory resource cleanup until the client closes.
+     */
+    default MongoDbClient openClient() {
+        return new MongoDbClient(getMongoClient());
+    }
+
+    default MongoDbClient openClient(ClusterListener listener) {
+        return new MongoDbClient(getMongoClient(listener));
     }
 
     /**

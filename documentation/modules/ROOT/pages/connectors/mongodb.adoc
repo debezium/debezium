@@ -363,6 +363,11 @@ include::{partialsdir}/modules/all-connectors/con-connector-ad-hoc-snapshots.ado
 
 include::{partialsdir}/modules/all-connectors/con-connector-incremental-snapshot.adoc[leveloffset=+3]
 
+Although incremental snapshot queries return documents sorted by `_id`, the connector does not preserve that order when emitting incremental snapshot records, even when xref:mongodb-property-snapshot-max-threads[`snapshot.max.threads`] is set to `1`.
+If the connector restarts during an incremental snapshot, or receives a `resume-snapshot` signal after a `pause-snapshot` signal, it re-reads the current snapshot window to avoid skipping documents that have not been emitted.
+Re-reading the window can produce duplicate `read` events for documents already emitted, consistent with at-least-once delivery.
+The potential replay volume scales with the window size, which is based on the product of xref:mongodb-property-incremental-snapshot-chunk-size[`incremental.snapshot.chunk.size`] and xref:mongodb-property-snapshot-max-threads[`snapshot.max.threads`].
+
 [WARNING]
 ====
 Incremental snapshots require that the primary key for each table is stably ordered.
@@ -454,7 +459,8 @@ To summarize, the MongoDB connector continues running in most situations. Commun
 === Pre-image support
 In MongoDB 6.0 and later, you can configure change streams to emit the pre-image state of a document to populate the `before` field for MongoDB change events.
 To enable the use of pre-images in MongoDB, you must set the `changeStreamPreAndPostImages` for a collection by using `db.createCollection()`, `create`, or `collMod`.
-To enable the {prodname} MongoDB to include pre-images in change events, set the `capture.mode` for the connector to one of the `*_with_pre_image` options.
+To include pre-images in change events, set xref:mongodb-property-capture-mode-pre-image[`capture.mode.pre.image`] to `when_available` or `required`.
+The `required` value causes the connector to fail if MongoDB cannot provide a required pre-image.
 
 [NOTE]
 .Size limits on MongoDB change stream events
@@ -747,10 +753,11 @@ This example uses a document with an integer identifier, but any valid MongoDB d
 === Change event values
 
 The value in a change event is a bit more complicated than the key. Like the key, the value has a `schema` section and a `payload` section. The `schema` section contains the schema that describes the `Envelope` structure of the `payload` section, including its nested fields. Change events for operations that create, update or delete data all have a value payload with an envelope structure.
-The `after`, `before`, and `updateDescription.updatedFields` fields contain MongoDB Extended JSON strings.
+The `after`, `before`, `updateDescription.updatedFields`, and `source.resume_token` fields contain MongoDB Extended JSON strings.
 The connector's xref:mongodb-property-json-serialization-mode[`json.serialization.mode`] property controls how the connector serializes BSON values in these fields.
 By default, the connector preserves the legacy behavior: it serializes full document fields by using MongoDB Extended JSON v1 strict representation and serializes `updateDescription.updatedFields` by using MongoDB Extended JSON v2 relaxed representation.
 To use MongoDB Extended JSON v2 canonical representation, set `json.serialization.mode` to `extended`.
+For details about the event's resume token, see xref:mongodb-resume-tokens[Resume tokens in source metadata].
 
 Consider the same sample document that was used to show an example of a change event key:
 
@@ -772,6 +779,36 @@ The value portion of a change event for a change to this document is described f
 * <<mongodb-update-events,_update_ events>>
 * <<mongodb-delete-events,_delete_ events>>
 * <<mongodb-tombstone-events,Tombstone events>>
+
+[[mongodb-resume-tokens]]
+==== Resume tokens in source metadata
+
+For streaming create, update, and delete events, the optional `source.resume_token` field contains the complete resume token from the MongoDB change stream event's `_id` field.
+MongoDB replacement operations also include their event's token.
+The field has the Kafka Connect `STRING` type and the `io.debezium.data.Json` logical type.
+It contains an Extended JSON document, including `_data` and any other token fields, such as `_typeBits`, that MongoDB supplies.
+The connector does not decode or modify the contents of the token.
+
+The xref:mongodb-property-json-serialization-mode[`json.serialization.mode`] property controls the token's JSON representation.
+The `legacy` and `strict` modes use Extended JSON v1 strict representation, `extended` uses Extended JSON v2 canonical representation, and `relaxed` uses Extended JSON v2 relaxed representation.
+Binary values within the token use the binary representation of the selected Extended JSON mode.
+The token document itself is not Base64-encoded in the event payload.
+The connector continues to store its internal resume offset as Base64-encoded BSON, and change event keys are unchanged.
+
+Initial, blocking, and incremental snapshot read events have a null `source.resume_token`, because each read represents a document copied from a collection rather than a change stream event.
+The snapshot's starting resume position is not a token for an individual read event.
+Heartbeat and transaction metadata messages do not have this data event source field, and tombstone messages have a null value.
+For a xref:mongodb-property-cursor-oversize-handling-mode[supported split change stream event], the connector emits one reconstructed event with the final fragment's resume token.
+
+To resume an independent change stream after an event, parse the field's Extended JSON string into a BSON document and pass that document to MongoDB's `resumeAfter` option.
+Use the same change stream scope, pipeline, and options, including full document and pre-image settings.
+The token must still be valid in MongoDB's retained oplog history.
+Resuming after a reconstructed split event starts after its final fragment.
+
+Treat resume tokens as opaque MongoDB metadata.
+Do not use their textual representation as a permanent identifier across serialization modes or change stream configurations.
+When `updateLookup` supplies a full document, replaying an event can return newer document contents even if the event token is unchanged.
+Document field exclusion and masking settings do not modify the token's contents.
 
 [id="mongodb-create-events"]
 === _create_ events
@@ -955,8 +992,8 @@ An optional field that specifies the state of the document after the event occur
 In this example, the `after` field contains the values of the new document's `\_id`, `first_name`, `last_name`, and `email` fields.
 The `after` value is always a string.
 By convention, it contains a JSON representation of the document.
-MongoDB oplog entries contain the full state of a document only for _create_ events and also for `update` events, when the `capture.mode` option is set to `change_streams_update_full`;
-in other words, a _create_ event is the only kind of event that contains an _after_ field regardless of `capture.mode` option.
+MongoDB change streams include the full document for insert and replacement operations regardless of the image settings.
+For update operations, xref:mongodb-property-capture-mode-post-image[`capture.mode.post.image`] determines how the connector requests the full document.
 
 `payload.source`::
 Mandatory field that describes the source metadata for the event.
@@ -993,14 +1030,15 @@ By comparing the value for `payload.source.ts_ms` with the value for `payload.ts
 === _update_ events
 
 The connector emits an `update` event whenever an existing document in a collection is modified.
-The content of the event payload varies based on the value of the `capture.mode` connector property, which controls whether the full document state and pre-image are included.
+The xref:mongodb-property-capture-mode-pre-image[`capture.mode.pre.image`] and xref:mongodb-property-capture-mode-post-image[`capture.mode.post.image`] properties independently control whether the event includes the document before and after a change.
 
 ==== Change streams capture mode
 The value of a change event for an update in the sample `customers` collection has the same schema as a _create_ event for that collection.
 Likewise, the event value's payload has the same structure.
 However, the event value payload contains different values in an _update_ event.
-An _update_ event includes an `after` value only if the `capture.mode` option is set to `change_streams_update_full`.
-A `before` value is provided if the `capture.mode` option is set to one of the `*_with_pre_image` option.
+For MongoDB update operations, the connector requests an `after` value when `capture.mode.post.image` is `lookup`, `post_image`, or `post_image_required`.
+MongoDB replacement operations include the full document even when `capture.mode.post.image` is `off`.
+The connector requests a `before` value when `capture.mode.pre.image` is `when_available` or `required`.
 There is a new structured field `updateDescription` with a few additional fields in this case:
 
 * `updatedFields` is a string field that contains the JSON representation of the updated document fields with their values
@@ -1065,12 +1103,13 @@ By comparing the value for `payload.source.ts_ms` with the value for `payload.ts
 `payload.before`::
 Contains the JSON string representation of the actual MongoDB document before change.
 +
-An _update_ event value does not contain a `before` field if the capture mode is not set to one of the `*_with_preimage` options.
+The `before` value is `null` when `capture.mode.pre.image` is `off`, or when it is `when_available` and MongoDB cannot provide the pre-image.
 
 `payload.after`::
 Contains the JSON string representation of the actual MongoDB document.
 +
-An _update_ event value does not contain an `after` field if the capture mode is not set to `change_streams_update_full`.
+For MongoDB update operations, the `after` value is `null` when `capture.mode.post.image` is `off`, or when `lookup` or `post_image` cannot retrieve the document.
+Replacement operations include the full document regardless of this setting.
 
 `payload.updateDescription.updatedFields`::
 Contains the JSON string representation of the updated field values of the document.
@@ -1154,7 +1193,7 @@ By comparing the value for `payload.source.ts_ms` with the value for `payload.ts
 `payload.before`::
 Contains the JSON string representation of the actual MongoDB document before change.
 +
-An _update_ event value does not contain a `before` field if the capture mode is not set to one of the `*_with_preimage` options.
+The `before` value is `null` when `capture.mode.pre.image` is `off`, or when it is `when_available` and MongoDB cannot provide the pre-image.
 
 `payload.source`::
 Mandatory field that describes the source metadata for the event.
@@ -1187,8 +1226,8 @@ The MongoDB connector uses MongoDB's change streams to capture the changes, so t
 See the MongoDB documentation for setting up a https://docs.mongodb.com/manual/replication/[replica set] or https://docs.mongodb.com/manual/sharding/[sharded cluster].
 Also, be sure to understand how to enable https://docs.mongodb.com/manual/tutorial/deploy-replica-set-with-keyfile-access-control/#deploy-repl-set-with-auth[access control and authentication] with replica sets.
 
-You must also have a MongoDB user that has the appropriate roles to read the `admin` database where the oplog can be read. Additionally, the user must also be able to read the `config` database in the configuration server of a sharded cluster and must have `listDatabases` privilege action.
-When change streams are used (the default) the user also must have cluster-wide privilege actions `find` and `changeStream`.
+You must also have a MongoDB user that has the appropriate roles to read the `admin` database where the oplog can be read. Additionally, the user must also be able to read the `config` database in the configuration server of a sharded cluster, and if the connector's xref:mongodb-property-capture-scope[`capture.scope`] property is set to `deployment` (the default), the user must have the `listDatabases` privilege action.
+When change streams are used (the default) the user also must have the `find` and `changeStream` privilege actions. If `capture.scope` is set to `deployment`, these actions must be granted cluster-wide; if `capture.scope` is set to `database` or `collection`, see xref:required-user-permissions[Required user permissions] for the scope-dependent permissions to grant instead.
 
 When you intend to utilize pre-image and populate the `before` field, you need to first enable `changeStreamPreAndPostImages` for a collection using `db.createCollection()`, `create`, or `collMod`.
 
@@ -1457,7 +1496,13 @@ If you change the name value, after a restart, instead of continuing to emit eve
 |[[mongodb-property-mongodb-authentication-class]]<<mongodb-property-mongodb-authentication-class, `+mongodb.authentication.class+`>>
 |_DefaultMongoDbAuthProvider_
 |A full Java class name that is an implementation of the io.debezium.connector.mongodb.connection.MongoDbAuthProvider interface.
-This class handles setting the credentials on the MongoDB connection (called on each app boot).
+This class configures credentials for MongoDB clients.
+Each connector task owns an instance, shared by its snapshot and streaming operations.
+Connection validation uses a separate instance.
+Implementations that allocate resources, such as authentication clients or HTTP connection pools, should override `close()` to release them.
+The connector calls `close()` after the clients using the provider are closed, and also if initialization fails.
+Implementations must therefore support cleanup after a partially completed `init()`.
+The default `close()` implementation does nothing, so existing providers do not need to implement it.
 Default behavior uses the xref:mongodb-property-mongodb-user[`mongodb.user`], xref:mongodb-property-mongodb-password[`mongodb.password`], and xref:mongodb-property-mongodb-authsource[`mongodb.authsource`] properties according to each of their documentation,
 but other implementations may use them differently or ignore them altogether.
 Note that any setting in xref:mongodb-property-mongodb-connection-string[`mongodb.connection.string`] will override settings set by this class
@@ -1559,39 +1604,30 @@ If you include this property in the configuration, do not set the `collection.in
 
 |[[mongodb-property-capture-mode]]<<mongodb-property-capture-mode, `+capture.mode+`>>
 |`change_streams_update_full`
-|Specifies the method that the connector uses to capture `update` event changes from a MongoDB server.
-Set this property to one of the following values:
+|Deprecated. Use xref:mongodb-property-capture-mode-pre-image[`capture.mode.pre.image`] and xref:mongodb-property-capture-mode-post-image[`capture.mode.post.image`] instead.
+Existing configurations retain their behavior.
+For each new property that you explicitly set, its value takes precedence over this property, including an explicit `off`.
+If you omit a new property, the connector derives its value from the legacy settings as follows:
 
-`change_streams`:: `update` event messages do not include the full document.
-Messages do not include a field that represents the state of the document `before` the change.
+`change_streams`:: Uses `capture.mode.pre.image=off` and `capture.mode.post.image=off`.
 
-`change_streams_update_full`:: `update` event messages include the full document.
-Messages do not include a `before` field that represents the state of the document before the update.
-The event message returns the full state of the document in the `after` field.
-Set xref:mongodb-property-capture-mode-full-update-type[capture.mode.full.update.type] to specify how the connector fetches full documents from the database.
-+
-[NOTE]
-====
-In some situations, when `capture.mode` is configured to return full documents, the `updateDescription` and `after` fields of the update event message might report inconsistent values.
-Such discrepancies can result after multiple updates are applied to a document in rapid succession.
-The connector requests the full document from the MongoDB database only after it receives the update described in the event's `updateDescription` field.
-If a later update modifies the source document before the connector can retrieve it from the database, the connector receives the document that is modified by this later update.
-====
+`change_streams_update_full`:: Uses `capture.mode.pre.image=off`.
+The post-image policy uses the value of xref:mongodb-property-capture-mode-full-update-type[`capture.mode.full.update.type`], which defaults to `lookup`.
 
-`change_streams_update_full_with_pre_image`::
-`update` event event messages include the full document, and include a field that represents the state of the document `before` the change.
-Set xref:mongodb-property-capture-mode-full-update-type[capture.mode.full.update.type] to specify how the connector fetches full documents from the database.
+`change_streams_with_pre_image`:: Uses `capture.mode.pre.image=when_available` and `capture.mode.post.image=off`.
 
-`change_streams_with_pre_image`::
-`update` events do not include the full document, but include a field that represents the state of the document `before` the change.
+`change_streams_update_full_with_pre_image`:: Uses `capture.mode.pre.image=when_available`.
+The post-image policy uses the value of xref:mongodb-property-capture-mode-full-update-type[`capture.mode.full.update.type`], which defaults to `lookup`.
+
+For example, if you retain `capture.mode=change_streams_with_pre_image` and add `capture.mode.post.image=post_image_required`, the connector continues to request pre-images when available and requires post-images.
 
 |[[mongodb-property-json-serialization-mode]]<<mongodb-property-json-serialization-mode, `+json.serialization.mode+`>>
 |`legacy`
-a|Specifies the MongoDB Extended JSON serialization mode that the connector uses for MongoDB document fields in change event values, including `after`, `before`, and `updateDescription.updatedFields`.
+a|Specifies the MongoDB Extended JSON serialization mode that the connector uses for BSON documents in change event values, including `after`, `before`, `updateDescription.updatedFields`, and `source.resume_token`.
 Set this property to one of the following values:
 
 `legacy`:: Preserves the historical JSON behavior.
-The connector serializes full document fields, such as `after` and `before`, by using the MongoDB Extended JSON v1 strict representation, and serializes `updateDescription.updatedFields` by using the MongoDB Extended JSON v2 relaxed representation.
+The connector serializes full document fields, such as `after` and `before`, and `source.resume_token` by using the MongoDB Extended JSON v1 strict representation, and serializes `updateDescription.updatedFields` by using the MongoDB Extended JSON v2 relaxed representation.
 
 `strict`:: Uses the MongoDB Extended JSON v1 strict representation.
 
@@ -1599,7 +1635,7 @@ The connector serializes full document fields, such as `after` and `before`, by 
 
 `relaxed`:: Uses the MongoDB Extended JSON v2 relaxed representation.
 +
-Compared with the default `legacy` mode, the non-default settings can change how BSON values are represented inside the JSON strings in `after`, `before`, and `updateDescription.updatedFields`.
+Compared with the default `legacy` mode, the non-default settings can change how BSON values are represented inside the JSON strings in `after`, `before`, `updateDescription.updatedFields`, and `source.resume_token`.
 For example, DateTime, Binary, RegExp, and Int64 values can use different Extended JSON forms.
 For the complete list of BSON type representations, see the MongoDB documentation for https://www.mongodb.com/docs/manual/reference/mongodb-extended-json-v1/[Extended JSON v1] and https://www.mongodb.com/docs/manual/reference/mongodb-extended-json/[Extended JSON v2].
 
@@ -1629,13 +1665,17 @@ For the complete list of BSON type representations, see the MongoDB documentatio
 This setting does not affect the representation of document identifiers in change event keys.
 
 |[[mongodb-property-capture-start-op-time]]<<mongodb-property-capture-start-op-time, `+capture.start.op.time+`>>
-|No default value
+|`-1` (disabled)
 |Specifies the https://www.mongodb.com/docs/manual/changeStreams/#ref-start-time-id1[startAtOperationTime] change stream parameter.
-Set the value to be a long representation of the BSON timestamp.
+Set the value to the packed 64-bit long representation of a BSON timestamp, which contains both seconds and the operation increment.
+This value is not a Unix timestamp in seconds or milliseconds.
+The connector uses it only if no offset is available when streaming starts.
+For readable timestamp formats, use xref:mongodb-property-capture-start-timestamp[`capture.start.timestamp`].
+You cannot configure both properties unless `capture.start.op.time` is `-1` (disabled).
 
 [IMPORTANT]
 ====
-The ability to set the `capture.start.op.time`` property to override the normal offset-based behavior and begin streaming from a specific timestamp is a Technology Preview feature.
+The ability to set the `capture.start.op.time` property to begin streaming from a specific timestamp when no offset is available is a Technology Preview feature.
 Technology Preview features are not supported with Red{nbsp}Hat production service level agreements (SLAs) and might not be functionally complete.
 Red{nbsp}Hat does not recommend using them in production.
 These features provide early access to upcoming product features, enabling customers to test functionality and provide feedback during the development process.
@@ -1643,6 +1683,47 @@ These features provide early access to upcoming product features, enabling custo
 For more information about the support scope of Red{nbsp}Hat Technology Preview features, see link:https://access.redhat.com/support/offerings/techpreview/[Technology Preview Features Support Scope].
 
 ====
+
+|[[mongodb-property-capture-start-timestamp]]<<mongodb-property-capture-start-timestamp, `+capture.start.timestamp+`>>
+|No default value
+|Specifies the starting position for a change stream when no offset is available.
+An empty or whitespace-only value is treated as unset.
+This property is an alternative to xref:mongodb-property-capture-start-op-time[`capture.start.op.time`] and has the same Technology Preview status.
+Set the value to a string in one of the following formats:
+
+* Integer Unix seconds, for example, `1789084800`.
+* ISO-8601 with `Z` or an explicit UTC offset, for example, `2026-09-11T00:00:00Z` or `2026-09-11T09:00:00+09:00`.
+* A BSON timestamp in Extended JSON v2 format, for example, `{"$timestamp":{"t":1789084800,"i":7}}`.
+
+Unix seconds and ISO-8601 values use an operation increment of `0`, so capture starts at the beginning of the specified second.
+Extended JSON preserves the `i` value, which is an operation increment within a second, not a fractional second.
+Events at the specified BSON timestamp are included.
+
+Seconds and the Extended JSON `i` value must be integers in the range `0` through `4294967295`.
+For ISO-8601 values, the corresponding UTC instant must be between `1970-01-01T00:00:00Z` and `2106-02-07T06:28:15Z`, inclusive.
+Nonzero fractional seconds, timestamps without a UTC offset, and out-of-range values cause configuration errors.
+Numeric values are always interpreted as seconds; Unix milliseconds are not supported.
+An ISO-8601 fractional part containing only zeros, such as `.000`, is accepted.
+You cannot configure this property together with `capture.start.op.time` unless that property is `-1` (disabled).
+Configuration validation reports conflicting settings as errors on both properties.
+
+To start streaming from the configured timestamp without an initial snapshot, set xref:mongodb-property-snapshot-mode[`snapshot.mode`] to `no_data` and use a connector with no stored offset.
+For example:
+
+[source,json]
+----
+{
+  "snapshot.mode": "no_data",
+  "capture.start.timestamp": "2026-09-11T00:00:00Z"
+}
+----
+
+A stored resume token or offset timestamp takes precedence over this property.
+Changing the property does not rewind an existing connector.
+If the connector performs a snapshot, streaming uses the position established by the snapshot.
+This setting does not create a historical snapshot.
+MongoDB must still retain the requested starting position in the oplog; configuring a timestamp does not restore expired oplog history.
+
 |[[mongodb-property-capture-scope]]<<mongodb-property-capture-scope, `+capture.scope+`>>
 |`deployment`
 |Specifies the https://www.mongodb.com/docs/manual/changeStreams/#watch-a-collection--database--or-deployment[scope of the change streams] that the connector opens.
@@ -1742,29 +1823,79 @@ The default values are suitable for most environments, but you can adjust them t
 
 |[[mongodb-property-capture-mode-full-update-type]]<<mongodb-property-capture-mode-full-update-type, `+capture.mode.full.update.type+`>>
 |`lookup`
-|Specifies how the connector looks up the full value of an updated document when the xref:mongodb-property-capture-mode[`capture.mode`] is set retrieve full documents.
-The connector retrieves full documents when its `capture.mode` is set to one of the following options:
+|Deprecated. Use xref:mongodb-property-capture-mode-post-image[`capture.mode.post.image`] instead.
+This property accepts `lookup`, `post_image`, and `post_image_required`.
+It applies only when `capture.mode.post.image` is omitted and xref:mongodb-property-capture-mode[`capture.mode`] enables full updated documents (`change_streams_update_full` or `change_streams_update_full_with_pre_image`).
+For legacy capture modes that do not request full updated documents, an existing `lookup` or `post_image` setting remains ignored.
 
-* `change_streams_update_full`
-* `change_streams_update_full_with_pre-image`
+|[[mongodb-property-capture-mode-post-image]]<<mongodb-property-capture-mode-post-image, `+capture.mode.post.image+`>>
+|`lookup`
+|Specifies how the connector retrieves the full document after an update.
+This policy is independent of xref:mongodb-property-capture-mode-pre-image[`capture.mode.pre.image`].
+An explicit value takes precedence over xref:mongodb-property-capture-mode[`capture.mode`] and xref:mongodb-property-capture-mode-full-update-type[`capture.mode.full.update.type`].
+If this property is omitted, the connector preserves the behavior of the legacy settings.
+If all image settings are omitted, the connector uses `lookup` and does not request pre-images.
 
-To use this option with a MongoDB change streams collection, you must configure the collection to https://www.mongodb.com/docs/manual/changeStreams/#change-streams-with-document-pre--and-post-images[return document pre- and post-images].
-Pre- and post-images for an operation are available only if the required configuration is in place before the operation occurs.
+`off`:: Does not request the full document for MongoDB update operations.
+Insert and replacement operations still include the full document, and snapshot records are unaffected.
 
-Set this property to one of the following values:
-
-`lookup`:: The connector uses a separate lookup to fetch the updated full MongoDB document.
-
+`lookup`:: The connector requests `fullDocument=updateLookup` to fetch the updated full MongoDB document.
+The lookup can return a more recent document if another update occurs before MongoDB retrieves it.
++
 [WARNING]
 ====
-If the lookup process fails to retrieve a document, it cannot populate the full document to the `after` state in the event payload.
-In such a situation, the connector emits an event message that contains a `null` value in the `after` field.
-
-Failed lookups can occur because a delete operation removed the document immediately after it was created, or because a change to the sharding key results in the document being moved to a different location.
-Sharding key changes can result when you modify any of the properties that make up the key.
+If the lookup process fails to retrieve a document, the connector emits an event message that contains a `null` value in the `after` field.
+Failed lookups can occur because a delete operation removed the document, or because a change to the sharding key moved the document to a different location.
 ====
-`post_image`:: The connector uses MongoDB post images to populate events with the full MongoDB document.
-The database must be running MongoDB 6.0 or later to use this option.
+
+`post_image`:: The connector requests `fullDocument=whenAvailable` to obtain the document as it appeared immediately after the update.
+If the post-image is unavailable, the `after` field is `null`.
+
+`post_image_required`:: The connector requests `fullDocument=required` to obtain the document as it appeared immediately after each update.
+If the required post-image is unavailable, MongoDB reports an error and the connector fails instead of retrying it as a connection failure.
+It does not fall back to `lookup`.
+Delete events do not have post-images and are unaffected by this requirement.
+
+To use `post_image` or `post_image_required`, the database must run MongoDB 6.0 or later, and you must configure the collection to https://www.mongodb.com/docs/manual/changeStreams/#change-streams-with-document-pre--and-post-images[return document pre- and post-images].
+The configuration must be in place before the operation occurs.
+The collection configuration, image retention, filtering, and restart considerations described for xref:mongodb-property-capture-mode-pre-image[`capture.mode.pre.image`] also apply.
+
+|[[mongodb-property-capture-mode-pre-image]]<<mongodb-property-capture-mode-pre-image, `+capture.mode.pre.image+`>>
+|`off`
+|Specifies how the connector retrieves the document before a change.
+This policy is independent of xref:mongodb-property-capture-mode-post-image[`capture.mode.post.image`].
+An explicit value takes precedence over xref:mongodb-property-capture-mode[`capture.mode`], including an explicit `off`.
+If this property is omitted and the legacy capture mode includes pre-images, the connector uses `when_available`; otherwise it uses `off`.
+
+`off`:: Does not request pre-images.
+The event's `before` field is `null`.
+
+`when_available`:: Requests MongoDB pre-images when available.
+If an image is unavailable, the event's `before` field is `null`.
+
+`required`:: Requests MongoDB's `fullDocumentBeforeChange=required` behavior.
+If the pre-image of an update, replacement, or delete is unavailable, MongoDB reports an error and the connector fails instead of treating the error as a connection failure to retry.
+
+Using `when_available` or `required` requires MongoDB 6.0 or later.
+This property does not enable `changeStreamPreAndPostImages` on MongoDB collections.
+You must enable it separately before the changes occur, and the images must remain available until the connector reads them.
+Disabling image recording is detected only when the connector reads an event whose required image is missing.
+Image expiration can produce the same error.
+Re-enabling image recording does not restore missing images for earlier changes.
+Restarting from the same saved offset with unchanged required-image settings can fail again on the same historical event, during resume token validation or subsequent streaming.
+An image error during resume token validation does not trigger a new snapshot, including in `when_needed` mode.
+
+With either required-image policy and `deployment` or `database` capture scope, the connector filters events from collections excluded by database or collection filters before MongoDB checks image availability, so only captured collections must record images.
+Custom xref:mongodb-property-cursor-pipeline[`cursor.pipeline`] stages can change this.
+With xref:mongodb-property-cursor-pipeline-order[`cursor.pipeline.order=user_first`], MongoDB can check image availability for excluded events before the connector's filters remove them, and report missing-image errors.
+The connector warns about this combination at startup, but does not reject the configuration.
+With `user_only`, the connector's filters are not applied in the change stream, so the custom stages must exclude such events.
+With regex filters, MongoDB applies the database and collection exclude lists on the server, and its regular expression syntax differs from Java's for some patterns.
+For example, with case-insensitive matching MongoDB matches non-ASCII letters in either case, and it supports POSIX character classes such as `[[:alpha:]]`.
+An exclude pattern that MongoDB matches but Java does not removes events that the connector would otherwise capture.
+For single-collection capture, xref:mongodb-property-capture-scope[`capture.scope=collection`] excludes events from other collections at the change stream level; see that property's signaling and incremental snapshot limitations.
+
+Insert events and snapshot records do not have pre-images and are unaffected by this requirement.
 
 |[[mongodb-property-max-batch-size]]<<mongodb-property-max-batch-size, `+max.batch.size+`>>
 |`2048`
@@ -1888,7 +2019,8 @@ That is, the specified expression is matched against the entire name string of t
 
 |[[mongodb-property-snapshot-max-threads]]<<mongodb-property-snapshot-max-threads, `+snapshot.max.threads+`>>
 |`1`
-|Positive integer value that specifies the maximum number of threads used to perform an intial sync of the collections in a replica set. Defaults to 1.
+|Positive integer value that specifies the maximum number of threads used to perform an initial sync of the collections in a replica set. Defaults to 1.
+The connector also uses this number of threads to read chunks in parallel during incremental snapshots.
 
 |[[mongodb-property-snapshot-mode]]<<mongodb-property-snapshot-mode, `+snapshot.mode+`>>
 |_initial_
@@ -2006,6 +2138,8 @@ A value of `0` disables this behavior.
 |When streaming changes, this setting applies processing to change stream events as part of the standard MongoDB aggregation stream pipeline. A pipeline is a MongoDB aggregation pipeline composed of instructions to the database to filter or transform data. This can be used customize the data that the connector consumes.
 The value of this property must be an array of permitted https://www.mongodb.com/docs/manual/changeStreams/#modify-change-stream-output[aggregation pipeline stages] in JSON format.
 Note that this is appended after the internal pipeline used to support the connector (e.g. filtering operation types, database names, collection names, etc.).
+The connector opens the change stream itself, so the pipeline cannot contain a `$changeStream` stage.
+To start streaming from a specific time, set xref:mongodb-property-capture-start-op-time[`capture.start.op.time`] or xref:mongodb-property-capture-start-timestamp[`capture.start.timestamp`] instead.
 
 |[[mongodb-property-cursor-pipeline-order]]<<mongodb-property-cursor-pipeline-order, `+cursor.pipeline.order+`>>
 |internal_first
@@ -2034,7 +2168,7 @@ Any change events for documents exceeding the maximum (specified by the `cursor.
 
 `split`::
 Change events exceeding the maximum BSON size will be split using the https://www.mongodb.com/docs/v6.0/reference/operator/aggregation/changeStreamSplitLargeEvent/[$changeStreamSplitLargeEvent] aggregation. This option requires **MongoDB 6.0.9 or newer**.
-The connector combines all fragments into a single change event and uses the last fragment's resume token for its offset.
+The connector combines all fragments into a single change event and uses the last fragment's resume token for its offset and the emitted event's `source.resume_token` field.
 When validating the saved resume token at startup, the connector applies the same full-document and pre-image options that it uses for streaming.
 The change stream used to determine the snapshot start position also uses these options.
 If its first event is split, the connector reads all fragments and records the last fragment's token before copying collection data.
@@ -2042,6 +2176,19 @@ If its first event is split, the connector reads all fragments and records the l
 |[[mongodb-property-cursor-oversize-skip-threshold]]<<mongodb-property-cursor-oversize-skip-threshold, `+cursor.oversize.skip.threshold+`>>
 |0
 |The maximum allowed size **in bytes** of the stored document for which change events are processed. This includes both, the size before and after database operation, more specifically this limits the size of fullDocument and fullDocumentBeforeChange filed of MongoDB change events.
+
+|[[mongodb-property-query-fetch-size]]<<mongodb-property-query-fetch-size, `+query.fetch.size+`>>
+|`0`
+|Specifies the maximum number of change stream documents that MongoDB returns in each cursor response batch.
+A positive value sets the batch size for both the initial change stream response and subsequent `getMore` responses.
+The default value (`0`) leaves the batch size unspecified and uses the server default.
+Negative values are not permitted.
+
+MongoDB can return fewer documents than the configured value, including an empty batch, and its response size limits still apply.
+When xref:mongodb-property-cursor-oversize-handling-mode[`cursor.oversize.handling.mode`] is `split`, each fragment counts as a separate change stream document.
+
+This property applies to change streams for all capture scopes.
+It is independent of xref:mongodb-property-snapshot-fetch-size[`snapshot.fetch.size`], which controls collection reads during a snapshot, and xref:mongodb-property-max-batch-size[`max.batch.size`], which controls the connector's record processing batches.
 
 |[[mongodb-property-cursor-max-await-time-ms]]<<mongodb-property-cursor-max-await-time-ms, `+cursor.max.await.time.ms+`>>
 |`0`
@@ -2304,7 +2451,9 @@ The {prodname} MongoDB connector also provides the following custom snapshot met
 
 include::{partialsdir}/modules/all-connectors/frag-common-mbean-name.adoc[leveloffset=+1,tags=mongodb-streaming]
 
+:unchanged-events-metric-note: {connector-name} does not support skipping unchanged events, so this metric is always `0` when the property is `true`.
 include::{partialsdir}/modules/all-connectors/ref-connector-monitoring-streaming-metrics.adoc[leveloffset=+1]
+:unchanged-events-metric-note!:
 
 The {prodname} MongoDB connector also provides the following custom streaming metrics:
 

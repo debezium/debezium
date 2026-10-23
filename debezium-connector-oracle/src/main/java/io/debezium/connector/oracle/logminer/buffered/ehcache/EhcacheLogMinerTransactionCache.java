@@ -8,7 +8,6 @@ package io.debezium.connector.oracle.logminer.buffered.ehcache;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
-import java.util.Set;
 import java.util.TreeSet;
 import java.util.function.Consumer;
 import java.util.function.Function;
@@ -56,7 +55,10 @@ public class EhcacheLogMinerTransactionCache extends AbstractLogMinerTransaction
     public void addTransaction(EhcacheTransaction transaction) {
         transactionCache.put(transaction.getTransactionId(), transaction);
         checkAndThrowIfEviction(CacheProvider.TRANSACTIONS_CACHE_NAME);
-        eventIdsByTransactionId.put(transaction.getTransactionId(), new TreeSet<>());
+        final TreeSet<Integer> previousEventIds = eventIdsByTransactionId.put(transaction.getTransactionId(), new TreeSet<>());
+        if (previousEventIds != null) {
+            transactionEvents -= previousEventIds.size();
+        }
     }
 
     @Override
@@ -104,21 +106,12 @@ public class EhcacheLogMinerTransactionCache extends AbstractLogMinerTransaction
     public void forEachEvent(EhcacheTransaction transaction, InterruptiblePredicate<LogMinerEvent> predicate) throws InterruptedException {
         final var events = eventIdsByTransactionId.get(transaction.getTransactionId());
         if (events != null) {
-            try (var stream = events.stream()) {
-                final Iterator<Integer> iterator = stream.iterator();
-                while (iterator.hasNext()) {
-                    final LogMinerEvent event = getTransactionEvent(transaction, iterator.next());
-                    if (!predicate.test(event)) {
-                        break;
-                    }
+            for (int eventId : events) {
+                if (!predicate.test(eventCache.get(transaction.getEventId(eventId)))) {
+                    break;
                 }
             }
         }
-    }
-
-    @Override
-    public LogMinerEvent getTransactionEvent(EhcacheTransaction transaction, int eventKey) {
-        return eventCache.get(transaction.getEventId(eventKey));
     }
 
     @Override
@@ -135,7 +128,9 @@ public class EhcacheLogMinerTransactionCache extends AbstractLogMinerTransaction
         eventCache.put(transaction.getEventId(eventKey), event);
         checkAndThrowIfEviction(CacheProvider.EVENTS_CACHE_NAME);
         final TreeSet<Integer> eventIds = eventIdsByTransactionId.get(transaction.getTransactionId());
-        eventIds.add(eventKey);
+        if (eventIds.add(eventKey)) {
+            transactionEvents++;
+        }
 
         if (event instanceof RollbackToSavepointEvent) {
             final Iterator<LogMinerEventEntry> reverseIterator = new LogMinerEventEntryIterator(
@@ -146,6 +141,7 @@ public class EhcacheLogMinerTransactionCache extends AbstractLogMinerTransaction
                 while (forwardIterator.hasNext()) {
                     eventCache.remove(transaction.getEventId(forwardIterator.next()));
                     forwardIterator.remove();
+                    transactionEvents--;
                 }
             }
         }
@@ -153,14 +149,14 @@ public class EhcacheLogMinerTransactionCache extends AbstractLogMinerTransaction
 
     @Override
     public void removeTransactionEvents(EhcacheTransaction transaction) {
-        final var events = eventIdsByTransactionId.get(transaction.getTransactionId());
+        final var events = eventIdsByTransactionId.remove(transaction.getTransactionId());
         if (events != null) {
             eventCache.removeAll(events
                     .stream()
                     .map(transaction::getEventId)
                     .collect(Collectors.toSet()));
+            transactionEvents -= events.size();
         }
-        eventIdsByTransactionId.remove(transaction.getTransactionId());
     }
 
     @Override
@@ -181,15 +177,11 @@ public class EhcacheLogMinerTransactionCache extends AbstractLogMinerTransaction
     }
 
     @Override
-    public int getTransactionEvents() {
-        return eventIdsByTransactionId.values().stream().mapToInt(Set::size).sum();
-    }
-
-    @Override
     public void clear() {
         transactionCache.clear();
         eventCache.clear();
         eventIdsByTransactionId.clear();
+        transactionEvents = 0;
     }
 
     @Override
@@ -217,8 +209,9 @@ public class EhcacheLogMinerTransactionCache extends AbstractLogMinerTransaction
                     .forEach(parts -> {
                         final String transactionId = parts[0];
                         final int eventId = Integer.parseInt(parts[1]);
-                        if (transactionCache.containsKey(transactionId)) {
-                            eventIdsByTransactionId.computeIfAbsent(transactionId, k -> new TreeSet<>()).add(eventId);
+                        if (transactionCache.containsKey(transactionId)
+                                && eventIdsByTransactionId.computeIfAbsent(transactionId, k -> new TreeSet<>()).add(eventId)) {
+                            transactionEvents++;
                         }
                     });
         });

@@ -22,9 +22,7 @@ import io.debezium.text.TokenStream.Tokens;
 class TableIdParser {
 
     private static final char SEPARATOR = '.';
-    private static final String SINGLE_QUOTES = "''";
-    private static final String DOUBLE_QUOTES = "\"\"";
-    private static final String BACKTICKS = "``";
+    private static final char NOT_QUOTED = 0;
 
     public static List<String> parse(String identifier) {
         return parse(identifier, new TableIdPredicates() {
@@ -39,13 +37,46 @@ class TableIdParser {
         List<String> parts = new ArrayList<>(3);
 
         while (stream.hasNext()) {
-            parts.add(stream.consume()
-                    .replace(SINGLE_QUOTES, "'")
-                    .replace(DOUBLE_QUOTES, "\"")
-                    .replace(BACKTICKS, "`"));
+            int tokenStart = stream.nextPosition().index();
+            String part = stream.consume();
+            parts.add(unescape(part, quotingCharOf(identifier, tokenStart, part.length(), predicates)));
         }
 
         return parts;
+    }
+
+    private static String unescape(String part, char quotingChar) {
+        if (quotingChar == NOT_QUOTED) {
+            return part;
+        }
+
+        if (part.indexOf(quotingChar) < 0) {
+            return part;
+        }
+
+        String quote = String.valueOf(quotingChar);
+        return part.replace(quote + quote, quote);
+    }
+
+    private static char quotingCharOf(String identifier, int tokenStart, int tokenLength, TableIdPredicates predicates) {
+        if (tokenStart == 0) {
+            return NOT_QUOTED;
+        }
+
+        char previous = identifier.charAt(tokenStart - 1);
+        if (predicates.isQuotingChar(previous)) {
+            return previous;
+        }
+        if (predicates.isStartDelimiter(previous)) {
+            int tokenEnd = tokenStart + tokenLength;
+            if (tokenEnd < identifier.length()) {
+                char following = identifier.charAt(tokenEnd);
+                if (predicates.isEndDelimiter(following)) {
+                    return following;
+                }
+            }
+        }
+        return NOT_QUOTED;
     }
 
     private static class TableIdTokenizer implements Tokenizer {
@@ -221,8 +252,18 @@ class TableIdParser {
             @Override
             ParsingState handleCharacter(char c, ParsingContext context) {
                 if (context.predicates.isEndDelimiter(c)) {
-                    context.lastIdentifierEnd = context.input.index();
-                    return BEFORE_SEPARATOR;
+                    if (context.escaped) {
+                        context.escaped = false;
+                        return IN_DELIMITED_IDENTIFIER;
+                    }
+                    else if (context.input.isNext(c)) {
+                        context.escaped = true;
+                        return IN_DELIMITED_IDENTIFIER;
+                    }
+                    else {
+                        context.lastIdentifierEnd = context.input.index();
+                        return BEFORE_SEPARATOR;
+                    }
                 }
 
                 return IN_DELIMITED_IDENTIFIER;
@@ -231,10 +272,12 @@ class TableIdParser {
             @Override
             void doOnEntry(ParsingContext context) {
                 context.startOfLastToken = context.input.index();
+                context.escaped = false;
             }
 
             @Override
             void doOnExit(ParsingContext context) {
+                context.escaped = false;
                 context.tokens.addToken(
                         context.input.position(context.startOfLastToken + 1),
                         context.startOfLastToken + 1,

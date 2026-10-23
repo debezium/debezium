@@ -312,6 +312,25 @@ class KafkaDebeziumSinkRecordTest {
         assertThat(filteredKey.get("h1")).isEqualTo("val1");
     }
 
+    @FixFor("debezium/dbz#2795")
+    @Test
+    void getFilteredKeyShouldReturnOnlyPrimaryKeyFieldsForModeRecordHeader() {
+        final var headers = new ConnectHeaders();
+        headers.addString("a", "val1");
+        headers.addInt("b", 2);
+        headers.addString("c", "val3");
+
+        final var kafkaRecord = new SinkRecord(TOPIC, 0, null, null, simpleSchema(), simpleStruct((byte) 1, "John"),
+                0, null, TimestampType.NO_TIMESTAMP_TYPE, headers);
+        final var record = new KafkaDebeziumSinkRecord(kafkaRecord, CE_PATTERN);
+
+        final var filteredKey = record.getFilteredKey(PrimaryKeyMode.RECORD_HEADER, Set.of("a", "b"), null);
+        assertThat(filteredKey).isNotNull();
+        assertThat(filteredKey.schema().fields()).extracting("name").containsExactly("a", "b");
+        assertThat(filteredKey.get("a")).isEqualTo("val1");
+        assertThat(filteredKey.get("b")).isEqualTo(2);
+    }
+
     @FixFor("debezium/dbz#1185")
     @Test
     void shouldDetectSchemaChangeRecord() {

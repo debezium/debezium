@@ -19,7 +19,7 @@ This command runs the `watch-topic` utility in a new container using the {debezi
 
 [source,shell,options="nowrap",subs="+attributes"]
 ----
-$ docker run -it --rm --name watcher --link kafka:kafka quay.io/debezium/kafka:{debezium-docker-label} watch-topic -a -k dbserver1.inventory.customers
+$ docker run -it --rm --name watcher --link kafka:kafka -e KAFKA_BROKER=kafka:9092 quay.io/debezium/kafka:{debezium-docker-label} watch-topic -a -k dbserver1.inventory.customers
 ----
 `-a`::
 Watches all events since the topic was created.
@@ -28,6 +28,10 @@ Without this option, `watch-topic` would only show the events recorded after you
 `-k`::
 Specifies that the output should include the event's key.
 In this case, this contains the row's primary key.
+
+`-e KAFKA_BROKER=kafka:9092`::
+Specifies the bootstrap server that `watch-topic` connects to,
+which is the Kafka broker in the linked `kafka` container.
 
 [NOTE]
 ====
@@ -49,7 +53,7 @@ You should see output similar to the following:
 [source,shell,options="nowrap"]
 ----
 Using KAFKA_ADVERTISED_LISTENERS=PLAINTEXT://172.17.0.7:9092
-Using KAFKA_BROKER=172.17.0.3:9092
+Using KAFKA_BROKER=kafka:9092
 Contents of topic dbserver1.inventory.customers:
 {"schema":{"type":"struct","fields":[{"type":"int32","optional":false,"field":"id"}],"optional":false,"name":"dbserver1.inventory.customers.Key"},"payload":{"id":1001}}
 ...

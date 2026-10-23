@@ -29,6 +29,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+import org.apache.kafka.connect.data.Field;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
 import org.junit.jupiter.api.BeforeEach;
@@ -49,6 +50,7 @@ import io.debezium.relational.TableSchema;
 import io.debezium.relational.TableSchemaBuilder;
 import io.debezium.relational.Tables;
 import io.debezium.relational.Tables.TableFilter;
+import io.debezium.relational.ValueConverter;
 import io.debezium.relational.ddl.DdlParserListener.Event;
 import io.debezium.relational.ddl.SimpleDdlParserListener;
 import io.debezium.schema.DefaultTopicNamingStrategy;
@@ -78,6 +80,8 @@ public abstract class BinlogAntlrDdlParserTest<V extends BinlogValueConverters, 
     protected abstract P getParser(SimpleDdlParserListener listener, TableFilter tableFilter);
 
     protected abstract P getParser(SimpleDdlParserListener listener, boolean includeViews, boolean includeComments);
+
+    protected abstract P getParser(SimpleDdlParserListener listener, BinlogConnectorConfig.RealHandlingMode realHandlingMode);
 
     protected abstract V getValueConverters();
 
@@ -690,6 +694,58 @@ public abstract class BinlogAntlrDdlParserTest<V extends BinlogValueConverters, 
         assertThat(table.columnWithName("l").charsetName()).isEqualTo("LATIN2");
         assertThat(table.columnWithName("lvc").jdbcType()).isEqualTo(Types.VARCHAR);
         assertThat(table.columnWithName("lvb").jdbcType()).isEqualTo(Types.BLOB);
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2217")
+    public void shouldTreatRealDataTypeAsDoubleByDefault() {
+        // MySQL/MariaDB treat REAL as a synonym for DOUBLE unless the REAL_AS_FLOAT sql_mode is
+        // enabled; values are stored and replicated as 8-byte doubles. Mapping REAL to Types.REAL
+        // produced a FLOAT32 schema and narrowed values, diverging from the snapshot path where
+        // SHOW CREATE TABLE reports the column as DOUBLE.
+        String ddl = "CREATE TABLE realtable (id INT PRIMARY KEY, r1 REAL, r2 REAL(8,2), r3 REAL UNSIGNED);";
+        parser.parse(ddl, tables);
+        assertThat(parser.getParsingExceptionsFromWalker().size()).isEqualTo(0);
+
+        Table table = tables.forTable(null, null, "realtable");
+        assertThat(table.columnWithName("r1").jdbcType()).isEqualTo(Types.DOUBLE);
+        assertThat(table.columnWithName("r2").jdbcType()).isEqualTo(Types.DOUBLE);
+        assertThat(table.columnWithName("r3").jdbcType()).isEqualTo(Types.DOUBLE);
+
+        // The emitted schema must be FLOAT64, matching the snapshot path
+        Schema r1Schema = getColumnSchema(table, "r1");
+        assertThat(r1Schema.type()).isEqualTo(Schema.Type.FLOAT64);
+
+        // Values must not be narrowed to single precision
+        Column r1 = table.columnWithName("r1");
+        ValueConverter converter = converters.converter(r1, new Field(r1.name(), -1, r1Schema));
+        assertThat(converter.convert(3.141592653589793d)).isEqualTo(3.141592653589793d);
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2217")
+    public void shouldTreatRealDataTypeAsFloatWhenConfigured() {
+        final P floatParser = getParser(new SimpleDdlParserListener(), BinlogConnectorConfig.RealHandlingMode.FLOAT);
+        final Tables floatTables = new Tables();
+        final String ddl = "CREATE TABLE realtable (id INT PRIMARY KEY, r1 REAL DEFAULT 3.14, "
+                + "r2 REAL(8,2), r3 REAL UNSIGNED, f FLOAT, d DOUBLE);";
+        floatParser.parse(ddl, floatTables);
+        assertThat(floatParser.getParsingExceptionsFromWalker()).isEmpty();
+
+        final Table table = floatTables.forTable(null, null, "realtable");
+        assertThat(table.columnWithName("r1").jdbcType()).isEqualTo(Types.REAL);
+        assertThat(table.columnWithName("r2").jdbcType()).isEqualTo(Types.REAL);
+        assertThat(table.columnWithName("r3").jdbcType()).isEqualTo(Types.REAL);
+        assertThat(table.columnWithName("f").jdbcType()).isEqualTo(Types.FLOAT);
+        assertThat(table.columnWithName("d").jdbcType()).isEqualTo(Types.DOUBLE);
+
+        final Schema r1Schema = getColumnSchema(table, "r1");
+        assertThat(r1Schema.type()).isEqualTo(Schema.Type.FLOAT32);
+        assertThat(r1Schema.defaultValue()).isEqualTo(3.14f);
+
+        final Column r1 = table.columnWithName("r1");
+        final ValueConverter converter = converters.converter(r1, new Field(r1.name(), -1, r1Schema));
+        assertThat(converter.convert(3.141592653589793d)).isEqualTo(3.1415927f);
     }
 
     @Test
@@ -1569,10 +1625,18 @@ public abstract class BinlogAntlrDdlParserTest<V extends BinlogValueConverters, 
         assertParseEnumAndSetOptions("ENUM('a''','b','c')", "a'", "b", "c");
         assertParseEnumAndSetOptions("ENUM('a\\'','b','c')", "a'", "b", "c");
         assertParseEnumAndSetOptions("ENUM(\"a\\\"\",'b','c')", "a\\\"", "b", "c");
-        assertParseEnumAndSetOptions("ENUM(\"a\"\"\",'b','c')", "a\"\"", "b", "c");
         assertParseEnumAndSetOptions(
                 "ENUM('a,b','back\\\\slash','back\\\\,comma','ends\\\\')",
                 "a,b", "back\\\\slash", "back\\\\,comma", "ends\\\\");
+    }
+
+    @Test
+    @FixFor("DBZ-1226")
+    public void shouldParseDoubledDoubleQuotesInEnumOptions() {
+        assertParseEnumAndSetOptions("ENUM(\"a\"\"\",'b','c')", "a\"", "b", "c");
+        assertParseEnumAndSetOptions("SET(\"a\"\"\",'b','c')", "a\"", "b", "c");
+        assertParseEnumAndSetOptions("ENUM(\"a''b\",'a\"\"b')", "a''b", "a\"\"b");
+        assertParseEnumAndSetOptions("SET(\"a''b\",'a\"\"b')", "a''b", "a\"\"b");
     }
 
     @Test
@@ -1963,6 +2027,23 @@ public abstract class BinlogAntlrDdlParserTest<V extends BinlogValueConverters, 
 
         parser.parse("USE db3;", tables); // changes the "character_set_database" system variable ...
         assertVariable("character_set_server", "utf8");
+        assertVariable("character_set_database", "latin2");
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2829")
+    void shouldParseAlterDatabaseWithoutDatabaseName() {
+        parser.parse("CREATE DATABASE db1 CHARACTER SET latin1;", tables);
+        parser.parse("USE db1;", tables);
+        assertVariable("character_set_database", "latin1");
+
+        // Without a database name, ALTER DATABASE applies to the current database
+        parser.parse("ALTER DATABASE CHARACTER SET utf8mb4;", tables);
+        parser.parse("USE db1;", tables);
+        assertVariable("character_set_database", "utf8mb4");
+
+        parser.parse("ALTER SCHEMA CHARSET latin2;", tables);
+        parser.parse("USE db1;", tables);
         assertVariable("character_set_database", "latin2");
     }
 
@@ -3226,7 +3307,7 @@ public abstract class BinlogAntlrDdlParserTest<V extends BinlogValueConverters, 
         assertThat(getColumnSchema(table, "decimal_un_z_c").defaultValue()).isEqualTo(20.0);
         assertThat(getColumnSchema(table, "numeric_c").defaultValue()).isEqualTo(21.0);
         assertThat(getColumnSchema(table, "big_decimal_c").defaultValue()).isEqualTo(22.0);
-        assertThat(getColumnSchema(table, "real_c").defaultValue()).isEqualTo(23.0f);
+        assertThat(getColumnSchema(table, "real_c").defaultValue()).isEqualTo(23.0d);
         assertThat(getColumnSchema(table, "float_c").defaultValue()).isEqualTo(24.0f);
         assertThat(getColumnSchema(table, "float_un_c").defaultValue()).isEqualTo(25.0f);
         assertThat(getColumnSchema(table, "float_un_z_c").defaultValue()).isEqualTo(26.0f);
@@ -3523,6 +3604,117 @@ public abstract class BinlogAntlrDdlParserTest<V extends BinlogValueConverters, 
     }
 
     @Test
+    @FixFor("debezium/dbz#373")
+    public void shouldApplyAlterTableDefaultCharsetToColumnsAddedLater() {
+        parser.parse("create table my_table (id int primary key, string1 varchar(20)) default charset = latin1;", tables);
+
+        parser.parse("alter table my_table default character set utf8mb4;", tables);
+        Table table = tables.forTable(new TableId(null, null, "my_table"));
+        assertThat(table.defaultCharsetName()).isEqualTo("utf8mb4");
+        assertThat(table.columnWithName("string1").charsetName()).isEqualTo("latin1");
+
+        parser.parse("alter table my_table add column string2 varchar(20);", tables);
+        table = tables.forTable(new TableId(null, null, "my_table"));
+        assertThat(table.columnWithName("string1").charsetName()).isEqualTo("latin1");
+        assertThat(table.columnWithName("string2").charsetName()).isEqualTo("utf8mb4");
+    }
+
+    @Test
+    @FixFor("debezium/dbz#373")
+    public void shouldDeriveAlterTableDefaultCharsetFromCollation() {
+        parser.parse("create table my_table (id int primary key, string1 varchar(20)) default charset = latin1;", tables);
+
+        parser.parse("alter table my_table collate utf8mb4_bin;", tables);
+        parser.parse("alter table my_table add column string2 varchar(20);", tables);
+
+        Table table = tables.forTable(new TableId(null, null, "my_table"));
+        assertThat(table.defaultCharsetName()).isEqualTo("utf8mb4");
+        assertThat(table.columnWithName("string1").charsetName()).isEqualTo("latin1");
+        assertThat(table.columnWithName("string2").charsetName()).isEqualTo("utf8mb4");
+    }
+
+    @Test
+    @FixFor("debezium/dbz#373")
+    public void shouldApplyAlterTableDefaultCharsetToColumnsAddedInSameStatement() {
+        parser.parse("create table t1 (id int primary key, string1 varchar(20)) default charset = latin1;", tables);
+        parser.parse("create table t2 (id int primary key, string1 varchar(20)) default charset = latin1;", tables);
+
+        parser.parse("alter table t1 add column string2 varchar(20), default charset utf8mb4;", tables);
+        parser.parse("alter table t2 default charset utf8mb4, add column string2 varchar(20);", tables);
+
+        for (String tableName : List.of("t1", "t2")) {
+            Table table = tables.forTable(new TableId(null, null, tableName));
+            assertThat(table.defaultCharsetName()).isEqualTo("utf8mb4");
+            assertThat(table.columnWithName("string1").charsetName()).isEqualTo("latin1");
+            assertThat(table.columnWithName("string2").charsetName()).isEqualTo("utf8mb4");
+        }
+    }
+
+    @Test
+    @FixFor("debezium/dbz#373")
+    public void shouldDeriveCreateTableDefaultCharsetFromCollation() {
+        parser.parse("create table my_table (id int primary key, string1 varchar(20)) collate utf8mb4_bin;", tables);
+
+        Table table = tables.forTable(new TableId(null, null, "my_table"));
+        assertThat(table.defaultCharsetName()).isEqualTo("utf8mb4");
+        assertThat(table.columnWithName("string1").charsetName()).isEqualTo("utf8mb4");
+    }
+
+    @Test
+    @FixFor("debezium/dbz#373")
+    public void shouldUseNewTableDefaultCharsetForRedefinedAndAddedColumns() {
+        parser.parse("create table m (id int primary key, a varchar(10), b varchar(10), c varchar(10), d varchar(10) default 'x', "
+                + "e enum('x','y'), f text, g nchar(5), h varbinary(10)) default charset = latin1;", tables);
+        parser.parse("alter table m default character set utf8mb4;", tables);
+        parser.parse("alter table m modify a varchar(20);", tables);
+        parser.parse("alter table m change b b2 varchar(20);", tables);
+        parser.parse("alter table m modify c varchar(20) character set latin1;", tables);
+        parser.parse("alter table m alter column d set default 'y';", tables);
+        parser.parse("alter table m add column e2 enum('x','y'), add column f2 text, add column g2 nchar(5), add column h2 varbinary(10), "
+                + "add column j varchar(10) collate euckr_korean_ci;", tables);
+
+        Table table = tables.forTable(new TableId(null, null, "m"));
+        assertThat(table.columnWithName("id").charsetName()).isNull();
+        assertThat(table.columnWithName("a").charsetName()).isEqualTo("utf8mb4");
+        assertThat(table.columnWithName("b2").charsetName()).isEqualTo("utf8mb4");
+        assertThat(table.columnWithName("c").charsetName()).isEqualTo("latin1");
+        assertThat(table.columnWithName("d").charsetName()).isEqualTo("latin1");
+        assertThat(table.columnWithName("e").charsetName()).isEqualTo("latin1");
+        assertThat(table.columnWithName("f").charsetName()).isEqualTo("latin1");
+        assertThat(table.columnWithName("e2").charsetName()).isEqualTo("utf8mb4");
+        assertThat(table.columnWithName("f2").charsetName()).isEqualTo("utf8mb4");
+        assertThat(table.columnWithName("g2").charsetName()).isEqualTo(table.columnWithName("g").charsetName());
+        assertThat(table.columnWithName("h2").charsetName()).isEqualTo(table.columnWithName("h").charsetName());
+        assertThat(table.columnWithName("j").charsetName()).isEqualTo("euckr");
+    }
+
+    @Test
+    @FixFor("debezium/dbz#373")
+    public void shouldDeriveCharsetFromUtf8CollationAlias() {
+        // 'utf8_*' collations are aliases of the 'utf8mb3_*' collations and are logged as written
+        parser.parse("create table t1 (id int primary key, string1 varchar(20)) collate utf8_general_ci;", tables);
+        parser.parse("create table t2 (id int primary key, string1 varchar(20)) default charset = latin1;", tables);
+        parser.parse("alter table t2 collate utf8_unicode_ci;", tables);
+        parser.parse("alter table t2 add column string2 varchar(20);", tables);
+
+        assertThat(tables.forTable(new TableId(null, null, "t1")).columnWithName("string1").charsetName()).isIn("utf8", "utf8mb3");
+        assertThat(tables.forTable(new TableId(null, null, "t2")).columnWithName("string1").charsetName()).isEqualTo("latin1");
+        assertThat(tables.forTable(new TableId(null, null, "t2")).columnWithName("string2").charsetName()).isIn("utf8", "utf8mb3");
+    }
+
+    @Test
+    @FixFor("debezium/dbz#373")
+    public void shouldDeriveAlterDatabaseDefaultCharsetFromCollation() {
+        parser.parse("create database db1 character set latin1;", tables);
+        parser.parse("alter database db1 collate utf8mb4_bin;", tables);
+        parser.parse("create table db1.my_table (id int primary key, string1 varchar(20));", tables);
+
+        Table table = tables.forTable(new TableId("db1", null, "my_table"));
+        assertThat(table.defaultCharsetName()).isEqualTo("utf8mb4");
+        assertThat(table.columnWithName("string1").charsetName()).isEqualTo("utf8mb4");
+    }
+
+    @Test
     @FixFor("DBZ-1568")
     public void shouldHandleImplicitNullabilityInAlterTableChange() {
         // Create table with NOT NULL column
@@ -3581,7 +3773,7 @@ public abstract class BinlogAntlrDdlParserTest<V extends BinlogValueConverters, 
      * @param typeExpression The {@code ENUM} or {@code SET} expression to be parsed
      * @param expectedValues An array of options expected to have been parsed from the expression.
      */
-    private void assertParseEnumAndSetOptions(String typeExpression, String... expectedValues) {
+    protected void assertParseEnumAndSetOptions(String typeExpression, String... expectedValues) {
         String ddl = "DROP TABLE IF EXISTS enum_set_option_test_table;" +
                 "CREATE TABLE `enum_set_option_test_table` (`id` int not null auto_increment, `options` " +
                 typeExpression + ", primary key(`id`));";
@@ -3589,7 +3781,7 @@ public abstract class BinlogAntlrDdlParserTest<V extends BinlogValueConverters, 
         parser.parse(ddl, tables);
 
         final Column column = tables.forTable(null, null, "enum_set_option_test_table").columnWithName("options");
-        assertThat(extractEnumAndSetOptions(column.enumValues())).contains(expectedValues);
+        assertThat(extractEnumAndSetOptions(column.enumValues())).containsExactly(expectedValues);
     }
 
     protected abstract List<String> extractEnumAndSetOptions(List<String> enumValues);

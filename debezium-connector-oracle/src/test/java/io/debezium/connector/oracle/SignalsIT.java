@@ -187,10 +187,9 @@ public class SignalsIT extends AbstractAsyncEngineConnectorTest {
                     fakeTransactionId));
         }
 
-        // Wait for signal to be processed
         Awaitility.await()
                 .atMost(Duration.ofSeconds(30))
-                .until(() -> logInterceptor.containsMessage("Attempting to drop transaction '" + fakeTransactionId + "'"));
+                .until(() -> logInterceptor.containsWarnMessage("Transaction '" + fakeTransactionId + "' was not found"));
 
         // Verify the signal was processed and warning logged for non-existent transaction
         assertThat(logInterceptor.containsMessage("Attempting to drop transaction '" + fakeTransactionId + "'")).isTrue();

@@ -7,6 +7,7 @@ package io.debezium.connector.binlog.jdbc;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.nio.charset.StandardCharsets;
 import java.sql.Timestamp;
 import java.sql.Types;
 import java.time.Duration;
@@ -17,6 +18,7 @@ import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeFormatterBuilder;
 import java.time.temporal.ChronoField;
+import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 import java.util.regex.Matcher;
@@ -52,6 +54,8 @@ public abstract class BinlogDefaultValueConverter implements DefaultValueConvert
     private static final String EPOCH_TIMESTAMP = "1970-01-01 00:00:00";
     private static final String EPOCH_DATE = "1970-01-01";
     private static final Pattern TIMESTAMP_PATTERN = Pattern.compile("([0-9]*-[0-9]*-[0-9]*) ([0-9]*:[0-9]*:[0-9]*(\\.([0-9]*))?)");
+    private static final Pattern COMPACT_TIMESTAMP_PATTERN = Pattern.compile("([0-9]{6}|[0-9]{8})|([0-9]{12}|[0-9]{14})(\\.[0-9]+)?");
+    private static final Pattern COMPACT_TIME_PATTERN = Pattern.compile("(-?)([0-9]+)(\\.[0-9]+)?");
     private static final Pattern CHARSET_INTRODUCER_PATTERN = Pattern.compile("^_[A-Za-z0-9]+'(.*)'$");
 
     // Default values of these data types and number data types need to be trimmed.
@@ -155,8 +159,63 @@ public abstract class BinlogDefaultValueConverter implements DefaultValueConvert
             case Types.DOUBLE:
             case Types.REAL:
                 return convertToDouble(value);
+            case Types.BINARY:
+                // The value converter pads bytes, unlike a string, to the length of the column, as it pads the values
+                return value.getBytes(StandardCharsets.UTF_8);
+        }
+        final String typeName = column.typeName() != null ? column.typeName().toUpperCase() : null;
+        final boolean set = converters.matches(typeName, "SET");
+        if (set || converters.matches(typeName, "ENUM")) {
+            return convertToEnumOrSetValue(column, set, value);
         }
         return value;
+    }
+
+    /**
+     * Converts an ENUM or SET default to the index or the bits of its members, as the binlog represents the values, so that
+     * the value converter emits the default in the spelling and the order in which the members are declared, as MySQL and
+     * MariaDB store it. For example, the default {@code 'B,a'} of a {@code SET('a','b','c')} column is {@code a,b}. A member
+     * is matched exactly first, as the members of a column with a case-sensitive collation may differ only in case, and else
+     * ignoring case.
+     *
+     * @param column the ENUM or SET column; never null
+     * @param set whether the column is a SET column
+     * @param value the default value; never null
+     * @return the 1-based index of an ENUM member or the bits of the SET members, or the given value if it is not a member
+     */
+    private Object convertToEnumOrSetValue(Column column, boolean set, String value) {
+        final List<String> options = converters.extractEnumAndSetOptions(column);
+        if (options == null) {
+            return value;
+        }
+        if (!set) {
+            final int index = indexOfOption(options, value);
+            return index < 0 ? value : Integer.valueOf(index + 1);
+        }
+        long bits = 0L;
+        if (!value.isEmpty()) {
+            for (String member : value.split(",", -1)) {
+                final int index = indexOfOption(options, member);
+                if (index < 0 || index >= Long.SIZE) {
+                    return value;
+                }
+                bits |= 1L << index;
+            }
+        }
+        return bits;
+    }
+
+    private static int indexOfOption(List<String> options, String member) {
+        final int index = options.indexOf(member);
+        if (index >= 0) {
+            return index;
+        }
+        for (int i = 0; i < options.size(); i++) {
+            if (options.get(i).equalsIgnoreCase(member)) {
+                return i;
+            }
+        }
+        return -1;
     }
 
     /**
@@ -204,6 +263,7 @@ public abstract class BinlogDefaultValueConverter implements DefaultValueConvert
      * @return the converted value;
      */
     private Object convertToLocalDateTime(Column column, String value) {
+        value = normalizeCompactTimestamp(value);
         final boolean matches = EPOCH_EQUIVALENT_TIMESTAMP.matcher(value).matches() || "0".equals(value);
         if (matches) {
             if (column.isOptional()) {
@@ -236,6 +296,7 @@ public abstract class BinlogDefaultValueConverter implements DefaultValueConvert
      * @return the converted value;
      */
     private Object convertToTimestamp(Column column, String value) {
+        value = normalizeCompactTimestamp(value);
         final boolean matches = EPOCH_EQUIVALENT_TIMESTAMP.matcher(value).matches()
                 || "0".equals(value)
                 || EPOCH_TIMESTAMP.equals(value);
@@ -261,7 +322,51 @@ public abstract class BinlogDefaultValueConverter implements DefaultValueConvert
         if (matcher.matches()) {
             value = matcher.group(2);
         }
-        return BinlogValueConverters.stringToDuration(value);
+        return BinlogValueConverters.stringToDuration(normalizeCompactTime(value));
+    }
+
+    /**
+     * Converts a DATETIME or TIMESTAMP value without delimiters, such as {@code 20260928123456} or {@code 260928}, to the
+     * {@code yyyy-MM-dd HH:mm:ss} format, as MySQL and MariaDB interpret it. A year of two digits is in the range 1970-2069.
+     *
+     * @param value the default value; never null
+     * @return the value in the {@code yyyy-MM-dd HH:mm:ss} format, or the given value if it is not a number of 6, 8, 12
+     *         or 14 digits
+     */
+    private static String normalizeCompactTimestamp(String value) {
+        final Matcher matcher = COMPACT_TIMESTAMP_PATTERN.matcher(value);
+        if (!matcher.matches()) {
+            return value;
+        }
+        String digits = matcher.group(1) != null ? matcher.group(1) : matcher.group(2);
+        if (digits.length() == 6 || digits.length() == 12) {
+            digits = (Integer.parseInt(digits.substring(0, 2)) < 70 ? "20" : "19") + digits;
+        }
+        if (digits.length() == 8) {
+            digits += "000000";
+        }
+        final String fraction = matcher.group(3) != null ? matcher.group(3) : "";
+        return digits.substring(0, 4) + "-" + digits.substring(4, 6) + "-" + digits.substring(6, 8) + " "
+                + digits.substring(8, 10) + ":" + digits.substring(10, 12) + ":" + digits.substring(12, 14) + fraction;
+    }
+
+    /**
+     * Converts a TIME value without delimiters, such as {@code 123456} or {@code 3456}, to the {@code HH:mm:ss} format.
+     * As in MySQL and MariaDB, the digits are read from the right as seconds, minutes and hours.
+     *
+     * @param value the default value; never null
+     * @return the value in the {@code HH:mm:ss} format, or the given value if it is not a number
+     */
+    private static String normalizeCompactTime(String value) {
+        final Matcher matcher = COMPACT_TIME_PATTERN.matcher(value);
+        if (!matcher.matches()) {
+            return value;
+        }
+        final String digits = "0".repeat(Math.max(0, 6 - matcher.group(2).length())) + matcher.group(2);
+        final int length = digits.length();
+        final String fraction = matcher.group(3) != null ? matcher.group(3) : "";
+        return matcher.group(1) + digits.substring(0, length - 4) + ":" + digits.substring(length - 4, length - 2) + ":"
+                + digits.substring(length - 2) + fraction;
     }
 
     /**

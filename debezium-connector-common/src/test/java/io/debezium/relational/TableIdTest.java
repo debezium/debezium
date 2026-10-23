@@ -87,4 +87,66 @@ public class TableIdTest {
         quoted = id.toQuotedString('`');
         assertThat(quoted).isEqualTo(id.toString());
     }
+
+    @Test
+    @FixFor("debezium/dbz#1377")
+    public void shouldParseBackDoubleQuotedTableId() {
+        for (String tableName : new String[]{ "test''dd", "tab\"le", "a``b" }) {
+            TableId id = new TableId(null, "test_dd", tableName);
+            assertThat(TableId.parse(id.toDoubleQuotedString(), false)).isEqualTo(id);
+        }
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2841")
+    public void shouldParseBracketDelimitedTableId() {
+        TableIdPredicates predicates = new TableIdPredicates() {
+            @Override
+            public boolean isStartDelimiter(char c) {
+                return c == '[';
+            }
+
+            @Override
+            public boolean isEndDelimiter(char c) {
+                return c == ']';
+            }
+        };
+
+        TableId id = TableId.parse("[schema].[tab]]le]", false, predicates);
+        assertThat(id).isEqualTo(new TableId(null, "schema", "tab]le"));
+
+        TableId id2 = TableId.parse("[schema].[table]]]", false, predicates);
+        assertThat(id2).isEqualTo(new TableId(null, "schema", "table]"));
+
+        TableId id3 = TableId.parse("[db].[schema].[table]]]", false, predicates);
+        assertThat(id3).isEqualTo(new TableId("db", "schema", "table]"));
+
+        TableId id4 = new TableId(null, "schema", "tab]le");
+        assertThat(TableId.parse(id4.toBracketQuoted().toString(), false, predicates)).isEqualTo(id4);
+
+        TableId id5 = new TableId("db", "sch]ema", "tab]le");
+        assertThat(TableId.parse(id5.toBracketQuoted().toString(), false, predicates)).isEqualTo(id5);
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2828")
+    public void shouldQuoteIdentifierPartStartingOrEndingWithQuoteChar() {
+        TableId trailingQuote = new TableId(null, "schema", "table\"");
+        assertThat(trailingQuote.toDoubleQuoted().table()).isEqualTo("\"table\"\"\"");
+        assertThat(trailingQuote.toDoubleQuotedString()).isEqualTo("\"schema\".\"table\"\"\"");
+
+        TableId leadingQuote = new TableId(null, "schema", "\"table");
+        assertThat(leadingQuote.toDoubleQuoted().table()).isEqualTo("\"\"\"table\"");
+        assertThat(leadingQuote.toDoubleQuotedString()).isEqualTo("\"schema\".\"\"\"table\"");
+
+        TableId singleQuote = new TableId(null, "schema", "\"");
+        assertThat(singleQuote.toDoubleQuoted().table()).isEqualTo("\"\"\"\"");
+        assertThat(singleQuote.toDoubleQuotedString()).isEqualTo("\"schema\".\"\"\"\"");
+
+        TableId bracketLeading = new TableId(null, "schema", "[table");
+        assertThat(bracketLeading.toBracketQuoted().table()).isEqualTo("[[table]");
+
+        TableId bracketTrailing = new TableId(null, "schema", "table]");
+        assertThat(bracketTrailing.toBracketQuoted().table()).isEqualTo("[table]]]");
+    }
 }

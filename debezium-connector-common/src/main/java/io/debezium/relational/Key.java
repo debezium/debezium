@@ -39,7 +39,7 @@ public class Key {
      * @return the columns {@link Column} taking part of the key.
      */
     public List<Column> keyColumns() {
-        return keyMapper.getKeyKolumns(table);
+        return keyMapper.getKeyColumns(table);
     }
 
     public static class Builder {
@@ -73,7 +73,7 @@ public class Key {
          * @param table {@code Table}
          * @return the list of {@code Column}s describing the (message) key of the table
          */
-        List<Column> getKeyKolumns(Table table);
+        List<Column> getKeyColumns(Table table);
     }
 
     /**

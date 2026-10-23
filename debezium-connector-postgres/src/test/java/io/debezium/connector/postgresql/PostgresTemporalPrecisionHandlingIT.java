@@ -11,7 +11,6 @@ import static io.debezium.connector.postgresql.AbstractRecordsProducerTest.INSER
 import static io.debezium.connector.postgresql.TestHelper.topicName;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.sql.SQLException;
 import java.util.List;
@@ -680,10 +679,8 @@ public class PostgresTemporalPrecisionHandlingIT extends AbstractAsyncEngineConn
         SourceRecord insertRecord = records.recordsForTopic("test_server.public.time_table").get(0);
         VerifyRecord.isValidRead(insertRecord, "pk", 1);
         Struct after = getAfter(insertRecord);
-        // somehow on github pipeline it gets +292278994-08-16Z vs +292278994-08-17Z
-        assertTrue(after.get("date_pinf").toString().contains("+292278994-08-"));
-        // somehow on github pipeline it fails expected:<+292269055-12-02Z> but was:<+292269055-12-03Z>
-        assertTrue(after.get("date_ninf").toString().contains("+292269055-12-"));
+        AbstractRecordsProducerTest.assertInfinityDate(after.get("date_pinf"), TemporalPrecisionMode.ISOSTRING, true);
+        AbstractRecordsProducerTest.assertInfinityDate(after.get("date_ninf"), TemporalPrecisionMode.ISOSTRING, false);
         assertEquals(after.get("tz_max"), "+294247-01-01T23:59:59.999999Z");
         assertEquals(after.get("tz_min"), "-4713-12-31T23:59:59.999999Z");
         assertEquals(after.get("ts_pinf"), "+292278994-08-16T23:00:00Z");

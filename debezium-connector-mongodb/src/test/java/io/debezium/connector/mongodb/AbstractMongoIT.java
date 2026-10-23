@@ -6,6 +6,7 @@
 package io.debezium.connector.mongodb;
 
 import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.slf4j.Logger;
@@ -44,6 +45,13 @@ public abstract class AbstractMongoIT {
         }
     }
 
+    @AfterEach
+    void closeConnection() {
+        if (connection != null) {
+            connection.close();
+        }
+    }
+
     protected MongoClient connect() {
         return TestHelper.connect(mongo);
     }
@@ -69,6 +77,7 @@ public abstract class AbstractMongoIT {
      * A method that will initialize the state after the configuration is changed.
      */
     private void initialize() {
+        closeConnection();
         connection = MongoDbConnections.create(config, TestHelper.connectionErrorHandler(3));
     }
 }

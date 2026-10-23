@@ -234,7 +234,7 @@ public abstract class BinlogStreamingChangeEventSource<P extends BinlogPartition
         }
 
         eventHandlers.put(EventType.VIEW_CHANGE, (event) -> viewChange(effectiveOffsetContext, event));
-        eventHandlers.put(EventType.XA_PREPARE, (event) -> prepareTransaction(effectiveOffsetContext, event));
+        eventHandlers.put(EventType.XA_PREPARE, (event) -> handleTransactionCompletion(partition, effectiveOffsetContext, event));
         eventHandlers.put(EventType.XID, (event) -> handleTransactionCompletion(partition, effectiveOffsetContext, event));
 
         // Conditionally register ROWS_QUERY handler to parse SQL statements.
@@ -295,8 +295,14 @@ public abstract class BinlogStreamingChangeEventSource<P extends BinlogPartition
                 client.setBinlogFilename(effectiveOffsetContext.getSource().binlogFilename());
                 client.setBinlogPosition(effectiveOffsetContext.getSource().binlogPosition());
                 if (purgedServerGtidSet == null || purgedServerGtidSet.isEmpty()) {
-                    LOGGER.info("No GTID stored in the offset, registering binlog reader with empty GTID set.");
-                    client.setGtidSet("");
+                    if (Strings.isNullOrEmpty(effectiveOffsetContext.getSource().binlogFilename())) {
+                        LOGGER.info("No GTID stored in the offset, registering binlog reader with empty GTID set.");
+                        client.setGtidSet("");
+                    }
+                    else {
+                        // The binlog client ignores the binlog position when it reads with a GTID set
+                        LOGGER.info("No GTID stored in the offset, reading the binlog from the position stored in the offset.");
+                    }
                     initializeGtidSet("");
                 }
                 else {
@@ -822,7 +828,9 @@ public abstract class BinlogStreamingChangeEventSource<P extends BinlogPartition
         String upperCasedStatementBegin = removeSetStatement(sql).toUpperCase();
 
         if (upperCasedStatementBegin.startsWith("XA ")) {
-            // This is an XA transaction, and we currently ignore these and do nothing ...
+            if (upperCasedStatementBegin.startsWith("XA START")) {
+                handleXaStart(partition, offsetContext, event, command.getThreadId());
+            }
             return;
         }
         if (!TRUNCATE_STATEMENT_PATTERN.matcher(sql).matches() && schema.ddlFilter().test(sql)) {
@@ -1117,14 +1125,12 @@ public abstract class BinlogStreamingChangeEventSource<P extends BinlogPartition
     }
 
     /**
-     * Handle a {@link EventType#XA_PREPARE} event.
+     * Handle a {@link EventType#QUERY} event with an {@code XA START} statement.
      *
      * @param event the database change data event to be processed; may not be null
      * @throws InterruptedException if this thread is interrupted while blocking
      */
-    protected void prepareTransaction(O offsetContext, Event event) throws InterruptedException {
-        LOGGER.debug("XA Prepare event: {}", event);
-        // do nothing
+    protected void handleXaStart(P partition, O offsetContext, Event event, Long threadId) throws InterruptedException {
     }
 
     protected void handleTransactionBegin(P partition, O offsetContext, Event event, Long threadId) throws InterruptedException {

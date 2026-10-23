@@ -153,7 +153,11 @@ public record TypeId(String schemaName, String typeName) {
             return "\"\"";
         }
 
-        if (identifierPart.charAt(0) != '"' && identifierPart.charAt(identifierPart.length() - 1) != '"') {
+        final var isAlreadyQuoted = identifierPart.length() >= 2
+                && identifierPart.charAt(0) == '"'
+                && identifierPart.charAt(identifierPart.length() - 1) == '"';
+
+        if (!isAlreadyQuoted) {
             // Escape any existing double quotes by doubling them
             final var escaped = identifierPart.replace("\"", "\"\"");
             return "\"" + escaped + "\"";

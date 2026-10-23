@@ -23,7 +23,6 @@ import com.mongodb.client.model.Aggregates;
 import com.mongodb.client.model.Filters;
 import com.mongodb.client.model.changestream.OperationType;
 
-import io.debezium.DebeziumException;
 import io.debezium.connector.mongodb.Filters.FilterConfig;
 import io.debezium.data.Envelope;
 import io.debezium.util.Strings;
@@ -62,17 +61,11 @@ class ChangeStreamPipelineFactory {
         var internalPipeline = createInternalPipeline();
         var userPipeline = createUserPipeline();
 
-        switch (connectorConfig.getCursorPipelineOrder()) {
-            case INTERNAL_FIRST:
-                return internalPipeline.then(userPipeline);
-            case USER_FIRST:
-                return userPipeline.then(internalPipeline);
-            case USER_ONLY:
-                return userPipeline;
-            default:
-                // this should never happen
-                throw new DebeziumException("Unknown aggregation pipeline order");
-        }
+        return switch (connectorConfig.getCursorPipelineOrder()) {
+            case INTERNAL_FIRST -> internalPipeline.then(userPipeline);
+            case USER_FIRST -> userPipeline.then(internalPipeline);
+            case USER_ONLY -> userPipeline;
+        };
     }
 
     private ChangeStreamPipeline createSizePipeline() {
@@ -100,11 +93,20 @@ class ChangeStreamPipelineFactory {
     }
 
     private ChangeStreamPipeline createInternalPipeline() {
+        // MongoDB moves a $match ahead of the pre- and post-image lookup only if no stage reshapes the event first.
+        // With required images, excluded events must be removed before the lookup or they fail the stream.
+        // Regex filters without required images keep the $replaceRoot pipeline below on purpose: it stays compatible
+        // with Amazon DocumentDB (DBZ-6421), whose 3.6 and 4.0 versions do not support $regexMatch. DocumentDB has no
+        // pre- or post-images, so the required image gate never applies to it.
+        var matchOriginalEvent = filterConfig.isLiteralsMatchMode()
+                || connectorConfig.getCaptureModePreImage().isRequired()
+                || connectorConfig.getCaptureModePostImage().isRequired();
+
         // Resolve the leaf filters
         var filters = Stream
                 .of(
-                        createCollectionFilter(filterConfig),
-                        createOperationTypeFilter(connectorConfig, filterConfig))
+                        createCollectionFilter(filterConfig, matchOriginalEvent),
+                        createOperationTypeFilter(connectorConfig, matchOriginalEvent))
                 .flatMap(Optional::stream)
                 .collect(toList());
 
@@ -112,8 +114,8 @@ class ChangeStreamPipelineFactory {
         var andFilter = Filters.and(filters);
         var matchFilter = Aggregates.match(andFilter);
 
-        // Done if matching databases and collections as literals
-        if (filterConfig.isLiteralsMatchMode()) {
+        // Done if matching databases and collections on the original event
+        if (matchOriginalEvent) {
             return new ChangeStreamPipeline(matchFilter);
         }
 
@@ -167,6 +169,26 @@ class ChangeStreamPipelineFactory {
                 collectionsFilters);
     }
 
+    private static Optional<Bson> createDatabaseAndCollectionAnchoredRegexFilters(FilterConfig filterConfig) {
+        // Database filters
+        var dbFilters = Optional.<Bson> empty()
+                .or(() -> filterConfig.getDbIncludeList()
+                        .map(value -> Filters.regex("ns.db", includedRegex(value), "i")))
+                .or(() -> filterConfig.getDbExcludeList()
+                        .map(value -> Filters.regex("ns.db", excludedRegex(value), "i")));
+
+        // Collection filters
+        var collectionsFilters = Optional.<Bson> empty()
+                .or(() -> filterConfig.getCollectionIncludeList()
+                        .map(value -> namespaceRegexMatch(includedRegex(value))))
+                .or(() -> filterConfig.getCollectionExcludeList()
+                        .map(value -> namespaceRegexMatch(excludedRegex(value))));
+
+        return andFilters(
+                dbFilters,
+                collectionsFilters);
+    }
+
     private static Optional<Bson> createDatabaseAndCollectionLiteralFilters(FilterConfig filterConfig) {
         // Database filters
         // Note: No need to exclude `filterConfig.getBuiltInDbNames()` since these are not streamed per
@@ -193,12 +215,14 @@ class ChangeStreamPipelineFactory {
                 collectionsFilters);
     }
 
-    private static Optional<Bson> createCollectionFilter(FilterConfig filterConfig) {
+    private static Optional<Bson> createCollectionFilter(FilterConfig filterConfig, boolean matchOriginalEvent) {
         var dbAndCollectionFilters = Optional.<Bson> empty();
         var includedSignalCollectionFilters = Optional.<Bson> empty();
 
-        if (filterConfig.isLiteralsMatchMode()) {
-            dbAndCollectionFilters = createDatabaseAndCollectionLiteralFilters(filterConfig);
+        if (matchOriginalEvent) {
+            dbAndCollectionFilters = filterConfig.isLiteralsMatchMode()
+                    ? createDatabaseAndCollectionLiteralFilters(filterConfig)
+                    : createDatabaseAndCollectionAnchoredRegexFilters(filterConfig);
             includedSignalCollectionFilters = filterConfig
                     .getSignalDataCollection()
                     .map(ChangeStreamPipelineFactory::namespaceBson)
@@ -217,7 +241,7 @@ class ChangeStreamPipelineFactory {
                 includedSignalCollectionFilters);
     }
 
-    private static Optional<Bson> createOperationTypeFilter(MongoDbConnectorConfig connectorConfig, FilterConfig filterConfig) {
+    private static Optional<Bson> createOperationTypeFilter(MongoDbConnectorConfig connectorConfig, boolean matchOriginalEvent) {
         // Per https://debezium.io/documentation/reference/stable/connectors/mongodb.html#mongodb-property-skipped-operations
         // > The supported operations include:
         // > - 'c' for inserts/create
@@ -250,8 +274,8 @@ class ChangeStreamPipelineFactory {
             includedOperations.remove(OperationType.DELETE);
         }
 
-        // for regexes the original change event doc is placed under event field
-        var field = filterConfig.isLiteralsMatchMode()
+        // for regexes on the reshaped event the original change event doc is placed under event field
+        var field = matchOriginalEvent
                 ? "operationType"
                 : "event.operationType";
 
@@ -321,6 +345,22 @@ class ChangeStreamPipelineFactory {
 
     private static Bson expr(Object expr) {
         return new BasicDBObject("$expr", expr);
+    }
+
+    private static Bson namespaceRegexMatch(String regex) {
+        return expr(new BasicDBObject("$regexMatch", new BasicDBObject()
+                .append("input", concat("$ns.db", ".", "$ns.coll"))
+                .append("regex", regex)
+                .append("options", "i")));
+    }
+
+    // Anchored and split like the client-side filters, which match each pattern against the whole name
+    private static String includedRegex(String patterns) {
+        return "^(?:" + String.join("|", Strings.RegExSplitter.split(patterns)) + ")$";
+    }
+
+    private static String excludedRegex(String patterns) {
+        return "^(?!(?:" + String.join("|", Strings.RegExSplitter.split(patterns)) + ")$)";
     }
 
     private static Bson namespaceBson(String namespace) {

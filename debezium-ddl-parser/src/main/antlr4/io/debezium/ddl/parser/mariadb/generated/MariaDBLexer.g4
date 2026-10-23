@@ -29,6 +29,11 @@ lexer grammar MariaDBLexer;
 
 options {
     caseInsensitive = true;
+    superClass = MariaDbLexerBase;
+}
+
+@header {
+    import io.debezium.antlr.mariadb.MariaDbLexerBase;
 }
 
 channels {
@@ -1371,12 +1376,16 @@ fragment CHARSET_NAME:
 
 fragment EXPONENT_NUM_PART : 'E' [-+]? DEC_DIGIT+;
 fragment ID_LITERAL        : [A-Z_$0-9\u0080-\uFFFF]*? [A-Z_$\u0080-\uFFFF]+? [A-Z_$0-9\u0080-\uFFFF]*;
-fragment DQUOTA_STRING     : '"' ( '\\' . | '""' | ~('"' | '\\'))* '"';
-fragment SQUOTA_STRING     : '\'' ('\\' . | '\'\'' | ~('\'' | '\\'))* '\'';
+fragment DQUOTA_STRING:
+    '"' ({!this.isNoBackslashEscapes()}? '\\' . | {this.isNoBackslashEscapes()}? '\\' | '""' | ~('"' | '\\'))* '"'
+;
+fragment SQUOTA_STRING:
+    '\'' ({!this.isNoBackslashEscapes()}? '\\' . | {this.isNoBackslashEscapes()}? '\\' | '\'\'' | ~('\'' | '\\'))* '\''
+;
 fragment BQUOTA_STRING     : '`' ( ~'`' | '``')* '`';
 fragment HEX_DIGIT         : [0-9A-F];
 fragment DEC_DIGIT         : [0-9];
-fragment BIT_STRING_L      : 'B' '\'' [01]+ '\'';
+fragment BIT_STRING_L      : 'B' '\'' [01]+ '\'' | '0B' [01]+;
 fragment IP_ADDRESS        : [0-9]+ '.' [0-9.]+ | [0-9A-F:]+ ':' [0-9A-F:]+;
 
 // Last tokens must generate Errors

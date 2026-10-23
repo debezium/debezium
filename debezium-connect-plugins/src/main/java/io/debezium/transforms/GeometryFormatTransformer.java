@@ -175,8 +175,11 @@ public class GeometryFormatTransformer<R extends ConnectRecord<R>> implements Tr
             return value;
         }
         final GeometryBytes geometry = new GeometryBytes(wkb, srid);
-        // Check the actual format of the geometry wkb. Based on this, convert to the other format.
+        // Check the actual format of the geometry wkb. Only convert when it differs from the configured format.
         final GeometryFormat currentFormat = geometry.isExtended() ? GeometryFormat.EWKB : GeometryFormat.WKB;
+        if (currentFormat == geometryFormat) {
+            return value;
+        }
         switch (currentFormat) {
             case WKB -> {
                 // Convert to EWKB by adding SRID. Native (non-PostGIS) geometric types such as box, lseg,

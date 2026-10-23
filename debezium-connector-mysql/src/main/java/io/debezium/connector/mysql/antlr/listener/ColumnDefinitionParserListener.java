@@ -89,7 +89,7 @@ public class ColumnDefinitionParserListener extends MySqlParserBaseListener {
         resolveColumnDataType(ctx.fieldDefinition().dataType());
 
         parser.runIfNotNull(() -> {
-            defaultValueListener = new DefaultValueParserListener(this, optionalColumn);
+            defaultValueListener = new DefaultValueParserListener(this, optionalColumn, parser);
             listeners.add(defaultValueListener);
         }, tableEditor);
         super.enterColumnDefinition(ctx);
@@ -106,7 +106,7 @@ public class ColumnDefinitionParserListener extends MySqlParserBaseListener {
         resolveColumnDataType(ctx.dataType());
 
         parser.runIfNotNull(() -> {
-            defaultValueListener = new DefaultValueParserListener(this, optionalColumn);
+            defaultValueListener = new DefaultValueParserListener(this, optionalColumn, parser);
             listeners.add(defaultValueListener);
         }, tableEditor);
     }
@@ -122,7 +122,7 @@ public class ColumnDefinitionParserListener extends MySqlParserBaseListener {
         resolveColumnDataType(ctx.fieldDefinition().dataType());
 
         parser.runIfNotNull(() -> {
-            defaultValueListener = new DefaultValueParserListener(this, optionalColumn);
+            defaultValueListener = new DefaultValueParserListener(this, optionalColumn, parser);
             // Manually process all column attributes
             if (ctx.fieldDefinition().columnAttribute() != null) {
                 for (MySqlParser.ColumnAttributeContext attrCtx : ctx.fieldDefinition().columnAttribute()) {

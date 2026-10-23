@@ -19,6 +19,7 @@ import org.apache.kafka.common.config.ConfigDef;
 import org.apache.kafka.common.config.ConfigDef.Importance;
 import org.apache.kafka.common.config.ConfigDef.Type;
 import org.apache.kafka.common.config.ConfigDef.Width;
+import org.apache.kafka.common.config.ConfigException;
 import org.apache.kafka.connect.data.Struct;
 import org.bson.BsonTimestamp;
 import org.bson.Document;
@@ -152,8 +153,11 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig implements Sha
     }
 
     /**
-     * The set of different ways how connector can capture changes.
+     * The legacy combinations of pre- and post-image policies.
+     *
+     * @deprecated Use {@link PreImageMode} and {@link PostImageMode} instead.
      */
+    @Deprecated
     public enum CaptureMode implements EnumeratedValue {
 
         /**
@@ -245,8 +249,11 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig implements Sha
     }
 
     /**
-     * The set off different ways how connector performs full update
+     * The legacy methods for retrieving updated documents.
+     *
+     * @deprecated Use {@link PostImageMode} instead.
      */
+    @Deprecated
     public enum FullUpdateType implements EnumeratedValue {
 
         /**
@@ -257,7 +264,12 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig implements Sha
         /**
          * Full update utilises MongoDB post images
          */
-        POST_IMAGE("post_image", true);
+        POST_IMAGE("post_image", true),
+
+        /**
+         * Full update requires a MongoDB post-image and fails if it is unavailable.
+         */
+        POST_IMAGE_REQUIRED("post_image_required", true);
 
         private final String value;
         private final boolean postImage;
@@ -312,6 +324,90 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig implements Sha
 
         public boolean isPostImage() {
             return postImage;
+        }
+    }
+
+    /**
+     * Controls how the connector retrieves the full document after an update.
+     */
+    public enum PostImageMode implements EnumeratedValue {
+        OFF("off"),
+        LOOKUP("lookup"),
+        POST_IMAGE("post_image"),
+        POST_IMAGE_REQUIRED("post_image_required");
+
+        private final String value;
+
+        PostImageMode(String value) {
+            this.value = value;
+        }
+
+        @Override
+        public String getValue() {
+            return value;
+        }
+
+        public boolean isEnabled() {
+            return this != OFF;
+        }
+
+        public boolean isRequired() {
+            return this == POST_IMAGE_REQUIRED;
+        }
+
+        public boolean isPostImage() {
+            return this == POST_IMAGE || isRequired();
+        }
+
+        public static PostImageMode parse(String value) {
+            if (value != null) {
+                for (var mode : values()) {
+                    if (mode.value.equalsIgnoreCase(value.trim())) {
+                        return mode;
+                    }
+                }
+            }
+            return null;
+        }
+    }
+
+    /**
+     * Controls whether a missing pre-image is allowed.
+     */
+    public enum PreImageMode implements EnumeratedValue {
+        OFF("off"),
+        WHEN_AVAILABLE("when_available"),
+        REQUIRED("required");
+
+        private final String value;
+
+        PreImageMode(String value) {
+            this.value = value;
+        }
+
+        @Override
+        public String getValue() {
+            return value;
+        }
+
+        public boolean isEnabled() {
+            return this != OFF;
+        }
+
+        public boolean isRequired() {
+            return this == REQUIRED;
+        }
+
+        public static PreImageMode parse(String value) {
+            if (value == null || value.isBlank()) {
+                return OFF;
+            }
+            for (var mode : values()) {
+                if (mode.value.equalsIgnoreCase(value.trim())) {
+                    return mode;
+                }
+            }
+            return null;
         }
     }
 
@@ -932,27 +1028,70 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig implements Sha
                     " where databaseName and collectionName may contain the wildcard (*) which matches any characters," +
                     " the colon character (:) is used to determine rename mapping of field.");
 
+    /**
+     * @deprecated Use {@link #CAPTURE_MODE_PRE_IMAGE} and {@link #CAPTURE_MODE_POST_IMAGE} instead.
+     */
+    @Deprecated
     public static final Field CAPTURE_MODE = Field.create("capture.mode")
             .withDisplayName("Capture mode")
             .withEnum(CaptureMode.class, CaptureMode.CHANGE_STREAMS_UPDATE_FULL)
             .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR_ADVANCED))
             .withWidth(Width.SHORT)
             .withImportance(Importance.MEDIUM)
-            .withDescription("The method used to capture changes from MongoDB server. "
+            .withDescription("Deprecated. Use capture.mode.pre.image and capture.mode.post.image instead. "
+                    + "The method used to capture changes from MongoDB server. "
                     + "Options include: "
                     + "'change_streams' to capture changes via MongoDB Change Streams, update events do not contain full documents; "
                     + "'change_streams_update_full' (the default) to capture changes via MongoDB Change Streams, update events contain full documents");
 
+    /**
+     * @deprecated Use {@link #CAPTURE_MODE_POST_IMAGE} instead.
+     */
+    @Deprecated
     public static final Field CAPTURE_MODE_FULL_UPDATE_TYPE = Field.create("capture.mode.full.update.type")
             .withDisplayName("Capture mode full update type")
             .withEnum(FullUpdateType.class, FullUpdateType.LOOKUP)
+            .withValidation(MongoDbConnectorConfig::validateRequiredPostImage)
             .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR_ADVANCED))
             .withWidth(Width.SHORT)
             .withImportance(Importance.MEDIUM)
-            .withDescription("The method used to perform full update lookups. "
+            .withDescription("Deprecated. Use capture.mode.post.image instead. "
+                    + "The method used to perform full update lookups. "
                     + "Options include: "
                     + "'lookup' (the default) use separate lookup to get the updated document; "
-                    + "'post_image' use MongoDB post images (requires Mongo 6.0 or newer");
+                    + "'post_image' use MongoDB post images when available; "
+                    + "'post_image_required' require MongoDB post images and fail if unavailable. "
+                    + "Post images require MongoDB 6.0 or newer and must be enabled on the collection. "
+                    + "With regex filters and deployment or database capture scope, required images can be needed for events from excluded collections.");
+
+    public static final Field CAPTURE_MODE_POST_IMAGE = Field.create("capture.mode.post.image")
+            .withDisplayName("Capture mode post-image policy")
+            .withEnum(PostImageMode.class, PostImageMode.LOOKUP)
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR_ADVANCED))
+            .withWidth(Width.SHORT)
+            .withImportance(Importance.MEDIUM)
+            .withDescription("Controls how to retrieve the full document after an update. "
+                    + "'off' does not request the updated document; "
+                    + "'lookup' (the default) uses a separate lookup; "
+                    + "'post_image' requests MongoDB post-images when available; "
+                    + "'post_image_required' fails if a post-image is unavailable. "
+                    + "Post-images require MongoDB 6.0 or newer and must be enabled on the collection. "
+                    + "With regex filters and deployment or database capture scope, required images can be needed for events from excluded collections. "
+                    + "When explicitly set, this property takes precedence over capture.mode and capture.mode.full.update.type.");
+
+    public static final Field CAPTURE_MODE_PRE_IMAGE = Field.create("capture.mode.pre.image")
+            .withDisplayName("Capture mode pre-image policy")
+            .withEnum(PreImageMode.class, PreImageMode.OFF)
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR_ADVANCED))
+            .withWidth(Width.SHORT)
+            .withImportance(Importance.MEDIUM)
+            .withDescription("Controls how to retrieve the document before a change. "
+                    + "'off' (the default) does not request pre-images; "
+                    + "'when_available' requests MongoDB pre-images when available; "
+                    + "'required' fails if a pre-image is unavailable. "
+                    + "Pre-images require MongoDB 6.0 or newer and must be enabled on the collection. "
+                    + "With regex filters and deployment or database capture scope, required images can be needed for events from excluded collections. "
+                    + "When explicitly set, this property takes precedence over capture.mode.");
 
     public static final Field JSON_SERIALIZATION_MODE = Field.create("json.serialization.mode")
             .withDisplayName("JSON serialization mode")
@@ -974,8 +1113,21 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig implements Sha
             .withWidth(Width.SHORT)
             .withImportance(Importance.LOW)
             .withDefault(-1L)
-            .withDescription("If no existing offset is detected,  "
-                    + "Debezium will start streaming from given timestamp");
+            .withValidation(MongoDbConnectorConfig::validateStartOpTime)
+            .withDescription("If no existing offset is detected, Debezium will start streaming from the given packed BSON timestamp. "
+                    + "Cannot be used with capture.start.timestamp unless set to -1 (disabled).");
+
+    public static final Field CAPTURE_START_TIMESTAMP = Field.create("capture.start.timestamp")
+            .withDisplayName("Capture from timestamp")
+            .withType(Type.STRING)
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR_ADVANCED))
+            .withWidth(Width.LONG)
+            .withImportance(Importance.LOW)
+            .withValidation(MongoDbConnectorConfig::validateStartTimestamp)
+            .withDescription("If no existing offset is detected, Debezium will start streaming from this timestamp. "
+                    + "Accepts integer Unix seconds, ISO-8601 with a UTC offset and whole-second precision, "
+                    + "or a BSON timestamp in Extended JSON format. "
+                    + "Cannot be used with capture.start.op.time unless that property is set to -1 (disabled).");
 
     public static final Field CAPTURE_SCOPE = Field.create("capture.scope")
             .withDisplayName("Capture scope")
@@ -1033,6 +1185,13 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig implements Sha
             .withWidth(Width.SHORT)
             .withImportance(Importance.LOW)
             .withDescription("The maximum processing time in milliseconds to wait for the oplog cursor to process a single poll request");
+
+    /**
+     * Change stream pipeline stages that cannot be used in {@link #CURSOR_PIPELINE}, mapped to the reason reported to the user.
+     */
+    private static final Map<String, String> UNSUPPORTED_CURSOR_PIPELINE_STAGES = Map.of(
+            "$changeStream", "the connector opens the change stream itself; to start streaming from a specific time, use '"
+                    + CAPTURE_START_OP_TIME.name() + "' or '" + CAPTURE_START_TIMESTAMP.name() + "'");
 
     public static final Field CURSOR_PIPELINE = Field.create("cursor.pipeline")
             .withDisplayName("Pipeline stages applied to the change stream cursor")
@@ -1094,15 +1253,27 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig implements Sha
     public static final Field SOURCE_INFO_STRUCT_MAKER = CommonConnectorConfig.SOURCE_INFO_STRUCT_MAKER
             .withDefault(MongoDbSourceInfoStructMaker.class.getName());
 
+    public static final Field QUERY_FETCH_SIZE = CommonConnectorConfig.QUERY_FETCH_SIZE
+            .withDisplayName("Change stream cursor batch size")
+            .withDescription("The maximum number of change stream documents returned in each batch from MongoDB. "
+                    + "A value of '0' uses the server default batch size.");
+
     private static final ConfigDefinition CONFIG_DEFINITION = CommonConnectorConfig.CONFIG_DEFINITION.edit()
             .name("MongoDB")
+            .excluding(CommonConnectorConfig.QUERY_FETCH_SIZE, CommonConnectorConfig.TOPIC_NAMING_STRATEGY)
             .group(Field.Group.CONNECTION, CONNECTION_STRING, ALLOW_OFFSET_INVALIDATION, USER, PASSWORD, AUTH_SOURCE, CONNECT_TIMEOUT_MS,
                     HEARTBEAT_FREQUENCY_MS, SOCKET_TIMEOUT_MS, SERVER_SELECTION_TIMEOUT_MS, MONGODB_POLL_INTERVAL_MS, SSL_ENABLED, SSL_ALLOW_INVALID_HOSTNAMES,
                     CURSOR_MAX_AWAIT_TIME_MS)
+            .group(Field.Group.CONNECTION_ADVANCED, AUTH_PROVIDER_CLASS)
+            .group(Field.Group.CONNECTION_ADVANCED_SSL, SSL_KEYSTORE, SSL_KEYSTORE_PASSWORD, SSL_KEYSTORE_TYPE, SSL_TRUSTSTORE, SSL_TRUSTSTORE_PASSWORD,
+                    SSL_TRUSTSTORE_TYPE)
             .group(Field.Group.FILTERS, DATABASE_INCLUDE_LIST, DATABASE_EXCLUDE_LIST, COLLECTION_INCLUDE_LIST, COLLECTION_EXCLUDE_LIST, FIELD_EXCLUDE_LIST, FIELD_RENAMES,
-                    SNAPSHOT_FILTER_QUERY_BY_COLLECTION)
-            .group(Field.Group.CONNECTOR, TOPIC_PREFIX, SNAPSHOT_MODE, CAPTURE_MODE, CAPTURE_SCOPE, CAPTURE_TARGET, JSON_SERIALIZATION_MODE, SCHEMA_NAME_ADJUSTMENT_MODE,
-                    SOURCE_INFO_STRUCT_MAKER)
+                    SNAPSHOT_FILTER_QUERY_BY_COLLECTION, FILTERS_MATCH_MODE)
+            .group(Field.Group.CONNECTOR, TOPIC_PREFIX, TOPIC_NAMING_STRATEGY, SNAPSHOT_MODE, CAPTURE_MODE, CAPTURE_MODE_POST_IMAGE, CAPTURE_MODE_PRE_IMAGE,
+                    CAPTURE_SCOPE, CAPTURE_TARGET, JSON_SERIALIZATION_MODE,
+                    SCHEMA_NAME_ADJUSTMENT_MODE, SOURCE_INFO_STRUCT_MAKER, CAPTURE_START_OP_TIME, CAPTURE_START_TIMESTAMP)
+            .group(Field.Group.CONNECTOR_ADVANCED, QUERY_FETCH_SIZE, CURSOR_PIPELINE, CURSOR_PIPELINE_ORDER, CURSOR_OVERSIZE_HANDLING_MODE,
+                    CURSOR_OVERSIZE_SKIP_THRESHOLD, CAPTURE_MODE_FULL_UPDATE_TYPE)
             .create();
 
     /**
@@ -1115,10 +1286,12 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig implements Sha
     }
 
     private final SnapshotMode snapshotMode;
-    private final Long startOperationTime;
+    private final BsonTimestamp startOperationTime;
     private final CaptureMode captureMode;
     private final JsonSerializationMode jsonSerializationMode;
     private final FullUpdateType captureModeFullUpdateType;
+    private final PreImageMode captureModePreImage;
+    private final PostImageMode captureModePostImage;
     private final CaptureScope captureScope;
     private final String captureTarget;
     private final boolean offsetInvalidationAllowed;
@@ -1128,7 +1301,7 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig implements Sha
     private final String user;
     private final String password;
     private final String authSource;
-    private final MongoDbAuthProvider authProvider;
+    private MongoDbAuthProvider authProvider;
     private final boolean sslEnabled;
     private final boolean sslAllowInvalidHostnames;
     private final String sslKeyStore;
@@ -1150,7 +1323,6 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig implements Sha
         super(config, DEFAULT_SNAPSHOT_FETCH_SIZE);
 
         // Connection configuration
-        this.authProvider = config.getInstance(MongoDbConnectorConfig.AUTH_PROVIDER_CLASS, MongoDbAuthProvider.class);
         this.sslEnabled = config.getBoolean(MongoDbConnectorConfig.SSL_ENABLED);
         this.sslAllowInvalidHostnames = config.getBoolean(MongoDbConnectorConfig.SSL_ALLOW_INVALID_HOSTNAMES);
         this.sslKeyStore = config.getString(MongoDbConnectorConfig.SSL_KEYSTORE);
@@ -1173,12 +1345,31 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig implements Sha
         String snapshotModeValue = config.getString(MongoDbConnectorConfig.SNAPSHOT_MODE);
         this.snapshotMode = SnapshotMode.parse(snapshotModeValue, MongoDbConnectorConfig.SNAPSHOT_MODE.defaultValueAsString());
 
-        this.startOperationTime = config.getLong(CAPTURE_START_OP_TIME);
+        try {
+            this.startOperationTime = resolveStartOperationTime(config);
+        }
+        catch (IllegalArgumentException e) {
+            throw new ConfigException(CAPTURE_START_TIMESTAMP.name(), config.getString(CAPTURE_START_TIMESTAMP), e.getMessage());
+        }
 
         String captureModeValue = config.getString(MongoDbConnectorConfig.CAPTURE_MODE);
         this.captureMode = CaptureMode.parse(captureModeValue, MongoDbConnectorConfig.CAPTURE_MODE.defaultValueAsString());
         String fullUpdateTypeValue = config.getString(MongoDbConnectorConfig.CAPTURE_MODE_FULL_UPDATE_TYPE);
         this.captureModeFullUpdateType = FullUpdateType.parse(fullUpdateTypeValue, MongoDbConnectorConfig.CAPTURE_MODE_FULL_UPDATE_TYPE.defaultValueAsString());
+        this.captureModePreImage = config.hasKey(CAPTURE_MODE_PRE_IMAGE)
+                ? PreImageMode.parse(config.getString(CAPTURE_MODE_PRE_IMAGE))
+                : captureMode.isIncludePreImage() ? PreImageMode.WHEN_AVAILABLE : PreImageMode.OFF;
+        this.captureModePostImage = config.hasKey(CAPTURE_MODE_POST_IMAGE)
+                ? PostImageMode.parse(config.getString(CAPTURE_MODE_POST_IMAGE))
+                : captureMode.isFullUpdate() ? PostImageMode.parse(captureModeFullUpdateType.getValue()) : PostImageMode.OFF;
+        if (config.hasKey(CAPTURE_MODE)) {
+            LOGGER.warn("Configuration property '{}' is deprecated. Use '{}' and '{}' instead.",
+                    CAPTURE_MODE.name(), CAPTURE_MODE_PRE_IMAGE.name(), CAPTURE_MODE_POST_IMAGE.name());
+        }
+        if (config.hasKey(CAPTURE_MODE_FULL_UPDATE_TYPE)) {
+            LOGGER.warn("Configuration property '{}' is deprecated. Use '{}' instead.",
+                    CAPTURE_MODE_FULL_UPDATE_TYPE.name(), CAPTURE_MODE_POST_IMAGE.name());
+        }
 
         String jsonSerializationModeValue = config.getString(MongoDbConnectorConfig.JSON_SERIALIZATION_MODE);
         this.jsonSerializationMode = JsonSerializationMode.parse(jsonSerializationModeValue, MongoDbConnectorConfig.JSON_SERIALIZATION_MODE.defaultValueAsString());
@@ -1206,14 +1397,26 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig implements Sha
     private static int validateChangeStreamPipeline(Configuration config, Field field, ValidationOutput problems) {
         String value = config.getString(field);
 
+        final ChangeStreamPipeline pipeline;
         try {
-            new ChangeStreamPipeline(value);
+            pipeline = new ChangeStreamPipeline(value);
         }
         catch (Exception e) {
             problems.accept(field, value, "Change stream pipeline JSON is invalid: " + e.getMessage());
             return 1;
         }
-        return 0;
+
+        int count = 0;
+        for (final var stage : pipeline.getStages()) {
+            for (final var stageName : stage.toBsonDocument().keySet()) {
+                final var reason = UNSUPPORTED_CURSOR_PIPELINE_STAGES.get(stageName);
+                if (reason != null) {
+                    problems.accept(field, value, "Change stream pipeline stage '" + stageName + "' is not supported: " + reason);
+                    count++;
+                }
+            }
+        }
+        return count;
     }
 
     private static int validateOversizeSkipThreshold(Configuration config, Field field, ValidationOutput problems) {
@@ -1284,6 +1487,54 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig implements Sha
         return ConnectorConfigValidationHelper.validateExcludeField(config, DATABASE_INCLUDE_LIST, DATABASE_EXCLUDE_LIST, problems);
     }
 
+    private static int validateStartOpTime(Configuration config, Field field, ValidationOutput problems) {
+        if (hasConflictingStartTimes(config)) {
+            problems.accept(field, config.getString(field), "Cannot be configured together with '" + CAPTURE_START_TIMESTAMP.name() + "'");
+            return 1;
+        }
+        return 0;
+    }
+
+    private static int validateStartTimestamp(Configuration config, Field field, ValidationOutput problems) {
+        try {
+            resolveStartOperationTime(config);
+            return 0;
+        }
+        catch (IllegalArgumentException e) {
+            problems.accept(field, config.getString(field), e.getMessage());
+            return 1;
+        }
+    }
+
+    private static boolean hasConflictingStartTimes(Configuration config) {
+        return !Strings.isNullOrBlank(config.getString(CAPTURE_START_TIMESTAMP))
+                && !CAPTURE_START_OP_TIME.defaultValue().equals(config.getLong(CAPTURE_START_OP_TIME));
+    }
+
+    private static BsonTimestamp resolveStartOperationTime(Configuration config) {
+        if (hasConflictingStartTimes(config)) {
+            throw new IllegalArgumentException("Cannot be configured together with '" + CAPTURE_START_OP_TIME.name() + "'");
+        }
+        final var value = config.getString(CAPTURE_START_TIMESTAMP);
+        if (!Strings.isNullOrBlank(value)) {
+            return BsonTimestampParser.parse(value);
+        }
+        final var operationTime = config.getLong(CAPTURE_START_OP_TIME);
+        return !CAPTURE_START_OP_TIME.defaultValue().equals(operationTime) ? new BsonTimestamp(operationTime) : null;
+    }
+
+    private static int validateRequiredPostImage(Configuration config, Field field, ValidationOutput problems) {
+        if (config.hasKey(CAPTURE_MODE_POST_IMAGE)) {
+            return 0;
+        }
+        final var mode = CaptureMode.parse(config.getString(CAPTURE_MODE), CAPTURE_MODE.defaultValueAsString());
+        if (FullUpdateType.parse(config.getString(field)) == FullUpdateType.POST_IMAGE_REQUIRED && mode != null && !mode.isFullUpdate()) {
+            problems.accept(field, config.getString(field), "Required post-images need a capture.mode that retrieves full documents");
+            return 1;
+        }
+        return 0;
+    }
+
     private static int validateCaptureTarget(Configuration config, Field field, ValidationOutput problems) {
         var value = config.getString(field);
         var scope = CaptureScope.parse(config.getString(CAPTURE_SCOPE), CAPTURE_SCOPE.defaultValueAsString());
@@ -1328,26 +1579,33 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig implements Sha
     }
 
     /**
-     * Provides statically configured capture mode. The configured value can be overrided upon
-     * connector start if offsets stored were created by a different capture mode.
-     *
-     * See {@link MongoDbTaskContext#getCaptureMode()}
-     *
-     * @return capture mode requested by configuration
+     * @return the legacy capture mode requested by configuration
+     * @deprecated Use {@link #getCaptureModePreImage()} and {@link #getCaptureModePostImage()} instead.
      */
+    @Deprecated
     public CaptureMode getCaptureMode() {
         return captureMode;
     }
 
     public Optional<BsonTimestamp> startAtOperationTime() {
-        if (CAPTURE_START_OP_TIME.defaultValue().equals(startOperationTime)) {
-            return Optional.empty();
-        }
-        return Optional.of(new BsonTimestamp(startOperationTime));
+        return Optional.ofNullable(startOperationTime);
     }
 
+    /**
+     * @return the legacy full update type requested by configuration
+     * @deprecated Use {@link #getCaptureModePostImage()} instead.
+     */
+    @Deprecated
     public FullUpdateType getCaptureModeFullUpdateType() {
         return captureModeFullUpdateType;
+    }
+
+    public PostImageMode getCaptureModePostImage() {
+        return captureModePostImage;
+    }
+
+    public PreImageMode getCaptureModePreImage() {
+        return captureModePreImage;
     }
 
     public JsonSerializationMode getJsonSerializationMode() {
@@ -1386,7 +1644,10 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig implements Sha
         return cursorMaxAwaitTimeMs;
     }
 
-    public MongoDbAuthProvider getAuthProvider() {
+    public synchronized MongoDbAuthProvider getAuthProvider() {
+        if (authProvider == null) {
+            authProvider = getConfig().getInstance(AUTH_PROVIDER_CLASS, MongoDbAuthProvider.class);
+        }
         return authProvider;
     }
 
@@ -1527,8 +1788,8 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig implements Sha
         final String[] result = new String[3];
         int idx = 0;
         for (Object fieldValue : fields.values()) {
-            if (fieldValue instanceof Document) {
-                result[idx++] = ((Document) fieldValue).toJson();
+            if (fieldValue instanceof Document document) {
+                result[idx++] = document.toJson();
             }
             else {
                 result[idx++] = fieldValue.toString();

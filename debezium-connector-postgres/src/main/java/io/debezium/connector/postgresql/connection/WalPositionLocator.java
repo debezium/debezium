@@ -5,6 +5,7 @@
  */
 package io.debezium.connector.postgresql.connection;
 
+import java.util.EnumSet;
 import java.util.HashSet;
 import java.util.Optional;
 import java.util.Set;
@@ -36,6 +37,14 @@ public class WalPositionLocator {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(WalPositionLocator.class);
 
+    /**
+     * The operations PostgresStreamingChangeEventSource counts toward lsn_events_processed:
+     * the operations of its branch for changes, which excludes BEGIN, COMMIT, logical decoding
+     * messages, ORIGIN and NOOP. A null operation, as in an offset stored without a message
+     * type, is not contained.
+     */
+    private static final Set<Operation> COUNTED_OPERATIONS = EnumSet.of(Operation.INSERT, Operation.UPDATE, Operation.DELETE, Operation.TRUNCATE);
+
     private final Lsn lastCommitStoredLsn;
     private final Lsn lastEventStoredLsn;
     private final Operation lastProcessedMessageType;
@@ -59,7 +68,11 @@ public class WalPositionLocator {
         this.lastCommitStoredLsn = lastCommitStoredLsn;
         this.lastEventStoredLsn = lastEventStoredLsn;
         this.lastProcessedMessageType = lastProcessedMessageType;
-        this.lastEventStoredLsnEventsProcessed = lsnEventsProcessed;
+        // The stored count describes the stored event's LSN only when the stored
+        // event is one the count counts. An offset stored at a transactional logical
+        // message still carries the count of the rows before it, at another LSN, and
+        // applying it at the message's LSN would skip that many rows after it.
+        this.lastEventStoredLsnEventsProcessed = COUNTED_OPERATIONS.contains(lastProcessedMessageType) ? lsnEventsProcessed : 0;
 
         LOGGER.info("Looking for WAL restart position for last commit LSN '{}' and last change LSN '{}', events processed at LSN '{}'",
                 lastCommitStoredLsn, lastEventStoredLsn, lsnEventsProcessed);
@@ -93,12 +106,16 @@ public class WalPositionLocator {
             if (currentLsn.equals(lastEventStoredLsn)) {
                 // Multiple events can share the same LSN (e.g. COPY or batched inserts).
                 // Count events at this LSN to find the precise resume point.
-                currentLsnEventCount++;
+                // Only the events lsn_events_processed counts are counted, so a BEGIN
+                // or a logical message sharing this LSN with a row does not stand for one.
+                if (COUNTED_OPERATIONS.contains(message.getOperation())) {
+                    currentLsnEventCount++;
+                }
 
-                // Same-LSN skip logic only applies when multiple DML events share the same LSN
-                // (e.g. COPY or batched inserts). When lsnEventsProcessed is 1, the existing
-                // "find next different LSN" logic handles restart correctly.
-                if (lastEventStoredLsnEventsProcessed > 1 && currentLsnEventCount <= lastEventStoredLsnEventsProcessed) {
+                // Any stored count is applied, 1 included: the "find next different LSN" logic
+                // resumes past every event at the stored LSN, so after the first of several
+                // rows sharing it the rest would be skipped (debezium/dbz#2889).
+                if (lastEventStoredLsnEventsProcessed > 0 && currentLsnEventCount <= lastEventStoredLsnEventsProcessed) {
                     LOGGER.trace("At LSN '{}', event count {} <= processed count {}, continuing search",
                             currentLsn, currentLsnEventCount, lastEventStoredLsnEventsProcessed);
                     return Optional.empty();
@@ -106,7 +123,7 @@ public class WalPositionLocator {
 
                 // We've passed all processed events at this LSN and there are more events remaining.
                 // Resume from this LSN, skipping the already-processed events during the replay phase.
-                if (lastEventStoredLsnEventsProcessed > 1) {
+                if (lastEventStoredLsnEventsProcessed > 0) {
                     startStreamingLsn = lastEventStoredLsn;
                     startStreamingEventsToSkip = lastEventStoredLsnEventsProcessed;
                     LOGGER.info("Will restart from LSN '{}' skipping first {} already-processed events",
@@ -159,10 +176,10 @@ public class WalPositionLocator {
 
             storeLsnAfterLastEventStoredLsn = true;
             // Start counting events at this LSN
-            currentLsnEventCount = 1;
+            currentLsnEventCount = COUNTED_OPERATIONS.contains(message.getOperation()) ? 1 : 0;
 
             // If we have a counter and this is not the last event at this LSN, stay in searching mode
-            if (lastEventStoredLsnEventsProcessed > 1) {
+            if (lastEventStoredLsnEventsProcessed > 0) {
                 LOGGER.trace("At LSN '{}', starting same-LSN event count, processed count is {}",
                         currentLsn, lastEventStoredLsnEventsProcessed);
                 return Optional.empty();
@@ -233,12 +250,23 @@ public class WalPositionLocator {
      * @return true if the message should be skipped, false otherwise
      */
     public boolean skipMessage(Lsn lsn) {
+        return skipMessage(lsn, true);
+    }
+
+    /**
+     * skipMessage for a message that may or may not be one of the events
+     * lsn_events_processed counts. One that is not, such as a BEGIN sharing the
+     * stored LSN, uses up none of the events to skip there.
+     */
+    public boolean skipMessage(Lsn lsn, boolean countsAsLsnEvent) {
         if (passMessages) {
             return false;
         }
         if (startStreamingLsn == null || startStreamingLsn.equals(lsn)) {
             if (startStreamingEventsToSkip > 0) {
-                startStreamingEventsToSkip--;
+                if (countsAsLsnEvent) {
+                    startStreamingEventsToSkip--;
+                }
                 LOGGER.debug("Message with LSN '{}' skipped, {} events remaining to skip", lsn, startStreamingEventsToSkip);
                 return true;
             }

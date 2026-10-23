@@ -3604,6 +3604,102 @@ public class PostgresConnectorIT extends AbstractAsyncEngineConnectorTest {
     }
 
     @Test
+    @FixFor("debezium/dbz#2771")
+    public void shouldPreserveNullElementsInEnumArray() throws Exception {
+        TestHelper.execute(CREATE_TABLES_STMT);
+        // Create the enum type, table, and a row BEFORE the connector starts, so it is captured by the snapshot.
+        TestHelper.execute("CREATE TYPE enum2771 AS ENUM ('plain', 'other', '')");
+        TestHelper.execute("CREATE TABLE s1.enum_array_table (pk SERIAL, v enum2771[], primary key (pk))");
+        TestHelper.execute("INSERT INTO s1.enum_array_table (pk, v) VALUES (1, ARRAY['plain'::enum2771, NULL])");
+
+        Configuration config = TestHelper.defaultConfig()
+                .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL)
+                .with(PostgresConnectorConfig.TABLE_INCLUDE_LIST, "s1.enum_array_table")
+                .build();
+        start(PostgresConnector.class, config);
+        assertConnectorIsRunning();
+
+        // Snapshot phase: the pre-existing row must preserve its NULL element.
+        SourceRecords snapshotRecords = consumeRecordsByTopic(1);
+        List<SourceRecord> snapshotForTopic = snapshotRecords.recordsForTopic(topicName("s1.enum_array_table"));
+        assertThat(snapshotForTopic).hasSize(1);
+        Struct snapshotAfter = ((Struct) snapshotForTopic.get(0).value()).getStruct("after");
+        assertThat(snapshotAfter.schema().field("v").schema().valueSchema().isOptional()).isTrue();
+        assertThat(snapshotAfter.<Object> getArray("v")).containsExactly("plain", null);
+
+        // Streaming phase: a newly inserted row must also preserve its NULL element.
+        waitForStreamingRunning();
+        TestHelper.execute("INSERT INTO s1.enum_array_table (pk, v) VALUES (2, ARRAY['other'::enum2771, NULL])");
+
+        SourceRecords streamRecords = consumeRecordsByTopic(1);
+        List<SourceRecord> streamForTopic = streamRecords.recordsForTopic(topicName("s1.enum_array_table"));
+        assertThat(streamForTopic).hasSize(1);
+        SourceRecord streamRecord = streamForTopic.get(0);
+        assertInsert(streamRecord, PK_FIELD, 2);
+        Struct streamAfter = ((Struct) streamRecord.value()).getStruct("after");
+        assertThat(streamAfter.schema().field("v").schema().valueSchema().isOptional()).isTrue();
+        assertThat(streamAfter.<Object> getArray("v")).containsExactly("other", null);
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2770")
+    public void shouldPreserveNullElementsInLtreeArray() throws Exception {
+        TestHelper.execute(CREATE_TABLES_STMT);
+        TestHelper.execute("CREATE EXTENSION IF NOT EXISTS ltree");
+        TestHelper.execute("CREATE TABLE s1.ltree_array_table (pk SERIAL, v ltree[], primary key (pk))");
+        TestHelper.execute("INSERT INTO s1.ltree_array_table (pk, v) VALUES (1, ARRAY['Top.A'::ltree, NULL])");
+
+        Configuration config = TestHelper.defaultConfig()
+                .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL)
+                .with(PostgresConnectorConfig.TABLE_INCLUDE_LIST, "s1.ltree_array_table")
+                .build();
+        start(PostgresConnector.class, config);
+        assertConnectorIsRunning();
+
+        SourceRecords snapshotRecords = consumeRecordsByTopic(1);
+        List<SourceRecord> snapshotForTopic = snapshotRecords.recordsForTopic(topicName("s1.ltree_array_table"));
+        assertThat(snapshotForTopic).hasSize(1);
+        Struct snapshotAfter = ((Struct) snapshotForTopic.get(0).value()).getStruct("after");
+        assertThat(snapshotAfter.schema().field("v").schema().valueSchema().isOptional()).isTrue();
+        assertThat(snapshotAfter.<Object> getArray("v")).containsExactly("Top.A", null);
+
+        waitForStreamingRunning();
+        TestHelper.execute("INSERT INTO s1.ltree_array_table (pk, v) VALUES (2, ARRAY['Top.B'::ltree, NULL])");
+        SourceRecords streamRecords = consumeRecordsByTopic(1);
+        List<SourceRecord> streamForTopic = streamRecords.recordsForTopic(topicName("s1.ltree_array_table"));
+        assertThat(streamForTopic).hasSize(1);
+        SourceRecord streamRecord = streamForTopic.get(0);
+        assertInsert(streamRecord, PK_FIELD, 2);
+        Struct streamAfter = ((Struct) streamRecord.value()).getStruct("after");
+        assertThat(streamAfter.schema().field("v").schema().valueSchema().isOptional()).isTrue();
+        assertThat(streamAfter.<Object> getArray("v")).containsExactly("Top.B", null);
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2772")
+    public void shouldPreserveEmptyVarbitValue() throws Exception {
+        TestHelper.execute(CREATE_TABLES_STMT);
+        TestHelper.execute("CREATE TABLE s1.varbit_table (pk SERIAL, v varbit(1), primary key (pk))");
+        TestHelper.execute("INSERT INTO s1.varbit_table (pk, v) VALUES (1, B'')");
+        TestHelper.execute("INSERT INTO s1.varbit_table (pk, v) VALUES (2, B'1')");
+
+        Configuration config = TestHelper.defaultConfig()
+                .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL)
+                .with(PostgresConnectorConfig.TABLE_INCLUDE_LIST, "s1.varbit_table")
+                .build();
+        start(PostgresConnector.class, config);
+        assertConnectorIsRunning();
+
+        SourceRecords records = consumeRecordsByTopic(2);
+        List<SourceRecord> recs = records.recordsForTopic(topicName("s1.varbit_table"));
+        assertThat(recs).hasSize(2);
+
+        // empty B'' must be preserved as empty bytes, not NULL (the bug)
+        assertThat(((Struct) recs.get(0).value()).getStruct("after").get("v")).isEqualTo(new byte[]{});
+        assertThat(((Struct) recs.get(1).value()).getStruct("after").get("v")).isEqualTo(new byte[]{ 1 });
+    }
+
+    @Test
     @FixFor("DBZ-5204")
     public void testShouldNotCloseConnectionFetchingMetadataWithNewDataTypes() throws Exception {
         TestHelper.execute(CREATE_TABLES_STMT);

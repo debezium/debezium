@@ -29,6 +29,7 @@ public class CreateTableParserListener extends TableCommonParserListener {
 
     @Override
     public void enterColumnCreateTable(MariaDBParser.ColumnCreateTableContext ctx) {
+        parser.binaryLiteralDefaults().clear();
         TableId tableId = parser.parseQualifiedTableId(ctx.tableName().fullId());
         if (parser.databaseTables().forTable(tableId) == null) {
             tableEditor = parser.databaseTables().editOrCreateTable(tableId);
@@ -54,6 +55,10 @@ public class CreateTableParserListener extends TableCommonParserListener {
                                 if (columnEditor.charsetNameOfTable() == null) {
                                     columnEditor.charsetNameOfTable(defaultCharsetName);
                                 }
+                                // The table declares its character set after the columns, so a literal default of a
+                                // column without a character set can only be converted now
+                                parser.binaryLiteralDefaults().convert(columnEditor, defaultCharsetName,
+                                        DefaultValueParserListener.javaEncodings(parser));
                                 return columnEditor;
                             })
                     .map(ColumnEditor::create)
@@ -74,16 +79,6 @@ public class CreateTableParserListener extends TableCommonParserListener {
             parser.signalCreateTable(tableId, ctx);
         }
         super.exitCopyCreateTable(ctx);
-    }
-
-    @Override
-    public void enterTableOptionCharset(MariaDBParser.TableOptionCharsetContext ctx) {
-        parser.runIfNotNull(() -> {
-            if (ctx.charsetName() != null) {
-                tableEditor.setDefaultCharsetName(parser.withoutQuotes(ctx.charsetName()));
-            }
-        }, tableEditor);
-        super.enterTableOptionCharset(ctx);
     }
 
     @Override

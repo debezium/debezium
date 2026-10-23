@@ -135,8 +135,8 @@
         <!-- Must be aligned with Apicurio version below -->
         <!-- Debezium Server Pravega must use the same Netty version as the one used by Quarkus -->
         <!-- The properties are intentionally separated as Quarkus testing module is not productized -->
-        <quarkus.version.runtime>3.33.2</quarkus.version.runtime>
-        <quarkus.version.test>3.33.2</quarkus.version.test>
+        <quarkus.version.runtime>3.40.0</quarkus.version.runtime>
+        <quarkus.version.test>3.40.0</quarkus.version.test>
 
         <!-- Apicurio -->
         <version.apicurio>3.2.5</version.apicurio>
@@ -154,7 +154,7 @@
         <version.db2.driver>11.5.0.0</version.db2.driver>
         <version.informix.driver>15.0.1.4</version.informix.driver>
         <version.cassandra.driver>4.14.0</version.cassandra.driver>
-        <version.mariadb.driver>3.5.3</version.mariadb.driver>
+        <version.mariadb.driver>3.5.10</version.mariadb.driver>
         <version.jt400>11.1</version.jt400> <!-- IBM Toolbox for Java (JT400) for Debezium JDBC connector Db2i dialect -->
         <!-- These two should be aligned by major versions but minor could vary -->
         <!-- Oracle publishes the driver versions more frequently than the instant client -->
@@ -191,6 +191,11 @@
 
         <!-- Advanced statistics -->
         <version.datadog.sketches>0.8.2</version.datadog.sketches>
+
+        <!-- Static code analysis -->
+        <version.sonar.plugin>5.5.0.6356</version.sonar.plugin>
+        <version.jacoco.plugin>0.8.12</version.jacoco.plugin>
+        <version.properties.plugin>1.2.1</version.properties.plugin>
 
         <!-- Testing -->
         <opentelemetry.agent.for.testing.artifact.relative.path>io/opentelemetry/javaagent/opentelemetry-agent-for-testing/${version.opentelemetry.testing}/opentelemetry-agent-for-testing-${version.opentelemetry.testing}.jar</opentelemetry.agent.for.testing.artifact.relative.path>
@@ -453,6 +458,73 @@
         </plugins>
     </build>
     <profiles>
+        <profile>
+            <id>sonar</id>
+            <!--
+                All the sonar workflow goes in here.
+
+                To run the analysis you need to have SONAR_TOKEN either in your env or pass it as an argument
+                And then run: ./mvnw clean verify -Psonar
+                Optionally: you can run it with -DskipITs
+            -->
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.codehaus.mojo</groupId>
+                        <artifactId>properties-maven-plugin</artifactId>
+                        <version>${version.properties.plugin}</version>
+                        <executions>
+                            <execution>
+                                <id>load-sonar-properties</id>
+                                <phase>initialize</phase>
+                                <goals>
+                                    <goal>read-project-properties</goal>
+                                </goals>
+                                <configuration>
+                                    <files>
+                                        <file>${maven.multiModuleProjectDirectory}/sonar-project.properties</file>
+                                    </files>
+                                </configuration>
+                            </execution>
+                        </executions>
+                    </plugin>
+                    <plugin>
+                        <groupId>org.jacoco</groupId>
+                        <artifactId>jacoco-maven-plugin</artifactId>
+                        <version>${version.jacoco.plugin}</version>
+                        <executions>
+                            <execution>
+                                <id>prepare-agent</id>
+                                <goals>
+                                    <goal>prepare-agent</goal>
+                                </goals>
+                            </execution>
+                            <execution>
+                                <id>report</id>
+                                <phase>verify</phase>
+                                <goals>
+                                    <goal>report</goal>
+                                </goals>
+                            </execution>
+                        </executions>
+                    </plugin>
+                    <plugin>
+                        <groupId>org.sonarsource.scanner.maven</groupId>
+                        <artifactId>sonar-maven-plugin</artifactId>
+                        <version>${version.sonar.plugin}</version>
+                        <executions>
+                            <execution>
+                                <id>sonar-analysis</id>
+                                <phase>verify</phase>
+                                <goals>
+                                    <goal>sonar</goal>
+                                </goals>
+                            </execution>
+                        </executions>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
         <profile>
             <!--
                 Keeps COPYRIGHT.txt, Aliases.txt and FilteredNames.txt sorted. These are

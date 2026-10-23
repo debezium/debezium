@@ -67,6 +67,7 @@ public class JdbcSinkConnectorConfig implements SinkConnectorConfig {
     public static final String POSTGRES_UNNEST_INSERT = "dialect.postgres.unnest.insert.enabled";
     public static final String SQLSERVER_IDENTITY_INSERT = "dialect.sqlserver.identity.insert";
     public static final String STARROCKS_CATALOG_NAME = "dialect.starrocks.catalog.name";
+    public static final String SINGLESTORE_GEOMETRY_REPAIR_ENABLED = "dialect.singlestore.geometry.repair.enabled";
     // StarRocks identifiers may contain only letters, digits, and underscores, and must not start with a digit.
     // The catalog name is concatenated into a 'SET CATALOG' statement, so it is validated to avoid SQL injection.
     private static final Pattern STARROCKS_CATALOG_NAME_PATTERN = Pattern.compile("[a-zA-Z_][a-zA-Z0-9_]*");
@@ -238,6 +239,17 @@ public class JdbcSinkConnectorConfig implements SinkConnectorConfig {
                     "is executed on every new connection before any session work. The StarRocks JDBC driver also " +
                     "supports specifying the catalog directly in the connection URL.");
 
+    public static final Field SINGLESTORE_GEOMETRY_REPAIR_ENABLED_FIELD = Field.create(SINGLESTORE_GEOMETRY_REPAIR_ENABLED)
+            .withDisplayName("Repair SingleStore polygons at eight-decimal precision")
+            .withType(Type.BOOLEAN)
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR_ADVANCED))
+            .withWidth(ConfigDef.Width.SHORT)
+            .withImportance(ConfigDef.Importance.LOW)
+            .withDefault(false)
+            .withDescription(
+                    "When enabled, rounds SingleStore GEOGRAPHY polygon coordinates to eight decimal places and uses JTS GeometryFixer to repair invalid polygonal geometry. "
+                            + "SingleStore validates the resulting polygon on insertion. Default is false.");
+
     public static final Field FLUSH_MAX_RETRIES_FIELD = Field.create(FLUSH_MAX_RETRIES)
             .withDisplayName("Max retry count")
             .withType(Type.INT)
@@ -326,6 +338,7 @@ public class JdbcSinkConnectorConfig implements SinkConnectorConfig {
                     POSTGRES_UNNEST_INSERT_FIELD,
                     SQLSERVER_IDENTITY_INSERT_FIELD,
                     STARROCKS_CATALOG_NAME_FIELD,
+                    SINGLESTORE_GEOMETRY_REPAIR_ENABLED_FIELD,
                     BATCH_SIZE_FIELD,
                     KEYED_MESSAGE_BATCH_MODE_FIELD,
                     FIELD_INCLUDE_LIST_FIELD,
@@ -459,6 +472,7 @@ public class JdbcSinkConnectorConfig implements SinkConnectorConfig {
     private final boolean postgresUnnestInsert;
     private final boolean sqlServerIdentityInsert;
     private final String starRocksCatalogName;
+    private final boolean singleStoreGeometryRepairEnabled;
     private final int flushMaxRetries;
     private final long flushRetryDelayMs;
     private final int batchSize;
@@ -485,6 +499,7 @@ public class JdbcSinkConnectorConfig implements SinkConnectorConfig {
         this.postgresUnnestInsert = config.getBoolean(POSTGRES_UNNEST_INSERT_FIELD);
         this.sqlServerIdentityInsert = config.getBoolean(SQLSERVER_IDENTITY_INSERT_FIELD);
         this.starRocksCatalogName = config.getString(STARROCKS_CATALOG_NAME_FIELD);
+        this.singleStoreGeometryRepairEnabled = config.getBoolean(SINGLESTORE_GEOMETRY_REPAIR_ENABLED_FIELD);
         this.batchSize = config.getInteger(BATCH_SIZE_FIELD);
         this.useReductionBuffer = config.getBoolean(USE_REDUCTION_BUFFER_FIELD);
         this.keyedMessageBatchMode = KeyedMessageBatchMode.parse(config.getString(KEYED_MESSAGE_BATCH_MODE_FIELD));
@@ -570,6 +585,10 @@ public class JdbcSinkConnectorConfig implements SinkConnectorConfig {
 
     public boolean isSqlServerIdentityInsert() {
         return sqlServerIdentityInsert;
+    }
+
+    public boolean isSingleStoreGeometryRepairEnabled() {
+        return singleStoreGeometryRepairEnabled;
     }
 
     @Override

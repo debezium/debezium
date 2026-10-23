@@ -195,8 +195,6 @@ public class MongoDbReplicaSet implements MongoDbDeployment {
             if (startupTimeout != null) {
                 mongoDbContainer.withStartupTimeout(startupTimeout);
             }
-            // This environment variable is necessary for 6.19+ host Linux machine ref: https://jira.mongodb.org/browse/SERVER-121912
-            mongoDbContainer.withEnv("GLIBC_TUNABLES", "glibc.pthread.rseq=1");
             members.add(mongoDbContainer);
         }
         logContainerVMBanner(LOGGER, getHostNames(), builder.skipDockerDesktopLogWarning);
@@ -338,6 +336,18 @@ public class MongoDbReplicaSet implements MongoDbDeployment {
     public void createUser(String username, String password, String database, String... rolePairs) {
         var primary = tryPrimary().orElseThrow();
         primary.createUser(username, password, database, false, rolePairs);
+    }
+
+    /**
+     * Creates a custom role scoped to a single collection via primary;
+     * @param roleName name of the custom role
+     * @param database database the role is defined on, and the privilege resource's database
+     * @param collection collection the privilege is scoped to
+     * @param actions privilege actions to grant on that collection
+     */
+    public void createRole(String roleName, String database, String collection, List<String> actions) {
+        var primary = tryPrimary().orElseThrow();
+        primary.createRole(roleName, database, collection, actions);
     }
 
     /**

@@ -6,7 +6,6 @@
 package io.debezium.schemagenerator.source.kafkaconnect;
 
 import java.util.List;
-import java.util.Map;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
@@ -73,21 +72,18 @@ public class KafkaConnectComponentSource implements ComponentSource {
 
         LOGGER.info("Discovering Kafka Connect components...");
 
-        Map<ComponentType, List<Class<?>>> components = discoveryService.discoverKafkaConnectComponents();
+        List<Class<?>> components = discoveryService.discoverKafkaConnectComponents();
 
-        List<ComponentMetadata> allMetadata = components.entrySet().stream()
-                .peek(entry -> LOGGER.debug("Processing {} {}(s)",
-                        entry.getValue().size(), entry.getKey().getDisplayName()))
-                .flatMap(entry -> entry.getValue().stream()
-                        .flatMap(componentClass -> {
-                            try {
-                                return createComponentMetadata(componentClass).stream();
-                            }
-                            catch (Exception e) {
-                                LOGGER.warn("Failed to create metadata for {}", componentClass.getName(), e);
-                                return Optional.<ComponentMetadata> empty().stream();
-                            }
-                        }))
+        List<ComponentMetadata> allMetadata = components.stream()
+                .flatMap(componentClass -> {
+                    try {
+                        return createComponentMetadata(componentClass).stream();
+                    }
+                    catch (Exception e) {
+                        LOGGER.warn("Failed to create metadata for {}", componentClass.getName(), e);
+                        return Optional.<ComponentMetadata> empty().stream();
+                    }
+                })
                 .collect(Collectors.toList());
 
         LOGGER.info("Discovered {} Kafka Connect component(s)", allMetadata.size());

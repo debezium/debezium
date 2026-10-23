@@ -753,6 +753,231 @@ NOTE: If you configure {prodname} to use Redis Cluster mode,
 ensure that your Redis Cluster is properly configured and accessible.
 The {prodname} Server instance must be able to communicate with the cluster nodes.
 
+== NATS
+
+{prodname} can use a NATS JetStream Object Store to persist offsets and schema history.
+NATS is useful in deployments where Kafka is not available or where a lightweight broker is preferred.
+
+=== Offset Store
+
+[cols="35%a,10%a,55%a",options="header"]
+|===
+|Property
+|Default
+|Description
+
+|[[offset-storage-nats]]<<offset-storage-nats, `offset.storage`>>
+|No default
+|Must be set to `io.debezium.storage.nats.offset.NatsOffsetBackingStore`.
+
+|[[offset-storage-nats-url]]<<offset-storage-nats-url, `offset.storage.nats.url`>>
+|nats://localhost:4222
+|The URL that {prodname} uses to connect to the NATS server for offset storage.
+
+|[[offset-storage-nats-bucket-name]]<<offset-storage-nats-bucket-name, `offset.storage.nats.bucket.name`>>
+|debezium-offsets
+|The name of the NATS Object Store bucket where {prodname} stores offsets. Each offset is stored as an individual object, named by the encoded offset key. Keys whose encoded name would exceed the NATS object name limit are stored under a hash of the key.
+
+|[[offset-storage-nats-connection-timeout-ms]]<<offset-storage-nats-connection-timeout-ms, `offset.storage.nats.connection.timeout.ms`>>
+|5000
+|Specifies the time, in milliseconds, that {prodname} waits to establish a connection to NATS for offset storage before the connection times out.
+
+|[[offset-storage-nats-max-reconnects]]<<offset-storage-nats-max-reconnects, `offset.storage.nats.max.reconnects`>>
+|-1
+|Maximum number of reconnection attempts after a connection failure. Use `-1` for unlimited.
+
+|[[offset-storage-nats-reconnect-wait-ms]]<<offset-storage-nats-reconnect-wait-ms, `offset.storage.nats.reconnect.wait.ms`>>
+|2000
+|Specifies the time, in milliseconds, that {prodname} waits between reconnection attempts after a connection failure.
+
+|[[offset-storage-nats-user]]<<offset-storage-nats-user, `offset.storage.nats.user`>>
+|No default
+|(Optional) The username that {prodname} uses to authenticate with the NATS server for offset storage.
+
+|[[offset-storage-nats-password]]<<offset-storage-nats-password, `offset.storage.nats.password`>>
+|No default
+|(Optional) The password for the user specified by xref:offset-storage-nats-user[`offset.storage.nats.user`].
+
+|[[offset-storage-nats-token]]<<offset-storage-nats-token, `offset.storage.nats.token`>>
+|No default
+|(Optional) The token that {prodname} uses to authenticate with the NATS server for offset storage.
+
+|[[offset-storage-nats-tls-enabled]]<<offset-storage-nats-tls-enabled, `offset.storage.nats.tls.enabled`>>
+|false
+|Specifies whether {prodname} uses TLS when communicating with the NATS server for offset storage.
+
+|[[offset-storage-nats-tls-truststore-path]]<<offset-storage-nats-tls-truststore-path, `offset.storage.nats.tls.truststore.path`>>
+|No default
+|(Optional) The path to the trust store file used for TLS connections to the NATS server for offset storage.
+
+|[[offset-storage-nats-tls-truststore-password]]<<offset-storage-nats-tls-truststore-password, `offset.storage.nats.tls.truststore.password`>>
+|No default
+|(Optional) The password for the trust store file used for TLS connections to the NATS server for offset storage.
+
+|[[offset-storage-nats-tls-truststore-type]]<<offset-storage-nats-tls-truststore-type, `offset.storage.nats.tls.truststore.type`>>
+|JKS
+|The type of the trust store file used for TLS connections to the NATS server for offset storage.
+
+|[[offset-storage-nats-tls-keystore-path]]<<offset-storage-nats-tls-keystore-path, `offset.storage.nats.tls.keystore.path`>>
+|No default
+|(Optional) The path to the key store file used for TLS connections to the NATS server for offset storage.
+
+|[[offset-storage-nats-tls-keystore-password]]<<offset-storage-nats-tls-keystore-password, `offset.storage.nats.tls.keystore.password`>>
+|No default
+|(Optional) The password for the key store file used for TLS connections to the NATS server for offset storage.
+
+|[[offset-storage-nats-tls-keystore-type]]<<offset-storage-nats-tls-keystore-type, `offset.storage.nats.tls.keystore.type`>>
+|JKS
+|The type of the key store file used for TLS connections to the NATS server for offset storage.
+
+|[[offset-storage-nats-retry-enabled]]<<offset-storage-nats-retry-enabled, `offset.storage.nats.retry.enabled`>>
+|true
+|Specifies whether {prodname} retries failed offset operations.
+
+|[[offset-storage-nats-retry-delay-ms]]<<offset-storage-nats-retry-delay-ms, `offset.storage.nats.retry.delay.ms`>>
+|1000
+|Specifies the time, in milliseconds, that {prodname} waits after a failure before it retries an offset operation.
+
+|[[offset-storage-nats-max-retries]]<<offset-storage-nats-max-retries, `offset.storage.nats.max.retries`>>
+|3
+|Specifies the maximum number of times that {prodname} retries a failed offset operation.
+
+|===
+
+Example minimal configuration (Embedded or Server):
+
+[source,properties]
+----
+offset.storage=io.debezium.storage.nats.offset.NatsOffsetBackingStore
+offset.storage.nats.url=nats://localhost:4222
+offset.storage.nats.bucket.name=debezium-offsets
+----
+
+=== Internal schema history store
+
+[cols="35%a,10%a,55%a",options="header"]
+|===
+|Property
+|Default
+|Description
+
+|[[schema-history-internal-nats]]<<schema-history-internal-nats, `schema.history.internal`>>
+|No default
+|Must be set to `io.debezium.storage.nats.history.NatsSchemaHistory`.
+
+|[[schema-history-internal-nats-url]]<<schema-history-internal-nats-url, `schema.history.internal.nats.url`>>
+|nats://localhost:4222
+|The URL that {prodname} uses to connect to the NATS server for schema history storage.
+
+|[[schema-history-internal-nats-stream-name]]<<schema-history-internal-nats-stream-name, `schema.history.internal.nats.stream.name`>>
+|debezium-schema-history
+|The name of the NATS JetStream stream that stores the schema history.
+
+|[[schema-history-internal-nats-subject]]<<schema-history-internal-nats-subject, `schema.history.internal.nats.subject`>>
+|debezium.schema.history
+|The NATS subject on which {prodname} publishes schema history records.
+
+|[[schema-history-internal-nats-storage-type]]<<schema-history-internal-nats-storage-type, `schema.history.internal.nats.storage.type`>>
+|file
+|Specifies the JetStream storage type for the stream that stores schema history. Supported values: `file`, `memory`.
+
+|[[schema-history-internal-nats-connection-timeout-ms]]<<schema-history-internal-nats-connection-timeout-ms, `schema.history.internal.nats.connection.timeout.ms`>>
+|5000
+|Specifies the time, in milliseconds, that {prodname} waits to establish a connection to NATS for schema history storage before the connection times out.
+
+|[[schema-history-internal-nats-max-reconnects]]<<schema-history-internal-nats-max-reconnects, `schema.history.internal.nats.max.reconnects`>>
+|-1
+|Maximum number of reconnection attempts after a connection failure. Use `-1` for unlimited.
+
+|[[schema-history-internal-nats-reconnect-wait-ms]]<<schema-history-internal-nats-reconnect-wait-ms, `schema.history.internal.nats.reconnect.wait.ms`>>
+|2000
+|Specifies the time, in milliseconds, that {prodname} waits between reconnection attempts after a connection failure.
+
+|[[schema-history-internal-nats-user]]<<schema-history-internal-nats-user, `schema.history.internal.nats.user`>>
+|No default
+|(Optional) The username that {prodname} uses to authenticate with the NATS server for schema history storage.
+
+|[[schema-history-internal-nats-password]]<<schema-history-internal-nats-password, `schema.history.internal.nats.password`>>
+|No default
+|(Optional) The password for the user specified by xref:schema-history-internal-nats-user[`schema.history.internal.nats.user`].
+
+|[[schema-history-internal-nats-token]]<<schema-history-internal-nats-token, `schema.history.internal.nats.token`>>
+|No default
+|(Optional) The token that {prodname} uses to authenticate with the NATS server for schema history storage.
+
+|[[schema-history-internal-nats-tls-enabled]]<<schema-history-internal-nats-tls-enabled, `schema.history.internal.nats.tls.enabled`>>
+|false
+|Specifies whether {prodname} uses TLS when communicating with the NATS server for schema history storage.
+
+|[[schema-history-internal-nats-tls-truststore-path]]<<schema-history-internal-nats-tls-truststore-path, `schema.history.internal.nats.tls.truststore.path`>>
+|No default
+|(Optional) The path to the trust store file used for TLS connections to the NATS server for schema history storage.
+
+|[[schema-history-internal-nats-tls-truststore-password]]<<schema-history-internal-nats-tls-truststore-password, `schema.history.internal.nats.tls.truststore.password`>>
+|No default
+|(Optional) The password for the trust store file used for TLS connections to the NATS server for schema history storage.
+
+|[[schema-history-internal-nats-tls-truststore-type]]<<schema-history-internal-nats-tls-truststore-type, `schema.history.internal.nats.tls.truststore.type`>>
+|JKS
+|The type of the trust store file used for TLS connections to the NATS server for schema history storage.
+
+|[[schema-history-internal-nats-tls-keystore-path]]<<schema-history-internal-nats-tls-keystore-path, `schema.history.internal.nats.tls.keystore.path`>>
+|No default
+|(Optional) The path to the key store file used for TLS connections to the NATS server for schema history storage.
+
+|[[schema-history-internal-nats-tls-keystore-password]]<<schema-history-internal-nats-tls-keystore-password, `schema.history.internal.nats.tls.keystore.password`>>
+|No default
+|(Optional) The password for the key store file used for TLS connections to the NATS server for schema history storage.
+
+|[[schema-history-internal-nats-tls-keystore-type]]<<schema-history-internal-nats-tls-keystore-type, `schema.history.internal.nats.tls.keystore.type`>>
+|JKS
+|The type of the key store file used for TLS connections to the NATS server for schema history storage.
+
+|[[schema-history-internal-nats-replicas]]<<schema-history-internal-nats-replicas, `schema.history.internal.nats.replicas`>>
+|1
+|Specifies the number of replicas for the schema history JetStream stream.
+
+|[[schema-history-internal-nats-max-age-ms]]<<schema-history-internal-nats-max-age-ms, `schema.history.internal.nats.max.age.ms`>>
+|0
+|Specifies the maximum age of messages in the stream, in milliseconds. Set to `0` for unlimited. A limit discards the oldest schema history records, so a later recovery can only rebuild a partial schema.
+
+|[[schema-history-internal-nats-max-bytes]]<<schema-history-internal-nats-max-bytes, `schema.history.internal.nats.max.bytes`>>
+|-1
+|Specifies the maximum size of the stream, in bytes. Set to `-1` for unlimited. A limit discards the oldest schema history records, so a later recovery can only rebuild a partial schema.
+
+|[[schema-history-internal-nats-duplicate-window-ms]]<<schema-history-internal-nats-duplicate-window-ms, `schema.history.internal.nats.duplicate.window.ms`>>
+|120000
+|Specifies the JetStream duplicate window, in milliseconds, which is the period during which the stream discards a message whose ID it has already seen. This stops a schema history record from being stored twice when a publish is retried after a lost acknowledgement. A value of `0` or less leaves the server default in place, which is what the server substitutes for a window of zero.
+
+|[[schema-history-internal-nats-retry-delay-ms]]<<schema-history-internal-nats-retry-delay-ms, `schema.history.internal.nats.retry.delay.ms`>>
+|100
+|Specifies the time, in milliseconds, that {prodname} waits after a failure before it retries publishing a schema history record.
+
+|[[schema-history-internal-nats-max-retries]]<<schema-history-internal-nats-max-retries, `schema.history.internal.nats.max.retries`>>
+|20
+|Specifies the maximum number of times that {prodname} retries publishing a failed schema history record. Together with xref:schema-history-internal-nats-retry-delay-ms[`schema.history.internal.nats.retry.delay.ms`], this bounds how long a single publish can spend being retried. The stream's xref:schema-history-internal-nats-duplicate-window-ms[`schema.history.internal.nats.duplicate.window.ms`] must cover at least that long for a retried record to be recognized as a duplicate.
+
+|[[schema-history-internal-nats-recovery-poll-interval-ms]]<<schema-history-internal-nats-recovery-poll-interval-ms, `schema.history.internal.nats.recovery.poll.interval.ms`>>
+|100
+|Specifies the interval, in milliseconds, that {prodname} waits between polling requests for persisted data during recovery.
+
+|[[schema-history-internal-nats-recovery-timeout-ms]]<<schema-history-internal-nats-recovery-timeout-ms, `schema.history.internal.nats.recovery.timeout.ms`>>
+|60000
+|Specifies the maximum time, in milliseconds, that {prodname} spends recovering the schema history. If recovery does not finish within this time, the connector fails to start rather than continue with an incomplete schema history. Increase this value if the history is very large.
+
+|===
+
+Example minimal configuration (Embedded or Server):
+
+[source,properties]
+----
+schema.history.internal=io.debezium.storage.nats.history.NatsSchemaHistory
+schema.history.internal.nats.url=nats://localhost:4222
+schema.history.internal.nats.stream.name=debezium-schema-history
+schema.history.internal.nats.subject=debezium.schema.history
+----
+
+
 == Amazon S3
 
 {prodname} can use the link:https://aws.amazon.com/s3/[Amazon S3] object storage service.

@@ -163,7 +163,16 @@ public class SchemaHistoryTopicIT extends AbstractAsyncEngineConnectorTest {
         tableChanges = ((Struct) schemaRecord.value()).getArray("tableChanges");
         assertThat(tableChanges).hasSize(1);
         assertThat(tableChanges.get(0).get("type")).isEqualTo("ALTER");
-        assertThat(lastUpdate.sourceOffset()).isEqualTo(schemaRecord.sourceOffset());
+        final String captureStartLsn = connection.queryAndMap(
+                "SELECT start_lsn FROM cdc.change_tables WHERE capture_instance = 'after_change'",
+                rs -> {
+                    assertThat(rs.next()).isTrue();
+                    return Lsn.valueOf(rs.getBytes(1)).toString();
+                });
+        assertThat(schemaRecord.sourceOffset().get(SourceInfo.COMMIT_LSN_KEY)).isEqualTo(captureStartLsn);
+        assertThat(schemaRecord.sourceOffset().get(SourceInfo.CHANGE_LSN_KEY)).isEqualTo(captureStartLsn);
+        assertThat(schemaRecord.sourceOffset().get(SourceInfo.COMMIT_LSN_KEY))
+                .isNotEqualTo(lastUpdate.sourceOffset().get(SourceInfo.COMMIT_LSN_KEY));
 
         records = consumeRecordsByTopic(RECORDS_PER_TABLE * 2);
         assertThat(records.recordsForTopic("server1.testDB1.dbo.tablea")).hasSize(RECORDS_PER_TABLE);

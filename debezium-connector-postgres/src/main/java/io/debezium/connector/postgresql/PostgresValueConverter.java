@@ -28,7 +28,6 @@ import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeFormatterBuilder;
 import java.time.temporal.ChronoField;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.BitSet;
 import java.util.Collections;
 import java.util.Date;
@@ -121,6 +120,7 @@ public class PostgresValueConverter extends JdbcValueConverters {
     public static final String POSITIVE_INFINITY_TIMESTAMP_PG_STRING = "infinity";
 
     public static final Date NEGATIVE_INFINITY_DATE = new Date(PGStatement.DATE_NEGATIVE_INFINITY);
+
     public static final Timestamp NEGATIVE_INFINITY_TIMESTAMP = new Timestamp(PGStatement.DATE_NEGATIVE_INFINITY);
     public static final Instant NEGATIVE_INFINITY_INSTANT = Conversions.toInstantFromMillis(PGStatement.DATE_NEGATIVE_INFINITY);
     public static final LocalDateTime NEGATIVE_INFINITY_LOCAL_DATE_TIME = LocalDateTime.ofInstant(NEGATIVE_INFINITY_INSTANT, ZoneOffset.UTC);
@@ -224,8 +224,9 @@ public class PostgresValueConverter extends JdbcValueConverters {
         switch (oidValue) {
             case PgOid.BIT:
             case PgOid.BIT_ARRAY:
-            case PgOid.VARBIT:
                 return column.length() > 1 ? Bits.builder(column.length()) : SchemaBuilder.bool();
+            case PgOid.VARBIT:
+                return Bits.builder(column.length());
             case PgOid.INTERVAL:
                 if (temporalPrecisionMode == TemporalPrecisionMode.STRUCTURED) {
                     return StructuredDuration.builder();
@@ -396,7 +397,7 @@ public class PostgresValueConverter extends JdbcValueConverters {
                 else if (resolvedType.isArrayType()) {
                     if (resolvedType.getElementType().isEnumType()) {
                         Set<String> enumValues = resolvedType.getElementType().getEnumValues();
-                        return SchemaBuilder.array(io.debezium.data.Enum.builder(Strings.join(",", enumValues)));
+                        return SchemaBuilder.array(io.debezium.data.Enum.builder(Strings.join(",", enumValues)).optional().build());
                     }
                     else {
                         // unfortunately, this does not work for array columns of domain types; the element type will have a
@@ -492,6 +493,8 @@ public class PostgresValueConverter extends JdbcValueConverters {
                 return data -> convertTimestampWithZone(column, fieldDefn, data);
             case PgOid.TIMETZ:
                 return data -> convertTimeWithZone(column, fieldDefn, data);
+            case PgOid.DATE:
+                return ((ValueConverter) (data -> convertDateValue(column, fieldDefn, data))).and(super.converter(column, fieldDefn));
             case PgOid.OID:
                 return data -> convertBigInt(column, fieldDefn, data);
             case PgOid.JSONB_OID:
@@ -786,14 +789,18 @@ public class PostgresValueConverter extends JdbcValueConverters {
                 String s = new String((byte[]) data, databaseCharset);
                 // remove '{' and '}'
                 s = s.substring(1, s.length() - 1);
-                List<String> ltrees = Arrays.asList(s.split(","));
+                List<String> ltrees = new ArrayList<>();
+                for (String element : s.split(",")) {
+                    // PostgreSQL renders a NULL array element as the unquoted token NULL
+                    ltrees.add("NULL".equals(element) ? null : element);
+                }
                 r.deliver(ltrees);
             }
             else if (data instanceof List) {
                 List<Object> list = (List<Object>) data;
                 List<String> ltrees = new ArrayList<>(list.size());
                 for (Object value : list) {
-                    ltrees.add(value.toString());
+                    ltrees.add(value == null ? null : value.toString());
                 }
                 r.deliver(ltrees);
             }
@@ -803,7 +810,7 @@ public class PostgresValueConverter extends JdbcValueConverters {
                     Object[] array = (Object[]) pgArray.getArray();
                     List<String> ltrees = new ArrayList<>(array.length);
                     for (Object value : array) {
-                        ltrees.add(value.toString());
+                        ltrees.add(value == null ? null : value.toString());
                     }
                     r.deliver(ltrees);
                 }
@@ -896,17 +903,12 @@ public class PostgresValueConverter extends JdbcValueConverters {
 
     @Override
     protected ValueConverter convertBits(Column column, Field fieldDefn) {
-        // For VARBIT(1), we need special handling because JDBC returns PGobject
-        if (column.nativeType() == PgOid.VARBIT && column.length() == 1) {
-            return data -> {
-                if (data instanceof PGobject pgObject) {
-                    data = pgObject.getValue();
-                }
-                if (data instanceof String str) {
-                    return Integer.valueOf(str, 2) == 0 ? Boolean.FALSE : Boolean.TRUE;
-                }
-                return convertBit(column, fieldDefn, data);
-            };
+        // VARBIT maps to BYTES, so always use the byte-array conversion path.
+        // (The base class routes length-1 columns to convertBit/boolean, which would
+        // conflict with the Bits schema and emit null.)
+        if (column.nativeType() == PgOid.VARBIT) {
+            int numBytes = column.length() / Byte.SIZE + (column.length() % Byte.SIZE == 0 ? 0 : 1);
+            return data -> convertBits(column, fieldDefn, data, numBytes);
         }
         return super.convertBits(column, fieldDefn);
     }
@@ -918,9 +920,8 @@ public class PostgresValueConverter extends JdbcValueConverters {
             data = pgObject.getValue();
         }
 
-        // For VARBIT(1), convert to boolean just like BIT(1)
-        if (column.length() == 1 && data instanceof String str) {
-            // Return boolean directly
+        // Only BIT(1) maps to boolean; VARBIT(1) falls through to the Bits path below
+        if (column.nativeType() == PgOid.BIT && column.length() == 1 && data instanceof String str) {
             return Integer.valueOf(str, 2) == 0 ? Boolean.FALSE : Boolean.TRUE;
         }
 
@@ -1192,6 +1193,22 @@ public class PostgresValueConverter extends JdbcValueConverters {
             data = ((OffsetDateTime) data).toZonedDateTime();
         }
         return super.convertTimestampWithZone(column, fieldDefn, data);
+    }
+
+    /**
+     * Normalizes a {@code DATE} value before the superclass dispatches it on the configured
+     * {@link io.debezium.jdbc.TemporalPrecisionMode}. A {@code date[]} element is read as text (see
+     * {@link #convertTemporalArrayAsText}) and arrives here as a {@link String}; it is parsed era-aware, with
+     * infinity mapped to {@link #POSITIVE_INFINITY_LOCAL_DATE}/{@link #NEGATIVE_INFINITY_LOCAL_DATE}. Every other
+     * value is passed through untouched: each read path (snapshot, pgoutput and decoderbufs) already delivers a
+     * scalar {@code date} as a {@link LocalDate} with infinity mapped to those same constants, so an infinite date
+     * is emitted identically whichever path read it.
+     */
+    protected Object convertDateValue(Column column, Field fieldDefn, Object data) {
+        if (data instanceof String str) {
+            return DateTimeFormat.get().date(str);
+        }
+        return data;
     }
 
     @Override
@@ -1559,8 +1576,8 @@ public class PostgresValueConverter extends JdbcValueConverters {
             else if (data instanceof Array array) {
                 try {
                     final List<Object> converted;
-                    if (elementType.getOid() == PgOid.TIMETZ) {
-                        converted = convertTimeWithTimeZoneArray(array, elementType, elementConverter);
+                    if (isReadAsTextElementType(elementType.getOid())) {
+                        converted = convertTemporalArrayAsText(array, elementType, elementConverter);
                     }
                     else {
                         final Object[] values = (Object[]) array.getArray();
@@ -1578,7 +1595,39 @@ public class PostgresValueConverter extends JdbcValueConverters {
         });
     }
 
-    private List<Object> convertTimeWithTimeZoneArray(Array data, PostgresType elementType, ValueConverter elementConverter) throws SQLException {
+    /**
+     * Element types whose array elements must be read as text rather than materialized by the driver.
+     * <p>
+     * {@code java.sql.Array#getArray()} hands back {@code java.sql.Timestamp}/{@code java.sql.Date}
+     * elements, which drop the era and apply a Julian-Gregorian conversion below 1582-10-15 -- the same
+     * defect scalar {@code timestamp} and {@code timestamptz} were given a text read to avoid. Scalars
+     * return before {@code getColumnValue} reaches the array branch, so arrays never benefited from it.
+     * {@code TIMETZ} is here for an unrelated reason: microsecond precision is lost otherwise. {@code TIME}
+     * elements come back as {@code java.sql.Time}, which keeps only milliseconds and is interpreted in the
+     * JVM zone, so it can also throw for values earlier than the zone offset.
+     * <p>
+     * The decoders consult this too: an element of one of these types has to reach the converter as text,
+     * so a decoder that would otherwise materialize the elements itself must hand over the array instead.
+     */
+    public static boolean isReadAsTextElementType(int elementTypeOid) {
+        switch (elementTypeOid) {
+            case PgOid.TIME:
+            case PgOid.TIMETZ:
+            case PgOid.TIMESTAMP:
+            case PgOid.TIMESTAMPTZ:
+            case PgOid.DATE:
+                return true;
+            default:
+                return false;
+        }
+    }
+
+    /**
+     * Reads each element of {@code data} as text and hands it to the element converter, which parses it
+     * era-aware. {@code Array#getResultSet()} exposes the element's original text, including the
+     * {@code BC} suffix and the {@code infinity}/{@code -infinity} literals.
+     */
+    private List<Object> convertTemporalArrayAsText(Array data, PostgresType elementType, ValueConverter elementConverter) throws SQLException {
         final List<Object> converted = new ArrayList<>();
         try (ResultSet values = data.getResultSet()) {
             while (values.next()) {

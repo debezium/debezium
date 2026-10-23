@@ -12,13 +12,17 @@ import java.util.stream.Collectors;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.errors.ConnectException;
 
+import io.debezium.connector.jdbc.JdbcSinkConnectorConfig;
+import io.debezium.connector.jdbc.dialect.DatabaseDialect;
 import io.debezium.connector.jdbc.type.JdbcType;
 import io.debezium.connector.jdbc.type.debezium.AbstractGeometryType;
+import io.debezium.sink.SinkConnectorConfig;
 import io.debezium.sink.column.ColumnDescriptor;
 import io.debezium.sink.valuebinding.ValueBindDescriptor;
 import io.debezium.spatial.GeometryBytes;
 
 import mil.nga.wkb.geom.LineString;
+import mil.nga.wkb.geom.MultiPolygon;
 import mil.nga.wkb.geom.Point;
 import mil.nga.wkb.geom.Polygon;
 import mil.nga.wkb.io.ByteReader;
@@ -30,6 +34,16 @@ import mil.nga.wkb.io.WkbGeometryReader;
 class GeometryType extends AbstractGeometryType {
 
     public static final GeometryType INSTANCE = new GeometryType();
+
+    private boolean repairEnabled;
+
+    @Override
+    public void configure(SinkConnectorConfig config, DatabaseDialect dialect) {
+        super.configure(config, dialect);
+        if (config instanceof JdbcSinkConnectorConfig jdbcConfig) {
+            repairEnabled = jdbcConfig.isSingleStoreGeometryRepairEnabled();
+        }
+    }
 
     @Override
     public String getQueryBinding(ColumnDescriptor column, Schema schema, Object value) {
@@ -79,12 +93,31 @@ class GeometryType extends AbstractGeometryType {
         if (geometry instanceof Polygon polygon) {
             return toWkt(polygon);
         }
+        if (geometry instanceof MultiPolygon multiPolygon) {
+            if (multiPolygon.getPolygons().isEmpty()) {
+                throw unsupportedGeometry("MULTIPOLYGON EMPTY");
+            }
+            if (repairEnabled) {
+                return GeometryRepair.polygon(multiPolygon.getPolygons().stream()
+                        .map(Polygon::getRings)
+                        .collect(Collectors.toList()));
+            }
+            final List<LineString> rings = multiPolygon.getPolygons().stream()
+                    .flatMap(polygon -> {
+                        if (polygon.getRings().isEmpty()) {
+                            throw unsupportedGeometry("POLYGON EMPTY");
+                        }
+                        return polygon.getRings().stream();
+                    })
+                    .collect(Collectors.toList());
+            return "POLYGON (" + rings.stream().map(this::ring).collect(Collectors.joining(", ")) + ")";
+        }
         throw unsupportedGeometry(geometry.getGeometryType().getName());
     }
 
     protected ConnectException unsupportedGeometry(String geometryType) {
         return new ConnectException(String.format(
-                "SingleStore dialect supports only POINT, LINESTRING, and POLYGON geospatial WKB types, but found '%s'.",
+                "SingleStore dialect supports only POINT, LINESTRING, POLYGON, and MULTIPOLYGON geospatial WKB types, but found '%s'.",
                 geometryType));
     }
 
@@ -102,6 +135,9 @@ class GeometryType extends AbstractGeometryType {
     private String toWkt(Polygon polygon) {
         if (polygon.getRings().isEmpty()) {
             throw unsupportedGeometry("POLYGON EMPTY");
+        }
+        if (repairEnabled) {
+            return GeometryRepair.polygon(List.of(polygon.getRings()));
         }
         return "POLYGON (" + polygon.getRings().stream()
                 .map(this::ring)
@@ -125,10 +161,14 @@ class GeometryType extends AbstractGeometryType {
         return format(point.getX()) + " " + format(point.getY());
     }
 
-    private String format(double value) {
+    static String format(double value) {
+        return decimal(value).stripTrailingZeros().toPlainString();
+    }
+
+    static BigDecimal decimal(double value) {
         if (!Double.isFinite(value)) {
             throw new ConnectException(String.format("Invalid SingleStore geospatial coordinate '%s'.", value));
         }
-        return BigDecimal.valueOf(value).stripTrailingZeros().toPlainString();
+        return BigDecimal.valueOf(value);
     }
 }

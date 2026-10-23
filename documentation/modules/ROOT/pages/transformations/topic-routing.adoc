@@ -6,6 +6,7 @@
 
 [id="topic-routing"]
 = Topic Routing
+ifdef::community[]
 :toc:
 :toc-placement: macro
 :linkattrs:
@@ -13,6 +14,7 @@
 :source-highlighter: highlight.js
 
 toc::[]
+endif::community[]
 
 Each Kafka record that contains a data change event has a default destination topic. If you need to, you can re-route records to topics that you specify before the records reach the Kafka Connect converter.
 To do this, {prodname} provides the topic routing single message transformation (SMT). Configure this transformation in the {prodname} connector's Kafka Connect configuration. Configuration options enable you to specify the following:

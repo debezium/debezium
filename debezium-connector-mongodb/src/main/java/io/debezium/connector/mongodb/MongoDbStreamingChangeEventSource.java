@@ -88,7 +88,7 @@ public class MongoDbStreamingChangeEventSource implements StreamingChangeEventSo
             return;
         }
 
-        try (MongoDbConnection mongo = MongoDbConnections.create(taskContext.getRawConfig(), dispatcher, partition)) {
+        try (MongoDbConnection mongo = MongoDbConnections.create(taskContext.getConnectionContext(), dispatcher, partition)) {
             mongo.execute("Reading change stream", client -> {
                 readChangeStream(client, context, partition);
             });
@@ -129,7 +129,7 @@ public class MongoDbStreamingChangeEventSource implements StreamingChangeEventSo
                 try (var cursor = BufferingChangeStreamCursor.fromIterable(stream, taskContext, streamingMetrics, clock).start()) {
                     while (context.isRunning()) {
                         waitWhenStreamingPaused(context, cursor);
-                        var resumableEvent = cursor.tryNext();
+                        var resumableEvent = cursor.tryNextInterruptibly();
                         if (resumableEvent != null) {
                             var result = resumableEvent.document
                                     .map(doc -> processChangeStreamDocument(doc, splitHandler, partition, effectiveOffset))
@@ -178,7 +178,7 @@ public class MongoDbStreamingChangeEventSource implements StreamingChangeEventSo
             }
         }
         catch (InterruptedException e) {
-            LOGGER.info("Interrupted while waiting for a server that satisfies read preference '{}'", readPreferenceMonitor.getReadPreference());
+            LOGGER.info("Interrupted while reading the change stream");
             Thread.currentThread().interrupt();
         }
         catch (MongoException e) {
@@ -293,8 +293,9 @@ public class MongoDbStreamingChangeEventSource implements StreamingChangeEventSo
             stream.startAtOperationTime(offsetContext.lastTimestamp());
         }
         else if (connectorConfig.startAtOperationTime().isPresent()) {
-            LOGGER.info("Resuming streaming from explicit operation time '{}'", offsetContext.lastTimestamp());
-            stream.startAtOperationTime(connectorConfig.startAtOperationTime().get());
+            final var startTimestamp = connectorConfig.startAtOperationTime().get();
+            LOGGER.info("Resuming streaming from explicit operation time '{}'", startTimestamp);
+            stream.startAtOperationTime(startTimestamp);
         }
 
         if (connectorConfig.getCursorMaxAwaitTime() > 0) {

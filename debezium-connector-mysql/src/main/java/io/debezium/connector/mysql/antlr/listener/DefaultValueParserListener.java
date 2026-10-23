@@ -6,8 +6,12 @@
 
 package io.debezium.connector.mysql.antlr.listener;
 
+import java.sql.Types;
 import java.util.concurrent.atomic.AtomicReference;
 
+import io.debezium.connector.binlog.util.BinaryLiteralDefaultValueUtils;
+import io.debezium.connector.binlog.util.BinaryLiteralDefaultValueUtils.BinaryLiteral;
+import io.debezium.connector.mysql.antlr.MySqlAntlrDdlParser;
 import io.debezium.ddl.parser.mysql.generated.MySqlParser;
 import io.debezium.ddl.parser.mysql.generated.MySqlParserBaseListener;
 import io.debezium.relational.ColumnEditor;
@@ -21,13 +25,15 @@ public class DefaultValueParserListener extends MySqlParserBaseListener {
 
     private final ColumnDefinitionParserListener columnDefinitionListener;
     private final AtomicReference<Boolean> optionalColumn;
+    private final MySqlAntlrDdlParser parser;
 
     private boolean converted;
 
     public DefaultValueParserListener(ColumnDefinitionParserListener columnDefinitionListener,
-                                      AtomicReference<Boolean> optionalColumn) {
+                                      AtomicReference<Boolean> optionalColumn, MySqlAntlrDdlParser parser) {
         this.columnDefinitionListener = columnDefinitionListener;
         this.optionalColumn = optionalColumn;
+        this.parser = parser;
         this.converted = false;
     }
 
@@ -50,6 +56,9 @@ public class DefaultValueParserListener extends MySqlParserBaseListener {
     }
 
     private void handleDefaultValue(MySqlParser.ColumnAttributeContext ctx) {
+        // The last default of a column definition applies
+        parser.binaryLiteralDefaults().remove(getColumnEditor().name());
+
         // Handle expression-based defaults (MySQL 8.0.13+)
         if (ctx.exprWithParentheses() != null) {
             // Default value is calculated/expression - handle as NULL
@@ -72,6 +81,12 @@ public class DefaultValueParserListener extends MySqlParserBaseListener {
             // Handle signedLiteralOrNull
             if (literalCtx.signedLiteralOrNull() != null) {
                 MySqlParser.SignedLiteralOrNullContext signedLitCtx = literalCtx.signedLiteralOrNull();
+
+                if (getColumnEditor().jdbcType() == Types.BIT) {
+                    getColumnEditor().defaultValueExpression(BitDefaultValueParser.parse(signedLitCtx, parser));
+                    exitDefaultValue(true);
+                    return;
+                }
 
                 // Check for NULL
                 if (signedLitCtx.nullAsLiteral() != null) {
@@ -115,23 +130,7 @@ public class DefaultValueParserListener extends MySqlParserBaseListener {
     private void handleLiteral(MySqlParser.LiteralContext literalCtx, String sign) {
         // Text literal
         if (literalCtx.textLiteral() != null) {
-            MySqlParser.TextLiteralContext textLit = literalCtx.textLiteral();
-
-            // Handle charset introducer (e.g., _utf8'abc' or _UTF8MB4'0')
-            // The charset prefix affects string interpretation but the default value should be just the string content
-            if (textLit.UNDERSCORE_CHARSET() != null && !textLit.textStringLiteral().isEmpty()) {
-                // Extract just the string literal(s) without the charset introducer
-                StringBuilder stringValue = new StringBuilder();
-                for (MySqlParser.TextStringLiteralContext strCtx : textLit.textStringLiteral()) {
-                    stringValue.append(strCtx.getText());
-                }
-                getColumnEditor().defaultValueExpression(sign + unquote(stringValue.toString()));
-                return;
-            }
-
-            // No charset introducer - use full text
-            String text = textLit.getText();
-            getColumnEditor().defaultValueExpression(sign + unquote(text));
+            getColumnEditor().defaultValueExpression(sign + parser.parseTextLiteral(literalCtx.textLiteral()));
             return;
         }
 
@@ -148,13 +147,8 @@ public class DefaultValueParserListener extends MySqlParserBaseListener {
         }
 
         // Hex/Bin number
-        if (literalCtx.HEX_NUMBER() != null) {
-            getColumnEditor().defaultValueExpression(unquoteBinary(literalCtx.HEX_NUMBER().getText()));
-            return;
-        }
-
-        if (literalCtx.BIN_NUMBER() != null) {
-            getColumnEditor().defaultValueExpression(unquoteBinary(literalCtx.BIN_NUMBER().getText()));
+        if (literalCtx.HEX_NUMBER() != null || literalCtx.BIN_NUMBER() != null) {
+            getColumnEditor().defaultValueExpression(parseBinaryLiteral(literalCtx, getColumnEditor(), parser));
             return;
         }
 
@@ -177,19 +171,17 @@ public class DefaultValueParserListener extends MySqlParserBaseListener {
         }
     }
 
-    private String unquote(String stringLiteral) {
-        if (stringLiteral != null && ((stringLiteral.startsWith("'") && stringLiteral.endsWith("'"))
-                || (stringLiteral.startsWith("\"") && stringLiteral.endsWith("\"")))) {
-            return stringLiteral.substring(1, stringLiteral.length() - 1);
-        }
-        return stringLiteral;
-    }
-
-    private String unquoteBinary(String stringLiteral) {
-        if (stringLiteral != null && stringLiteral.length() > 2) {
-            return stringLiteral.substring(2, stringLiteral.length() - 1);
-        }
-        return stringLiteral;
+    static String parseBinaryLiteral(MySqlParser.LiteralContext literalCtx, ColumnEditor columnEditor, MySqlAntlrDdlParser parser) {
+        final byte[] bytes = literalCtx.HEX_NUMBER() != null
+                ? BinaryLiteralDefaultValueUtils.parseHexadecimal(literalCtx.HEX_NUMBER().getText())
+                : BinaryLiteralDefaultValueUtils.parseBitValue(literalCtx.BIN_NUMBER().getText());
+        final String introducer = literalCtx.UNDERSCORE_CHARSET() != null ? literalCtx.UNDERSCORE_CHARSET().getText() : null;
+        // MySQL treats X'41' like 0x41, as a number in a numeric context
+        final BinaryLiteral literal = new BinaryLiteral(bytes, true, introducer);
+        // The character set of the column may only be known at the end of the statement, which converts the literal again
+        parser.binaryLiteralDefaults().put(columnEditor.name(), literal);
+        return BinaryLiteralDefaultValueUtils.toDefaultValueExpression(columnEditor, literal, parser.currentDatabaseCharset(),
+                parser::getJavaEncodingForCharSet);
     }
 
 }

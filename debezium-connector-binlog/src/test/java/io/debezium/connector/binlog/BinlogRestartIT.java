@@ -8,6 +8,7 @@ package io.debezium.connector.binlog;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.nio.file.Path;
+import java.util.List;
 
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.Struct;
@@ -105,5 +106,62 @@ public abstract class BinlogRestartIT<C extends SourceConnector> extends Abstrac
                 .isEqualTo(5);
 
         stopConnector();
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2738")
+    public void shouldNotSkipEventsAfterRestartFollowingXaTransaction() throws Exception {
+        config = DATABASE.defaultConfig()
+                .with(BinlogConnectorConfig.SNAPSHOT_MODE, BinlogConnectorConfig.SnapshotMode.NO_DATA)
+                .with(BinlogConnectorConfig.TABLE_INCLUDE_LIST, DATABASE.qualifiedTableName("xa_table"))
+                .with(BinlogConnectorConfig.INCLUDE_SCHEMA_CHANGES, false)
+                .with(BinlogConnectorConfig.BUFFER_SIZE_FOR_BINLOG_READER, 0)
+                .build();
+        executeStatements(DATABASE.getDatabaseName(), "CREATE TABLE xa_table (id INT PRIMARY KEY)");
+
+        start(getConnectorClass(), config);
+        waitForStreamingRunning(getConnectorName(), DATABASE.getServerName());
+        executeStatements(DATABASE.getDatabaseName(),
+                "XA START 'xa1'", "INSERT INTO xa_table VALUES (1)", "XA END 'xa1'", "XA PREPARE 'xa1'", "XA COMMIT 'xa1'");
+        assertThat(consumeIds(1)).containsExactly(1);
+        stopConnector();
+
+        executeStatements(DATABASE.getDatabaseName(), "INSERT INTO xa_table VALUES (2)", "INSERT INTO xa_table VALUES (3)");
+        start(getConnectorClass(), config);
+        waitForStreamingRunning(getConnectorName(), DATABASE.getServerName());
+        assertThat(consumeIds(2)).containsExactly(2, 3);
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2738")
+    public void shouldResumeXaTransactionAfterRestart() throws Exception {
+        config = DATABASE.defaultConfig()
+                .with(BinlogConnectorConfig.SNAPSHOT_MODE, BinlogConnectorConfig.SnapshotMode.NO_DATA)
+                .with(BinlogConnectorConfig.TABLE_INCLUDE_LIST, DATABASE.qualifiedTableName("xa_table"))
+                .with(BinlogConnectorConfig.INCLUDE_SCHEMA_CHANGES, false)
+                .with(BinlogConnectorConfig.BUFFER_SIZE_FOR_BINLOG_READER, 0)
+                .build();
+        executeStatements(DATABASE.getDatabaseName(), "CREATE TABLE xa_table (id INT PRIMARY KEY)");
+
+        start(getConnectorClass(), config, record -> id(record) == 4);
+        waitForStreamingRunning(getConnectorName(), DATABASE.getServerName());
+        executeStatements(DATABASE.getDatabaseName(),
+                "XA START 'xa2'", "INSERT INTO xa_table VALUES (1),(2)", "INSERT INTO xa_table VALUES (3),(4)", "XA END 'xa2'", "XA PREPARE 'xa2'", "XA COMMIT 'xa2'");
+        assertThat(consumeIds(3)).containsExactly(1, 2, 3);
+        waitForEngineShutdown();
+        stopConnector();
+
+        executeStatements(DATABASE.getDatabaseName(), "INSERT INTO xa_table VALUES (10)");
+        start(getConnectorClass(), config);
+        waitForStreamingRunning(getConnectorName(), DATABASE.getServerName());
+        assertThat(consumeIds(2)).containsExactly(4, 10);
+    }
+
+    private List<Integer> consumeIds(int count) throws InterruptedException {
+        return consumeRecordsByTopic(count).allRecordsInOrder().stream().map(BinlogRestartIT::id).toList();
+    }
+
+    private static int id(SourceRecord record) {
+        return ((Struct) record.value()).getStruct("after").getInt32("id");
     }
 }

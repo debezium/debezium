@@ -1,0 +1,17 @@
+name: Static Code Analysis
+on:
+  schedule:
+    - cron: '0 6 * * *'
+jobs:
+  analysis:
+    name: Static Code Analysis
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - uses: ./.github/actions/static-code-analysis
+        with:
+          tool-token: ${{ secrets.SONAR_TOKEN }}

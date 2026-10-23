@@ -8,6 +8,7 @@ package io.debezium.connector.jdbc.integration.singlestore;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
 import java.util.Base64;
 import java.util.List;
 import java.util.Map;
@@ -30,6 +31,11 @@ import io.debezium.data.geometry.Point;
 import io.debezium.data.vector.DoubleVector;
 import io.debezium.data.vector.FloatVector;
 import io.debezium.doc.FixFor;
+
+import mil.nga.wkb.geom.LineString;
+import mil.nga.wkb.geom.Polygon;
+import mil.nga.wkb.io.ByteWriter;
+import mil.nga.wkb.io.WkbGeometryWriter;
 
 /**
  * Column type mappings for SingleStore.
@@ -175,6 +181,131 @@ public class JdbcSinkColumnTypeMappingIT extends AbstractJdbcSinkTest {
         getSink().assertRows(destinationTable, rs -> {
             assertThat(normalizeVector(rs.getString("float_vector_data"))).isEqualTo("[1,2,3]");
             assertThat(normalizeVector(rs.getString("double_vector_data"))).isEqualTo("[1,2,3]");
+            return null;
+        });
+    }
+
+    @ParameterizedTest
+    @ArgumentsSource(SinkRecordFactoryArgumentsProvider.class)
+    @FixFor("DBZ-2880")
+    public void testShouldWriteMultiPolygon(SinkRecordFactory factory) throws Exception {
+        final Map<String, String> properties = getDefaultSinkConfig();
+        properties.put(JdbcSinkConnectorConfig.SCHEMA_EVOLUTION, JdbcSinkConnectorConfig.SchemaEvolutionMode.NONE.getValue());
+        properties.put(JdbcSinkConnectorConfig.PRIMARY_KEY_MODE, JdbcSinkConnectorConfig.PrimaryKeyMode.RECORD_KEY.getValue());
+        properties.put(JdbcSinkConnectorConfig.INSERT_MODE, JdbcSinkConnectorConfig.InsertMode.UPSERT.getValue());
+        startSinkConnector(properties);
+        assertSinkConnectorIsRunning();
+
+        // Two independent polygons: the first has one hole, and the second has two holes.
+        final byte[] wkb = Base64.getDecoder().decode(
+                "AQYAAAACAAAAAQMAAAACAAAABQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQQAAAAAAAAAAAAAAAAAAAEEAAAAAAAAAQQAAAAAAAAAAAAAAAAAAAEEAAAAAA" +
+                        "AAAAAAAAAAAAAAAABQAAAAAAAAAAAPA/AAAAAAAA8D8AAAAAAADwPwAAAAAAAABAAAAAAAAAAEAAAAAAAAAAQAAAAAAAAABAAAAAAAAA8D8AAAAAAADwPwAA" +
+                        "AAAAAPA/AQMAAAADAAAABQAAAAAAAAAAABhAAAAAAAAAAAAAAAAAAAAoQAAAAAAAAAAAAAAAAAAAKEAAAAAAAAAQQAAAAAAAABhAAAAAAAAAEEAAAAAAAAAY" +
+                        "QAAAAAAAAAAABQAAAAAAAAAAABxAAAAAAAAA8D8AAAAAAAAcQAAAAAAAAABAAAAAAAAAIEAAAAAAAAAAQAAAAAAAACBAAAAAAAAA8D8AAAAAAAAcQAAAAAAA" +
+                        "APA/BQAAAAAAAAAAACJAAAAAAAAAAEAAAAAAAAAiQAAAAAAAAAhAAAAAAAAAJEAAAAAAAAAIQAAAAAAAACRAAAAAAAAAAEAAAAAAAAAiQAAAAAAAAABA");
+        final JdbcKafkaSinkRecord record = factory.createRecordWithSchemaValue(
+                topicName("server2", "schema", randomTableName()), (byte) 1, "geometry_data", Geometry.schema(),
+                Geometry.createValue(Geometry.schema(), wkb, 4326), new JdbcSinkConnectorConfig(properties));
+        final String destinationTable = destinationTableName(record);
+        getSink().execute(String.format(
+                "CREATE ROWSTORE TABLE %s (id tinyint NOT NULL, geometry_data geography, PRIMARY KEY(id))", destinationTable));
+        consume(record);
+        getSink().assertRows(destinationTable, rs -> {
+            assertThat(rs.getObject("geometry_data")).isNotNull();
+            try (var statement = rs.getStatement().getConnection().createStatement();
+                    var checks = statement.executeQuery("SELECT GEOGRAPHY_CONTAINS(geometry_data, 'POINT(3 3)'), " +
+                            "GEOGRAPHY_CONTAINS(geometry_data, 'POINT(11 1)'), " +
+                            "GEOGRAPHY_CONTAINS(geometry_data, 'POINT(1.5 1.5)'), " +
+                            "GEOGRAPHY_CONTAINS(geometry_data, 'POINT(7.5 1.5)'), " +
+                            "GEOGRAPHY_CONTAINS(geometry_data, 'POINT(9.5 2.5)') FROM " + destinationTable)) {
+                assertThat(checks.next()).isTrue();
+                assertThat(checks.getBoolean(1)).isTrue();
+                assertThat(checks.getBoolean(2)).isTrue();
+                assertThat(checks.getBoolean(3)).isFalse();
+                assertThat(checks.getBoolean(4)).isFalse();
+                assertThat(checks.getBoolean(5)).isFalse();
+            }
+            return null;
+        });
+    }
+
+    @ParameterizedTest
+    @ArgumentsSource(SinkRecordFactoryArgumentsProvider.class)
+    @FixFor("debezium/dbz#2909")
+    public void testShouldRepairPolygonAfterPrecisionRounding(SinkRecordFactory factory) throws Exception {
+        final Map<String, String> properties = getDefaultSinkConfig();
+        properties.put(JdbcSinkConnectorConfig.SCHEMA_EVOLUTION, JdbcSinkConnectorConfig.SchemaEvolutionMode.NONE.getValue());
+        properties.put(JdbcSinkConnectorConfig.PRIMARY_KEY_MODE, JdbcSinkConnectorConfig.PrimaryKeyMode.RECORD_KEY.getValue());
+        properties.put(JdbcSinkConnectorConfig.INSERT_MODE, JdbcSinkConnectorConfig.InsertMode.UPSERT.getValue());
+        properties.put(JdbcSinkConnectorConfig.SINGLESTORE_GEOMETRY_REPAIR_ENABLED, "true");
+        startSinkConnector(properties);
+        assertSinkConnectorIsRunning();
+
+        final var polygon = new Polygon(false, false);
+        final var ring = new LineString(false, false);
+        for (double[] coordinate : new double[][]{
+                { 127.0, 37.0 }, { 127.1, 37.0 }, { 127.1, 37.1 },
+                { 127.050000004, 37.1 }, { 127.050000004, 37.05 },
+                { 127.050000001, 37.05 }, { 127.050000001, 37.1 },
+                { 127.0, 37.1 }, { 127.0, 37.0 } }) {
+            ring.addPoint(new mil.nga.wkb.geom.Point(coordinate[0], coordinate[1]));
+        }
+        polygon.addRing(ring);
+        final var writer = new ByteWriter();
+        writer.setByteOrder(ByteOrder.LITTLE_ENDIAN);
+        WkbGeometryWriter.writeGeometry(writer, polygon);
+
+        final JdbcKafkaSinkRecord record = factory.createRecordWithSchemaValue(
+                topicName("server2", "schema", randomTableName()), (byte) 1, "geometry_data", Geometry.schema(),
+                Geometry.createValue(Geometry.schema(), writer.getBytes(), 4326), new JdbcSinkConnectorConfig(properties));
+        final String destinationTable = destinationTableName(record);
+        getSink().execute(String.format("CREATE ROWSTORE TABLE %s (id tinyint NOT NULL, geometry_data geography, PRIMARY KEY(id))", destinationTable));
+        consume(record);
+        getSink().assertRows(destinationTable, rs -> {
+            try (var statement = rs.getStatement().getConnection().createStatement();
+                    var checks = statement.executeQuery("SELECT GEOGRAPHY_CONTAINS(geometry_data, 'POINT(127.025 37.05)') " +
+                            "FROM " + destinationTable)) {
+                assertThat(checks.next()).isTrue();
+                assertThat(checks.getBoolean(1)).isTrue();
+            }
+            return null;
+        });
+    }
+
+    @ParameterizedTest
+    @ArgumentsSource(SinkRecordFactoryArgumentsProvider.class)
+    @FixFor("debezium/dbz#2909")
+    public void testShouldPreserveAdjacentRoundedVerticesAfterInsert(SinkRecordFactory factory) throws Exception {
+        final Map<String, String> properties = getDefaultSinkConfig();
+        properties.put(JdbcSinkConnectorConfig.SCHEMA_EVOLUTION, JdbcSinkConnectorConfig.SchemaEvolutionMode.NONE.getValue());
+        properties.put(JdbcSinkConnectorConfig.PRIMARY_KEY_MODE, JdbcSinkConnectorConfig.PrimaryKeyMode.RECORD_KEY.getValue());
+        properties.put(JdbcSinkConnectorConfig.INSERT_MODE, JdbcSinkConnectorConfig.InsertMode.UPSERT.getValue());
+        properties.put(JdbcSinkConnectorConfig.SINGLESTORE_GEOMETRY_REPAIR_ENABLED, "true");
+        startSinkConnector(properties);
+        assertSinkConnectorIsRunning();
+
+        final var polygon = new Polygon(false, false);
+        final var ring = new LineString(false, false);
+        for (double[] coordinate : new double[][]{
+                { 127.0, 37.0 }, { 127.1, 37.0 }, { 127.1, 37.1 },
+                { 127.050000024, 37.1 }, { 127.050000014, 37.1 },
+                { 127.0, 37.1 }, { 127.0, 37.0 } }) {
+            ring.addPoint(new mil.nga.wkb.geom.Point(coordinate[0], coordinate[1]));
+        }
+        polygon.addRing(ring);
+        final var writer = new ByteWriter();
+        writer.setByteOrder(ByteOrder.LITTLE_ENDIAN);
+        WkbGeometryWriter.writeGeometry(writer, polygon);
+
+        final JdbcKafkaSinkRecord record = factory.createRecordWithSchemaValue(
+                topicName("server2", "schema", randomTableName()), (byte) 1, "geometry_data", Geometry.schema(),
+                Geometry.createValue(Geometry.schema(), writer.getBytes(), 4326), new JdbcSinkConnectorConfig(properties));
+        final String destinationTable = destinationTableName(record);
+        getSink().execute(String.format("CREATE ROWSTORE TABLE %s (id tinyint NOT NULL, geometry_data geography, PRIMARY KEY(id))", destinationTable));
+        consume(record);
+        getSink().assertRows(destinationTable, rs -> {
+            final String storedWkt = rs.getString("geometry_data");
+            assertThat(storedWkt).contains("127.05000001 ", "127.05000002 ");
             return null;
         });
     }

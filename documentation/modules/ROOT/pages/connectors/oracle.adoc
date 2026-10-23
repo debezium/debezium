@@ -12,7 +12,7 @@
 :connector-name: Oracle
 :include-list-example: PUBLIC.INVENTORY
 :collection-container: database.schema
-:supports-skipping-unchanged-events:
+:unchanged-events-metric-note:
 
 ifdef::community[]
 :toc:
@@ -158,12 +158,23 @@ For more information about the error, and about the steps that you can take to r
 
 [IMPORTANT]
 ====
-During a table's snapshot, it's possible for Oracle to raise an ORA-01466 exception.
-This happens when a user modifies the schema of the table or adds, changes, or drops an index or related object associated with the table being snapshot.
-In the event this happens, the connector will stop and the initial snapshot will need to be taken from the beginning.
+The connector reads table data with flashback queries at the SCN that it determined at the start of the snapshot.
+Oracle raises an ORA-01466 exception for a flashback query when the table's definition changed after that SCN, for example when a user modifies the schema of the table or adds, changes, or drops an index or related object associated with the table.
+Such a failure cannot be retried, because the same flashback query fails until the connector determines a new SCN; the connector stops and the initial snapshot must be restarted from the beginning.
 
-To remediate the problem, you can configure the xref:oracle-property-snapshot-database-errors-max-retries[`snapshot.database.errors.max.retries`] property with a value greater than `0` so that the specific table's snapshot will restart.
-While the entire snapshot will not start from the beginning when retrying, the specific table in question will be re-read from the beginning and the table's topic will contain duplicate snapshot events.
+The default xref:oracle-property-snapshot-locking-mode[`snapshot.locking.mode`] of `shared` holds a `ROW SHARE` lock on each captured table for the duration of the snapshot.
+The lock allows other sessions to read and write the tables, and prevents DDL that requires an exclusive table lock.
+However, it does not prevent all DDL operations on the tables while their data is being read.
+Oracle non-blocking DDL, such as `ALTER TABLE ... ADD COLUMN` in Oracle 23.3 and later, does not require an exclusive table lock, and can still change a table's definition while the snapshot is in progress and cause an ORA-01466 exception.
+
+To mitigate this, evaluate one of the following options:
+
+* Set `snapshot.locking.mode` to `extended`, which holds a `SHARE` lock on each captured table for the duration of the snapshot.
+The lock prevents all DDL, including non-blocking DDL, but it also blocks all writes to the captured tables until the snapshot completes.
+* Keep the default `shared` locking mode, and ensure that no DDL is performed on the captured tables while the snapshot is in progress.
+* Set the xref:oracle-property-snapshot-mode[`snapshot.mode`] to `no_data` so that the initial snapshot captures only the table schemas, and then capture the historical data by using an xref:debezium-oracle-incremental-snapshots[incremental snapshot], which reads the data in chunks and does not rely on flashback queries.
+
+If you set `snapshot.locking.mode` to `none`, no DDL must occur on the captured tables while the snapshot is in progress.
 ====
 
 ifdef::product[]
@@ -194,7 +205,7 @@ If you want the connector to capture data only from specific tables you can dire
 
 3. Obtain a `ROW SHARE MODE` lock on each of the captured tables to prevent structural changes from occurring during creation of the snapshot.
 +
-NOTE: {prodname} holds the locks for only a short time.
+NOTE: {prodname} holds the locks until the table data has been read in Step 6. The locks do not prevent other database clients from reading or writing to the tables, and do not prevent Oracle non-blocking DDL. To prevent all DDL, set the xref:oracle-property-snapshot-locking-mode[`snapshot.locking.mode`] property to `extended`, which obtains a `SHARE MODE` lock that also blocks writes to the tables until the snapshot completes.
 
 4. Read the current system change number (SCN) position from the server's redo log.
 
@@ -209,10 +220,7 @@ If tables are not configured for capture, the initial snapshot captures only the
 For more information about why snapshots persist schema information for tables that you did not include in the initial snapshot, see xref:understanding-why-initial-snapshots-capture-the-schema-history-for-all-tables[Understanding why initial snapshots capture the schema for all tables].
 ====
 
-6. Release the locks obtained in Step 3.
-Other database clients can now write to any previously locked tables.
-
-7. At the SCN position that was read in Step 4, the connector scans the tables that are designated for capture (`SELECT * FROM ... AS OF SCN 123`).
+6. At the SCN position that was read in Step 4, the connector scans the tables that are designated for capture (`SELECT * FROM ... AS OF SCN 123`).
 During the scan, the connector completes the following tasks:
 
 .. Confirms that the table was created before the snapshot began.
@@ -224,9 +232,9 @@ All `read` events contain the same SCN position, which is the SCN position that 
 
 .. Emits each `read` event to the Kafka topic for the source table.
 
-.. Releases data table locks, if applicable.
+.. Releases the locks obtained in Step 3.
 
-8. Record the successful completion of the snapshot in the connector offsets.
+7. Record the successful completion of the snapshot in the connector offsets.
 
 The resulting initial snapshot captures the current state of each row in the captured tables.
 From this baseline state, the connector captures subsequent changes as they occur.
@@ -1155,7 +1163,6 @@ Transitioning a thread from `PRIVATE` to `PUBLIC` can lead to unexpected results
 If a redo thread transition is required, a re-snapshot of data may be required to avoid data loss and to remain consistent.
 ====
 
-ifdef::community[]
 [[oracle-downstream-mining-database]]
 === Using a downstream mining database
 
@@ -1163,11 +1170,23 @@ You can use the {prodname} Oracle connector to capture changes from a real-time 
 Log mining operations consume system resources and increase the load on a database, which can result in decreased performance.
 Configuring the connector to perform change data capture processing on a secondary mining database, can reduce the load on the primary database.
 
+ifdef::community[]
 [NOTE]
 ====
 This feature is in an incubating state. This means that exact semantics, configuration options, and other details may change in future revisions based on feedback.
 Please let us know your specific requirements or if you encounter any problems while using this feature.
 ====
+endif::community[]
+ifdef::product[]
+[IMPORTANT]
+====
+The ability of the {prodname} Oracle connector to capture changes from a downstream mining database is a Technology Preview feature.
+Technology Preview features are not supported with Red{nbsp}Hat production service level agreements (SLAs) and might not be functionally complete.
+Red{nbsp}Hat does not recommend using them in production.
+These features provide early access to upcoming product features, enabling customers to test functionality and provide feedback during the development process.
+For more information about the support scope of Red{nbsp}Hat Technology Preview features, see link:https://access.redhat.com/support/offerings/techpreview/[Technology Preview Features Support Scope].
+====
+endif::product[]
 
 .Prerequisites
 
@@ -1204,13 +1223,11 @@ When {prodname} Oracle connector is configured to capture changes from a downstr
 
 To use the connector with a downstream mining database, you must first register transaction logs with that database.
 
-When Oracle Remove File Server (RFS) replicates changes, the replication should happen automatically when using a real-time downstream mining configuration. 
+When Oracle Remove File Server (RFS) replicates changes, the replication should happen automatically when using a real-time downstream mining configuration.
 {prodname} does not perform any log registration.
 
-If a log fails to register and a gap in log sequences occurs, the {prodname} connector pauses capture. A database administrator must review the registered logs and register any missing logs to close the gap. 
+If a log fails to register and a gap in log sequences occurs, the {prodname} connector pauses capture. A database administrator must review the registered logs and register any missing logs to close the gap.
 Typically, this should be necessary only during the initial set up and synchronization with the primary.
-
-endif::community[]
 
 [[oracle-logminer-query-modes]]
 === Query Modes
@@ -1484,7 +1501,7 @@ If your application does not use `ROLLBACK TO SAVEPOINT` in transactions that mo
 Enable it only when you need accurate partial rollback handling for tables that store LOB data out-of-line.
 ====
 
-As an alternative to enabling LOB mining and capturing `INTERNAL` events, you can set `lob.enabled` to `false` and configure the xref:post-processors/reselect-columns.adoc[Reselect columns post processor] to re-query LOB column values directly from the database.
+As an alternative to enabling LOB mining and capturing `INTERNAL` events, you can set `lob.enabled` to `false` and configure the {link-prefix}:{link-reselect-columns}#reselect-columns-post-processor[Reselect columns post processor] to re-query LOB column values directly from the database.
 
 This approach avoids the overhead of mining LOB-specific redo log entries and `INTERNAL` events while still ensuring that change events contain correct LOB values, because the post processor retrieves the values directly from the source table.
 
@@ -1582,7 +1599,7 @@ The schema portion of the key specifies a Kafka Connect schema that describes wh
 Specifies each field that is expected in the `payload`, including each field's name, index, and schema.
 
 `schema.fields.type`::
-Specifies that the data type of the `ID`field is `int32`.
+Specifies that the data type of the `ID` field is `int32`.
 
 `schema.fields.optional`::
 Indicates whether the event key must contain a value in its `payload` field.
@@ -2216,7 +2233,7 @@ The connector cannot process columns that include the following types of data:
 * JavaScript-based stored procedures
 * LONG
 * LONG RAW
-* ROWID (not supported on XStream)
+* ROWID (supported for LogMiner only)
 * Table value constructor (TVCs)
 * UROWID (Universal ROWID)
 * VECTOR
@@ -2966,7 +2983,7 @@ The default value type will be numeric except if the column is a `TIMESTAMP WITH
 
 By default, the {prodname} Oracle connector provides several `CustomConverter` implementations specific to Oracle data types.
 These custom converters provide alternative mappings for specific data types based on the connector configuration.
-To add a `CustomConverter` to the connector, follow the instructions in the link:../development/converters.adoc[Custom Converters documentation].
+To add a `CustomConverter` to the connector, follow the instructions in the {link-prefix}:{link-custom-converters}#custom-converters[Custom Converters documentation].
 
 The {prodname} Oracle connector provides the following custom converters:
 
@@ -3496,6 +3513,9 @@ To enable the connector to capture from the new primary, edit the database hostn
 [id="configuring-the-debezium-oracle-connector-to-capture-events-from-a-physical-standby"]
 ==== Configuring the {prodname} Oracle connector to capture events from a physical standby
 
+The {prodname} Oracle connector can stream changes directly from a physical standby database while using the primary for snapshots and metadata queries.
+This reduces the load on the primary by offloading LogMiner operations to the standby.
+
 ifdef::community[]
 [NOTE]
 ====
@@ -3503,8 +3523,17 @@ The ability to use the connector with a physical standby is in an incubating sta
 ====
 endif::community[]
 
-The {prodname} Oracle connector can stream changes directly from a physical standby database while using the primary for snapshots and metadata queries.
-This reduces the load on the primary by offloading LogMiner operations to the standby.
+ifdef::product[]
+[IMPORTANT]
+====
+The ability for the {prodname} Oracle connector to ingest changes from a read-only physical standby database is a Technology Preview feature.
+Technology Preview features are not supported with Red{nbsp}Hat production service level agreements (SLAs) and might not be functionally complete.
+Red{nbsp}Hat does not recommend using them in production.
+These features provide early access to upcoming product features, enabling customers to test functionality and provide feedback during the development process.
+
+For more information about the support scope of Red{nbsp}Hat Technology Preview features, see link:https://access.redhat.com/support/offerings/techpreview/[Technology Preview Features Support Scope].
+====
+endif::product[]
 
 .Prerequisites
 
@@ -3535,11 +3564,25 @@ secondary.url=jdbc:oracle:thin:@standby-host:1521/ORCLPDB1
 If the standby uses a different port than the primary, you can also set `secondary.port`.
 If the standby uses a different database name than the primary, you can also set `secondary.dbname`.
 
-When configured with these properties, the connector:
+Configuring these properties changes how the connector reads from the database.
+After you configure the properties, the connector exhibits the following behavior:
 
-1. Connects to the primary database (configured via `database.hostname`) for snapshot operations and metadata queries.
-2. Connects to the standby database (configured via `secondary.hostname` or `secondary.url`) in read-only mode for LogMiner streaming operations.
-3. Uses the flat file data dictionary to resolve table and column names during log mining on the standby.
+* Connects to the primary database (configured via `database.hostname`) for snapshot operations and metadata queries.
+* Connects to the standby database (configured via `secondary.hostname` or `secondary.url`) in read-only mode for LogMiner streaming operations.
+* Uses the flat file data dictionary to resolve table and column names during log mining on the standby database.
+* Resolves tables that the flat file data dictionary cannot name by querying the catalog of the primary database.
+
+.Resolving tables that are missing from the dictionary file
+
+The dictionary file is a point-in-time copy of the data dictionary.
+LogMiner reports a table that is created or altered after the file is built as `OBJ#` followed by the object identifier of the table.
+When the schema model of the connector cannot name such a table either, the connector reads the owner and table name from the `DBA_OBJECTS` view on the primary database, and applies the table filters to the result.
+The connector caches the result for each object identifier for the lifetime of the streaming session, so that changes to a table that is not captured do not query the primary database for every change.
+
+Because a table keeps its object identifier when it is renamed, the connector does not notice a rename that occurs while the dictionary file is out of date.
+Until the dictionary file is rebuilt, or the connector restarts, the connector continues to apply the table filters to the name that it resolved first.
+A table that is renamed so that its new name matches the include list is therefore not captured until then, and a captured table that is renamed so that its new name no longer matches the include list continues to be captured.
+Rebuild the dictionary file after renaming tables on the primary database.
 
 The data dictionary is exported once, so it does not describe schema changes that are applied to the primary afterwards.
 The connector resolves the affected tables and columns from its own schema model, and rebuilding the dictionary file restores resolution on the LogMiner side.
@@ -3554,17 +3597,6 @@ The flush process requires that the user account through which the connector acc
 However, a logical stand-by database typically permits read-only access, preventing the connector from writing to the database.
 You can modify the connector configuration to enable the connector to capture events from a logical standby, or the DBA can create a new writable tablespace in which the connector can store the flush table.
 
-ifdef::product[]
-[IMPORTANT]
-====
-The ability for the {prodname} Oracle connector to ingest changes from a read-only logical standby database is a Technology Preview feature.
-Technology Preview features are not supported with Red{nbsp}Hat production service level agreements (SLAs) and might not be functionally complete.
-Red{nbsp}Hat does not recommend using them in production.
-These features provide early access to upcoming product features, enabling customers to test functionality and provide feedback during the development process.
-
-For more information about the support scope of Red{nbsp}Hat Technology Preview features, see link:https://access.redhat.com/support/offerings/techpreview/[Technology Preview Features Support Scope].
-====
-endif::product[]
 
 ifdef::community[]
 [WARNING]
@@ -4021,7 +4053,7 @@ Information about the properties is organized as follows:
 
 The following configuration properties are required to configure the {prodname} Oracle connector unless a default value is specified.
 
-[cols="30%a,25%a,45%a"]
+[cols="30%a,25%a,45%a",options="header"]
 |===
 |Property
 |Default
@@ -4207,7 +4239,14 @@ a|Controls whether and for how long the connector holds a table lock. Table lock
 You can set the following values:
 
 `shared`:: Enables concurrent access to the table, but prevents any session from acquiring an exclusive table lock.
-  The connector acquires a `ROW SHARE` level lock while it captures table schema.
+  The connector acquires a `ROW SHARE` level lock when it captures the table schema and holds it until the table data has been read.
+  The lock prevents DDL that requires an exclusive table lock, but it does not prevent Oracle non-blocking DDL, such as `ALTER TABLE ... ADD COLUMN` in Oracle 23.3 and later, which can invalidate the flashback query that reads the data and cause an ORA-01466 exception.
+
+`extended`:: Prevents all DDL on the table, including Oracle non-blocking DDL, for the duration of the snapshot.
+  The connector acquires a `SHARE` level lock when it captures the table schema and holds it until the table data has been read.
+  Other sessions can read the table, but any write to the table is blocked until the snapshot completes.
+  The connector waits up to the duration specified by the xref:oracle-property-snapshot-lock-timeout-ms[`snapshot.lock.timeout.ms`] property, rounded down to whole seconds, to acquire each table lock.
+  If a lock cannot be acquired in that time, the snapshot fails.
 
 `none`:: Prevents the connector from acquiring any table locks during the snapshot.
   Use this setting only if no schema changes might occur during the creation of the snapshot.
@@ -4222,6 +4261,16 @@ ifdef::community[]
 | When `snapshot.locking.mode` is set as `custom`, use this setting to specify the name of the custom implementation provided in the `name()` method that is defined by the 'io.debezium.spi.snapshot.SnapshotLock' interface.
 For more information, see xref:connector-custom-snapshot[custom snapshotter SPI].
 endif::community[]
+
+|[[oracle-property-snapshot-lock-timeout-ms]]<<oracle-property-snapshot-lock-timeout-ms, `+snapshot.lock.timeout.ms+`>>
+|`10000`
+|Specifies the maximum amount of time (in milliseconds) to wait to obtain each table lock when performing a snapshot.
+The value is rounded down to whole seconds.
+If the connector cannot acquire a table lock in this interval, the snapshot fails.
+A value from `0` to `999` causes the snapshot to fail immediately if a table lock cannot be acquired.
+Set the value to `-1` to wait indefinitely.
+While the connector waits for a table lock, writes to that table are queued behind the pending lock request.
+Of the built-in xref:oracle-property-snapshot-locking-mode[`snapshot.locking.mode`] options, this property applies only to `extended`.
 
 |[[oracle-property-snapshot-query-mode]]<<oracle-property-snapshot-query-mode, `+snapshot.query.mode+`>>
 |`select_all`
@@ -4667,7 +4716,6 @@ Set the value to `0` to use the JDBC driver's default fetch size.
 
 See xref:oracle-transaction-metadata[Transaction Metadata] for additional details.
 
-ifdef::community[]
 |[[oracle-property-log-mining-read-only]]<<oracle-property-log-mining-read-only, `+log.mining.read.only+`>>
 |`false`
 |When set to `true`, the connector does not attempt to flush the LGWR buffer to disk, allowing it to connect to read-only databases such as logical standbys or physical standbys.
@@ -4685,10 +4733,14 @@ Required when `log.mining.strategy` is set to `dictionary_from_file`.
 `physical_standby`:: Captures and streams changes from a physical standby instance.
 `downstream`:: Captures and streams changes from a downstream mining database.
 
+NOTE: The `physical_standby` and `downstream` options are Technology Preview features.
+
 |[[oracle-property-secondary-hostname]]<<oracle-property-secondary-hostname, `+secondary.hostname+`>>
 |No default
 |Specifies the hostname of the secondary database from which the connector streams changes.
 When set, the connector uses the primary database (configured via `database.hostname`) for snapshots and metadata queries, and the secondary for streaming.
+
+NOTE: This property and the other `secondary.*` properties are Technology Preview features.
 
 |[[oracle-property-secondary-port]]<<oracle-property-secondary-port, `+secondary.port+`>>
 |Same as `database.port`
@@ -4702,7 +4754,6 @@ When set, the connector uses the primary database (configured via `database.host
 |No default
 |Specifies the full JDBC connection string to the secondary database used for streaming.
 Use this as an alternative to `secondary.hostname`, `secondary.port`, and `secondary.dbname` when the connection string requires additional parameters.
-endif::community[]
 
 |[[oracle-property-log-mining-strategy]]<<oracle-property-log-mining-strategy, `+log.mining.strategy+`>>
 |`online_catalog`
@@ -4727,7 +4778,8 @@ This strategy is required when streaming changes from a physical standby databas
 The file is a point-in-time copy, so LogMiner cannot name an object that is created or altered after the file is built, and reports it as `OBJ#` followed by the object identifier.
 The connector resolves such objects from its own schema model, and reconstructs the column names that LogMiner reports as `COL 1`, `COL 2`, and so forth.
 An object that the connector has no schema for, such as a table created after the initial snapshot ran, cannot be resolved this way.
-The connector then applies the xref:oracle-property-event-processing-failure-handling-mode[`event.processing.failure.handling.mode`] property, which stops the connector by default.
+When `capture.mode` is set to `physical_standby`, the connector resolves such an object from the catalog of the primary database, as described in xref:configuring-the-debezium-oracle-connector-to-capture-events-from-a-physical-standby[Configuring the {prodname} Oracle connector to capture events from a physical standby].
+If the object cannot be resolved, the connector applies the xref:oracle-property-event-processing-failure-handling-mode[`event.processing.failure.handling.mode`] property, which stops the connector by default.
 Rebuild the dictionary file to have LogMiner resolve these objects again.
 endif::community[]
 
@@ -5241,12 +5293,6 @@ For more information about the support scope of Red{nbsp}Hat Technology Preview 
 ====
 endif::product[]
 
-|[[oracle-property-snapshot-database-errors-max-retries]]<<oracle-property-snapshot-database-errors-max-retries, `snapshot.database.errors.max.retries`>>
-|`0`
-|Specifies the number of retry attempts to snapshot a table when a database error occurs.
-This configuration property currently only retries failures related to `ORA-01466` exceptions.
-By default, no additional retries will be performed.
-
 |[[oracle-property-custom-metric-tags]]<<oracle-property-custom-metric-tags, `custom.metric.tags`>>
 |`No default`
 |Defines tags that customize MBean object names by adding metadata that provides contextual information.
@@ -5422,7 +5468,7 @@ include::{partialsdir}/modules/all-connectors/ref-connector-monitoring-streaming
 The {prodname} Oracle connector also provides the following additional streaming metrics:
 
 .Descriptions of additional streaming metrics
-[cols="45%a,25%a,30%a"]
+[cols="45%a,25%a,30%a",options="header"]
 |===
 |Attributes |Type |Description
 
@@ -5895,7 +5941,7 @@ To configure the connector to use OpenLogReplicator, you must apply specific dat
 .Prerequisites
 
 * Download and compile OpenLogReplicator for your database environment.
-* OpenLogReplicator is installed with direct access to the archive and redo log files. 
+* OpenLogReplicator is installed with direct access to the archive and redo log files.
 This does not necessarily require installation on the physical database server if the archive and redo logs can be accessed via some shared filesystem.
 
 === How OpenLogReplicator works
@@ -6183,7 +6229,7 @@ A column that OpenLogReplicator omits because of a missing flag is not reported 
 The connector receives no value for it, and the field is `null` in the change event, so a missing flag looks like missing data rather than a configuration problem.
 
 .OpenLogReplicator flags used by {prodname}
-[cols="35%a,15%a,50%a"]
+[cols="35%a,15%a,50%a",options="header"]
 |===
 |Flag
 |Value
@@ -6214,7 +6260,7 @@ Omit `65536` if the tables you capture contain no `XMLTYPE` columns, and `64` if
 
 The following configuration properties are required when using OpenLogReplicator.
 
-[cols="30%a,25%a,45%a"]
+[cols="30%a,25%a,45%a",options="header"]
 |===
 |Property
 |Default
@@ -6520,7 +6566,7 @@ LD_LIBRARY_PATH=/path/to/instant_client/
 
 The following configuration properties are _required_ when using XStream unless a default value is available.
 
-[cols="30%a,25%a,45%a"]
+[cols="30%a,25%a,45%a",options="header"]
 |===
 |Property
 |Default

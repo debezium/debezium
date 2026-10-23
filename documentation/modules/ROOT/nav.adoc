@@ -3,6 +3,7 @@
 *** xref:kc-tutorial.adoc[Kafka Connect]
 ** xref:install.adoc[Installation]
 *** xref:install-kafka-connect.adoc[Kafka Connect]
+*** xref:install-operator.adoc[Operator]
 *** xref:postgres-plugins.adoc[PostgreSQL Decoding Plugins]
 ** xref:architecture.adoc[Architecture]
 ** xref:features.adoc[Features]
@@ -30,8 +31,10 @@
 ** xref:connectors/yashandb.adoc[YashanDB]
 ** xref:connectors/ingres.adoc[Ingres]
 ** xref:connectors/milvus.adoc[Milvus]
+** xref:connectors/sqlite.adoc[SQLite]
 * Sink Connectors
 ** xref:connectors/index-sink.adoc[Overview]
+** xref:connectors/elasticsearch.adoc[Elasticsearch]
 ** xref:connectors/jdbc.adoc[JDBC]
 ** xref:connectors/mongodb-sink.adoc[MongoDB Sink]
 * Transformations
@@ -55,8 +58,10 @@
 ** xref:transformations/decode-logical-decoding-message-content.adoc[Decode Logical Decoding Message Content]
 ** xref:transformations/vector-to-json.adoc[Vector Data Types to JSON Types]
 ** xref:transformations/neo4j-cud-converter.adoc[Neo4j CUD Converter]
+** xref:transformations/neo4j-debezium-converter.adoc[Neo4j Debezium Converter]
 ** xref:transformations/enforce-record-size.adoc[Enforce Record Size]
 ** xref:transformations/swap-geometry-coordinates.adoc[Swap Geometry Coordinates]
+** xref:transformations/stringify-fields.adoc[Stringify Fields]
 * Post Processors
 ** xref:post-processors/index.adoc[Overview]
 ** xref:post-processors/reselect-columns.adoc[Reselect Columns]
@@ -64,15 +69,18 @@
 * API and SPI
 ** xref:development/engine.adoc[Debezium Engine]
 ** xref:development/converters.adoc[Custom Converters]
+** xref:development/source-connector.adoc[Developing Source Connectors]
 * Integrations
 ** xref:integrations/serdes.adoc[Change Event SerDes]
-** xref:integrations/outbox.adoc[Outbox Quarkus Extension]
 ** xref:integrations/cloudevents.adoc[CloudEvents]
 ** xref:integrations/openlineage.adoc[OpenLineage]
 ** xref:integrations/tracing.adoc[OpenTelemetry]
-** xref:integrations/quarkus-debezium-engine-extension.adoc[Debezium Extensions for Quarkus]
-** xref:integrations/hibernate-cache.adoc[Hibernate Cache Invalidation]
 ** xref:integrations/testcontainers.adoc[Integration Testing with Testcontainers]
+* Debezium on Quarkus
+** xref:quarkus/index.adoc[Overview]
+** xref:quarkus/quarkus-debezium-engine-extension.adoc[Debezium Runtime Extensions]
+** xref:quarkus/outbox.adoc[Outbox Pattern Extension]
+** xref:quarkus/hibernate-cache.adoc[Hibernate Cache Invalidation]
 * Debezium AI
 ** xref:ai/debezium-ai-python.adoc[PyDebeziumAI]
 ** xref:ai/embeddings.adoc[Embeddings Transformation]
@@ -81,6 +89,7 @@
 ** xref:operations/debezium-server.adoc[Debezium Server]
 ** xref:operations/debezium-operator.adoc[Debezium Operator]
 ** xref:operations/debezium-platform.adoc[Debezium Management Platform]
+** xref:operations/debezium-cli.adoc[Debezium CLI]
 * Operations
 ** xref:operations/logging.adoc[Logging]
 ** xref:operations/monitoring.adoc[Monitoring]

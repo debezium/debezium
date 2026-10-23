@@ -76,4 +76,26 @@ public class TableCommonParserListener extends MariaDBParserBaseListener {
         }, tableEditor);
         super.enterUniqueKeyTableConstraint(ctx);
     }
+
+    @Override
+    public void enterTableOptionCharset(MariaDBParser.TableOptionCharsetContext ctx) {
+        parser.runIfNotNull(() -> {
+            if (ctx.charsetName() != null) {
+                tableEditor.setDefaultCharsetName(parser.withoutQuotes(ctx.charsetName()));
+            }
+        }, tableEditor);
+        super.enterTableOptionCharset(ctx);
+    }
+
+    @Override
+    public void enterTableOptionCollate(MariaDBParser.TableOptionCollateContext ctx) {
+        // A collation implies its character set, e.g. ALTER TABLE ... COLLATE utf8mb4_bin
+        parser.runIfNotNull(() -> {
+            final var charsetName = parser.extractCharset(null, ctx.collationName());
+            if (charsetName != null) {
+                tableEditor.setDefaultCharsetName(charsetName);
+            }
+        }, tableEditor);
+        super.enterTableOptionCollate(ctx);
+    }
 }

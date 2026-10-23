@@ -33,10 +33,10 @@ public class MongoDbConnectionContextTest {
     @Test
     void shouldMaskCredentials() {
         var config = getConfig("mongodb://admin:password@localhost:27017/", false);
-        var connectionContext = new MongoDbConnectionContext(config);
-
-        var masked = connectionContext.getMaskedConnectionString();
-        assertThat(masked).isEqualTo("mongodb://***:***@localhost:27017/");
+        try (var connectionContext = new MongoDbConnectionContext(config)) {
+            var masked = connectionContext.getMaskedConnectionString();
+            assertThat(masked).isEqualTo("mongodb://***:***@localhost:27017/");
+        }
     }
 
     @Test

@@ -45,7 +45,8 @@ public class TracingSpanUtil {
      * is taken from the envelope's timestamp).
      * If a trace context is provided for propagation, it is set as the parent context of the
      * created spans to enable distributed tracing.
-     * The resulting context is injected in the Kafka Connect Record headers for further propagation.
+     * The created spans are made current within the propagated context, so the context injected in the
+     * Kafka Connect Record headers for further propagation retains the propagated values (e.g. W3C baggage).
      *
      * @param <R> the subtype of {@link ConnectRecord} on which this transformation will operate
      * @param connectRecord the Connect record that is to be enriched with tracing information
@@ -60,11 +61,12 @@ public class TracingSpanUtil {
         SpanBuilder txLogSpanBuilder = tracer.spanBuilder(TX_LOG_WRITE_OPERATION_NAME)
                 .setSpanKind(SpanKind.INTERNAL);
 
+        Context parentSpanContext = Context.current();
         if (propagatedSpanContext != null) {
             Properties props = PropertiesGetter.extract(propagatedSpanContext);
 
-            Context parentSpanContext = openTelemetry.getPropagators().getTextMapPropagator()
-                    .extract(Context.current(), props, PropertiesGetter.INSTANCE);
+            parentSpanContext = openTelemetry.getPropagators().getTextMapPropagator()
+                    .extract(parentSpanContext, props, PropertiesGetter.INSTANCE);
 
             txLogSpanBuilder.setParent(parentSpanContext);
         }
@@ -78,7 +80,7 @@ public class TracingSpanUtil {
 
         Span txLogSpan = txLogSpanBuilder.startSpan();
 
-        try (Scope ignored = txLogSpan.makeCurrent()) {
+        try (Scope ignored = parentSpanContext.with(txLogSpan).makeCurrent()) {
             if (source != null) {
                 for (org.apache.kafka.connect.data.Field field : source.schema().fields()) {
                     addFieldToSpan(txLogSpan, source, field.name(), DB_FIELDS_PREFIX);

@@ -21,6 +21,7 @@ public class CreateAndAlterDatabaseParserListener extends MySqlParserBaseListene
 
     private final MySqlAntlrDdlParser parser;
     private String databaseName;
+    private boolean charsetSpecified;
 
     public CreateAndAlterDatabaseParserListener(MySqlAntlrDdlParser parser) {
         this.parser = parser;
@@ -29,6 +30,7 @@ public class CreateAndAlterDatabaseParserListener extends MySqlParserBaseListene
     @Override
     public void enterCreateDatabase(MySqlParser.CreateDatabaseContext ctx) {
         databaseName = parser.parseName(ctx.schemaName().identifier());
+        charsetSpecified = false;
         super.enterCreateDatabase(ctx);
     }
 
@@ -42,7 +44,9 @@ public class CreateAndAlterDatabaseParserListener extends MySqlParserBaseListene
 
     @Override
     public void enterAlterDatabase(MySqlParser.AlterDatabaseContext ctx) {
-        databaseName = parser.parseName(ctx.schemaRef().identifier());
+        // The database name is optional and defaults to the current database
+        databaseName = ctx.schemaRef() == null ? parser.currentSchema() : parser.parseName(ctx.schemaRef().identifier());
+        charsetSpecified = false;
         super.enterAlterDatabase(ctx);
     }
 
@@ -62,6 +66,7 @@ public class CreateAndAlterDatabaseParserListener extends MySqlParserBaseListene
                 charsetName = parser.systemVariables().getVariable(BinlogSystemVariables.CHARSET_NAME_SERVER);
             }
             parser.charsetNameForDatabase().put(databaseName, charsetName);
+            charsetSpecified = true;
         }
         super.enterDefaultCharset(ctx);
     }
@@ -71,8 +76,8 @@ public class CreateAndAlterDatabaseParserListener extends MySqlParserBaseListene
         // Only process if we're in a CREATE/ALTER DATABASE context (databaseName is set)
         // This method can also be triggered by CREATE TABLE with DEFAULT COLLATE
         if (databaseName != null) {
-            // Collation is used only if the database charset was not set by charset setting
-            if (!parser.charsetNameForDatabase().containsKey(databaseName)) {
+            // Collation is used only if the statement does not set the charset explicitly
+            if (!charsetSpecified) {
                 String charsetName = parser.extractCharset(null, ctx.collationName());
                 if (charsetName != null) {
                     parser.charsetNameForDatabase().put(databaseName, charsetName);

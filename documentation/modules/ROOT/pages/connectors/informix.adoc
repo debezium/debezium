@@ -12,7 +12,7 @@
 :connector-name: Informix
 :include-list-example: public.inventory
 :collection-container:  database.schema
-:supports-skipping-unchanged-events:
+:unchanged-events-metric-note:
 
 ifdef::community[]
 
@@ -983,7 +983,7 @@ For more information, see xref:informix-topic-names[topic names].
 ====
 The {prodname} Informix connector ensures that all Kafka Connect schema names adhere to the link:http://avro.apache.org/docs/current/spec.html#names[Avro schema name format].
 Conforming to the Avro schema name format means that the logical server name starts with a Latin letter, or with an underscore, that is, `a-z`,` A-Z`, or `\_`.
-Each remaining character in the logical server name, and each character in the database and table names, must be a Latin letter, a digit, or an underscore, that is, `a-z`, `A-Z`,`0-9`, or `\_`.
+Each remaining character in the logical server name, and each character in the database and table names, must be a Latin letter, a digit, or an underscore, that is, `a-z`, `A-Z`, `0-9`, or `\_`.
 If there is an invalid character, it is replaced with an underscore character.
 
 The use of underscores to replace invalid characters can lead to unexpected conflicts.
@@ -1101,7 +1101,7 @@ Like the event key, the value includes a `schema` element and a `payload` elemen
 The `schema` element contains the schema that describes the `Envelope` structure of the `payload` element, including its nested fields.
 Change events for operations that create, update or delete data all have a value payload with an envelope structure.
 
-Consider the sample `customers`table that was used in the earlier example of a change event key:
+Consider the sample `customers` table that was used in the earlier example of a change event key:
 
 .Example table
 [source,sql,indent=0]
@@ -1394,7 +1394,6 @@ The timestamp (in microseconds since the Unix epoch) when the connector processe
 `payload.ts_ns`:::
 The timestamp (in nanoseconds since the Unix epoch) when the connector processed the event.
 
-// Type: continue
 [[informix-update-events]]
 === _update_ events
 
@@ -2228,6 +2227,12 @@ To match the name of a column, {prodname} applies the regular expression that yo
 That is, the specified expression is matched against the entire name string of the column; it does not match substrings that might be present in a column name.
 Primary key columns are always included in the event's key, the value that you set in this property would exclude them.
 If you include this property in the configuration, do not set the `column.include.list` property.
+
+|[[informix-property-skip-messages-without-change]]<<informix-property-skip-messages-without-change, `+skip.messages.without.change+`>>
+|_false_
+|Specifies whether the connector emits messages for records when it does not detect a change in the included columns.
+Columns are considered to be included if they are listed in the `column.include.list`, or are not listed in the `column.exclude.list`.
+Set the value to `true` to prevent the connector from capturing records when no changes are present in the included columns.
 
 |[[informix-property-column-mask-hash]]<<informix-property-column-mask-hash, `column.mask.hash._hashAlgorithm_.with.salt._salt_`>>
 |_n/a_

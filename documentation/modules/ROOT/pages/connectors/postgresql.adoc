@@ -12,7 +12,7 @@
 :connector-name: PostgreSQL
 :include-list-example: public.inventory
 :collection-container: schema
-:supports-skipping-unchanged-events:
+:unchanged-events-metric-note:
 
 ifdef::community[]
 
@@ -1461,6 +1461,7 @@ Details are in the following sections:
 
 * xref:postgresql-basic-types[]
 * xref:postgresql-temporal-types[]
+* xref:postgresql-date-type[]
 * xref:postgresql-timestamp-type[]
 * xref:postgresql-decimal-types[]
 * xref:postgresql-hstore-type[]
@@ -2001,6 +2002,40 @@ Contains signed `years`, `months`, `days`, `hours`, `minutes`, `seconds`, `nanos
 |===
 
 
+[id="postgresql-date-type"]
+=== DATE type
+
+PostgreSQL supports `infinity` and `-infinity` values in `DATE` columns.
+Only the `structured` precision mode can represent infinity directly, so in every other `time.precision.mode`, the connector converts these values to a specific sentinel value.
+The sentinel values are the dates `+5877611-06-21` and `-5877611-06-22`, which lie outside the range of dates that PostgreSQL itself supports (4713 BC to 5874897 AD), so they cannot be mistaken for a stored date.
+The connector emits the same value for a scalar `DATE` and for a `DATE[]` element, and in snapshots and in streaming, with either logical decoding plug-in.
+
+The following table shows the value that the connector emits for each `time.precision.mode` setting:
+
+[cols="30%a,35%a,35%a",options="header"]
+|===
+|`time.precision.mode`
+|`infinity`
+|`-infinity`
+
+|`adaptive`, `adaptive_time_microseconds`, `microseconds`, `nanoseconds` (`io.debezium.time.Date`)
+|`2146033979`
+|`-2147472691`
+
+|`connect` (`org.apache.kafka.connect.data.Date`)
+|`185417335785600000` milliseconds since the epoch
+|`-185541640502400000` milliseconds since the epoch
+
+|`isostring` (`io.debezium.time.IsoDate`)
+|`+5877611-06-21Z`
+|`-5877611-06-22Z`
+
+|`structured` (`io.debezium.time.StructuredDate`)
+|`specialValue` is `POSITIVE_INFINITY`
+|`specialValue` is `NEGATIVE_INFINITY`
+
+|===
+
 [id="postgresql-timestamp-type"]
 === TIMESTAMP type
 
@@ -2332,6 +2367,11 @@ Most common data types are supported, including the following:
 * Temporal types (`DATE`, `TIME`, `INTERVAL`, `TIMESTAMP`, `TIMESTAMPTZ`)
 * `JSON`, `JSONB`, `XML`
 * `UUID`
+* `TEXT[]` and `VARCHAR[]` (plain array literals only, see below)
+
+For `TEXT[]` and `VARCHAR[]` columns, only a plain array literal such as `'{}'` or `'{a,b}'` is propagated; defaults written in the `ARRAY[...]` form, or literals that contain quoted, escaped, nested, or `NULL` elements, are not propagated.
+An empty array default becomes a regular Avro field default.
+A non-empty array default is kept only as the `connect.default` schema parameter, because Avro drops it as a field default (link:https://issues.apache.org/jira/browse/AVRO-3649[AVRO-3649]), so a schema registry with `BACKWARD` compatibility can still reject such a schema change, and the default is not restored correctly when the schema is read back through the Avro converter.
 
 Note that for temporal types, parsing of the default value is provided by PostgreSQL libraries; therefore, any string representation which is normally supported by PostgreSQL should also be supported by the connector.
 
@@ -3430,14 +3470,6 @@ Set this parameter on the primary server to specify the physical replication slo
 |`no_validation`
 |Specifies how the connector handles mismatches between the stored offset LSN and the replication slot's confirmed flush LSN when the connector starts.
 
-[IMPORTANT]
-====
-The `offset.mismatch.strategy` property is a Technology Preview feature.
-Technology Preview features are not supported with Red{nbsp}Hat production service level agreements (SLAs) and might not be functionally complete.
-Red{nbsp}Hat does not recommend using them in production.
-These features provide early access to upcoming product features, enabling customers to test functionality and provide feedback during the development process.
-For more information about the support scope of Red{nbsp}Hat Technology Preview features, see link:https://access.redhat.com/support/offerings/techpreview/[Technology Preview Features Support Scope].
-====
 This property replaces the deprecated `internal.slot.seek.to.known.offset.on.start` boolean property.
 
 A mismatch can occur in several scenarios:
@@ -4442,6 +4474,7 @@ For example to request the publisher to send all changes, that is, changes that 
 |`__debezium_unavailable_value`
 |Specifies the constant that the connector provides to indicate that the original value is a toasted value that is not provided by the database.
 If the setting of `unavailable.value.placeholder` starts with the `hex:` prefix it is expected that the rest of the string represents hexadecimally encoded octets.
+If the rest of the string is not an even number of hexadecimal characters, the connector configuration fails validation.
 For more information, see xref:postgresql-toasted-values[toasted values].
 
 |[[postgresql-property-provide-transaction-metadata]]<<postgresql-property-provide-transaction-metadata, `+provide.transaction.metadata+`>>
@@ -4504,18 +4537,12 @@ Use this mode to prevent WAL growth on low-activity databases where monitored ta
 NOTE: When using `connector_and_driver` mode, the JDBC driver's keep-alive mechanism can flush the server-reported keep-alive LSN, which may advance the replication slot beyond the stored offset when non-monitored WAL activity occurs.
 If you use a persistent offset store, configure xref:postgresql-property-offset-mismatch-strategy[`offset.mismatch.strategy`] to `trust_slot` or `trust_greater_lsn` to enable automatic recovery.
 +
-NOTE: Because `connector_and_driver` mode requires periodic opportunities to propagate LSNs to Kafka, when xref:postgresql-property-heartbeat-interval-ms[`heartbeat.interval.ms`] = 0 and
-xref:postgresql-property-provide-transaction-metadata[`provide.transaction.metadata`] = false, the connector internally sets xref:postgresql-property-heartbeat-interval-ms[`heartbeat.interval.ms`] to 600000 (10 minutes).
+NOTE: Because `connector_and_driver` mode requires periodic opportunities to propagate LSNs to Kafka, when xref:postgresql-property-heartbeat-interval-ms[`heartbeat.interval.ms`] is set to `0` and
+xref:postgresql-property-provide-transaction-metadata[`provide.transaction.metadata`] is set to `false`, the connector internally sets xref:postgresql-property-heartbeat-interval-ms[`heartbeat.interval.ms`] to 600000 (10 minutes).
+ifdef::community[]
 +
-[IMPORTANT]
-====
-The `connector_and_driver` mode is a Technology Preview feature.
-Technology Preview features are not supported with Red{nbsp}Hat production service level agreements (SLAs) and might not be functionally complete.
-Red Hat does not recommend using them in production.
-These features provide early access to upcoming product features, enabling customers to test functionality and provide feedback during the development process.
-For more information about the support scope of Red{nbsp}Hat Technology Preview features, see link:https://access.redhat.com/support/offerings/techpreview/[Technology Preview Features Support Scope].
 If you use an ephemeral offset store such as `org.apache.kafka.connect.storage.MemoryOffsetBackingStore`, no additional configuration is needed because the connector always defers to the replication slot position on startup.
-====
+endif::community[]
 
 |[[postgresql-property-lsn-flush-timeout-action]]<<postgresql-property-lsn-flush-timeout-action, `+lsn.flush.timeout.action+`>>
 |`fail`

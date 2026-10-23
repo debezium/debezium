@@ -25,6 +25,7 @@ import io.debezium.relational.history.InternerMetrics;
 import io.debezium.relational.history.MemoryOptimizationMode;
 import io.debezium.relational.history.SchemaHistory;
 import io.debezium.relational.history.SchemaHistoryMetrics;
+import io.debezium.service.spi.InstanceResolver;
 import io.debezium.util.Interner;
 import io.debezium.util.InternerStats;
 
@@ -39,7 +40,6 @@ public abstract class HistorizedRelationalDatabaseConnectorConfig extends Relati
 
     private static final String DEFAULT_SCHEMA_HISTORY = "io.debezium.storage.kafka.history.KafkaSchemaHistory";
 
-    private final boolean useCatalogBeforeSchema;
     private final Class<? extends SourceConnector> connectorClass;
     private final boolean multiPartitionMode;
     private final Predicate<String> ddlFilter;
@@ -113,7 +113,6 @@ public abstract class HistorizedRelationalDatabaseConnectorConfig extends Relati
                                                           ColumnFilterMode columnFilterMode,
                                                           boolean multiPartitionMode) {
         super(config, systemTablesFilter, tableIdMapper, defaultSnapshotFetchSize, columnFilterMode, useCatalogBeforeSchema);
-        this.useCatalogBeforeSchema = useCatalogBeforeSchema;
         this.connectorClass = connectorClass;
         this.multiPartitionMode = multiPartitionMode;
         this.ddlFilter = createDdlFilter(config);
@@ -129,7 +128,8 @@ public abstract class HistorizedRelationalDatabaseConnectorConfig extends Relati
     public SchemaHistory getSchemaHistory() {
         Configuration config = getConfig();
 
-        SchemaHistory schemaHistory = config.getInstance(SCHEMA_HISTORY, SchemaHistory.class);
+        SchemaHistory schemaHistory = serviceRegistry.getService(InstanceResolver.class)
+                .resolve(SchemaHistory.class, SCHEMA_HISTORY.name(), () -> config.getInstance(SCHEMA_HISTORY, SchemaHistory.class));
         if (schemaHistory == null) {
             throw new ConnectException("Unable to instantiate the database schema history class " +
                     config.getString(SCHEMA_HISTORY));
@@ -152,10 +152,6 @@ public abstract class HistorizedRelationalDatabaseConnectorConfig extends Relati
                 new SchemaHistoryMetrics(this, multiPartitionMode(), internerMetrics), useCatalogBeforeSchema()); // validates
 
         return schemaHistory;
-    }
-
-    public boolean useCatalogBeforeSchema() {
-        return useCatalogBeforeSchema;
     }
 
     public boolean multiPartitionMode() {

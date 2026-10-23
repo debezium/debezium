@@ -9,6 +9,7 @@ import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 import java.sql.Types;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -46,25 +47,22 @@ public class SqlServerChangeTablePointer extends ChangeTableResultSet<SqlServerC
     private static final int COL_OPERATION = 3;
     private static final int COL_UPDATE_MASK = 4;
     private static final int COL_COMMAND_ID = 5;
-    private static final int COL_DATA_FUNCTION_MODE = 5;
-    private static final int COL_DATA_DIRECT_MODE = 6;
+    private static final int COL_DATA = 6;
 
     private ResultSetMapper<Object[]> resultSetMapper;
-    private final int columnDataOffset;
     private final SqlServerConnection connection;
     private final Lsn fromLsn;
     private final Lsn toLsn;
     private final int maxRowsPerResultSet;
+    // Distinguishes the completed-cursor sentinel (NULL vs NULL_LEGACY).
     private final boolean directMode;
     private final TxLogPosition resumeFromPosition;
 
     public SqlServerChangeTablePointer(SqlServerChangeTable changeTable, SqlServerConnection connection, Lsn fromLsn, Lsn toLsn,
                                        TxLogPosition resumeFromPosition, int maxRowsPerResultSet,
                                        SqlServerConnectorConfig.DataQueryMode dataQueryMode) {
-        super(changeTable, dataQueryMode == SqlServerConnectorConfig.DataQueryMode.DIRECT ? COL_DATA_DIRECT_MODE : COL_DATA_FUNCTION_MODE, maxRowsPerResultSet);
+        super(changeTable, COL_DATA, maxRowsPerResultSet);
         this.directMode = dataQueryMode == SqlServerConnectorConfig.DataQueryMode.DIRECT;
-        // Store references to these because we can't get them from our superclass
-        this.columnDataOffset = this.directMode ? COL_DATA_DIRECT_MODE : COL_DATA_FUNCTION_MODE;
         this.connection = connection;
         this.fromLsn = fromLsn;
         this.toLsn = toLsn;
@@ -79,8 +77,12 @@ public class SqlServerChangeTablePointer extends ChangeTableResultSet<SqlServerC
 
     @Override
     protected Object getColumnData(ResultSet resultSet, int columnIndex) throws SQLException {
-        if (resultSet.getMetaData().getColumnType(columnIndex) == Types.TIME) {
+        int columnType = resultSet.getMetaData().getColumnType(columnIndex);
+        if (columnType == Types.TIME) {
             return resultSet.getTimestamp(columnIndex);
+        }
+        else if (columnType == Types.TIMESTAMP) {
+            return resultSet.getObject(columnIndex, LocalDateTime.class);
         }
         return super.getColumnData(resultSet, columnIndex);
     }
@@ -92,7 +94,7 @@ public class SqlServerChangeTablePointer extends ChangeTableResultSet<SqlServerC
                         Lsn.valueOf(resultSet.getBytes(COL_COMMIT_LSN)),
                         Lsn.valueOf(resultSet.getBytes(COL_ROW_LSN)),
                         resultSet.getInt(COL_OPERATION),
-                        directMode ? resultSet.getInt(COL_COMMAND_ID) : null);
+                        commandId(resultSet));
     }
 
     /**
@@ -107,18 +109,8 @@ public class SqlServerChangeTablePointer extends ChangeTableResultSet<SqlServerC
 
     @Override
     protected ResultSet getNextResultSet(TxLogPosition lastPositionSeen) throws SQLException {
-        if (!directMode) {
-            if (lastPositionSeen == null || lastPositionSeen.equals(TxLogPosition.NULL_LEGACY)) {
-                return connection.getChangesForTable(getChangeTable(), fromLsn, toLsn, maxRowsPerResultSet);
-            }
-            else {
-                return connection.getChangesForTable(getChangeTable(), lastPositionSeen.getCommitLsn(), lastPositionSeen.getInTxLsn(), lastPositionSeen.getOperation(),
-                        toLsn, maxRowsPerResultSet);
-            }
-        }
-
         // next page in a running connector
-        if (lastPositionSeen != null && !lastPositionSeen.equals(TxLogPosition.NULL)) {
+        if (!isEmptyPosition(lastPositionSeen)) {
             return connection.getChangesForTable(getChangeTable(), lastPositionSeen.getCommitLsn(), lastPositionSeen.getInTxLsn(),
                     lastPositionSeen.getOperation(), lastPositionSeen.getCommandId(), toLsn, maxRowsPerResultSet);
         }
@@ -131,6 +123,15 @@ public class SqlServerChangeTablePointer extends ChangeTableResultSet<SqlServerC
 
         // running connector with new range.
         return connection.getChangesForTable(getChangeTable(), fromLsn, Lsn.ZERO, 0, -1, toLsn, maxRowsPerResultSet);
+    }
+
+    private static boolean isEmptyPosition(TxLogPosition position) {
+        return position == null || position.equals(TxLogPosition.NULL) || position.equals(TxLogPosition.NULL_LEGACY);
+    }
+
+    private static Integer commandId(ResultSet resultSet) throws SQLException {
+        int commandId = resultSet.getInt(COL_COMMAND_ID);
+        return resultSet.wasNull() ? null : commandId;
     }
 
     @Override
@@ -161,19 +162,19 @@ public class SqlServerChangeTablePointer extends ChangeTableResultSet<SqlServerC
     private ResultSetMapper<Object[]> createResultSetMapper(Table table) throws SQLException {
         ColumnUtils.MappedColumns columnMap = ColumnUtils.toMap(table);
         final ResultSetMetaData rsmd = getResultSet().getMetaData();
-        final int columnCount = rsmd.getColumnCount() - columnDataOffset;
+        final int columnCount = rsmd.getColumnCount() - COL_DATA;
         final List<String> resultColumns = new ArrayList<>(columnCount);
         final boolean[] maxColumns = new boolean[columnCount];
         boolean hasAnyMaxColumn = false;
         for (int i = 0; i < columnCount; ++i) {
-            final String columnName = rsmd.getColumnName(columnDataOffset + i);
+            final String columnName = rsmd.getColumnName(COL_DATA + i);
             resultColumns.add(columnName);
             final Column column = columnMap.getSourceTableColumns().get(columnName);
             if (column != null) {
                 maxColumns[i] = SqlServerDatabaseSchema.isMaxColumn(column);
             }
             else {
-                final int jdbcType = rsmd.getColumnType(columnDataOffset + i);
+                final int jdbcType = rsmd.getColumnType(COL_DATA + i);
                 maxColumns[i] = SqlServerDatabaseSchema.isMaxColumnJdbcType(jdbcType);
             }
             if (maxColumns[i]) {
@@ -204,7 +205,7 @@ public class SqlServerChangeTablePointer extends ChangeTableResultSet<SqlServerC
                     LOGGER.trace("Data for table '{}' contains a column without position mapping", table.id());
                     continue;
                 }
-                data[index] = getColumnData(resultSet, columnDataOffset + i);
+                data[index] = getColumnData(resultSet, COL_DATA + i);
 
                 if (maxColumns[i] && data[index] == null
                         && isUpdateOperation(operation)

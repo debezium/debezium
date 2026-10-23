@@ -20,7 +20,7 @@ public enum OpenshiftOperatorEnum {
             ConfigProperties.APICURIO_STARTING_CSV),
     STRIMZI(PRODUCT_BUILD ? "AMQ Streams" : "Strimzi",
             PRODUCT_BUILD ? "amq-streams" : "strimzi",
-            ConfigProperties.STRIMZI_OPERATOR_CHANNEL,
+            PRODUCT_BUILD ? ConfigProperties.STRIMZI_OPERATOR_VERSION : ConfigProperties.STRIMZI_OPERATOR_CHANNEL,
             ConfigProperties.OCP_PROJECT_DBZ + "-opgroup",
             "strimzi-cluster-operator.v" + ConfigProperties.STRIMZI_OPERATOR_VERSION);
 

@@ -159,7 +159,7 @@ public final class Strings {
      * @return the list of objects included in the list; never null
      */
     public static <T> List<T> listOfTrimmed(String input, char delimiter, Function<String, T> factory) {
-        return listOf(input, (str) -> str.split("[" + delimiter + "]"), factory, true);
+        return listOf(input, (str) -> split(str, delimiter), factory, true);
     }
 
     /**
@@ -171,7 +171,7 @@ public final class Strings {
      * @return the set of objects included in the list; never null
      */
     public static <T> Set<T> setOf(String input, char delimiter, Function<String, T> factory) {
-        return setOf(input, (str) -> str.split("[" + delimiter + "]"), factory);
+        return setOf(input, (str) -> split(str, delimiter), factory);
     }
 
     /**
@@ -183,7 +183,11 @@ public final class Strings {
      * @return the set of objects included in the list; never null
      */
     public static <T> Set<T> setOfTrimmed(String input, char delimiter, Function<String, T> factory) {
-        return setOfTrimmed(input, (str) -> str.split("[" + delimiter + "]"), factory);
+        return setOfTrimmed(input, (str) -> split(str, delimiter), factory);
+    }
+
+    private static String[] split(String str, char delimiter) {
+        return str.split(Pattern.quote(String.valueOf(delimiter)));
     }
 
     /**
@@ -501,10 +505,10 @@ public final class Strings {
      * Justify the contents of the string.
      *
      * @param justify the way in which the string is to be justified
-     * @param str the string to be right justified; if null, an empty string is used
+     * @param str the string to be justified; if null, an empty string is used
      * @param width the desired width of the string; must be positive
      * @param padWithChar the character to use for padding, if needed
-     * @return the right justified string
+     * @return the justified string
      */
     public static String justify(Justify justify,
                                  String str,
@@ -608,10 +612,10 @@ public final class Strings {
      * and end of the string such that the length is that specified; one additional padding character is prepended if required.
      * All leading and trailing whitespace is removed before centering.
      *
-     * @param str the string to be left justified; if null, an empty string is used
+     * @param str the string to be centered; if null, an empty string is used
      * @param width the desired width of the string; must be positive
      * @param padWithChar the character to use for padding, if needed
-     * @return the left justified string
+     * @return the centered string
      * @see #setLength(String, int, char)
      */
     public static String justifyCenter(String str,
@@ -672,7 +676,7 @@ public final class Strings {
     /**
      * Parse the supplied string as a number.
      *
-     * @param value the string representation of a integer value
+     * @param value the string representation of a number
      * @return the number, or {@code null} if the value is not a number
      */
     public static Number asNumber(String value) {
@@ -682,7 +686,7 @@ public final class Strings {
     /**
      * Parse the supplied string as a number.
      *
-     * @param value the string representation of a integer value
+     * @param value the string representation of a number
      * @param defaultValueProvider the function that returns a value to be used when the string value is null or cannot be parsed
      *            as a number; may be null if no default value is to be used
      * @return the number, or {@code null} if the value is not a number and no default value is supplied
@@ -729,9 +733,9 @@ public final class Strings {
     }
 
     /**
-     * Parse the supplied string as a integer value.
+     * Parse the supplied string as an integer value.
      *
-     * @param value the string representation of a integer value
+     * @param value the string representation of an integer value
      * @param defaultValue the value to return if the string value is null or cannot be parsed as an int
      * @return the int value
      */
@@ -855,13 +859,17 @@ public final class Strings {
      * @return the readable duration.
      */
     public static String duration(long durationInMillis) {
-        long seconds = durationInMillis / 1000;
+        boolean negative = durationInMillis < 0;
+        long seconds = Math.abs(durationInMillis / 1000);
         long s = seconds % 60;
         long m = (seconds / 60) % 60;
         long h = (seconds / (60 * 60));
-        long q = durationInMillis % 1000;
+        long q = Math.abs(durationInMillis % 1000);
 
-        StringBuilder result = new StringBuilder(15);
+        StringBuilder result = new StringBuilder(16);
+        if (negative) {
+            result.append("-");
+        }
 
         if (h < 10) {
             result.append("0");
@@ -992,16 +1000,10 @@ public final class Strings {
             }
 
             String varString = sb.substring(startName + 2, endName);
-            if (varString.indexOf(DEFAULT_DELIM) > -1) {
-                List<String> defaults = split(varString, DEFAULT_DELIM);
-
-                // get the property(s) variables that are defined left of the default delimiter.
-                varString = defaults.get(0);
-
-                // if the default is defined, then capture in case none of the other properties are found
-                if (defaults.size() == 2) {
-                    defaultValue = defaults.get(1);
-                }
+            int delimIndex = varString.indexOf(DEFAULT_DELIM);
+            if (delimIndex > -1) {
+                defaultValue = varString.substring(delimIndex + 1);
+                varString = varString.substring(0, delimIndex);
             }
 
             String constValue = null;
@@ -1297,15 +1299,16 @@ public final class Strings {
             return "";
         }
 
-        String[] words = input.split("[._]+");
+        String[] words = java.util.Arrays.stream(input.split("[._]+"))
+                .filter(s -> !s.isEmpty())
+                .toArray(String[]::new);
         if (words.length == 0) {
             return ""; // Handle edge case where input contains only separators
         }
 
         return java.util.stream.IntStream.range(0, words.length)
-                .filter(i -> !words[i].isEmpty()) // Skip empty segments caused by consecutive separators
                 .mapToObj(i -> i == 0
-                        ? words[i].toLowerCase() // Ensure the first word starts with lowercase
+                        ? words[i].toLowerCase(Locale.ROOT) // Ensure the first word starts with lowercase
                         : capitalizeFirstLetter(words[i])) // Capitalize the first letter of subsequent words
                 .collect(java.util.stream.Collectors.joining());
     }
@@ -1320,7 +1323,7 @@ public final class Strings {
         if (word.isEmpty()) {
             return "";
         }
-        return Character.toUpperCase(word.charAt(0)) + word.substring(1).toLowerCase();
+        return Character.toUpperCase(word.charAt(0)) + word.substring(1).toLowerCase(Locale.ROOT);
     }
 
     /**

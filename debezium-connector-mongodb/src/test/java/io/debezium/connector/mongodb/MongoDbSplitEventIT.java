@@ -14,6 +14,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.Semaphore;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
@@ -42,9 +43,10 @@ import com.mongodb.client.model.changestream.FullDocumentBeforeChange;
 
 import io.debezium.DebeziumException;
 import io.debezium.config.CommonConnectorConfig;
-import io.debezium.connector.mongodb.MongoDbConnectorConfig.CaptureMode;
-import io.debezium.connector.mongodb.MongoDbConnectorConfig.FullUpdateType;
+import io.debezium.connector.mongodb.MongoDbConnectorConfig.PostImageMode;
+import io.debezium.connector.mongodb.MongoDbConnectorConfig.PreImageMode;
 import io.debezium.connector.mongodb.connection.MongoDbConnections;
+import io.debezium.connector.mongodb.events.SplitEventHandler;
 import io.debezium.data.Envelope;
 import io.debezium.doc.FixFor;
 import io.debezium.heartbeat.Heartbeat;
@@ -59,19 +61,130 @@ import ch.qos.logback.classic.spi.ILoggingEvent;
 @SkipWhenDatabaseVersion(check = LESS_THAN, major = 6, minor = 0, patch = 9, reason = "Splitting Change Stream events requires MongoDB 6.0.9 or newer.")
 public class MongoDbSplitEventIT extends AbstractMongoConnectorIT {
 
-    static Stream<Arguments> captureModes() {
+    static Stream<Arguments> imageModes() {
         return Stream.of(
-                Arguments.of(CaptureMode.CHANGE_STREAMS_UPDATE_FULL, FullUpdateType.LOOKUP, 2),
-                Arguments.of(CaptureMode.CHANGE_STREAMS_UPDATE_FULL, FullUpdateType.POST_IMAGE, 2),
-                Arguments.of(CaptureMode.CHANGE_STREAMS_WITH_PRE_IMAGE, FullUpdateType.LOOKUP, 2),
-                Arguments.of(CaptureMode.CHANGE_STREAMS_UPDATE_FULL_WITH_PRE_IMAGE, FullUpdateType.LOOKUP, 3),
-                Arguments.of(CaptureMode.CHANGE_STREAMS_UPDATE_FULL_WITH_PRE_IMAGE, FullUpdateType.POST_IMAGE, 3));
+                Arguments.of(PreImageMode.OFF, PostImageMode.LOOKUP, 2),
+                Arguments.of(PreImageMode.OFF, PostImageMode.POST_IMAGE, 2),
+                Arguments.of(PreImageMode.WHEN_AVAILABLE, PostImageMode.OFF, 2),
+                Arguments.of(PreImageMode.WHEN_AVAILABLE, PostImageMode.LOOKUP, 3),
+                Arguments.of(PreImageMode.WHEN_AVAILABLE, PostImageMode.POST_IMAGE, 3),
+                Arguments.of(PreImageMode.OFF, PostImageMode.POST_IMAGE_REQUIRED, 2),
+                Arguments.of(PreImageMode.REQUIRED, PostImageMode.POST_IMAGE_REQUIRED, 3));
     }
 
     @ParameterizedTest
-    @MethodSource("captureModes")
+    @MethodSource("imageModes")
+    @FixFor("debezium/dbz#2690")
+    void shouldEmitOnlyCompleteSplitEvent(PreImageMode preImageMode, PostImageMode postImageMode, int fragmentCount)
+            throws InterruptedException {
+        configureSnapshot(preImageMode, postImageMode);
+        config = config.edit()
+                .with(MongoDbConnectorConfig.SNAPSHOT_MODE, MongoDbConnectorConfig.SnapshotMode.NO_DATA)
+                .with(MongoDbConnectorConfig.MAX_BATCH_SIZE, 1)
+                .build();
+
+        final List<CountDownLatch> fragmentGates = new ArrayList<>();
+        for (int i = 1; i < fragmentCount; i++) {
+            fragmentGates.add(new CountDownLatch(1));
+        }
+        final var continueProcessing = new Semaphore(0);
+        final var gateFailure = new AtomicReference<Throwable>();
+        final var engineFailure = new AtomicReference<Throwable>();
+        final var splitLogger = (Logger) org.slf4j.LoggerFactory.getLogger(SplitEventHandler.class);
+        final var previousLevel = splitLogger.getLevel();
+        final var interceptor = new LogInterceptor(splitLogger.getName()) {
+            @Override
+            protected void append(ILoggingEvent event) {
+                if (!"streaming".equals(event.getMDCPropertyMap().get(LoggingContext.CONNECTOR_CONTEXT))
+                        || !"Change Stream event is a fragment: {} of {}".equals(event.getMessage())) {
+                    return;
+                }
+                final int fragment = (Integer) event.getArgumentArray()[0];
+                if (fragment > 1) {
+                    // This runs on the streaming thread before handling the next fragment,
+                    // so the preceding fragments have already passed through the handler.
+                    fragmentGates.get(fragment - 2).countDown();
+                    try {
+                        if (!continueProcessing.tryAcquire(30, TimeUnit.SECONDS)) {
+                            gateFailure.set(new IllegalStateException("Timed out waiting to release fragment " + fragment));
+                        }
+                    }
+                    catch (InterruptedException e) {
+                        gateFailure.set(e);
+                        Thread.currentThread().interrupt();
+                    }
+                }
+            }
+        };
+        splitLogger.setLevel(Level.TRACE);
+
+        try (var client = connect()) {
+            final var collection = createSnapshotCollection(client.getDatabase("dbit"));
+            final var before = new Document("_id", 1).append("payload", "a".repeat(9 * 1024 * 1024));
+            final var after = new Document("_id", 1).append("payload", "b".repeat(9 * 1024 * 1024));
+            final var marker = new Document("_id", 2).append("marker", "after-split-event");
+            collection.insertOne(before);
+            start(MongoDbConnector.class, config, (success, message, error) -> {
+                if (!success) {
+                    engineFailure.set(new DebeziumException(message, error));
+                }
+            });
+            waitForStreamingRunning("mongodb", "mongo");
+
+            try (var observer = openSplitStream(collection, preImageMode, postImageMode).cursor()) {
+                collection.updateOne(new Document("_id", 1), new Document("$set", new Document("payload", after.getString("payload"))));
+                final var fragments = readSplitEvent(observer, fragmentCount);
+                collection.insertOne(marker);
+
+                for (int i = 0; i < fragmentGates.size(); i++) {
+                    assertThat(fragmentGates.get(i).await(30, TimeUnit.SECONDS))
+                            .as("Streaming reached fragment %s of %s", i + 2, fragmentCount).isTrue();
+                    assertThat(waitForAvailableRecords(1, TimeUnit.SECONDS))
+                            .as("No record is emitted after only %s of %s fragments", i + 1, fragmentCount).isFalse();
+                    assertThat(gateFailure.get()).isNull();
+                    assertThat(engineFailure.get()).isNull();
+                    assertConnectorIsRunning();
+                    continueProcessing.release();
+                }
+
+                // The marker proves that streaming has moved beyond the split event. Any
+                // extra emission for its fragments would appear before the marker.
+                final var records = consumeRecordsByTopic(2).allRecordsInOrder();
+                assertThat(records).hasSize(2);
+                final var update = records.get(0);
+                final var value = (Struct) update.value();
+                assertThat(value.getString(Envelope.FieldName.OPERATION)).isEqualTo(Envelope.Operation.UPDATE.code());
+                if (postImageMode.isEnabled()) {
+                    assertThat(Document.parse(value.getString("after"))).isEqualTo(after);
+                }
+                if (preImageMode.isEnabled()) {
+                    assertThat(Document.parse(value.getString("before"))).isEqualTo(before);
+                }
+                assertThat(Document.parse(value.getStruct("updateDescription").getString("updatedFields")))
+                        .isEqualTo(new Document("payload", after.getString("payload")));
+                assertThat(update.sourceOffset().get(SourceInfo.RESUME_TOKEN))
+                        .isEqualTo(ResumeTokens.toBase64(fragments.get(fragmentCount - 1).getResumeToken()));
+                final var markerValue = (Struct) records.get(1).value();
+                assertThat(markerValue.getString(Envelope.FieldName.OPERATION)).isEqualTo(Envelope.Operation.CREATE.code());
+                assertThat(Document.parse(markerValue.getString("after"))).isEqualTo(marker);
+                assertThat(waitForAvailableRecords(1, TimeUnit.SECONDS)).isFalse();
+                assertThat(gateFailure.get()).isNull();
+                assertThat(engineFailure.get()).isNull();
+            }
+        }
+        finally {
+            continueProcessing.release(fragmentCount);
+            stopConnector();
+            splitLogger.detachAppender(interceptor);
+            splitLogger.setLevel(previousLevel);
+            interceptor.stop();
+        }
+    }
+
+    @ParameterizedTest
+    @MethodSource("imageModes")
     @FixFor("debezium/dbz#2619")
-    void shouldValidateAndResumeAfterSplitEvent(CaptureMode captureMode, FullUpdateType fullUpdateType, int fragmentCount) throws InterruptedException {
+    void shouldValidateAndResumeAfterSplitEvent(PreImageMode preImageMode, PostImageMode postImageMode, int fragmentCount) throws InterruptedException {
         final var dbName = "dbit";
         final var collectionName = "splitEvents";
         final var beforePayload = "a".repeat(9 * 1024 * 1024);
@@ -83,8 +196,8 @@ public class MongoDbSplitEventIT extends AbstractMongoConnectorIT {
                 .with(CommonConnectorConfig.TOPIC_PREFIX, "mongo")
                 .with(MongoDbConnectorConfig.COLLECTION_INCLUDE_LIST, dbName + "." + collectionName)
                 .with(MongoDbConnectorConfig.SNAPSHOT_MODE, MongoDbConnectorConfig.SnapshotMode.NO_DATA)
-                .with(MongoDbConnectorConfig.CAPTURE_MODE, captureMode)
-                .with(MongoDbConnectorConfig.CAPTURE_MODE_FULL_UPDATE_TYPE, fullUpdateType)
+                .with(MongoDbConnectorConfig.CAPTURE_MODE_PRE_IMAGE, preImageMode)
+                .with(MongoDbConnectorConfig.CAPTURE_MODE_POST_IMAGE, postImageMode)
                 .with(MongoDbConnectorConfig.CURSOR_OVERSIZE_HANDLING_MODE, MongoDbConnectorConfig.OversizeHandlingMode.SPLIT)
                 .with(MongoDbConnectorConfig.POLL_INTERVAL_MS, 10)
                 .with(Heartbeat.HEARTBEAT_INTERVAL, 0)
@@ -102,7 +215,7 @@ public class MongoDbSplitEventIT extends AbstractMongoConnectorIT {
             waitForStreamingRunning("mongodb", "mongo");
 
             // Observe the actual fragment tokens independently of Debezium's merging and offset handling.
-            final var stream = openSplitStream(collection, captureMode, fullUpdateType);
+            final var stream = openSplitStream(collection, preImageMode, postImageMode);
 
             final BsonDocument lastFragmentToken;
             try (var cursor = stream.cursor()) {
@@ -115,14 +228,16 @@ public class MongoDbSplitEventIT extends AbstractMongoConnectorIT {
             final var record = records.allRecordsInOrder().get(0);
             final var value = (Struct) record.value();
             assertThat(value.getString(Envelope.FieldName.OPERATION)).isEqualTo(Envelope.Operation.UPDATE.code());
-            if (captureMode.isFullUpdate()) {
+            if (postImageMode.isEnabled()) {
                 assertThat(Document.parse(value.getString("after"))).isEqualTo(after);
             }
-            if (captureMode.isIncludePreImage()) {
+            if (preImageMode.isEnabled()) {
                 assertThat(Document.parse(value.getString("before"))).isEqualTo(before);
             }
             final var resumeToken = ResumeTokens.toBase64(lastFragmentToken);
             assertThat(record.sourceOffset().get(SourceInfo.RESUME_TOKEN)).isEqualTo(resumeToken);
+            final var payloadToken = BsonDocument.parse(value.getStruct(Envelope.FieldName.SOURCE).getString(SourceInfo.RESUME_TOKEN));
+            assertThat(payloadToken).isEqualTo(lastFragmentToken);
             stopConnector();
 
             final var committedOffset = readLastCommittedOffset(config, record.sourcePartition());
@@ -142,6 +257,9 @@ public class MongoDbSplitEventIT extends AbstractMongoConnectorIT {
             waitForStreamingRunning("mongodb", "mongo");
             final var marker = new Document("_id", 2).append("marker", "resumed");
             collection.insertOne(marker);
+            try (var resumed = stream.resumeAfter(payloadToken).cursor()) {
+                assertThat(readChangeStreamEvent(resumed).getFullDocument()).isEqualTo(marker.toBsonDocument());
+            }
             final var resumedRecords = consumeRecordsByTopic(1);
             assertThat(resumedRecords.recordsForTopic("mongo." + dbName + "." + collectionName)).hasSize(1);
             final var resumedRecord = resumedRecords.allRecordsInOrder().get(0);
@@ -153,16 +271,16 @@ public class MongoDbSplitEventIT extends AbstractMongoConnectorIT {
     }
 
     @ParameterizedTest
-    @MethodSource("captureModes")
+    @MethodSource("imageModes")
     @FixFor("debezium/dbz#2619")
-    void shouldRejectUnsplitResumeTokenWhenDocumentOptionsCauseSplitting(CaptureMode captureMode, FullUpdateType fullUpdateType, int fragmentCount)
+    void shouldRejectUnsplitResumeTokenWhenDocumentOptionsCauseSplitting(PreImageMode preImageMode, PostImageMode postImageMode, int fragmentCount)
             throws InterruptedException {
         final var collectionName = "splitTokenOptions";
         config = TestHelper.getConfiguration(mongo).edit()
                 .with(CommonConnectorConfig.TOPIC_PREFIX, "mongo")
                 .with(MongoDbConnectorConfig.COLLECTION_INCLUDE_LIST, "dbit." + collectionName)
-                .with(MongoDbConnectorConfig.CAPTURE_MODE, captureMode)
-                .with(MongoDbConnectorConfig.CAPTURE_MODE_FULL_UPDATE_TYPE, fullUpdateType)
+                .with(MongoDbConnectorConfig.CAPTURE_MODE_PRE_IMAGE, preImageMode)
+                .with(MongoDbConnectorConfig.CAPTURE_MODE_POST_IMAGE, postImageMode)
                 .with(MongoDbConnectorConfig.CURSOR_OVERSIZE_HANDLING_MODE, MongoDbConnectorConfig.OversizeHandlingMode.SPLIT)
                 .build();
         context = new MongoDbTaskContext(config);
@@ -175,8 +293,8 @@ public class MongoDbSplitEventIT extends AbstractMongoConnectorIT {
             collection.insertOne(new Document("_id", 1).append("payload", "a".repeat(9 * 1024 * 1024)));
 
             // Observe the same update with identical pipelines and scopes, changing only document options.
-            final var withoutDocuments = openSplitStream(collection, CaptureMode.CHANGE_STREAMS, fullUpdateType);
-            final var withDocuments = openSplitStream(collection, captureMode, fullUpdateType);
+            final var withoutDocuments = openSplitStream(collection, PreImageMode.OFF, PostImageMode.OFF);
+            final var withDocuments = openSplitStream(collection, preImageMode, postImageMode);
             final ChangeStreamDocument<BsonDocument> unsplitEvent;
             final BsonDocument lastFragmentToken;
             try (var unsplitCursor = withoutDocuments.cursor();
@@ -224,16 +342,16 @@ public class MongoDbSplitEventIT extends AbstractMongoConnectorIT {
     }
 
     @ParameterizedTest
-    @MethodSource("captureModes")
+    @MethodSource("imageModes")
     @FixFor("debezium/dbz#2619")
-    void shouldInitializeSnapshotOffsetAtEndOfSplitEvent(CaptureMode captureMode, FullUpdateType fullUpdateType, int fragmentCount)
+    void shouldInitializeSnapshotOffsetAtEndOfSplitEvent(PreImageMode preImageMode, PostImageMode postImageMode, int fragmentCount)
             throws InterruptedException {
-        configureSnapshot(captureMode, fullUpdateType);
+        configureSnapshot(preImageMode, postImageMode);
         try (var client = connect()) {
             final var collection = createSnapshotCollection(client.getDatabase("dbit"));
             collection.insertOne(new Document("_id", 1).append("payload", "a".repeat(9 * 1024 * 1024)));
-            try (var probe = MongoUtils.openChangeStream(client, context).batchSize(1).cursor();
-                    var observer = openSplitStream(collection, captureMode, fullUpdateType).cursor()) {
+            try (var probe = MongoUtils.openChangeStream(client, context).cursor();
+                    var observer = openSplitStream(collection, preImageMode, postImageMode).cursor()) {
                 collection.updateOne(new Document("_id", 1),
                         new Document("$set", new Document("payload", "b".repeat(9 * 1024 * 1024))));
                 final var marker = new Document("_id", 2).append("marker", "after-boundary");
@@ -256,17 +374,17 @@ public class MongoDbSplitEventIT extends AbstractMongoConnectorIT {
     }
 
     @ParameterizedTest
-    @MethodSource("captureModes")
+    @MethodSource("imageModes")
     @FixFor("debezium/dbz#2619")
-    void shouldResumeStreamingAfterSnapshotStartsWithSplitEvent(CaptureMode captureMode, FullUpdateType fullUpdateType, int fragmentCount)
+    void shouldResumeStreamingAfterSnapshotStartsWithSplitEvent(PreImageMode preImageMode, PostImageMode postImageMode, int fragmentCount)
             throws InterruptedException {
-        configureSnapshot(captureMode, fullUpdateType);
+        configureSnapshot(preImageMode, postImageMode);
         try (var client = connect()) {
             final var collection = createSnapshotCollection(client.getDatabase("dbit"));
             collection.insertOne(new Document("_id", 1).append("payload", "a".repeat(9 * 1024 * 1024)));
             final var after = new Document("_id", 1).append("payload", "b".repeat(9 * 1024 * 1024));
             final var marker = new Document("_id", 2).append("marker", "after-boundary");
-            try (var observer = openSplitStream(collection, captureMode, fullUpdateType).cursor()) {
+            try (var observer = openSplitStream(collection, preImageMode, postImageMode).cursor()) {
                 final var updated = new CountDownLatch(1);
                 final var updateStarted = new AtomicBoolean();
                 final var updateFailure = new AtomicReference<Throwable>();
@@ -337,7 +455,7 @@ public class MongoDbSplitEventIT extends AbstractMongoConnectorIT {
     @Test
     @FixFor("debezium/dbz#2619")
     void shouldInitializeSnapshotOffsetWithoutEvents() {
-        configureSnapshot(CaptureMode.CHANGE_STREAMS_UPDATE_FULL_WITH_PRE_IMAGE, FullUpdateType.POST_IMAGE);
+        configureSnapshot(PreImageMode.WHEN_AVAILABLE, PostImageMode.POST_IMAGE);
         try (var client = connect()) {
             createSnapshotCollection(client.getDatabase("dbit"));
             try (var probe = MongoUtils.openChangeStream(client, context).cursor()) {
@@ -345,6 +463,7 @@ public class MongoDbSplitEventIT extends AbstractMongoConnectorIT {
                 offset.initEvent(probe);
                 assertThat(probe.getResumeToken()).isNotNull();
                 assertThat(offset.lastResumeTokenDoc()).isEqualTo(probe.getResumeToken());
+                assertThat(offset.getSourceInfo().getString(SourceInfo.RESUME_TOKEN)).isNull();
             }
         }
     }
@@ -352,11 +471,11 @@ public class MongoDbSplitEventIT extends AbstractMongoConnectorIT {
     @Test
     @FixFor("debezium/dbz#2619")
     void shouldInitializeSnapshotOffsetWithUnsplitEvent() {
-        configureSnapshot(CaptureMode.CHANGE_STREAMS_UPDATE_FULL_WITH_PRE_IMAGE, FullUpdateType.POST_IMAGE);
+        configureSnapshot(PreImageMode.WHEN_AVAILABLE, PostImageMode.POST_IMAGE);
         try (var client = connect()) {
             final var collection = createSnapshotCollection(client.getDatabase("dbit"));
             try (var probe = MongoUtils.openChangeStream(client, context).cursor();
-                    var observer = openSplitStream(collection, CaptureMode.CHANGE_STREAMS_UPDATE_FULL_WITH_PRE_IMAGE, FullUpdateType.POST_IMAGE).cursor()) {
+                    var observer = openSplitStream(collection, PreImageMode.WHEN_AVAILABLE, PostImageMode.POST_IMAGE).cursor()) {
                 collection.insertOne(new Document("_id", 1).append("value", "small"));
                 final var offset = MongoDbOffsetContext.empty(context.getConfig());
                 offset.initEvent(probe);
@@ -364,6 +483,7 @@ public class MongoDbSplitEventIT extends AbstractMongoConnectorIT {
                 assertThat(event.getSplitEvent()).isNull();
                 assertThat(offset.lastResumeTokenDoc()).isEqualTo(event.getResumeToken());
                 assertThat(offset.lastTimestamp()).isEqualTo(event.getClusterTime());
+                assertThat(offset.getSourceInfo().getString(SourceInfo.RESUME_TOKEN)).isNull();
             }
         }
     }
@@ -371,11 +491,11 @@ public class MongoDbSplitEventIT extends AbstractMongoConnectorIT {
     @Test
     @FixFor("debezium/dbz#2619")
     void shouldNotInitializeSnapshotOffsetFromIncompleteSplitEvent() {
-        configureSnapshot(CaptureMode.CHANGE_STREAMS_UPDATE_FULL_WITH_PRE_IMAGE, FullUpdateType.POST_IMAGE);
+        configureSnapshot(PreImageMode.WHEN_AVAILABLE, PostImageMode.POST_IMAGE);
         try (var client = connect()) {
             final var collection = createSnapshotCollection(client.getDatabase("dbit"));
             collection.insertOne(new Document("_id", 1).append("payload", "a".repeat(9 * 1024 * 1024)));
-            try (var probe = MongoUtils.openChangeStream(client, context).batchSize(1).cursor()) {
+            try (var probe = MongoUtils.openChangeStream(client, context).cursor()) {
                 collection.updateOne(new Document("_id", 1),
                         new Document("$set", new Document("payload", "b".repeat(9 * 1024 * 1024))));
                 assertThat(readChangeStreamEvent(probe).getSplitEvent().getFragment()).isEqualTo(1);
@@ -387,13 +507,14 @@ public class MongoDbSplitEventIT extends AbstractMongoConnectorIT {
         }
     }
 
-    private void configureSnapshot(CaptureMode captureMode, FullUpdateType fullUpdateType) {
+    private void configureSnapshot(PreImageMode preImageMode, PostImageMode postImageMode) {
         config = TestHelper.getConfiguration(mongo).edit()
                 .with(CommonConnectorConfig.TOPIC_PREFIX, "mongo")
                 .with(MongoDbConnectorConfig.COLLECTION_INCLUDE_LIST, "dbit.snapshotSplitEvents")
+                .with(MongoDbConnectorConfig.QUERY_FETCH_SIZE, 1)
                 .with(MongoDbConnectorConfig.SNAPSHOT_MODE, MongoDbConnectorConfig.SnapshotMode.INITIAL)
-                .with(MongoDbConnectorConfig.CAPTURE_MODE, captureMode)
-                .with(MongoDbConnectorConfig.CAPTURE_MODE_FULL_UPDATE_TYPE, fullUpdateType)
+                .with(MongoDbConnectorConfig.CAPTURE_MODE_PRE_IMAGE, preImageMode)
+                .with(MongoDbConnectorConfig.CAPTURE_MODE_POST_IMAGE, postImageMode)
                 .with(MongoDbConnectorConfig.CURSOR_OVERSIZE_HANDLING_MODE, MongoDbConnectorConfig.OversizeHandlingMode.SPLIT)
                 .with(MongoDbConnectorConfig.POLL_INTERVAL_MS, 10)
                 .with(Heartbeat.HEARTBEAT_INTERVAL, 0)
@@ -411,29 +532,22 @@ public class MongoDbSplitEventIT extends AbstractMongoConnectorIT {
         assertThat(offset.lastResumeTokenDoc()).isEqualTo(fragments.get(fragments.size() - 1).getResumeToken());
         assertThat(offset.lastTimestamp()).isEqualTo(fragments.get(0).getClusterTime());
         assertThat(offset.sourceInfo().collectionId()).isEqualTo(new CollectionId("dbit", "snapshotSplitEvents"));
+        assertThat(offset.getSourceInfo().getString(SourceInfo.RESUME_TOKEN)).isNull();
     }
 
-    private ChangeStreamIterable<BsonDocument> openSplitStream(MongoCollection<Document> collection, CaptureMode captureMode, FullUpdateType fullUpdateType) {
+    private ChangeStreamIterable<BsonDocument> openSplitStream(MongoCollection<Document> collection, PreImageMode preImageMode, PostImageMode postImageMode) {
         final var stream = collection.watch(List.of(new Document("$changeStreamSplitLargeEvent", new Document())), BsonDocument.class)
                 .maxAwaitTime(1, TimeUnit.SECONDS);
-        if (captureMode.isFullUpdate()) {
-            stream.fullDocument(fullUpdateType.isPostImage() ? FullDocument.WHEN_AVAILABLE : FullDocument.UPDATE_LOOKUP);
+        if (postImageMode.isEnabled()) {
+            stream.fullDocument(postImageMode.isRequired() ? FullDocument.REQUIRED
+                    : postImageMode.isPostImage() ? FullDocument.WHEN_AVAILABLE : FullDocument.UPDATE_LOOKUP);
         }
-        if (captureMode.isIncludePreImage()) {
-            stream.fullDocumentBeforeChange(FullDocumentBeforeChange.WHEN_AVAILABLE);
+        if (preImageMode.isEnabled()) {
+            stream.fullDocumentBeforeChange(preImageMode.isRequired()
+                    ? FullDocumentBeforeChange.REQUIRED
+                    : FullDocumentBeforeChange.WHEN_AVAILABLE);
         }
         return stream;
-    }
-
-    private ChangeStreamDocument<BsonDocument> readChangeStreamEvent(MongoChangeStreamCursor<ChangeStreamDocument<BsonDocument>> cursor) {
-        final var event = new AtomicReference<ChangeStreamDocument<BsonDocument>>();
-        Awaitility.await("Receiving a change stream event")
-                .atMost(waitTimeForRecords() * 30L, TimeUnit.SECONDS)
-                .until(() -> {
-                    event.set(cursor.tryNext());
-                    return event.get() != null;
-                });
-        return event.get();
     }
 
     private BsonDocument readSplitEventResumeToken(MongoChangeStreamCursor<ChangeStreamDocument<BsonDocument>> cursor, int fragmentCount) {

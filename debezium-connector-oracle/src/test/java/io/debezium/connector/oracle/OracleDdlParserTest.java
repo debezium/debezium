@@ -389,6 +389,42 @@ public class OracleDdlParserTest {
     }
 
     @Test
+    @FixFor("debezium/dbz#2853")
+    public void shouldParseNumberAsteriskWithScale() throws Exception {
+        parser.setCurrentDatabase(PDB_NAME);
+        parser.setCurrentSchema("SCOTT");
+
+        String SQL = "CREATE TABLE \"SCOTT\".\"ASTERISK_SCALE_TEST\" (ID NUMBER(*,8), ID2 NUMBER(*,-2), ID3 NUMBER(*), ID4 NUMBER(10,-2))";
+
+        DdlChanges changes = parser.parse(SQL, tables);
+        List<DdlParserListener.EventType> eventTypes = getEventTypesFromChanges(changes);
+        assertThat(eventTypes).containsExactly(DdlParserListener.EventType.CREATE_TABLE);
+
+        Table table = tables.forTable(new TableId(PDB_NAME, "SCOTT", "ASTERISK_SCALE_TEST"));
+        assertThat(table.columnWithName("ID").length()).isEqualTo(38);
+        assertThat(table.columnWithName("ID").scale().get()).isEqualTo(8);
+        assertThat(table.columnWithName("ID2").length()).isEqualTo(38);
+        assertThat(table.columnWithName("ID2").scale().get()).isEqualTo(-2);
+        assertThat(table.columnWithName("ID3").length()).isEqualTo(38);
+        assertThat(table.columnWithName("ID3").scale().get()).isEqualTo(0);
+        assertThat(table.columnWithName("ID4").length()).isEqualTo(10);
+        assertThat(table.columnWithName("ID4").scale().get()).isEqualTo(-2);
+
+        // Reset changes
+        changes.reset();
+
+        SQL = "ALTER TABLE \"SCOTT\".\"ASTERISK_SCALE_TEST\" MODIFY (ID3 NUMBER(*,4));";
+
+        changes = parser.parse(SQL, tables);
+        eventTypes = getEventTypesFromChanges(changes);
+        assertThat(eventTypes).containsExactly(DdlParserListener.EventType.ALTER_TABLE);
+
+        table = tables.forTable(new TableId(PDB_NAME, "SCOTT", "ASTERISK_SCALE_TEST"));
+        assertThat(table.columnWithName("ID3").length()).isEqualTo(38);
+        assertThat(table.columnWithName("ID3").scale().get()).isEqualTo(4);
+    }
+
+    @Test
     @FixFor("DBZ-4976")
     public void shouldParseAlterTableWithoutDatatypeContextClause() throws Exception {
         parser.setCurrentDatabase(PDB_NAME);

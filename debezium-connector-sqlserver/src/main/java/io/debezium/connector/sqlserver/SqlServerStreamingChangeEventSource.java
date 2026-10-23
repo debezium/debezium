@@ -31,6 +31,7 @@ import java.util.stream.Collectors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import io.debezium.function.BlockingRunnable;
 import io.debezium.pipeline.ErrorHandler;
 import io.debezium.pipeline.EventDispatcher;
 import io.debezium.pipeline.monitor.OffsetActivityMonitor;
@@ -152,20 +153,6 @@ public class SqlServerStreamingChangeEventSource implements StreamingChangeEvent
         throw new UnsupportedOperationException("Currently unsupported by the SQL Server connector");
     }
 
-    private TxLogPosition resumePosition(TxLogPosition position) {
-        final boolean commandIdExists = position.getCommandId() != null;
-
-        // direct and function mode orders change events differently hence a mode change contains a risk of data loss.
-        // To prevent data loss, we re-read the last transaction in full if the mode changes.
-        if ((directMode && commandIdExists) || (!directMode && !commandIdExists)) {
-            return position;
-        }
-
-        LOGGER.info("Offset {} and query mode {} indicates a change in mode, so the last transaction is streamed again", position,
-                connectorConfig.getDataQueryMode());
-        return TxLogPosition.valueOf(position.getCommitLsn(), directMode ? -1 : null);
-    }
-
     @Override
     public boolean executeIteration(ChangeEventSourceContext context, SqlServerPartition partition, SqlServerOffsetContext offsetContext) {
 
@@ -179,11 +166,15 @@ public class SqlServerStreamingChangeEventSource implements StreamingChangeEvent
         this.effectiveOffset = offsetContext;
 
         try {
+            final boolean firstPoll = !streamingExecutionContexts.containsKey(partition);
+            final TxLogPosition resumePosition = firstPoll
+                    ? offsetContext.getResumePosition(directMode)
+                    : offsetContext.getChangePosition();
             final SqlServerStreamingExecutionContext streamingExecutionContext = streamingExecutionContexts.getOrDefault(partition,
                     new SqlServerStreamingExecutionContext(
                             new PriorityQueue<>(Comparator.comparing(SqlServerChangeTable::getStopLsn)),
                             new AtomicReference<>(),
-                            offsetContext.getChangePosition(),
+                            resumePosition,
                             new AtomicBoolean(false),
                             // LSN should be increased for the first run only immediately after snapshot completion
                             // otherwise we might skip an incomplete transaction after restart
@@ -191,10 +182,14 @@ public class SqlServerStreamingChangeEventSource implements StreamingChangeEvent
 
             TxLogPosition lastProcessedPositionOnStart = offsetContext.getChangePosition();
 
-            if (!streamingExecutionContexts.containsKey(partition)) {
+            if (firstPoll) {
                 streamingExecutionContexts.put(partition, streamingExecutionContext);
                 LOGGER.info("Last position recorded in offsets is {}[{}]", offsetContext.getChangePosition(), offsetContext.getEventSerialNo());
-                lastProcessedPositionOnStart = resumePosition(lastProcessedPositionOnStart);
+                lastProcessedPositionOnStart = resumePosition;
+                if (directMode && offsetContext.getChangePosition().getCommandId() == null) {
+                    LOGGER.info("Offset {} has no command id; re-reading the last transaction from {}",
+                            offsetContext.getChangePosition(), resumePosition);
+                }
             }
 
             final Queue<SqlServerChangeTable> schemaChangeCheckpoints = streamingExecutionContext.getSchemaChangeCheckpoints();
@@ -390,11 +385,11 @@ public class SqlServerStreamingChangeEventSource implements StreamingChangeEvent
                                                 connectorConfig));
                         tableWithSmallestLsn.next();
                     }
-                    streamingExecutionContext.setLastProcessedPosition(TxLogPosition.valueOf(toLsn, directMode ? -1 : null));
+                    streamingExecutionContext.setLastProcessedPosition(TxLogPosition.valueOf(toLsn, -1));
                     // Terminate the transaction otherwise CDC could not be disabled for tables
                     dataConnection.rollback();
                     if (!anyData) {
-                        offsetContext.setChangePosition(TxLogPosition.valueOf(toLsn, directMode ? -1 : null), 0);
+                        offsetContext.setChangePosition(TxLogPosition.valueOf(toLsn, -1), 0);
                         dispatcher.dispatchHeartbeatEvent(partition, offsetContext);
                     }
                 }
@@ -489,10 +484,26 @@ public class SqlServerStreamingChangeEventSource implements StreamingChangeEvent
             LOGGER.info("Migration skipped, no table schema changes detected.");
             return;
         }
-        dispatcher.dispatchSchemaChangeEvent(partition, offsetContext, newTable.getSourceTableId(),
-                new SqlServerSchemaChangeEventEmitter(partition, offsetContext, newTable, tableSchema, schema,
-                        SchemaChangeEventType.ALTER));
+        withCaptureStartPosition(offsetContext, newTable,
+                () -> dispatcher.dispatchSchemaChangeEvent(partition, offsetContext, newTable.getSourceTableId(),
+                        new SqlServerSchemaChangeEventEmitter(partition, offsetContext, newTable, tableSchema, schema,
+                                SchemaChangeEventType.ALTER)));
         newTable.setSourceTable(tableSchema);
+    }
+
+    static void withCaptureStartPosition(SqlServerOffsetContext offsetContext, SqlServerChangeTable newTable, BlockingRunnable action)
+            throws InterruptedException {
+        final TxLogPosition currentPosition = offsetContext.getChangePosition();
+        final long eventSerialNo = offsetContext.getEventSerialNo();
+        // The schema-change record is emitted at the capture start so it sorts after the last old-structure row.
+        // If that record is the last committed offset, a restart re-reads from the capture start. That duplicates one poll. It does not drop rows.
+        offsetContext.assignChangePosition(TxLogPosition.valueOf(newTable.getStartLsn(), newTable.getStartLsn(), currentPosition.getCommandId()), 0);
+        try {
+            action.run();
+        }
+        finally {
+            offsetContext.assignChangePosition(currentPosition, eventSerialNo);
+        }
     }
 
     private SqlServerChangeTable[] processErrorFromChangeTableQuery(String databaseName, SQLException exception,
@@ -533,6 +544,9 @@ public class SqlServerStreamingChangeEventSource implements StreamingChangeEvent
         if (includeListChangeTables.isEmpty()) {
             LOGGER.warn(
                     "No table on connector's include list has enabled CDC, tables on include list do not contain any table with CDC enabled or no table match the include/exclude filter(s)");
+        }
+        else {
+            LOGGER.debug("Tables with CDC enabled that are on the connector's table include list: {}", includeListChangeTables.keySet());
         }
 
         final List<SqlServerChangeTable> tables = new ArrayList<>();

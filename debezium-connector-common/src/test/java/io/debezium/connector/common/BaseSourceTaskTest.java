@@ -34,6 +34,7 @@ import org.junit.jupiter.api.Test;
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
 import io.debezium.config.Field;
+import io.debezium.doc.FixFor;
 import io.debezium.junit.relational.TestRelationalDatabaseConfig;
 import io.debezium.pipeline.ChangeEventSourceCoordinator;
 import io.debezium.pipeline.ErrorHandler;
@@ -143,8 +144,52 @@ class BaseSourceTaskTest {
         assertEquals(DebeziumTaskState.STOPPED, baseSourceTask.getTaskState());
 
         assertEquals(4, baseSourceTask.startCount.get());
-        assertEquals(3, baseSourceTask.stopCount.get());
+        assertEquals(4, baseSourceTask.stopCount.get());
         verify(baseSourceTask.coordinator, times(1)).stop();
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2714")
+    void verifyInitialRetriableStartCleansUpPartialGeneration() {
+        MyBaseSourceTask baseSourceTask = new MyBaseSourceTask() {
+            @Override
+            protected ChangeEventSourceCoordinator<Partition, OffsetContext> start(Configuration config) {
+                super.start(config);
+                throw new RetriableException("Initial start failure");
+            }
+        };
+
+        baseSourceTask.initialize(mock(SourceTaskContext.class));
+        baseSourceTask.start(Map.of(CommonConnectorConfig.RETRIABLE_RESTART_WAIT.name(), "1"));
+
+        assertEquals(DebeziumTaskState.RESTARTING, baseSourceTask.getTaskState());
+        assertEquals(1, baseSourceTask.startCount.get());
+        assertEquals(1, baseSourceTask.stopCount.get());
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2714")
+    void verifyCleanupFailureDoesNotPreventRestart() {
+        MyBaseSourceTask baseSourceTask = new MyBaseSourceTask() {
+            @Override
+            protected ChangeEventSourceCoordinator<Partition, OffsetContext> start(Configuration config) {
+                super.start(config);
+                throw new RetriableException("Initial start failure");
+            }
+
+            @Override
+            protected void doStop() {
+                super.doStop();
+                throw new RuntimeException("Cleanup failure");
+            }
+        };
+
+        baseSourceTask.initialize(mock(SourceTaskContext.class));
+        baseSourceTask.start(Map.of(CommonConnectorConfig.RETRIABLE_RESTART_WAIT.name(), "1"));
+
+        assertEquals(DebeziumTaskState.RESTARTING, baseSourceTask.getTaskState());
+        assertEquals(1, baseSourceTask.startCount.get());
+        assertEquals(1, baseSourceTask.stopCount.get());
     }
 
     @Test

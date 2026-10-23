@@ -117,6 +117,37 @@ public class DomainTypesIT extends AbstractRecordsProducerTest {
         assertThat(after.get("dom_ts")).isEqualTo(after.get("plain_ts"));
     }
 
+    @Test
+    @FixFor("debezium/dbz#2612")
+    public void shouldStreamCrossSchemaDomainWithCollidingName() throws Exception {
+        // A domain whose unqualified name collides with a built-in type (pg_catalog.date), declared in a
+        // schema other than the table's. While streaming, the pgoutput decoder must resolve the column by
+        // its type OID rather than by (table schema + unqualified type name); otherwise collide.date
+        // resolves to pg_catalog.date and the timestamp value fails to parse. The domain column must emit
+        // the same value as a plain timestamp column holding an identical value.
+        TestHelper.execute(
+                "CREATE SCHEMA collide;",
+                "CREATE DOMAIN collide.date AS timestamp without time zone;",
+                "CREATE TABLE domaintypes.t3 (id serial primary key, plain_ts timestamp, dom_date collide.date);");
+
+        start(PostgresConnector.class, TestHelper.defaultConfig()
+                .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NO_DATA)
+                .with(PostgresConnectorConfig.SCHEMA_INCLUDE_LIST, "domaintypes")
+                .with(PostgresConnectorConfig.TABLE_INCLUDE_LIST, "domaintypes.t3")
+                .build());
+        assertConnectorIsRunning();
+
+        TestHelper.execute("INSERT INTO domaintypes.t3 (id, plain_ts, dom_date) "
+                + "VALUES (default, '2026-09-11 11:28:38', '2026-09-11 11:28:38');");
+
+        final TestConsumer consumer = testConsumer(1, "domaintypes");
+        consumer.await(TestHelper.waitTimeForRecords() * 30, TimeUnit.SECONDS);
+        SourceRecord record = consumer.remove();
+        Struct after = (Struct) ((Struct) record.value()).get("after");
+
+        assertThat(after.get("dom_date")).isEqualTo(after.get("plain_ts"));
+    }
+
     private List<String> getFieldNames(Struct struct) {
         return struct.schema()
                 .fields()
