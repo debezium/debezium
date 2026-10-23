@@ -63,6 +63,7 @@ public class DefaultRecordWriter implements RecordWriter {
     private final int flushMaxRetries;
     private final Duration flushRetryDelay;
     private final SinkProgressListener progressListener;
+    private final Map<CollectionId, TableDescriptor> tablesRegistry = new LinkedHashMap<>();
 
     protected DefaultRecordWriter(SharedSessionContract session, QueryBinderResolver queryBinderResolver,
                                   JdbcSinkConnectorConfig config, DatabaseDialect dialect, SinkProgressListener progressListener) {
@@ -169,8 +170,6 @@ public class DefaultRecordWriter implements RecordWriter {
     }
 
     private TableDescriptor alterTableIfNeeded(CollectionId collectionId, JdbcSinkRecord record) throws SQLException {
-        LOGGER.debug("Attempting to alter table '{}'.", collectionId.toFullIdentiferString());
-
         if (!hasTable(collectionId)) {
             LOGGER.error("Table '{}' does not exist and cannot be altered.", collectionId.toFullIdentiferString());
             throw new SQLException("Could not find table: " + collectionId.toFullIdentiferString());
@@ -204,6 +203,7 @@ public class DefaultRecordWriter implements RecordWriter {
 
         Transaction transaction = session.beginTransaction();
         try {
+            LOGGER.debug("Attempting to alter table '{}'.", collectionId.toFullIdentiferString());
             final String alterSql = dialect.getAlterTableStatement(table, record, missingFields);
             LOGGER.trace("SQL: {}", alterSql);
             session.createNativeQuery(alterSql, Object.class).executeUpdate();
@@ -291,8 +291,53 @@ public class DefaultRecordWriter implements RecordWriter {
         }
     }
 
+    private TableDescriptor tableFromRecord(BatchRecord batchRecord) {
+        var collectionId = batchRecord.collectionId();
+        TableDescriptor currentTable;
+        JdbcSinkRecord record = (JdbcSinkRecord) batchRecord.record();
+        if (!tablesRegistry.containsKey(collectionId)) {
+            try {
+                if (config.getSchemaEvolutionMode().isSchemaEvolutionEnabled()) {
+                    currentTable = checkAndApplyTableChangesIfNeeded(collectionId, record);
+                }
+                else {
+                    if (hasTable(collectionId)) {
+                        currentTable = readTable(collectionId);
+                    }
+                    else {
+                        throw new ConnectException("Table '" + collectionId + "' does not exist and schema evolution is disabled");
+                    }
+                }
+                tablesRegistry.put(collectionId, currentTable);
+            }
+            catch (SQLException | JDBCException e) {
+                throw new ConnectException("Error while checking or applying table changes for collection '" + collectionId + "'", e);
+            }
+        }
+        else {
+            currentTable = tablesRegistry.get(collectionId);
+        }
+
+        Set<String> missingFields = dialect.resolveMissingFields(record, currentTable);
+        if (!missingFields.isEmpty()) {
+            if (config.getSchemaEvolutionMode().isSchemaEvolutionEnabled()) {
+                try {
+                    currentTable = checkAndApplyTableChangesIfNeeded(collectionId, record);
+                }
+                catch (SQLException | JDBCException e) {
+                    throw new ConnectException("Error while checking or applying table changes for collection '" + collectionId + "'", e);
+                }
+                tablesRegistry.put(collectionId, currentTable);
+            }
+            else {
+                throw new ConnectException("Missing fields '" + missingFields + "' in table '" + collectionId + "'");
+            }
+        }
+        return currentTable;
+    }
+
     protected Map<CollectionId, ResolvedTableRecords> resolveBatchByTable(Batch batch) {
-        Map<CollectionId, TableDescriptor> tables = new LinkedHashMap<>();
+        Map<CollectionId, TableDescriptor> tablesInBatch = new LinkedHashMap<>();
         Map<CollectionId, List<JdbcSinkRecord>> inserts = new LinkedHashMap<>();
         Map<CollectionId, List<JdbcSinkRecord>> deletes = new LinkedHashMap<>();
 
@@ -300,14 +345,7 @@ public class DefaultRecordWriter implements RecordWriter {
             var record = (JdbcKafkaSinkRecord) batchRecord.record();
             var collectionId = batchRecord.collectionId();
 
-            final TableDescriptor table;
-            try {
-                table = checkAndApplyTableChangesIfNeeded(collectionId, record);
-            }
-            catch (SQLException | JDBCException e) {
-                throw new ConnectException("Error while checking and applying table changes for collection '" + collectionId + "'", e);
-            }
-            tables.put(collectionId, table);
+            tablesInBatch.put(collectionId, tableFromRecord(batchRecord));
 
             if (record.isTruncate()) {
                 try {
@@ -326,7 +364,7 @@ public class DefaultRecordWriter implements RecordWriter {
         }
 
         Map<CollectionId, ResolvedTableRecords> result = new LinkedHashMap<>();
-        for (var entry : tables.entrySet()) {
+        for (var entry : tablesInBatch.entrySet()) {
             CollectionId id = entry.getKey();
             result.put(id, new ResolvedTableRecords(
                     entry.getValue(),
@@ -450,18 +488,8 @@ public class DefaultRecordWriter implements RecordWriter {
             Stopwatch allbindStopwatch = Stopwatch.reusable();
             allbindStopwatch.start();
             for (JdbcSinkRecord record : records) {
-                Stopwatch singlebindStopwatch = Stopwatch.reusable();
-                singlebindStopwatch.start();
                 bindValues(record, queryBinder);
-                singlebindStopwatch.stop();
-
-                Stopwatch addBatchStopwatch = Stopwatch.reusable();
-                addBatchStopwatch.start();
                 prepareStatement.addBatch();
-                addBatchStopwatch.stop();
-
-                LOGGER.trace("[PERF] Bind single record execution time {}", singlebindStopwatch.durations());
-                LOGGER.trace("[PERF] Add batch execution time {}", addBatchStopwatch.durations());
             }
             allbindStopwatch.stop();
             LOGGER.trace("[PERF] All records bind execution time {}", allbindStopwatch.durations());

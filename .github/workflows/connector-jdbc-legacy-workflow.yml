@@ -1,0 +1,38 @@
+name: JDBC Builds - Legacy mode test without sink framework
+on:
+  schedule:
+    # Monday to Friday 2:17 UTC and 21:17 UTC
+    - cron: "17 2,21 * * 1-5"
+
+jobs:
+  # Gate the whole workflow so it only runs on the upstream repository, never on forks.
+  # Every build job depends on this, so on a fork all jobs are skipped instead of run.
+  guard:
+    name: Guard (upstream only)
+    if: github.repository == 'debezium/debezium'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Confirm upstream repository
+        run: echo "Running on ${{ github.repository }}"
+
+  build-jdbc-legacy:
+    strategy:
+      max-parallel: 2
+      fail-fast: false
+      matrix:
+        # Runs JDBC sink tests based on specific target platforms concurrently
+        test-tags: [ "it-mysql,e2e-mysql", "it-postgresql,e2e-postgresql", "it-sqlserver,e2e-sqlserver", "it-singlestore,e2e-singlestore", "it-cockroachdb,e2e-cockroachdb", "it-starrocks,e2e-starrocks"]
+    name: JDBC - ${{ matrix.test-tags }}
+    runs-on: ubuntu-latest
+    needs: guard
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Build JDBC - ${{ matrix.test-tags }}
+        uses: ./.github/actions/build-debezium-jdbc
+        with:
+          maven-cache-key: maven-debezium-test-push-build-${{ hashFiles('**/pom.xml') }}
+          tags: ${{ matrix.test-tags }}
+          sink-framework: 'false'

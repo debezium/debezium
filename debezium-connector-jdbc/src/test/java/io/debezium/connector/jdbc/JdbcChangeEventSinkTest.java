@@ -40,6 +40,7 @@ import io.debezium.dlq.ErrorReporters;
 import io.debezium.doc.FixFor;
 import io.debezium.metadata.CollectionId;
 import io.debezium.openlineage.ConnectorContext;
+import io.debezium.sink.batch.Batch;
 import io.debezium.sink.spi.SinkProgressListener;
 
 @Tag("UnitTests")
@@ -80,6 +81,12 @@ class JdbcChangeEventSinkTest {
             recordWriter.processMetrics(records, new RecordWriter.SqlStatementInfo("UPDATE;", true, false));
             return null;
         }).when(recordWriter).write(any(TableDescriptor.class), any());
+
+        doAnswer(invocation -> {
+            Batch batch = invocation.getArgument(0);
+            progressListener.written(batch.size());
+            return null;
+        }).when(recordWriter).write(any(Batch.class));
 
         final JdbcChangeEventSink sink = new JdbcChangeEventSink(config, session, dialect, recordWriter, connectorContext, progressListener, ErrorReporters.nop());
         sink.execute(List.of(RECORD_FACTORY.createRecord("database.schema.table", config).getOriginalKafkaRecord()));

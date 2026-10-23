@@ -16,6 +16,7 @@ import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.sink.SinkTask;
 import org.assertj.db.api.TableAssert;
 import org.assertj.db.type.ValueType;
+import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ArgumentsSource;
@@ -112,10 +113,16 @@ public abstract class AbstractJdbcSinkSchemaEvolutionTest extends AbstractJdbcSi
         assertSinkConnectorIsRunning();
     }
 
+    private void requiresLegacyMode() {
+        Assumptions.assumeFalse("true".equals(System.getProperty(JdbcSinkConnectorConfig.ENABLE_SHARED_CHANGE_EVENT_SINK, "true")));
+    }
+
     @ParameterizedTest
     @ArgumentsSource(SinkRecordFactoryArgumentsProvider.class)
     public void testCreateShouldFailIfSchemaEvolutionIsDisabled(SinkRecordFactory factory) {
+        requiresLegacyMode();
         Map<String, String> defaultSinkConfig = getDefaultSinkConfig();
+        defaultSinkConfig.put(JdbcSinkConnectorConfig.SCHEMA_EVOLUTION, SchemaEvolutionMode.NONE.getValue());
         startSinkConnector(defaultSinkConfig);
         assertSinkConnectorIsRunning();
 
@@ -135,6 +142,7 @@ public abstract class AbstractJdbcSinkSchemaEvolutionTest extends AbstractJdbcSi
     @ParameterizedTest
     @ArgumentsSource(SinkRecordFactoryArgumentsProvider.class)
     public void testUpdateShouldFailOnUnknownTableIfSchemaEvolutionIsDisabled(SinkRecordFactory factory) {
+        requiresLegacyMode();
         Map<String, String> defaultSinkConfig = getDefaultSinkConfig();
         startSinkConnector(defaultSinkConfig);
         assertSinkConnectorIsRunning();
@@ -173,6 +181,7 @@ public abstract class AbstractJdbcSinkSchemaEvolutionTest extends AbstractJdbcSi
     @ParameterizedTest
     @ArgumentsSource(SinkRecordFactoryArgumentsProvider.class)
     public void testTableCreatedOnCreateRecordWithDefaultInsertMode(SinkRecordFactory factory) {
+        requiresLegacyMode();
         final Map<String, String> properties = getDefaultSinkConfig();
         properties.put(JdbcSinkConnectorConfig.SCHEMA_EVOLUTION, SchemaEvolutionMode.BASIC.getValue());
         startSinkConnector(properties);

@@ -176,7 +176,7 @@ class AbstractChangeEventSinkTest {
     void deduplicatingBufferShouldCollapseByKey() {
         sink = new TestChangeEventSink(config
                 .withPrimaryKeyMode(SinkConnectorConfig.PrimaryKeyMode.RECORD_KEY)
-                .withKeyedMessageBatchMode(SinkConnectorConfig.KeyedMessageBatchMode.DEDUPLICATION));
+                .withBufferMode(SinkConnectorConfig.BufferMode.DEDUPLICATION));
 
         consumeAndFlush(List.of(
                 createKeyedSinkRecord((byte) 1, "John"),
@@ -192,7 +192,7 @@ class AbstractChangeEventSinkTest {
     void keyedPassthroughShouldPreserveAllEvents() {
         sink = new TestChangeEventSink(config
                 .withPrimaryKeyMode(SinkConnectorConfig.PrimaryKeyMode.RECORD_KEY)
-                .withKeyedMessageBatchMode(SinkConnectorConfig.KeyedMessageBatchMode.PASSTHROUGH));
+                .withBufferMode(SinkConnectorConfig.BufferMode.PASSTHROUGH));
 
         consumeAndFlush(List.of(
                 createKeyedSinkRecord((byte) 1, "John"),
@@ -208,7 +208,7 @@ class AbstractChangeEventSinkTest {
     void keyedPassthroughShouldSplitBatchesAtDuplicateKey() {
         sink = new TestChangeEventSink(config
                 .withPrimaryKeyMode(SinkConnectorConfig.PrimaryKeyMode.RECORD_KEY)
-                .withKeyedMessageBatchMode(SinkConnectorConfig.KeyedMessageBatchMode.PASSTHROUGH));
+                .withBufferMode(SinkConnectorConfig.BufferMode.PASSTHROUGH));
 
         consumeAndFlush(List.of(
                 createKeyedSinkRecord((byte) 1, "John"),
@@ -225,7 +225,7 @@ class AbstractChangeEventSinkTest {
     void keyedPassthroughMultipleDuplicatesShouldProduceMultipleBatches() {
         sink = new TestChangeEventSink(config
                 .withPrimaryKeyMode(SinkConnectorConfig.PrimaryKeyMode.RECORD_KEY)
-                .withKeyedMessageBatchMode(SinkConnectorConfig.KeyedMessageBatchMode.PASSTHROUGH));
+                .withBufferMode(SinkConnectorConfig.BufferMode.PASSTHROUGH));
 
         consumeAndFlush(List.of(
                 createKeyedSinkRecord((byte) 1, "v1"),
@@ -242,7 +242,7 @@ class AbstractChangeEventSinkTest {
     void deduplicatingBufferMultipleDuplicatesShouldCollapse() {
         sink = new TestChangeEventSink(config
                 .withPrimaryKeyMode(SinkConnectorConfig.PrimaryKeyMode.RECORD_KEY)
-                .withKeyedMessageBatchMode(SinkConnectorConfig.KeyedMessageBatchMode.DEDUPLICATION));
+                .withBufferMode(SinkConnectorConfig.BufferMode.DEDUPLICATION));
 
         consumeAndFlush(List.of(
                 createKeyedSinkRecord((byte) 1, "v1"),
