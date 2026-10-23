@@ -106,7 +106,7 @@ class ChangeStreamPipelineFactory {
         var filters = Stream
                 .of(
                         createCollectionFilter(filterConfig, matchOriginalEvent),
-                        createOperationTypeFilter(connectorConfig, matchOriginalEvent))
+                        createOperationTypeFilter(connectorConfig, filterConfig, matchOriginalEvent))
                 .flatMap(Optional::stream)
                 .collect(toList());
 
@@ -217,31 +217,35 @@ class ChangeStreamPipelineFactory {
 
     private static Optional<Bson> createCollectionFilter(FilterConfig filterConfig, boolean matchOriginalEvent) {
         var dbAndCollectionFilters = Optional.<Bson> empty();
-        var includedSignalCollectionFilters = Optional.<Bson> empty();
 
         if (matchOriginalEvent) {
             dbAndCollectionFilters = filterConfig.isLiteralsMatchMode()
                     ? createDatabaseAndCollectionLiteralFilters(filterConfig)
                     : createDatabaseAndCollectionAnchoredRegexFilters(filterConfig);
-            includedSignalCollectionFilters = filterConfig
-                    .getSignalDataCollection()
-                    .map(ChangeStreamPipelineFactory::namespaceBson)
-                    .map(ns -> Filters.eq("ns", ns));
         }
         else {
             dbAndCollectionFilters = createDatabaseAndCollectionRegexFilters(filterConfig);
-            includedSignalCollectionFilters = filterConfig
-                    .getSignalDataCollection()
-                    .map(col -> Filters.eq("namespace", col));
         }
 
         // Combined filters
         return orFilters(
                 dbAndCollectionFilters,
-                includedSignalCollectionFilters);
+                createSignalCollectionFilter(filterConfig, matchOriginalEvent));
     }
 
-    private static Optional<Bson> createOperationTypeFilter(MongoDbConnectorConfig connectorConfig, boolean matchOriginalEvent) {
+    private static Optional<Bson> createSignalCollectionFilter(FilterConfig filterConfig, boolean matchOriginalEvent) {
+        if (matchOriginalEvent) {
+            return filterConfig
+                    .getSignalDataCollection()
+                    .map(ChangeStreamPipelineFactory::namespaceBson)
+                    .map(ns -> Filters.eq("ns", ns));
+        }
+        return filterConfig
+                .getSignalDataCollection()
+                .map(col -> Filters.eq("namespace", col));
+    }
+
+    private static Optional<Bson> createOperationTypeFilter(MongoDbConnectorConfig connectorConfig, FilterConfig filterConfig, boolean matchOriginalEvent) {
         // Per https://debezium.io/documentation/reference/stable/connectors/mongodb.html#mongodb-property-skipped-operations
         // > The supported operations include:
         // > - 'c' for inserts/create
@@ -260,6 +264,7 @@ class ChangeStreamPipelineFactory {
         includedOperations.add(OperationType.UPDATE);
         includedOperations.add(OperationType.REPLACE);
         includedOperations.add(OperationType.DELETE);
+        final int supportedOperationCount = includedOperations.size();
 
         // Next, remove any implied by the configuration
         var skippedOperations = connectorConfig.getSkippedOperations();
@@ -279,9 +284,15 @@ class ChangeStreamPipelineFactory {
                 ? "operationType"
                 : "event.operationType";
 
-        return Optional.of(Filters.in(field, includedOperations.stream()
+        final Bson operationTypeFilter = Filters.in(field, includedOperations.stream()
                 .map(OperationType::getValue)
-                .collect(toList())));
+                .collect(toList()));
+
+        // Signals of skipped operations must still arrive
+        if (includedOperations.size() < supportedOperationCount) {
+            return orFilters(Optional.of(operationTypeFilter), createSignalCollectionFilter(filterConfig, matchOriginalEvent));
+        }
+        return Optional.of(operationTypeFilter);
     }
 
     @SafeVarargs

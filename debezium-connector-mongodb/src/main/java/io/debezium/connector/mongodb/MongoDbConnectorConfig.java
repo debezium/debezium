@@ -1799,6 +1799,19 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig implements Sha
     }
 
     @Override
+    public Optional<String> parseSignalIdFromKey(Object key) {
+        if (!(key instanceof Struct keyStruct) || keyStruct.schema().field("id") == null) {
+            return Optional.empty();
+        }
+        // String ids keep their JSON quotes in the key, see JsonSerialization#getDocumentId
+        final String json = keyStruct.getString("id");
+        if (json == null || json.length() < 2 || !json.startsWith("\"") || !json.endsWith("\"")) {
+            return Optional.empty();
+        }
+        return Optional.of(json.substring(1, json.length() - 1));
+    }
+
+    @Override
     public boolean isSignalDataCollection(DataCollectionId dataCollectionId) {
         final CollectionId id = (CollectionId) dataCollectionId;
         return getSignalingDataCollectionIds().stream()

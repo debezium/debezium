@@ -311,7 +311,7 @@ public class EventDispatcher<P extends Partition, T extends DataCollectionId> im
                                 + "context {}", maybeRedactSensitiveData(value), operation, maybeRedactSensitiveData(key), offset);
 
                         if (isASignalEventToProcess(dataCollectionId, operation) && sourceSignalChannel != null) {
-                            sourceSignalChannel.process(value);
+                            sourceSignalChannel.process(key, value);
 
                             if (signalProcessor != null) {
                                 // This is a synchronization point to immediately execute an eventual stop signal, just before emitting the CDC event
@@ -320,7 +320,7 @@ public class EventDispatcher<P extends Partition, T extends DataCollectionId> im
                             }
                         }
 
-                        if (neverSkip || !skippedOperations.contains(operation)) {
+                        if (!isSkippedOperation(dataCollectionId, operation)) {
                             transactionMonitor.dataEvent(partition, dataCollectionId, offset, key, value);
                             eventListener.onEvent(partition, dataCollectionId, offset, key, value, operation);
                             if (incrementalSnapshotChangeEventSource != null) {
@@ -341,6 +341,14 @@ public class EventDispatcher<P extends Partition, T extends DataCollectionId> im
                         return (operation == Operation.CREATE ||
                                 (operation == Operation.DELETE && connectorConfig.getIncrementalSnapshotWatermarkingStrategy() == INSERT_DELETE)) &&
                                 connectorConfig.isSignalDataCollection(dataCollectionId);
+                    }
+
+                    private boolean isSkippedOperation(T dataCollectionId, Operation operation) {
+                        // Connectors that filter operations at the source still deliver signals of skipped operations
+                        if (neverSkip && !connectorConfig.isSignalDataCollection(dataCollectionId)) {
+                            return false;
+                        }
+                        return skippedOperations.contains(operation);
                     }
                 });
                 handled = true;

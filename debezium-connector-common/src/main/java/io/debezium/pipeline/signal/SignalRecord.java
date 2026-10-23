@@ -27,6 +27,9 @@ import io.debezium.pipeline.signal.actions.snapshotting.CloseIncrementalSnapshot
  * @author Mario Fiore Vitale
  */
 public class SignalRecord {
+    private static final String OPEN_WINDOW_SUFFIX = "-open";
+    private static final String CLOSE_WINDOW_SUFFIX = "-close";
+
     private final String id;
     private final String type;
     private final String data;
@@ -44,21 +47,39 @@ public class SignalRecord {
     }
 
     public static Optional<SignalRecord> buildSignalRecordFromChangeEventSource(Struct value, CommonConnectorConfig config) {
+        return buildSignalRecordFromChangeEventSource(null, value, config);
+    }
+
+    public static Optional<SignalRecord> buildSignalRecordFromChangeEventSource(Object key, Struct value, CommonConnectorConfig config) {
 
         if (Envelope.Operation.DELETE.code().equals(value.get(Envelope.FieldName.OPERATION))) {
             // here we are sure the INSERT_DELETE strategy is used
 
-            final Optional<String[]> parseSignal = config.parseSignallingMessage(value, Envelope.FieldName.BEFORE);
+            if (hasBefore(value)) {
+                final Optional<String[]> parseSignal = config.parseSignallingMessage(value, Envelope.FieldName.BEFORE);
 
-            return parseSignal.map(signalMessage -> {
-                final String signalId = signalMessage[0].replace("open", "close");
-                return new SignalRecord(signalId, CloseIncrementalSnapshotWindow.NAME, signalMessage[2], Map.of());
-            });
+                return parseSignal.map(signalMessage -> {
+                    final String signalId = signalMessage[0].replace("open", "close");
+                    return new SignalRecord(signalId, CloseIncrementalSnapshotWindow.NAME, signalMessage[2], Map.of());
+                });
+            }
+
+            // Without the deleted row (e.g. MongoDB without pre-images) the id of the opened window can only come from the key
+            return config.parseSignalIdFromKey(key)
+                    .filter(signalId -> signalId.endsWith(OPEN_WINDOW_SUFFIX))
+                    .map(signalId -> {
+                        final String chunkId = signalId.substring(0, signalId.length() - OPEN_WINDOW_SUFFIX.length());
+                        return new SignalRecord(chunkId + CLOSE_WINDOW_SUFFIX, CloseIncrementalSnapshotWindow.NAME, "", Map.of());
+                    });
         }
 
         final Optional<String[]> parseSignal = config.parseSignallingMessage(value, Envelope.FieldName.AFTER);
 
         return parseSignal.map(signalMessage -> new SignalRecord(signalMessage[0], signalMessage[1], signalMessage[2], Map.of()));
+    }
+
+    private static boolean hasBefore(Struct value) {
+        return value.schema().field(Envelope.FieldName.BEFORE) != null && value.get(Envelope.FieldName.BEFORE) != null;
     }
 
     public String getId() {

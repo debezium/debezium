@@ -78,10 +78,20 @@ public class SourceSignalChannel implements SignalChannelReader {
      * @return true if the signal was processed
      */
     public boolean process(Struct value) throws InterruptedException {
+        return process(null, value);
+    }
+
+    /** Used in streaming flow to add signals from signaling table
+     *
+     * @param key key of the change from signaling table, may be null
+     * @param value Envelope with change from signaling table
+     * @return true if the signal was processed
+     */
+    public boolean process(Object key, Struct value) throws InterruptedException {
 
         LOGGER.trace("Received event from signaling table. Enqueue for process");
         try {
-            Optional<SignalRecord> result = SignalRecord.buildSignalRecordFromChangeEventSource(value, connectorConfig);
+            Optional<SignalRecord> result = SignalRecord.buildSignalRecordFromChangeEventSource(key, value, connectorConfig);
             if (result.isEmpty()) {
                 return false;
             }

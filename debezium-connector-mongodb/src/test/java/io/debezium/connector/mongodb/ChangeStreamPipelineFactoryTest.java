@@ -29,12 +29,14 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 
+import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
 import io.debezium.connector.mongodb.Filters.FilterConfig;
 import io.debezium.connector.mongodb.MongoDbConnectorConfig.CursorPipelineOrder;
 import io.debezium.connector.mongodb.MongoDbConnectorConfig.PostImageMode;
 import io.debezium.connector.mongodb.MongoDbConnectorConfig.PreImageMode;
 import io.debezium.data.Envelope;
+import io.debezium.doc.FixFor;
 
 @ExtendWith(MockitoExtension.class)
 public class ChangeStreamPipelineFactoryTest {
@@ -214,6 +216,38 @@ public class ChangeStreamPipelineFactoryTest {
         var pipeline = create(config);
 
         assertPipelineStagesEquals(pipeline.getStages(), INTERNAL_PIPELINE);
+    }
+
+    @Test
+    @FixFor("debezium/dbz#1410")
+    void testCreateWithSkippedOperationsKeepsSignalEvents() {
+        var config = TestHelper.getConfiguration().edit()
+                .with(MongoDbConnectorConfig.COLLECTION_INCLUDE_LIST, "dbit.col1")
+                .with(MongoDbConnectorConfig.SIGNAL_DATA_COLLECTION, "signal.col")
+                .with(CommonConnectorConfig.SKIPPED_OPERATIONS, "d")
+                .build();
+
+        var pipeline = create(config);
+
+        assertPipelineStagesEquals(pipeline.getStages(), List.of(
+                INTERNAL_PIPELINE.get(0),
+                """
+                        {
+                          "$match": {
+                            "$and": [{
+                                "$or": [
+                                  { "namespace": { "$regularExpression": { "pattern": "dbit.col1", "options": "i" } } },
+                                  { "namespace": "signal.col" }
+                                ]
+                              }, {
+                                "$or": [
+                                  { "event.operationType": { "$in": ["insert", "update", "replace"] } },
+                                  { "namespace": "signal.col" }
+                                ]
+                              }]
+                          }
+                        }""",
+                INTERNAL_PIPELINE.get(2)));
     }
 
     @Test
