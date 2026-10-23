@@ -10,6 +10,7 @@ import org.testcontainers.containers.Network;
 import org.testcontainers.utility.DockerImageName;
 
 import io.debezium.connector.jdbc.junit.TestHelper;
+import io.debezium.testing.testcontainers.ImageNames;
 
 /**
  * An implementation of {@link AbstractSinkDatabaseContextProvider} for Db2.
@@ -18,7 +19,7 @@ import io.debezium.connector.jdbc.junit.TestHelper;
  */
 public class Db2SinkDatabaseContextProvider extends AbstractSinkDatabaseContextProvider {
 
-    private static final DockerImageName IMAGE_NAME = DockerImageName.parse("icr.io/db2_community/db2:11.5.9.0");
+    private static final DockerImageName IMAGE_NAME = ImageNames.DB2_11_5_9_IMAGE_NAME;
 
     @SuppressWarnings("resource")
     public Db2SinkDatabaseContextProvider() {
