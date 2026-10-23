@@ -15,6 +15,7 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.math.BigDecimal;
+import java.nio.charset.Charset;
 import java.sql.SQLException;
 import java.time.LocalDate;
 import java.time.LocalTime;
@@ -29,8 +30,11 @@ import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 
 import io.debezium.connector.postgresql.connection.PostgresConnection;
+import io.debezium.connector.postgresql.connection.PostgresConnection.PostgresValueConverterBuilder;
 import io.debezium.connector.postgresql.connection.PostgresDefaultValueConverter;
 import io.debezium.connector.postgresql.data.Ltree;
 import io.debezium.data.Bits;
@@ -134,6 +138,37 @@ public class PostgresSchemaIT {
         assertThat(table).isNotNull();
         assertThat(table.comment()).isEqualTo(tableComment);
         assertThat(table.columnWithName("description").comment()).isEqualTo(columnComment);
+    }
+
+    @ParameterizedTest
+    @ValueSource(booleans = { true, false })
+    @FixFor("debezium/dbz#2534")
+    void shouldUseCachedCharsetWithSchemaComments(boolean includeSchemaComments) throws Exception {
+        final TableId tableId = TableId.parse("public.schema_comments_test", false);
+        TestHelper.execute(
+                "CREATE TABLE schema_comments_test (id INTEGER PRIMARY KEY, description TEXT);",
+                "COMMENT ON TABLE schema_comments_test IS 'Table comment';",
+                "COMMENT ON COLUMN schema_comments_test.description IS 'Column comment';");
+
+        final var config = new PostgresConnectorConfig(TestHelper.defaultConfig()
+                .with(PostgresConnectorConfig.INCLUDE_SCHEMA_COMMENTS, includeSchemaComments)
+                .build());
+        final var typeRegistry = PostgresConnection.createTypeRegistry(config.getJdbcConfig());
+        final var databaseCharset = TestHelper.getDatabaseCharset();
+        final PostgresValueConverterBuilder valueConverterBuilder = registry -> PostgresValueConverter.of(config, databaseCharset, registry);
+        schema = TestHelper.getSchema(config, typeRegistry);
+
+        try (PostgresConnection connection = new PostgresConnection(config.getJdbcConfig(), typeRegistry, valueConverterBuilder, TestHelper.CONNECTION_TEST,
+                config.isSchemaCommentsHistoryEnabled()) {
+            @Override
+            public Charset getDatabaseCharset() {
+                throw new AssertionError("The connection must reuse the cached database charset");
+            }
+        }) {
+            assertThat(connection.getDefaultValueConverter()).isNotNull();
+            schema.refresh(connection, false);
+            assertSchemaComments(tableId, includeSchemaComments ? "Table comment" : null, includeSchemaComments ? "Column comment" : null);
+        }
     }
 
     @Test

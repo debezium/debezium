@@ -115,8 +115,13 @@ public class PostgresConnection extends JdbcConnection {
      * @param connectionUsage a symbolic name of the connection to be tracked in monitoring tools
      */
     public PostgresConnection(JdbcConfiguration config, TypeRegistry typeRegistry, PostgresValueConverterBuilder valueConverterBuilder, String connectionUsage) {
+        this(config, typeRegistry, valueConverterBuilder, connectionUsage, false);
+    }
+
+    public PostgresConnection(JdbcConfiguration config, TypeRegistry typeRegistry, PostgresValueConverterBuilder valueConverterBuilder, String connectionUsage,
+                              boolean includeSchemaComments) {
         super(addDefaultSettings(config, connectionUsage), FACTORY, PostgresConnection::validateServerVersion, "\"", "\"");
-        this.includeSchemaComments = false;
+        this.includeSchemaComments = includeSchemaComments;
 
         if (Objects.isNull(typeRegistry) || Objects.isNull(valueConverterBuilder)) {
             this.typeRegistry = null;
