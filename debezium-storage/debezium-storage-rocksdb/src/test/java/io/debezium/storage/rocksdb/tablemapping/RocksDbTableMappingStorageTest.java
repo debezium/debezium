@@ -14,6 +14,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.sql.Types;
 import java.util.Comparator;
+import java.util.HashSet;
 import java.util.Set;
 
 import org.junit.jupiter.api.AfterEach;
@@ -23,6 +24,7 @@ import org.rocksdb.RocksDB;
 
 import io.debezium.config.Configuration;
 import io.debezium.connector.mysql.MySqlConnectorConfig;
+import io.debezium.doc.FixFor;
 import io.debezium.junit.relational.TestRelationalDatabaseConfig;
 import io.debezium.relational.Attribute;
 import io.debezium.relational.Column;
@@ -346,6 +348,37 @@ public class RocksDbTableMappingStorageTest {
     }
 
     @Test
+    @FixFor("debezium/dbz#2843")
+    public void shouldKeepTableIdCaseWhenTableIdsAreCaseInsensitive() throws Exception {
+        final TableId tableId = new TableId("Catalog", null, "Orders");
+        final TableId otherId = new TableId("Catalog", null, "Other");
+
+        final RocksDbTableMappingStorage<Table> first = createTableStorage(new MySqlConnectorConfig(baseConfiguration(1, false)), true);
+        try {
+            first.put(tableId, Table.editor().tableId(tableId).create());
+            // A second entry pushes the first out of the single-slot cache so the next read goes to RocksDB
+            first.put(otherId, Table.editor().tableId(otherId).create());
+
+            assertThat(first.get(new TableId("Catalog", null, "ORDERS")).id()).isEqualTo(tableId);
+
+            final Set<TableId> storedIds = new HashSet<>();
+            first.forEach((key, table) -> storedIds.add(table.id()));
+            assertThat(storedIds).containsExactlyInAnyOrder(tableId, otherId);
+        }
+        finally {
+            first.close();
+        }
+
+        final RocksDbTableMappingStorage<Table> restarted = createTableStorage(new MySqlConnectorConfig(baseConfiguration(1, false)), true);
+        try {
+            assertThat(restarted.get(tableId).id()).isEqualTo(tableId);
+        }
+        finally {
+            restarted.close();
+        }
+    }
+
+    @Test
     public void shouldReadTablesStoredInTheEarlierBinaryFormat() throws Exception {
         final TableId tableId = new TableId("catalog", null, "legacy");
 
@@ -427,8 +460,12 @@ public class RocksDbTableMappingStorageTest {
     }
 
     private RocksDbTableMappingStorage<Table> createTableStorage(final RelationalDatabaseConnectorConfig config) {
+        return createTableStorage(config, false);
+    }
+
+    private RocksDbTableMappingStorage<Table> createTableStorage(final RelationalDatabaseConnectorConfig config, final boolean tableIdCaseInsensitive) {
         final RocksDbTableMappingStorage<Table> newStorage = new RocksDbTableMappingStorage<>();
-        newStorage.configure(config, false, TableMappingStorage.Type.TABLES);
+        newStorage.configure(config, tableIdCaseInsensitive, TableMappingStorage.Type.TABLES);
         return newStorage;
     }
 
