@@ -202,6 +202,8 @@ public abstract class BaseSourceTask<P extends Partition, O extends OffsetContex
     private final Map<Map<String, ?>, Map<String, ?>> lastOffsets = new HashMap<>();
 
     private Duration retriableRestartWait;
+    private int maxRestartRetries;
+    private int restartRetries;
 
     private final ElapsedTimeStrategy pollOutputDelay;
 
@@ -268,6 +270,8 @@ public abstract class BaseSourceTask<P extends Partition, O extends OffsetContex
                     DebeziumTaskState.INITIAL);
 
             retriableRestartWait = config.getDuration(CommonConnectorConfig.RETRIABLE_RESTART_WAIT, ChronoUnit.MILLIS);
+            maxRestartRetries = config.getInteger(CommonConnectorConfig.MAX_RETRIES_ON_ERROR);
+            restartRetries = 0;
             // need to reset the delay or you only get one delayed restart
             restartDelay = null;
             if (!config.validateAndRecord(getAllConfigurationFields(), LOGGER::error)) {
@@ -488,13 +492,27 @@ public abstract class BaseSourceTask<P extends Partition, O extends OffsetContex
 
                 // we're in restart mode... check if it's time to restart
                 if (restartDelay.hasElapsed()) {
-                    LOGGER.info("Attempting to restart task.");
-                    preStart(config);
-                    this.coordinator = start(config);
-                    LOGGER.info("Successfully restarted task");
-                    restartDelay = null;
-                    setTaskState(DebeziumTaskState.RUNNING);
-                    result = true;
+                    try {
+                        LOGGER.info("Attempting to restart task.");
+                        preStart(config);
+                        this.coordinator = start(config);
+                        LOGGER.info("Successfully restarted task");
+                        restartDelay = null;
+                        restartRetries = 0;
+                        setTaskState(DebeziumTaskState.RUNNING);
+                        result = true;
+                    }
+                    catch (RetriableException e) {
+                        restartRetries++;
+                        if (maxRestartRetries != ErrorHandler.RETRIES_UNLIMITED && restartRetries > maxRestartRetries) {
+                            LOGGER.error("The maximum number of {} restart retries has been reached. Failing the connector.", maxRestartRetries);
+                            stop(false);
+                            throw new ConnectException("The maximum number of restart retries has been reached", e);
+                        }
+                        LOGGER.warn("Failed to restart connector (attempt {} of {}), will re-attempt during next polling.",
+                                restartRetries, maxRestartRetries == ErrorHandler.RETRIES_UNLIMITED ? "unlimited" : maxRestartRetries, e);
+                        stop(true);
+                    }
                 }
                 else {
                     LOGGER.info("Awaiting end of restart backoff period after a retriable error");
@@ -531,7 +549,7 @@ public abstract class BaseSourceTask<P extends Partition, O extends OffsetContex
                 LOGGER.warn("Going to restart connector after {} sec. after a retriable exception", retriableRestartWait.getSeconds());
             }
             else {
-                LOGGER.info("Stopping down connector");
+                LOGGER.info("Stopping connector");
             }
 
             Throwable shutdownFailure = null;
