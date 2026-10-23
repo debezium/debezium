@@ -35,6 +35,7 @@ import io.debezium.jdbc.JdbcValueConverters;
 import io.debezium.jdbc.TemporalPrecisionMode;
 import io.debezium.junit.logging.LogInterceptor;
 import io.debezium.relational.Column;
+import io.debezium.relational.RelationalDatabaseConnectorConfig;
 import io.debezium.relational.Table;
 import io.debezium.relational.TableId;
 import io.debezium.relational.Tables;
@@ -110,7 +111,8 @@ public abstract class BinlogValueConvertersTest<C extends SourceConnector> imple
                 .convert(BinlogValueConverters.UNAVAILABLE_VALUE);
         final Object unavailableText = converters.converter(text, new Field(text.name(), -1, converters.schemaBuilder(text).optional().build()))
                 .convert(BinlogValueConverters.UNAVAILABLE_VALUE);
-        assertThat(unavailableJson).isEqualTo(unavailableText);
+        assertThat(unavailableJson).isEqualTo(RelationalDatabaseConnectorConfig.DEFAULT_UNAVAILABLE_VALUE_PLACEHOLDER);
+        assertThat(unavailableText).isEqualTo(RelationalDatabaseConnectorConfig.DEFAULT_UNAVAILABLE_VALUE_PLACEHOLDER);
     }
 
     @Test
