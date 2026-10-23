@@ -1724,7 +1724,7 @@ public class JdbcConnection implements AutoCloseable {
      * @return the row count statement, returning the count as the first column of a single row
      */
     public String buildSelectRowCount(TableId tableId) {
-        return "SELECT COUNT(1) FROM %s".formatted(quotedTableIdString(tableId));
+        return "SELECT COUNT(1) FROM %s".formatted(tableReferenceForDataQuery(tableId));
     }
 
     public String buildSelectWithRowLimits(TableId tableId, int limit, String projection, Optional<String> condition,
@@ -1738,7 +1738,7 @@ public class JdbcConnection implements AutoCloseable {
         sql
                 .append(projection)
                 .append(" FROM ");
-        sql.append(quotedTableIdString(tableId));
+        sql.append(tableReferenceForDataQuery(tableId));
         tableAlias.ifPresent(alias -> sql.append(' ').append(alias));
         if (condition.isPresent()) {
             sql
@@ -1765,7 +1765,7 @@ public class JdbcConnection implements AutoCloseable {
         StringBuilder sql = new StringBuilder("SELECT ")
                 .append(projection)
                 .append(" FROM ")
-                .append(quotedTableIdString(tableId));
+                .append(tableReferenceForDataQuery(tableId));
         if (!Strings.isNullOrBlank(condition)) {
             sql.append(" WHERE ")
                     .append(condition);
@@ -1862,6 +1862,20 @@ public class JdbcConnection implements AutoCloseable {
     }
 
     /**
+     * Returns the reference to be used in the {@code FROM} clause of the queries reading the data of a table,
+     * e.g. during snapshots (chunk reads, row counts, key boundaries) or column re-selection.
+     * <p>
+     * Defaults to the quoted table id; dialects can override it to qualify the reference, e.g. to exclude
+     * rows of inheriting tables.
+     *
+     * @param tableId the table to be read
+     * @return the table reference
+     */
+    public String tableReferenceForDataQuery(TableId tableId) {
+        return quotedTableIdString(tableId);
+    }
+
+    /**
      * Read JKS type keystore/truststore file according related password.
      */
     public KeyStore loadKeyStore(String filePath, char[] passwordArray) {
@@ -1888,7 +1902,7 @@ public class JdbcConnection implements AutoCloseable {
             throws SQLException {
         final String query = String.format("SELECT %s FROM %s WHERE %s",
                 columns.stream().map(this::quoteIdentifier).collect(Collectors.joining(",")),
-                quotedTableIdString(table.id()),
+                tableReferenceForDataQuery(table.id()),
                 keyColumns.stream().map(key -> key + "=?").collect(Collectors.joining(" AND ")));
         return reselectColumns(query, table.id(), columns, keyValues, resultConsumer);
     }
