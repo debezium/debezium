@@ -19,11 +19,12 @@ import io.debezium.util.Strings;
  * The default {@link Column} implementation.
  * <p>
  * A connector that needs to carry additional column metadata subclasses this class, adds its own fields,
- * and creates instances from its own {@link ColumnEditorImpl} subclass. Such a subclass must override
- * {@link #equals(Object)} to accept only instances of its own type and compare its own fields after the base
- * fields, because {@link Tables} and {@link Interner} rely on equality to detect a changed column and an
- * equal ColumnImpl must never stand in for the subclass. It must override {@link #hashCode()} to combine the base
- * hash code with the same fields, and should override {@link #edit()} and {@link #appendExtensions(StringBuilder)}.
+ * and creates instances from its own {@link ColumnEditorImpl} subclass. Equality requires the same class, so
+ * a ColumnImpl and a subclass instance are never equal in either direction, because {@link Tables} and
+ * {@link Interner} rely on equality to detect a changed column and one must never stand in for the other.
+ * A subclass that adds fields must override {@link #equals(Object)} to compare them after the base fields and
+ * {@link #hashCode()} to combine the base hash code with the same fields. It should also override
+ * {@link #edit()} and {@link #appendExtensions(StringBuilder)}.
  * The extra fields add metadata and never change identity, which stays with the column name.
  *
  * @author Randall Hauch
@@ -169,8 +170,10 @@ public class ColumnImpl implements Column, Comparable<Column> {
         if (obj == this) {
             return true;
         }
-        if (obj instanceof Column) {
-            Column that = (Column) obj;
+        // Only the same class is equal, so equality stays symmetric with subclasses and an interned
+        // ColumnImpl and a subclass instance never stand in for each other
+        if (obj != null && obj.getClass() == getClass()) {
+            final Column that = (Column) obj;
             return this.name().equalsIgnoreCase(that.name()) &&
                     Strings.equalsIgnoreCase(this.typeExpression(), that.typeExpression()) &&
                     this.typeName().equalsIgnoreCase(that.typeName()) &&
