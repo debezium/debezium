@@ -69,7 +69,7 @@ public class JdbcSinkSchemaEvolutionIT extends AbstractJdbcSinkSchemaEvolutionTe
             final JdbcSinkConnectorTask competingTask = awaitCompetingPut(race);
             assertThat(competingTask.getLastProcessingException()).as("competing task failure").isNull();
             competingTask.preCommit(Map.of(new TopicPartition(race.topicName, 0), new OffsetAndMetadata(1)));
-            assertThat(race.logs.countOccurrences("rechecking schema before failing")).isEqualTo(1);
+            assertRecoveryLoggedWithoutStackTrace(race);
 
             final TableAssert tableAssert = TestHelper.assertTable(assertDbConnection(), race.destinationTableName);
             tableAssert.hasNumberOfRows(2);
@@ -88,7 +88,8 @@ public class JdbcSinkSchemaEvolutionIT extends AbstractJdbcSinkSchemaEvolutionTe
         try {
             final JdbcSinkConnectorTask competingTask = awaitCompetingPut(race);
             assertThat(competingTask.getLastProcessingException()).as("competing task failure").isNotNull();
-            assertThat(race.logs.countOccurrences("rechecking schema before failing")).isEqualTo(1);
+            assertThat(hasSuppressedFailure(competingTask.getLastProcessingException())).as("original alter failure").isTrue();
+            assertRecoveryLoggedWithoutStackTrace(race);
             assertThat(attemptCount(race.destinationTableName)).isEqualTo(2);
 
             final TableAssert tableAssert = TestHelper.assertTable(assertDbConnection(), race.destinationTableName);
@@ -108,7 +109,7 @@ public class JdbcSinkSchemaEvolutionIT extends AbstractJdbcSinkSchemaEvolutionTe
             final JdbcSinkConnectorTask competingTask = awaitCompetingPut(race);
             assertThat(competingTask.getLastProcessingException()).as("competing task failure").isNull();
             competingTask.preCommit(Map.of(new TopicPartition(race.topicName, 0), new OffsetAndMetadata(1)));
-            assertThat(race.logs.countOccurrences("rechecking schema before failing")).isEqualTo(1);
+            assertRecoveryLoggedWithoutStackTrace(race);
 
             final TableAssert tableAssert = TestHelper.assertTable(assertDbConnection(), race.destinationTableName);
             tableAssert.hasNumberOfRows(2);
@@ -119,6 +120,21 @@ public class JdbcSinkSchemaEvolutionIT extends AbstractJdbcSinkSchemaEvolutionTe
         finally {
             stopRace(race);
         }
+    }
+
+    private void assertRecoveryLoggedWithoutStackTrace(Race race) {
+        assertThat(race.logs.getLoggingEvents("rechecking schema before failing"))
+                .hasSize(1)
+                .allSatisfy(event -> assertThat(event.getThrowableProxy()).isNull());
+    }
+
+    private boolean hasSuppressedFailure(Throwable throwable) {
+        for (Throwable current = throwable; current != null; current = current.getCause()) {
+            if (current.getSuppressed().length > 0) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private JdbcSinkConnectorTask startCompetingTask(Map<String, String> properties) throws Exception {
@@ -177,6 +193,8 @@ public class JdbcSinkSchemaEvolutionIT extends AbstractJdbcSinkSchemaEvolutionTe
         properties.put(JdbcSinkConnectorConfig.SCHEMA_EVOLUTION, SchemaEvolutionMode.BASIC.getValue());
         properties.put(JdbcSinkConnectorConfig.PRIMARY_KEY_MODE, JdbcSinkConnectorConfig.PrimaryKeyMode.RECORD_KEY.getValue());
         properties.put(JdbcSinkConnectorConfig.INSERT_MODE, JdbcSinkConnectorConfig.InsertMode.UPSERT.getValue());
+        // The shared sink framework writes a batch only once it is full, so the competing task has to write during put.
+        properties.put(JdbcSinkConnectorConfig.BATCH_SIZE, "1");
         return properties;
     }
 
