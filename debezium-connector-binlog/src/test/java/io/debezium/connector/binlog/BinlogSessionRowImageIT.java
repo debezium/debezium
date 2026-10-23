@@ -57,16 +57,22 @@ public abstract class BinlogSessionRowImageIT<C extends SourceConnector> extends
         }
     }
 
-    @ParameterizedTest(name = "{0} session, {1}")
+    @ParameterizedTest(name = "{0} session, {2}")
     @CsvSource(delimiter = '|', value = {
+            "MINIMAL | INSERT | INSERT",
             "MINIMAL | UPDATE | UPDATE before",
             "NOBLOB  | UPDATE | UPDATE before",
             "MINIMAL | DELETE | DELETE" })
     @FixFor("debezium/dbz#962")
     void shouldFailOnRowImageThatOmitsColumnsOfSession(String sessionRowImage, String operation, String image) throws Exception {
+        assertFailsOnRowImageThatOmitsColumnsOfSession(sessionRowImage, true, operation, image);
+    }
+
+    protected void assertFailsOnRowImageThatOmitsColumnsOfSession(String sessionRowImage, boolean primaryKey, String operation, String image)
+            throws Exception {
         final LogInterceptor logInterceptor = new LogInterceptor(BinlogStreamingChangeEventSource.class);
         executeStatements(database.getDatabaseName(),
-                "CREATE TABLE " + TABLE + " (id INT PRIMARY KEY, a INT, b VARCHAR(10), c TEXT)",
+                "CREATE TABLE " + TABLE + " (id INT" + (primaryKey ? " PRIMARY KEY" : "") + ", a INT, b VARCHAR(10), c TEXT)",
                 "INSERT INTO " + TABLE + " VALUES (1, 1, 'x', 'y')");
         start(getConnectorClass(), database.defaultConfig()
                 .with(BinlogConnectorConfig.SNAPSHOT_MODE, BinlogConnectorConfig.SnapshotMode.INITIAL)
@@ -79,11 +85,16 @@ public abstract class BinlogSessionRowImageIT<C extends SourceConnector> extends
         // The server uses FULL, but a client changes the row image of its own session
         executeStatements(database.getDatabaseName(),
                 "SET SESSION binlog_row_image='" + sessionRowImage + "'",
-                "UPDATE".equals(operation) ? "UPDATE " + TABLE + " SET a = 2 WHERE id = 1" : "DELETE FROM " + TABLE + " WHERE id = 1");
+                switch (operation) {
+                    case "INSERT" -> "INSERT INTO " + TABLE + " (id, a) VALUES (2, 2)";
+                    case "UPDATE" -> "UPDATE " + TABLE + " SET a = 2 WHERE id = 1";
+                    default -> "DELETE FROM " + TABLE + " WHERE id = 1";
+                });
 
         Awaitility.await().atMost(60, TimeUnit.SECONDS).until(() -> !isEngineRunning.get());
         assertThat(logInterceptor.containsMessage("Incomplete row image (" + image + ") for table " + database.qualifiedTableName(TABLE))).isTrue();
-        assertThat(logInterceptor.containsMessage("A client may have set binlog_row_image=MINIMAL or NOBLOB for its session")).isTrue();
+        assertThat(logInterceptor.containsMessage("A client may have set binlog_row_image=MINIMAL or NOBLOB, or FULL_NODUP on MariaDB, for its session"))
+                .isTrue();
         assertThat(logInterceptor.containsMessage("restart connector with schema recovery mode")).isFalse();
     }
 }
