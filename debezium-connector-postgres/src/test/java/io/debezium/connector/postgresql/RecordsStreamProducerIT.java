@@ -1497,7 +1497,12 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
 
         startConnector(config -> config.with(PostgresConnectorConfig.INCLUDE_UNKNOWN_DATATYPES, true));
 
-        assertInsert(INSERT_UNKNOWN_TYPE_STMT, 1, schemaAndValueForUnknownColumnBytes());
+        if (TestHelper.pgoutputBinaryMode()) {
+            assertInsert(INSERT_UNKNOWN_TYPE_STMT, 1, schemaAndValueForUnknownColumnBytesPgOutputBinMode());
+        }
+        else {
+            assertInsert(INSERT_UNKNOWN_TYPE_STMT, 1, schemaAndValueForUnknownColumnBytes());
+        }
     }
 
     @Test
@@ -1508,7 +1513,12 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
         startConnector(config -> config.with(PostgresConnectorConfig.INCLUDE_UNKNOWN_DATATYPES, true)
                 .with(PostgresConnectorConfig.BINARY_HANDLING_MODE, BinaryHandlingMode.BASE64));
 
-        assertInsert(INSERT_UNKNOWN_TYPE_STMT, 1, schemaAndValueForUnknownColumnBase64());
+        if (TestHelper.pgoutputBinaryMode()) {
+            assertInsert(INSERT_UNKNOWN_TYPE_STMT, 1, schemaAndValueForUnknownColumnBase64PgOutputBinMode());
+        }
+        else {
+            assertInsert(INSERT_UNKNOWN_TYPE_STMT, 1, schemaAndValueForUnknownColumnBase64());
+        }
     }
 
     @Test
@@ -1519,7 +1529,12 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
         startConnector(config -> config.with(PostgresConnectorConfig.INCLUDE_UNKNOWN_DATATYPES, true)
                 .with(PostgresConnectorConfig.BINARY_HANDLING_MODE, BinaryHandlingMode.BASE64_URL_SAFE));
 
-        assertInsert(INSERT_UNKNOWN_TYPE_STMT, 1, schemaAndValueForUnknownColumnBase64UrlSafe());
+        if (TestHelper.pgoutputBinaryMode()) {
+            assertInsert(INSERT_UNKNOWN_TYPE_STMT, 1, schemaAndValueForUnknownColumnBase64UrlSafePgOutputBinMode());
+        }
+        else {
+            assertInsert(INSERT_UNKNOWN_TYPE_STMT, 1, schemaAndValueForUnknownColumnBase64UrlSafe());
+        }
     }
 
     @Test
@@ -1530,7 +1545,12 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
         startConnector(config -> config.with(PostgresConnectorConfig.INCLUDE_UNKNOWN_DATATYPES, true)
                 .with(PostgresConnectorConfig.BINARY_HANDLING_MODE, BinaryHandlingMode.HEX));
 
-        assertInsert(INSERT_UNKNOWN_TYPE_STMT, 1, schemaAndValueForUnknownColumnHex());
+        if (TestHelper.pgoutputBinaryMode()) {
+            assertInsert(INSERT_UNKNOWN_TYPE_STMT, 1, schemaAndValueForUnknownColumnHexPgOutputBinMode());
+        }
+        else {
+            assertInsert(INSERT_UNKNOWN_TYPE_STMT, 1, schemaAndValueForUnknownColumnHex());
+        }
     }
 
     @Test

@@ -5,6 +5,8 @@
  */
 package io.debezium.data.vector;
 
+import java.util.Map;
+
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.data.Struct;
@@ -62,5 +64,17 @@ public class SparseDoubleVector {
      */
     public static Struct fromLogical(Schema schema, String value) {
         return Vectors.fromSparseVectorString(schema, value, Double::parseDouble);
+    }
+
+    /**
+     * Converts value from its component (dimensions, and map of non-zero index-value map).
+     *
+     * @param schema schema for the encoded value
+     * @param dimensions number of vector dimensions
+     * @param vector map of index-value of non-zero indexes
+     * @return the encoded value
+     */
+    public static Struct fromComponents(final Schema schema, final int dimensions, final Map<Integer, Double> vector) {
+        return Vectors.fromSpaceVectorComponents(schema, dimensions, vector);
     }
 }
