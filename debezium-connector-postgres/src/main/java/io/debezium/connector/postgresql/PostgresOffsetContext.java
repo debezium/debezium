@@ -44,6 +44,7 @@ public class PostgresOffsetContext extends CommonOffsetContext<SourceInfo> {
     private Lsn lastCompletelyProcessedLsn;
     private Lsn lastCommitLsn;
     private Lsn streamingStoppingLsn = null;
+    private Lsn currentTransactionCommitLsn;
     private final TransactionContext transactionContext;
     private final IncrementalSnapshotContext<TableId> incrementalSnapshotContext;
     private long lsnEventsProcessed;
@@ -129,6 +130,9 @@ public class PostgresOffsetContext extends CommonOffsetContext<SourceInfo> {
     public void updateWalPosition(Lsn lsn, Lsn lastCompletelyProcessedLsn, Instant commitTime, Long txId, Long xmin, TableId tableId, Operation messageType) {
         this.lastCompletelyProcessedLsn = lastCompletelyProcessedLsn;
         sourceInfo.update(lsn, commitTime, txId, xmin, tableId, messageType);
+        // Propagate the current transaction's commit LSN (pgoutput Begin.final_lsn, stashed at
+        // BEGIN and cleared at COMMIT) so it appears in source.commit_lsn on every data event.
+        sourceInfo.updateCommitLsn(currentTransactionCommitLsn);
     }
 
     /**
@@ -172,6 +176,14 @@ public class PostgresOffsetContext extends CommonOffsetContext<SourceInfo> {
 
     public Lsn lastCompletelyProcessedLsn() {
         return lastCompletelyProcessedLsn;
+    }
+
+    public void setCurrentTransactionCommitLsn(Lsn currentTransactionCommitLsn) {
+        this.currentTransactionCommitLsn = currentTransactionCommitLsn;
+    }
+
+    public Lsn getCurrentTransactionCommitLsn() {
+        return currentTransactionCommitLsn;
     }
 
     public Lsn lastCommitLsn() {
