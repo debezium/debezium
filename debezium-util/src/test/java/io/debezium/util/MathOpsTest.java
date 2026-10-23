@@ -9,6 +9,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import java.math.BigDecimal;
 import java.math.BigInteger;
+import java.util.concurrent.atomic.AtomicLong;
 
 import org.junit.jupiter.api.Test;
 
@@ -94,5 +95,31 @@ public class MathOpsTest {
     public void floatSumOutsideFloatRangeIsReturnedAsDouble() {
         assertThat(MathOps.add((Number) Float.MAX_VALUE, (Number) Float.MAX_VALUE)).isEqualTo(2.0d * Float.MAX_VALUE);
         assertThat(MathOps.add((Number) (-Float.MAX_VALUE), (Number) (-Float.MAX_VALUE))).isEqualTo(-2.0d * Float.MAX_VALUE);
+    }
+
+    // Regression: integral sums were computed in a plain long, so a sum past Long.MAX_VALUE or below
+    // Long.MIN_VALUE silently wrapped around to the opposite sign instead of widening to BigInteger.
+    @Test
+    @FixFor("debezium/dbz#2934")
+    public void longSumOutsideLongRangeIsReturnedAsBigInteger() {
+        final BigInteger longMax = BigInteger.valueOf(Long.MAX_VALUE);
+        final BigInteger longMin = BigInteger.valueOf(Long.MIN_VALUE);
+        assertThat(MathOps.add((Number) Long.MAX_VALUE, (Number) 1L)).isEqualTo(longMax.add(BigInteger.ONE));
+        assertThat(MathOps.add((Number) Long.MAX_VALUE, (Number) Long.MAX_VALUE)).isEqualTo(longMax.add(longMax));
+        assertThat(MathOps.add((Number) Long.MIN_VALUE, (Number) (-1L))).isEqualTo(longMin.subtract(BigInteger.ONE));
+        assertThat(MathOps.add((Number) Long.MAX_VALUE, (Number) 1)).isEqualTo(longMax.add(BigInteger.ONE));
+        assertThat(MathOps.add((Number) Long.MAX_VALUE, (Number) (short) 1)).isEqualTo(longMax.add(BigInteger.ONE));
+        assertThat(MathOps.add((Number) 1, (Number) Long.MAX_VALUE)).isEqualTo(longMax.add(BigInteger.ONE));
+        assertThat(MathOps.add((Number) (short) -1, (Number) Long.MIN_VALUE)).isEqualTo(longMin.subtract(BigInteger.ONE));
+        assertThat(MathOps.add((Number) new AtomicLong(Long.MAX_VALUE), (Number) 1L)).isEqualTo(longMax.add(BigInteger.ONE));
+    }
+
+    // Sums that still fit keep the existing narrowing behavior.
+    @Test
+    @FixFor("debezium/dbz#2934")
+    public void longSumWithinLongRangeIsNotWidened() {
+        assertThat(MathOps.add((Number) Long.MAX_VALUE, (Number) 0L)).isEqualTo(Long.MAX_VALUE);
+        assertThat(MathOps.add((Number) Long.MAX_VALUE, (Number) Long.MIN_VALUE)).isEqualTo((short) -1);
+        assertThat(MathOps.add((Number) Integer.MAX_VALUE, (Number) 1)).isEqualTo((long) Integer.MAX_VALUE + 1);
     }
 }
