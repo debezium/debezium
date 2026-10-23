@@ -49,6 +49,14 @@ public interface RecordWriter {
     TableDescriptor checkAndApplyTableChangesIfNeeded(CollectionId collectionId, JdbcSinkRecord record) throws SQLException;
 
     /**
+     * Checks whether the table exists in the database.
+     *
+     * @param collectionId The collection id of the table
+     * @return true if the table exists, false otherwise
+     */
+    boolean tableExists(CollectionId collectionId);
+
+    /**
      * Write a truncate statement to the database.
      *
      * @param collectionId The collection id of the table
