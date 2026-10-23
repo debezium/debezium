@@ -523,8 +523,10 @@ The source metadata includes:
 * The schema name
 * The logical cluster name
 * The resolved timestamp (for consistency tracking)
-* The Hybrid Logical Clock (HLC) timestamp. 
+* The Hybrid Logical Clock (HLC) timestamp (`ts_hlc`).
 HLC is the internal timestamp format for CockroachDB.
+When the changefeed provides a commit timestamp for the row, `ts_hlc` contains it.
+To populate `ts_hlc` for every event, including initial scan events, set xref:cockroachdb-property-include-mvcc-timestamp[`cockroachdb.changefeed.include.mvcc.timestamp`] to `true`.
 
 |4
 |`op`
@@ -1209,6 +1211,14 @@ Resolved timestamps are used for offset tracking.
 |`false`
 |Specifies whether to include before and after diff information in changefeed events.
 When enabled, UPDATE events include the previous row state in the `before` field.
+
+|[[cockroachdb-property-include-mvcc-timestamp]]<<cockroachdb-property-include-mvcc-timestamp, `+cockroachdb.changefeed.include.mvcc.timestamp+`>>
+|`false`
+|Specifies whether to create the changefeed with the CockroachDB `mvcc_timestamp` option.
+When enabled, every change event, including initial scan events, carries the MVCC commit timestamp of the row in the `source.ts_hlc` field.
+Requires `source` in xref:cockroachdb-property-enriched-properties[`cockroachdb.changefeed.enriched.properties`].
+When this option is disabled and xref:cockroachdb-property-include-updated[`cockroachdb.changefeed.include.updated`] is enabled, `source.ts_hlc` contains the commit timestamp that the `updated` option provides, which for initial scan events is the time of the scan.
+If the connector reuses an existing changefeed that was created without `mvcc_timestamp` while this option is enabled, the connector fails to start.
 
 |[[cockroachdb-property-enriched-properties]]<<cockroachdb-property-enriched-properties, `+cockroachdb.changefeed.enriched.properties+`>>
 |`source`
