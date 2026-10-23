@@ -80,6 +80,63 @@ public class PostgresSchemaIT {
     }
 
     @Test
+    @FixFor("debezium/dbz#2534")
+    void shouldLoadAndRefreshSchemaComments() throws Exception {
+        final TableId tableId = TableId.parse("public.schema_comments_test", false);
+        TestHelper.execute(
+                "CREATE TABLE schema_comments_test (id INTEGER PRIMARY KEY, description TEXT);",
+                "COMMENT ON TABLE schema_comments_test IS 'Initial table comment';",
+                "COMMENT ON COLUMN schema_comments_test.description IS 'Initial column comment';");
+
+        final PostgresConnectorConfig config = new PostgresConnectorConfig(TestHelper.defaultConfig()
+                .with(PostgresConnectorConfig.INCLUDE_SCHEMA_COMMENTS, true)
+                .build());
+        final var typeRegistry = PostgresConnection.createTypeRegistry(config.getJdbcConfig());
+        schema = TestHelper.getSchema(config, typeRegistry);
+
+        try (PostgresConnection connection = new PostgresConnection(config, typeRegistry, TestHelper.CONNECTION_TEST)) {
+            assertThat(connection.getTableCommentForDecoder(tableId)).isEqualTo("Initial table comment");
+            schema.refresh(connection, false);
+            assertSchemaComments(tableId, "Initial table comment", "Initial column comment");
+
+            TestHelper.execute(
+                    "COMMENT ON TABLE schema_comments_test IS 'Updated table comment';",
+                    "COMMENT ON COLUMN schema_comments_test.description IS 'Updated column comment';");
+
+            assertThat(connection.getTableCommentForDecoder(tableId)).isEqualTo("Updated table comment");
+            schema.refresh(connection, tableId, false);
+            assertSchemaComments(tableId, "Updated table comment", "Updated column comment");
+        }
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2534")
+    void shouldExcludeSchemaCommentsByDefault() throws Exception {
+        final TableId tableId = TableId.parse("public.schema_comments_test", false);
+        TestHelper.execute(
+                "CREATE TABLE schema_comments_test (id INTEGER PRIMARY KEY, description TEXT);",
+                "COMMENT ON TABLE schema_comments_test IS 'Table comment';",
+                "COMMENT ON COLUMN schema_comments_test.description IS 'Column comment';");
+
+        final PostgresConnectorConfig config = new PostgresConnectorConfig(TestHelper.defaultConfig().build());
+        final var typeRegistry = PostgresConnection.createTypeRegistry(config.getJdbcConfig());
+        schema = TestHelper.getSchema(config, typeRegistry);
+
+        try (PostgresConnection connection = new PostgresConnection(config, typeRegistry, TestHelper.CONNECTION_TEST)) {
+            assertThat(connection.getTableCommentForDecoder(tableId)).isNull();
+            schema.refresh(connection, false);
+            assertSchemaComments(tableId, null, null);
+        }
+    }
+
+    private void assertSchemaComments(TableId tableId, String tableComment, String columnComment) {
+        final Table table = schema.tableFor(tableId);
+        assertThat(table).isNotNull();
+        assertThat(table.comment()).isEqualTo(tableComment);
+        assertThat(table.columnWithName("description").comment()).isEqualTo(columnComment);
+    }
+
+    @Test
     void shouldLoadSchemaForBuiltinPostgresTypes() throws Exception {
         TestHelper.executeDDL("postgres_create_tables.ddl");
 

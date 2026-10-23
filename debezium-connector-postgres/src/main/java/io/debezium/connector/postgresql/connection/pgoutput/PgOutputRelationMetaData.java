@@ -20,6 +20,7 @@ public class PgOutputRelationMetaData {
     private final int relationId;
     private final String schema;
     private final String name;
+    private final String comment;
     private final List<ColumnMetaData> columns;
     private final List<String> primaryKeyNames;
 
@@ -29,13 +30,15 @@ public class PgOutputRelationMetaData {
      * @param relationId the postgres relation identifier, unique provided by the pgoutput stream
      * @param schema the schema the table exists within; should never be null
      * @param name the name of the table; should never be null
+     * @param comment the table comment; may be null
      * @param columns list of column metadata instances describing the state of each column
      * @param primaryKeyNames ordered list of primary key column names
      */
-    PgOutputRelationMetaData(int relationId, String schema, String name, List<ColumnMetaData> columns, List<String> primaryKeyNames) {
+    PgOutputRelationMetaData(int relationId, String schema, String name, String comment, List<ColumnMetaData> columns, List<String> primaryKeyNames) {
         this.relationId = relationId;
         this.schema = schema;
         this.name = name;
+        this.comment = comment;
         this.columns = columns;
         this.primaryKeyNames = primaryKeyNames;
     }
@@ -50,6 +53,10 @@ public class PgOutputRelationMetaData {
 
     public String getName() {
         return name;
+    }
+
+    public String getComment() {
+        return comment;
     }
 
     public List<ColumnMetaData> getColumns() {
