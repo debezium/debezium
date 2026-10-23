@@ -63,6 +63,7 @@ import io.debezium.connector.oracle.logminer.buffered.BufferedLogMinerStreamingC
 import io.debezium.connector.oracle.logminer.events.EventType;
 import io.debezium.connector.oracle.logminer.events.LogMinerEvent;
 import io.debezium.connector.oracle.logminer.events.LogMinerEventRow;
+import io.debezium.connector.oracle.relational.OracleRelationalMetadataFactory;
 import io.debezium.connector.oracle.util.TestHelper;
 import io.debezium.data.Envelope.Operation;
 import io.debezium.doc.FixFor;
@@ -71,7 +72,6 @@ import io.debezium.junit.logging.LogInterceptor;
 import io.debezium.pipeline.DataChangeEvent;
 import io.debezium.pipeline.EventDispatcher;
 import io.debezium.pipeline.source.spi.ChangeEventSource.ChangeEventSourceContext;
-import io.debezium.relational.Column;
 import io.debezium.relational.CustomConverterRegistry;
 import io.debezium.relational.Table;
 import io.debezium.relational.TableId;
@@ -405,10 +405,10 @@ public abstract class AbstractBufferedLogMinerStreamingChangeEventSourceTest ext
                     .when(connection)
                     .getTableMetadataDdl(Mockito.any(TableId.class));
 
-            final Table table = Table.editor()
+            final Table table = OracleRelationalMetadataFactory.INSTANCE.tableEditor()
                     .tableId(TableId.parse(TestHelper.getDatabaseName() + ".DEBEZIUM.ABC"))
-                    .addColumn(Column.editor().name("ID").create())
-                    .addColumn(Column.editor().name("DATA").create())
+                    .addColumn(OracleRelationalMetadataFactory.INSTANCE.columnEditor().name("ID").create())
+                    .addColumn(OracleRelationalMetadataFactory.INSTANCE.columnEditor().name("DATA").create())
                     .setPrimaryKeyNames("ID").create();
 
             Mockito.doReturn(table)
@@ -1151,19 +1151,19 @@ public abstract class AbstractBufferedLogMinerStreamingChangeEventSourceTest ext
                 sensitivity,
                 false, new CustomConverterRegistry(emptyList()), new OracleTaskContext(configuration, connectorConfig));
 
-        Table table = Table.editor()
+        Table table = OracleRelationalMetadataFactory.INSTANCE.tableEditor()
                 .tableId(TableId.parse("ORCLPDB1.DEBEZIUM.TEST_TABLE"))
-                .addColumn(Column.editor().name("ID").create())
-                .addColumn(Column.editor().name("DATA").create())
+                .addColumn(OracleRelationalMetadataFactory.INSTANCE.columnEditor().name("ID").create())
+                .addColumn(OracleRelationalMetadataFactory.INSTANCE.columnEditor().name("DATA").create())
                 .create();
 
         schema.refresh(table);
 
         // Typed columns: the field-name cache compares columns by type and the first table's are typeless
-        Table secondTable = Table.editor()
+        Table secondTable = OracleRelationalMetadataFactory.INSTANCE.tableEditor()
                 .tableId(TableId.parse("ORCLPDB1.DEBEZIUM.TEST_TABLE2"))
-                .addColumn(Column.editor().name("ID").type("VARCHAR2(50)").create())
-                .addColumn(Column.editor().name("DATA").type("VARCHAR2(50)").create())
+                .addColumn(OracleRelationalMetadataFactory.INSTANCE.columnEditor().name("ID").type("VARCHAR2(50)").create())
+                .addColumn(OracleRelationalMetadataFactory.INSTANCE.columnEditor().name("DATA").type("VARCHAR2(50)").create())
                 .create();
 
         schema.refresh(secondTable);

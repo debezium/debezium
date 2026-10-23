@@ -58,6 +58,7 @@ import io.debezium.connector.oracle.logminer.LogMinerStreamingChangeEventSourceM
 import io.debezium.connector.oracle.logminer.buffered.BufferedLogMinerStreamingChangeEventSource.ProcessResult;
 import io.debezium.connector.oracle.logminer.events.EventType;
 import io.debezium.connector.oracle.logminer.events.LogMinerEventRow;
+import io.debezium.connector.oracle.relational.OracleRelationalMetadataFactory;
 import io.debezium.connector.oracle.util.TestHelper;
 import io.debezium.doc.FixFor;
 import io.debezium.embedded.async.AbstractAsyncEngineConnectorTest;
@@ -65,7 +66,6 @@ import io.debezium.junit.logging.LogInterceptor;
 import io.debezium.pipeline.DataChangeEvent;
 import io.debezium.pipeline.EventDispatcher;
 import io.debezium.pipeline.source.spi.ChangeEventSource.ChangeEventSourceContext;
-import io.debezium.relational.Column;
 import io.debezium.relational.CustomConverterRegistry;
 import io.debezium.relational.Table;
 import io.debezium.relational.TableId;
@@ -462,10 +462,10 @@ public class DeferredMemoryStreamingChangeEventSourceTest extends AbstractAsyncE
             Mockito.when(mainConnection.getTableMetadataDdl(Mockito.any(TableId.class)))
                     .thenReturn("CREATE TABLE DEBEZIUM.ABC (ID primary key(9,0), data varchar2(50))");
 
-            final Table table = Table.editor()
+            final Table table = OracleRelationalMetadataFactory.INSTANCE.tableEditor()
                     .tableId(TableId.parse("ORCLPDB1.DEBEZIUM.ABC"))
-                    .addColumn(Column.editor().name("ID").create())
-                    .addColumn(Column.editor().name("DATA").create())
+                    .addColumn(OracleRelationalMetadataFactory.INSTANCE.columnEditor().name("ID").create())
+                    .addColumn(OracleRelationalMetadataFactory.INSTANCE.columnEditor().name("DATA").create())
                     .setPrimaryKeyNames("ID").create();
 
             Mockito.doReturn(table)
@@ -534,10 +534,10 @@ public class DeferredMemoryStreamingChangeEventSourceTest extends AbstractAsyncE
             Mockito.when(mainConnection.getTableMetadataDdl(Mockito.any(TableId.class)))
                     .thenReturn("CREATE TABLE DEBEZIUM.ABC (ID primary key(9,0), data varchar2(50))");
 
-            final Table table = Table.editor()
+            final Table table = OracleRelationalMetadataFactory.INSTANCE.tableEditor()
                     .tableId(TableId.parse("ORCLPDB1.DEBEZIUM.ABC"))
-                    .addColumn(Column.editor().name("ID").create())
-                    .addColumn(Column.editor().name("DATA").create())
+                    .addColumn(OracleRelationalMetadataFactory.INSTANCE.columnEditor().name("ID").create())
+                    .addColumn(OracleRelationalMetadataFactory.INSTANCE.columnEditor().name("DATA").create())
                     .setPrimaryKeyNames("ID").create();
 
             Mockito.doReturn(table)
@@ -616,16 +616,16 @@ public class DeferredMemoryStreamingChangeEventSourceTest extends AbstractAsyncE
                 sensitivity,
                 false, new CustomConverterRegistry(emptyList()), new OracleTaskContext(configuration, connectorConfig));
 
-        Table table = Table.editor()
+        Table table = OracleRelationalMetadataFactory.INSTANCE.tableEditor()
                 .tableId(TableId.parse("ORCLPDB1.DEBEZIUM.TEST_TABLE"))
-                .addColumn(Column.editor().name("ID").create())
-                .addColumn(Column.editor().name("DATA").create())
+                .addColumn(OracleRelationalMetadataFactory.INSTANCE.columnEditor().name("ID").create())
+                .addColumn(OracleRelationalMetadataFactory.INSTANCE.columnEditor().name("DATA").create())
                 .create();
 
-        Table lobTable = Table.editor()
+        Table lobTable = OracleRelationalMetadataFactory.INSTANCE.tableEditor()
                 .tableId(TableId.parse("ORCLPDB1.DEBEZIUM.TEST_LOB_TABLE"))
-                .addColumn(Column.editor().name("ID").type("VARCHAR2(50)").create())
-                .addColumn(Column.editor().name("DATA").type("CLOB").jdbcType(OracleTypes.CLOB).create())
+                .addColumn(OracleRelationalMetadataFactory.INSTANCE.columnEditor().name("ID").type("VARCHAR2(50)").create())
+                .addColumn(OracleRelationalMetadataFactory.INSTANCE.columnEditor().name("DATA").type("CLOB").jdbcType(OracleTypes.CLOB).create())
                 .setPrimaryKeyNames("ID")
                 .create();
 
