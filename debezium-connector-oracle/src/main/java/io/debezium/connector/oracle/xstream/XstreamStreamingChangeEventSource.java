@@ -54,6 +54,7 @@ public class XstreamStreamingChangeEventSource implements StreamingChangeEventSo
     private static final Logger LOGGER = LoggerFactory.getLogger(XstreamStreamingChangeEventSource.class);
 
     private static final int DEFAULT_MAX_ATTACH_RETRIES = 10;
+    private static final int ERR_INVALID_LAST_POSITION = 21560;
 
     private final OracleConnectorConfig connectorConfig;
     private final OracleConnectionFactory connectionFactory;
@@ -114,7 +115,7 @@ public class XstreamStreamingChangeEventSource implements StreamingChangeEventSo
         LcrEventHandler eventHandler = new LcrEventHandler(connectorConfig, errorHandler, dispatcher, clock, schema,
                 partition, offsetContext, isTableCaseInsensitive(), this, streamingMetrics);
 
-        try (OracleConnection xsConnection = connectAndAttachWithRetries(context, getStartPosition(offsetContext))) {
+        try (OracleConnection xsConnection = connectAndAttachWithRetries(context, getStartPosition(offsetContext), getFallbackPosition(offsetContext))) {
             if (xsConnection == null) {
                 // The connector was stopped while attempting to attach to the outbound server.
                 LOGGER.info("Streaming stopped before the attach to outbound server {} completed.", xstreamOutboundServerName);
@@ -238,19 +239,30 @@ public class XstreamStreamingChangeEventSource implements StreamingChangeEventSo
         final String lcrPosition = offsetContext.getLcrPosition();
         if (lcrPosition != null) {
             LOGGER.info("Attaching to XStream at LCR position [{}]", lcrPosition);
-            // The stored position is that of the last emitted row LCR. When that row carried chunk data
-            // (LOB, XMLType), its trailing pieces have positions after the row's within the same
-            // {commit SCN, SCN} tuple; attaching at the row's position makes the outbound server send
-            // those pieces as standalone row LCRs without column values. Attaching at the start of the
-            // tuple makes it send the row again, complete with its chunks, and LcrEventHandler skips
-            // everything up to and including the stored position.
+            // The stored position is the last emitted row LCR. For a chunked row (LOB, XMLType) the trailing
+            // pieces sit after it in the same {commit SCN, SCN} tuple, so attaching there replays them as
+            // valueless standalone LCRs; attaching at the tuple start replays the whole row with its chunks,
+            // and LcrEventHandler skips up to and including the stored position.
             return LcrPosition.valueOf(lcrPosition).getTupleStartPosition().getRawPosition();
         }
         LOGGER.info("Attaching to XStream at SCN {}", offsetContext.getScn());
         return convertScnToPosition(offsetContext.getScn());
     }
 
-    private OracleConnection connectAndAttachWithRetries(ChangeEventSourceContext context, byte[] startPosition) throws Exception {
+    /**
+     * The stored position itself when it differs from its tuple start, used as the attach fallback when the
+     * server rejects the tuple start as behind its processed low position (a legacy offset from before the fix).
+     */
+    private byte[] getFallbackPosition(OracleOffsetContext offsetContext) {
+        final LcrPosition stored = LcrPosition.valueOf(offsetContext.getLcrPosition());
+        if (stored == null || stored.equals(stored.getTupleStartPosition())) {
+            return null;
+        }
+        return stored.getRawPosition();
+    }
+
+    private OracleConnection connectAndAttachWithRetries(ChangeEventSourceContext context, byte[] startPosition, byte[] fallbackPosition)
+            throws Exception {
         OracleConnection connection = null;
         final DelayStrategy retryStrategy = DelayStrategy.exponential(Duration.ofSeconds(1), Duration.ofMinutes(1));
         for (int attempt = 1; attempt <= DEFAULT_MAX_ATTACH_RETRIES; attempt++) {
@@ -267,8 +279,7 @@ public class XstreamStreamingChangeEventSource implements StreamingChangeEventSo
                 connection = connectionFactory.streamingConnectionFactory().newConnection();
                 connection.setAutoCommit(true);
 
-                out = XStreamOut.attach((oracle.jdbc.OracleConnection) connection.connection(), xstreamOutboundServerName,
-                        startPosition, 1, 1, XStreamOut.DEFAULT_MODE);
+                out = attach(connection, startPosition, fallbackPosition);
 
                 xsOut = out;
                 return connection;
@@ -295,6 +306,24 @@ public class XstreamStreamingChangeEventSource implements StreamingChangeEventSo
             }
         }
         throw new DebeziumException("Failed to attach to the Oracle XStream outbound server");
+    }
+
+    private XStreamOut attach(OracleConnection connection, byte[] startPosition, byte[] fallbackPosition) throws SQLException, StreamsException {
+        final oracle.jdbc.OracleConnection oracleConnection = (oracle.jdbc.OracleConnection) connection.connection();
+        try {
+            return XStreamOut.attach(oracleConnection, xstreamOutboundServerName, startPosition, 1, 1, XStreamOut.DEFAULT_MODE);
+        }
+        catch (StreamsException e) {
+            // ORA-21560 is the generic OCI invalid-argument error; the server raises it for last_position both
+            // when the position is below its processed low watermark and when it is malformed (verified on 19c).
+            // Our start position is always a valid tuple start, so below-watermark is the only cause here.
+            if (e.getErrorCode() != ERR_INVALID_LAST_POSITION || fallbackPosition == null) {
+                throw e;
+            }
+            LOGGER.info("Outbound server {} rejected start position {} as below its processed low position, attaching at the stored position {} instead",
+                    xstreamOutboundServerName, new LcrPosition(startPosition), new LcrPosition(fallbackPosition));
+            return XStreamOut.attach(oracleConnection, xstreamOutboundServerName, fallbackPosition, 1, 1, XStreamOut.DEFAULT_MODE);
+        }
     }
 
     private boolean isAttachExceptionRetriable(StreamsException e) {
