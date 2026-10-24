@@ -31,6 +31,7 @@ import io.debezium.relational.Table;
 import io.debezium.relational.TableId;
 import io.debezium.relational.TableSchemaBuilder;
 import io.debezium.relational.Tables;
+import io.debezium.schema.SchemaFactory;
 import io.debezium.spi.topic.TopicNamingStrategy;
 
 /**
@@ -75,7 +76,8 @@ public class PostgresSchema extends RelationalDatabaseSchema {
                                                             PostgresDefaultValueConverter defaultValueConverter, CustomConverterRegistry customConverterRegistry) {
         return new TableSchemaBuilder(valueConverter, defaultValueConverter, config.schemaNameAdjuster(),
                 customConverterRegistry, config.getSourceInfoStructMaker().schema(),
-                config.getFieldNamer(), false, config.getEventConvertingFailureHandlingMode());
+                SchemaFactory.get().transactionBlockSchema(), config.getFieldNamer(), false,
+                config.getEventConvertingFailureHandlingMode(), config.isSchemaFieldsForceAllOptional());
     }
 
     /**

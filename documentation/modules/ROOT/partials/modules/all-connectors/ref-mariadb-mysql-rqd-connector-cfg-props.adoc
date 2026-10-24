@@ -557,6 +557,22 @@ To retain the previous `FLOAT32` mapping, explicitly set `real.handling.mode` to
 ====
 
 
+[id="{context}-property-schema-fields-force-all-optional"]
+xref:{context}-property-schema-fields-force-all-optional[`schema.fields.force.all.optional`]::
+
+Default value::: `false`
+
+Description:::
+Specifies whether the connector marks every field in the key and value schemas of change events as optional.
+By default, a field is optional only if the corresponding column is nullable.
++
+Set this property to `true` to mark all key and value fields as optional regardless of `NOT NULL` constraints.
+Use this setting when downstream consumers or schema compatibility rules require every field to be optional.
+This property changes only the schemas; it does not change the values that the connector emits.
+If the connector receives no value for a `NOT NULL` column, it still emits the column default, or, if the column has no default, a type-specific fallback value, such as `0` or an empty string.
+Because primary key columns are also marked as optional in the key schema, verify that consumers that derive primary keys from the key schema, such as sink connectors that create tables, can handle optional key fields.
+
+
 [id="{context}-property-schema-name-adjustment-mode"]
 xref:{context}-property-schema-name-adjustment-mode[`schema.name.adjustment.mode`]::
 
