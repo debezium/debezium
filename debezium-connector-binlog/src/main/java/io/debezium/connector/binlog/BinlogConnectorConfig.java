@@ -7,6 +7,7 @@ package io.debezium.connector.binlog;
 
 import java.sql.Types;
 import java.time.Duration;
+import java.util.Objects;
 import java.util.Set;
 import java.util.function.Predicate;
 
@@ -22,6 +23,7 @@ import io.debezium.config.Field;
 import io.debezium.config.Field.ValidationOutput;
 import io.debezium.connector.binlog.gtid.GtidSet;
 import io.debezium.connector.binlog.gtid.GtidSetFactory;
+import io.debezium.connector.binlog.jdbc.LowerCaseTableNames;
 import io.debezium.jdbc.JdbcValueConverters.BigIntUnsignedMode;
 import io.debezium.jdbc.TemporalPrecisionMode;
 import io.debezium.relational.ColumnFilterMode;
@@ -30,6 +32,7 @@ import io.debezium.relational.RelationalDatabaseConnectorConfig;
 import io.debezium.relational.TableId;
 import io.debezium.relational.Tables;
 import io.debezium.schema.DefaultTopicNamingStrategy;
+import io.debezium.spi.schema.DataCollectionId;
 import io.debezium.util.Collect;
 
 /**
@@ -731,6 +734,7 @@ public abstract class BinlogConnectorConfig extends HistorizedRelationalDatabase
     private final boolean readOnlyConnection;
     private final boolean ignoreGtidOnRecovery;
     private final boolean resolveLikeTableSchema;
+    private LowerCaseTableNames lowerCaseTableNames = LowerCaseTableNames.CASE_SENSITIVE;
 
     /**
      * Create a binlog-based connector configuration.
@@ -764,6 +768,25 @@ public abstract class BinlogConnectorConfig extends HistorizedRelationalDatabase
     @Override
     public boolean supportsOperationFiltering() {
         return true;
+    }
+
+    /**
+     * Initializes signal collection matching with the server's identifier rules. Called during task startup,
+     * after reading the server setting and before signals are processed.
+     *
+     * @param lowerCaseTableNames the server setting; may not be null
+     */
+    public void setLowerCaseTableNames(LowerCaseTableNames lowerCaseTableNames) {
+        this.lowerCaseTableNames = Objects.requireNonNull(lowerCaseTableNames);
+    }
+
+    @Override
+    public boolean isSignalDataCollection(DataCollectionId dataCollectionId) {
+        if (super.isSignalDataCollection(dataCollectionId)) {
+            return true;
+        }
+        return lowerCaseTableNames.isCaseInsensitive() && dataCollectionId instanceof TableId tableId
+                && getSignalingDataCollectionTableIds().stream().anyMatch(id -> id.toLowercase().equals(tableId.toLowercase()));
     }
 
     @Override

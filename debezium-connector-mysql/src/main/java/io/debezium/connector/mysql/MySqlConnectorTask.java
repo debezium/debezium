@@ -117,6 +117,7 @@ public class MySqlConnectorTask extends BinlogSourceTask<MySqlPartition, MySqlOf
                 new MySqlOffsetContext.Loader(connectorConfig));
 
         final LowerCaseTableNames lowerCaseTableNames = connection.lowerCaseTableNames();
+        connectorConfig.setLowerCaseTableNames(lowerCaseTableNames);
         // Service providers
         registerServiceProviders(connectorConfig.getServiceRegistry());
 

@@ -15,8 +15,14 @@ import org.apache.kafka.common.config.ConfigDef.Type;
 import org.apache.kafka.connect.connector.Connector;
 import org.apache.kafka.connect.source.SourceConnector;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.EnumSource;
 
+import io.debezium.config.Configuration;
 import io.debezium.config.Field;
+import io.debezium.connector.binlog.jdbc.LowerCaseTableNames;
+import io.debezium.doc.FixFor;
+import io.debezium.relational.TableId;
 
 /**
  * @author Randall Hauch
@@ -26,6 +32,26 @@ public abstract class BinlogConnectorConfigTest<C extends SourceConnector> imple
     @Test
     void shouldReturnConfigurationDefinition() {
         assertConfigDefIsValid(getConnectorInstance(), getAllFields());
+    }
+
+    @ParameterizedTest
+    @EnumSource(LowerCaseTableNames.class)
+    @FixFor("debezium/dbz#125")
+    void shouldMatchSignalCollectionsUsingServerIdentifierRules(LowerCaseTableNames setting) {
+        final var config = getConnectorConfig(Configuration.create()
+                .with(BinlogConnectorConfig.TOPIC_PREFIX, "test")
+                .with(BinlogConnectorConfig.SIGNAL_DATA_COLLECTION, "Inventory.Debezium_Signal,Other.Audit_Signal")
+                .build());
+        config.setLowerCaseTableNames(setting);
+
+        assertThat(config.isSignalDataCollection(new TableId("Inventory", null, "Debezium_Signal"))).isTrue();
+        assertThat(config.isSignalDataCollection(new TableId("inventory", null, "debezium_signal"))).isEqualTo(setting.isCaseInsensitive());
+        assertThat(config.isSignalDataCollection(new TableId("INVENTORY", null, "DEBEZIUM_SIGNAL"))).isEqualTo(setting.isCaseInsensitive());
+        assertThat(config.isSignalDataCollection(new TableId("Other", null, "Audit_Signal"))).isTrue();
+        assertThat(config.isSignalDataCollection(new TableId("other", null, "audit_signal"))).isEqualTo(setting.isCaseInsensitive());
+        assertThat(config.isSignalDataCollection(new TableId("Inventory", null, "products"))).isFalse();
+        assertThat(config.isSignalDataCollection(new TableId("Other", null, "Debezium_Signal"))).isFalse();
+        assertThat(config.isSignalDataCollection(null)).isFalse();
     }
 
     protected static void assertConfigDefIsValid(Connector connector, io.debezium.config.Field.Set fields) {
@@ -61,5 +87,7 @@ public abstract class BinlogConnectorConfigTest<C extends SourceConnector> imple
     protected abstract C getConnectorInstance();
 
     protected abstract Field.Set getAllFields();
+
+    protected abstract BinlogConnectorConfig getConnectorConfig(Configuration config);
 
 }

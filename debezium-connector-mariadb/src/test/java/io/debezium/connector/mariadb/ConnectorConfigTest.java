@@ -5,6 +5,7 @@
  */
 package io.debezium.connector.mariadb;
 
+import io.debezium.config.Configuration;
 import io.debezium.config.Field;
 import io.debezium.connector.binlog.BinlogConnectorConfigTest;
 
@@ -20,5 +21,10 @@ public class ConnectorConfigTest extends BinlogConnectorConfigTest<MariaDbConnec
     @Override
     protected Field.Set getAllFields() {
         return MariaDbConnectorConfig.ALL_FIELDS;
+    }
+
+    @Override
+    protected MariaDbConnectorConfig getConnectorConfig(Configuration config) {
+        return new MariaDbConnectorConfig(config);
     }
 }

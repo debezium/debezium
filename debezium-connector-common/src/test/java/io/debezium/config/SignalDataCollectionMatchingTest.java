@@ -27,16 +27,7 @@ public class SignalDataCollectionMatchingTest {
     public void shouldMatchSignalDataCollectionExactly() {
         assertThat(config.isSignalDataCollection(new TableId("inventory", null, "debezium_signal"))).isTrue();
         assertThat(config.isSignalDataCollection(new TableId("Inventory", null, "Debezium_Signal"))).isFalse();
-        assertThat(config.isSignalDataCollection(new TableId("Inventory", null, "Debezium_Signal"), false)).isFalse();
-        assertThat(config.isSignalDataCollection(new TableId("inventory", null, "products"), false)).isFalse();
-    }
-
-    @Test
-    @FixFor("debezium/dbz#125")
-    public void shouldMatchSignalDataCollectionIgnoringCaseWhenTableIdentifiersAreCaseInsensitive() {
-        assertThat(config.isSignalDataCollection(new TableId("inventory", null, "debezium_signal"), true)).isTrue();
-        assertThat(config.isSignalDataCollection(new TableId("Inventory", null, "Debezium_Signal"), true)).isTrue();
-        assertThat(config.isSignalDataCollection(new TableId("inventory", null, "products"), true)).isFalse();
-        assertThat(config.isSignalDataCollection(new TableId("other", null, "debezium_signal"), true)).isFalse();
+        assertThat(config.isSignalDataCollection(new TableId("inventory", null, "products"))).isFalse();
+        assertThat(config.isSignalDataCollection(new TableId("other", null, "debezium_signal"))).isFalse();
     }
 }

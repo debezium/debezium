@@ -125,10 +125,11 @@ public class MariaDbConnectorTask extends BinlogSourceTask<MariaDbPartition, Mar
                 new MariaDbPartition.Provider(connectorConfig, config),
                 new MariaDbOffsetContext.Loader(connectorConfig));
 
+        final LowerCaseTableNames lowerCaseTableNames = connection.lowerCaseTableNames();
+        connectorConfig.setLowerCaseTableNames(lowerCaseTableNames);
+
         // Service providers
         registerServiceProviders(connectorConfig.getServiceRegistry());
-
-        final LowerCaseTableNames lowerCaseTableNames = connection.lowerCaseTableNames();
         CustomConverterRegistry converterRegistry = connectorConfig.getServiceRegistry().tryGetService(CustomConverterRegistry.class);
 
         this.schema = new MariaDbDatabaseSchema(connectorConfig, valueConverters, topicNamingStrategy, schemaNameAdjuster, lowerCaseTableNames, converterRegistry,
