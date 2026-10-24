@@ -134,13 +134,13 @@ class BinlogMetadataTableBuilderTest {
         final Column status = table.columnWithName("status");
         assertThat(status.typeName()).isEqualTo("ENUM");
         assertThat(status.jdbcType()).isEqualTo(Types.CHAR);
-        assertThat(status.enumValues()).containsExactly("NEW", "OK", "ERR");
+        assertThat(status.enumValues()).containsExactly("'NEW'", "'OK'", "'ERR'");
         // The DDL parser assigns ENUM columns length 1 and SET columns options + commas.
         assertThat(status.length()).isEqualTo(1);
 
         final Column tags = table.columnWithName("tags");
         assertThat(tags.typeName()).isEqualTo("SET");
-        assertThat(tags.enumValues()).containsExactly("a", "b", "c");
+        assertThat(tags.enumValues()).containsExactly("'a'", "'b'", "'c'");
         assertThat(tags.length()).isEqualTo(5);
 
         final Column flags = table.columnWithName("flags");
@@ -307,10 +307,10 @@ class BinlogMetadataTableBuilderTest {
         data.setEventMetadata(metadata);
 
         final Table table = builder.build(TableId.parse("test.mixedEncodings"), data);
-        assertThat(table.columnWithName("firstEnum").enumValues()).containsExactly("A", "B");
-        assertThat(table.columnWithName("secondEnum").enumValues()).containsExactly("C", "D");
-        assertThat(table.columnWithName("firstSet").enumValues()).containsExactly("a", "b");
-        assertThat(table.columnWithName("secondSet").enumValues()).containsExactly("c", "d", "e");
+        assertThat(table.columnWithName("firstEnum").enumValues()).containsExactly("'A'", "'B'");
+        assertThat(table.columnWithName("secondEnum").enumValues()).containsExactly("'C'", "'D'");
+        assertThat(table.columnWithName("firstSet").enumValues()).containsExactly("'a'", "'b'");
+        assertThat(table.columnWithName("secondSet").enumValues()).containsExactly("'c'", "'d'", "'e'");
         assertThat(table.columnWithName("firstEnum").charsetName()).isEqualTo("latin1");
         assertThat(table.columnWithName("secondEnum").charsetName()).isEqualTo("utf8mb4");
         assertThat(table.columnWithName("firstSet").charsetName()).isEqualTo("latin1");

@@ -237,16 +237,21 @@ public class BinlogMetadataTableBuilder {
         column.jdbcType(Types.CHAR);
         if (valueLists != null && index < valueLists.size()) {
             final String[] values = valueLists.get(index);
+            final List<String> quotedValues = new ArrayList<>(values.length);
             final StringBuilder expr = new StringBuilder(typeName).append('(');
             for (int i = 0; i < values.length; i++) {
                 if (i > 0) {
                     expr.append(',');
                 }
-                expr.append('\'').append(values[i]).append('\'');
+                // Value converters expect quoted DDL tokens, while TABLE_MAP contains decoded values.
+                // Protect backslashes before quotes from the converters' quote-unescaping step.
+                final var literal = "'" + values[i].replace("\\'", "\\\\'").replace("'", "''") + "'";
+                quotedValues.add(literal);
+                expr.append(literal);
             }
             expr.append(')');
             column.type(typeName, expr.toString());
-            column.enumValues(List.of(values));
+            column.enumValues(quotedValues);
             // Mirror the DDL parser convention (see ColumnDefinitionParserListener): ENUM columns get
             // length 1 and SET columns "number of options + number of commas".
             column.length("ENUM".equals(typeName) ? 1 : Math.max(0, values.length * 2 - 1));
