@@ -65,6 +65,7 @@ class LcrEventHandler implements XStreamLCRCallbackHandler {
     private final XStreamStreamingChangeEventSourceMetrics streamingMetrics;
     private final Map<String, ChunkColumnValues> columnChunks;
     private RowLCR currentRow;
+    private boolean skipChunksOfIgnoredRow;
 
     LcrEventHandler(OracleConnectorConfig connectorConfig, ErrorHandler errorHandler,
                     EventDispatcher<OraclePartition, TableId> dispatcher, Clock clock,
@@ -91,10 +92,13 @@ class LcrEventHandler implements XStreamLCRCallbackHandler {
             // First set watermark to flush messages seen
             setWatermark();
             columnChunks.clear();
+            skipChunksOfIgnoredRow = false;
 
             final LcrPosition lcrPosition = new LcrPosition(lcr.getPosition());
 
-            // After a restart it may happen we get the event with the last processed LCR again
+            // After a restart the outbound server is attached at the start of the stored position's
+            // {commit SCN, SCN} tuple (see XstreamStreamingChangeEventSource#getStartPosition), so every
+            // LCR of that tuple up to and including the last processed one is delivered again and is ignored.
             LcrPosition offsetLcrPosition = LcrPosition.valueOf(offsetContext.getLcrPosition());
             if (lcrPosition.compareTo(offsetLcrPosition) <= 0) {
                 if (LOGGER.isDebugEnabled()) {
@@ -104,6 +108,10 @@ class LcrEventHandler implements XStreamLCRCallbackHandler {
                             lcrPosition.getScn(),
                             recPosition != null ? recPosition : "none",
                             recPosition != null ? recPosition.getScn() : "none");
+                }
+                if (lcr instanceof RowLCR && ((RowLCR) lcr).hasChunkData()) {
+                    // The row's chunks follow through processChunk and belong to the ignored row
+                    skipChunksOfIgnoredRow = true;
                 }
                 return;
             }
@@ -373,6 +381,13 @@ class LcrEventHandler implements XStreamLCRCallbackHandler {
 
     @Override
     public void processChunk(ChunkColumnValue chunk) throws StreamsException {
+        if (skipChunksOfIgnoredRow) {
+            // The row these chunks belong to was ignored as already processed, see processLCR
+            if (chunk.isEndOfRow()) {
+                skipChunksOfIgnoredRow = false;
+            }
+            return;
+        }
         columnChunks.computeIfAbsent(chunk.getColumnName(), v -> new ChunkColumnValues()).add(chunk);
         if (chunk.isEndOfRow()) {
             resolveAndDispatchCurrentChunkedRow();
