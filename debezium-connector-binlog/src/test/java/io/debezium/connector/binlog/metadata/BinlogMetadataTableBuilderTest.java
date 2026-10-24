@@ -18,6 +18,7 @@ import java.util.Map;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
+import org.junit.jupiter.params.provider.ValueSource;
 
 import com.github.shyiko.mysql.binlog.event.TableMapEventData;
 import com.github.shyiko.mysql.binlog.event.TableMapEventMetadata;
@@ -286,6 +287,56 @@ class BinlogMetadataTableBuilderTest {
         final Column noteUtf8 = table.columnWithName("note_utf8");
         assertThat(noteUtf8.charsetName()).isEqualTo("utf8mb4");
         assertThat(noteUtf8.length()).isEqualTo(50); // 200 bytes / 4 (utf8mb4)
+    }
+
+    @Test
+    void shouldResolveMixedEnumAndSetEncodings() {
+        final var metadata = new TableMapEventMetadata();
+        metadata.setColumnNames(List.of("firstEnum", "secondEnum", "firstSet", "secondSet", "label", "wideChar"));
+        metadata.setEnumStrValues(List.of(new String[]{ "A", "B" }, new String[]{ "C", "D" }));
+        metadata.setSetStrValues(List.of(new String[]{ "a", "b" }, new String[]{ "c", "d", "e" }));
+        metadata.setEnumAndSetColumnCharsets(List.of(8, 255, 8, 255));
+        metadata.setColumnCharsets(List.of(255, 255));
+
+        final var data = new TableMapEventData();
+        // Alternate STRING-encoded and direct ENUM/SET type codes. Character columns have their own charset indices.
+        data.setColumnTypes(new byte[]{ (byte) 254, (byte) 247, (byte) 248, (byte) 254, 15, (byte) 254 });
+        // CHAR(100) in utf8mb4 occupies up to 400 bytes, encoded as STRING metadata 0xEE90.
+        data.setColumnMetadata(new int[]{ 0xF701, 0xF701, 0xF801, 0xF801, 40, 0xEE90 });
+        data.setColumnNullability(new BitSet());
+        data.setEventMetadata(metadata);
+
+        final Table table = builder.build(TableId.parse("test.mixedEncodings"), data);
+        assertThat(table.columnWithName("firstEnum").enumValues()).containsExactly("A", "B");
+        assertThat(table.columnWithName("secondEnum").enumValues()).containsExactly("C", "D");
+        assertThat(table.columnWithName("firstSet").enumValues()).containsExactly("a", "b");
+        assertThat(table.columnWithName("secondSet").enumValues()).containsExactly("c", "d", "e");
+        assertThat(table.columnWithName("firstEnum").charsetName()).isEqualTo("latin1");
+        assertThat(table.columnWithName("secondEnum").charsetName()).isEqualTo("utf8mb4");
+        assertThat(table.columnWithName("firstSet").charsetName()).isEqualTo("latin1");
+        assertThat(table.columnWithName("secondSet").charsetName()).isEqualTo("utf8mb4");
+        assertThat(table.columnWithName("label").length()).isEqualTo(10);
+        assertColumn(table, "wideChar", "CHAR", Types.CHAR, false);
+        assertThat(table.columnWithName("wideChar").length()).isEqualTo(100);
+    }
+
+    @ParameterizedTest
+    @ValueSource(ints = { 6, 243 })
+    void shouldPreserveUnknownTypeMapping(int columnTypeCode) {
+        final var metadata = new TableMapEventMetadata();
+        metadata.setColumnNames(List.of("unknown", "label"));
+        metadata.setColumnCharsets(List.of(255));
+        final var data = new TableMapEventData();
+        // NULL (6) is a known but unsupported type; 243 has no ColumnType enum value.
+        data.setColumnTypes(new byte[]{ (byte) columnTypeCode, 15 });
+        data.setColumnMetadata(new int[]{ 0, 40 });
+        data.setColumnNullability(new BitSet());
+        data.setEventMetadata(metadata);
+
+        final Table table = builder.build(TableId.parse("test.unknownType"), data);
+        assertColumn(table, "unknown", "UNKNOWN", Types.OTHER, false);
+        assertThat(table.columnWithName("label").charsetName()).isEqualTo("utf8mb4");
+        assertThat(table.columnWithName("label").length()).isEqualTo(10);
     }
 
     @Test
