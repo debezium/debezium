@@ -57,15 +57,14 @@ public class MariaDbSnapshotChangeEventSource extends BinlogSnapshotChangeEventS
     protected List<String> getPreparedColumnNames(MariaDbPartition partition, Table table) {
         final List<String> columnNames = super.getPreparedColumnNames(partition, table);
         for (Column column : table.columns()) {
-            if (column.length() != 2 || !"YEAR".equalsIgnoreCase(column.typeName())) {
+            if (!Year2Column.isYear2(column)) {
                 continue;
             }
-            final String quoted = connection.quoteIdentifier(column.name());
-            final int index = columnNames.indexOf(quoted);
+            final int index = columnNames.indexOf(connection.quoteIdentifier(column.name()));
             if (index < 0) {
                 continue;
             }
-            columnNames.set(index, "YEAR(" + quoted + ") AS " + quoted);
+            columnNames.set(index, Year2Column.selectExpression(connection, column));
         }
         return columnNames;
     }

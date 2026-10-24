@@ -86,7 +86,7 @@ public abstract class AbstractChunkQueryBuilder<T extends DataCollectionId>
                 .collect(Collectors.joining(", "));
         return jdbcConnection.buildSelectWithRowLimits(table.id(),
                 limit,
-                buildProjection(table),
+                buildProjection(context, table),
                 Optional.ofNullable(condition),
                 additionalCondition,
                 orderBy,
@@ -96,15 +96,38 @@ public abstract class AbstractChunkQueryBuilder<T extends DataCollectionId>
     protected String buildProjection(Table table) {
         String projection = "*";
         if (connectorConfig.isColumnsFiltered()) {
-            TableId tableId = table.id();
-            final List<Column> keyColumns = getKeyMapper().getKeyColumns(table);
-            projection = table.columns().stream()
-                    .filter(column -> keyColumns.contains(column)
-                            || columnFilter.matches(tableId.catalog(), tableId.schema(), tableId.table(), column.name()))
+            projection = getProjectedColumns(table).stream()
                     .map(column -> jdbcConnection.quoteIdentifier(column.name()))
                     .collect(Collectors.joining(", "));
         }
         return projection;
+    }
+
+    /**
+     * Returns the projection of a chunk query, given the context of the chunk being read.
+     * <p>
+     * Defaults to the projection of the table, without any chunk context.
+     */
+    protected String buildProjection(IncrementalSnapshotContext<T> context, Table table) {
+        return buildProjection(table);
+    }
+
+    /**
+     * Returns the columns a chunk query projects when it cannot project the whole table.
+     * <p>
+     * Defaults to all the table columns, or to the key columns and the columns matching the column filter
+     * when the column filter is configured.
+     */
+    protected List<Column> getProjectedColumns(Table table) {
+        if (!connectorConfig.isColumnsFiltered()) {
+            return table.columns();
+        }
+        TableId tableId = table.id();
+        final List<Column> keyColumns = getKeyMapper().getKeyColumns(table);
+        return table.columns().stream()
+                .filter(column -> keyColumns.contains(column)
+                        || columnFilter.matches(tableId.catalog(), tableId.schema(), tableId.table(), column.name()))
+                .collect(Collectors.toList());
     }
 
     public void addLowerBound(List<Column> pkColumns, Object[] boundaryKey, StringBuilder condition, boolean inclusiveFinal) {
@@ -277,7 +300,7 @@ public abstract class AbstractChunkQueryBuilder<T extends DataCollectionId>
         final String orderBy = getQueryColumns(context, table).stream()
                 .map(c -> jdbcConnection.quoteIdentifier(c.name()))
                 .collect(Collectors.joining(" DESC, ")) + " DESC";
-        String selectWithRowLimits = jdbcConnection.buildSelectWithRowLimits(table.id(), 1, buildProjection(table), Optional.empty(),
+        String selectWithRowLimits = jdbcConnection.buildSelectWithRowLimits(table.id(), 1, buildProjection(context, table), Optional.empty(),
                 additionalCondition, orderBy, getTableAlias(table));
         LOGGER.debug("MaxPrimaryKeyQuery {}", selectWithRowLimits);
         return selectWithRowLimits;
