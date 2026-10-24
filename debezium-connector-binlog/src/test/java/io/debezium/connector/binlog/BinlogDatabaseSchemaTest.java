@@ -31,6 +31,7 @@ import io.debezium.config.Configuration;
 import io.debezium.connector.binlog.jdbc.BinlogSystemVariables;
 import io.debezium.connector.binlog.util.TestHelper;
 import io.debezium.connector.binlog.util.UniqueDatabase;
+import io.debezium.data.EnumeratedValues;
 import io.debezium.doc.FixFor;
 import io.debezium.pipeline.spi.OffsetContext;
 import io.debezium.pipeline.spi.Offsets;
@@ -163,6 +164,30 @@ public abstract class BinlogDatabaseSchemaTest<C extends BinlogConnectorConfig, 
         assertThat(schema.registerTableFromBinlogMetadata(metadataKeyTableMap())).isTrue();
         assertThat(schema.schemaFor(METADATA_KEY_TABLE_ID).keySchema().fields())
                 .extracting(Field::name).containsExactly("candidate");
+    }
+
+    @Test
+    void shouldPreserveDecodedEnumAndSetMetadataValues() {
+        schema = getSchema(metadataKeyConfig().build());
+        final String[] options = { "plain", "a''b", "'quoted'", "\"quoted\"", "a\\'b", "a\\nb", "`quoted`", "" };
+        final TableMapEventData metadata = metadataKeyTableMap();
+        metadata.getEventMetadata().setColumnNames(List.of("id", "e", "s"));
+        metadata.getEventMetadata().setEnumStrValues(List.<String[]> of(options));
+        metadata.getEventMetadata().setSetStrValues(List.<String[]> of(options));
+        metadata.setColumnTypes(new byte[]{ 3, (byte) 247, (byte) 248 });
+        metadata.setColumnMetadata(new int[]{ 0, 1, 1 });
+        metadata.setColumnNullability(new BitSet());
+        assertThat(schema.registerTableFromBinlogMetadata(metadata)).isTrue();
+
+        final var tableSchema = schema.schemaFor(METADATA_KEY_TABLE_ID);
+        for (int i = 0; i < options.length; i++) {
+            final var value = tableSchema.valueFromColumnData(new Object[]{ i, i + 1, 1L << i });
+            for (final var column : List.of("e", "s")) {
+                assertThat(value.getString(column)).as("Decoded %s option %s", column, i).isEqualTo(options[i]);
+                assertThat(value.schema().field(column).schema().parameters().get("allowed"))
+                        .isEqualTo(EnumeratedValues.toCommaSeparatedString(List.of(options)));
+            }
+        }
     }
 
     private Configuration.Builder metadataKeyConfig() {
