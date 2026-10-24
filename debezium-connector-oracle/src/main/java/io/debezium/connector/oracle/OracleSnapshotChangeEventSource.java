@@ -22,6 +22,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import io.debezium.connector.oracle.jdbc.OracleConnectionFactory;
+import io.debezium.connector.oracle.relational.OracleRelationalMetadataFactory;
 import io.debezium.jdbc.JdbcConnection;
 import io.debezium.pipeline.EventDispatcher;
 import io.debezium.pipeline.notification.NotificationService;
@@ -269,7 +270,7 @@ public class OracleSnapshotChangeEventSource extends RelationalSnapshotChangeEve
         private Savepoint preSchemaSnapshotSavepoint;
 
         OracleSnapshotContext(OraclePartition partition, String catalogName, boolean onDemand) {
-            super(partition, catalogName, onDemand);
+            super(partition, catalogName, onDemand, OracleRelationalMetadataFactory.INSTANCE);
         }
     }
 

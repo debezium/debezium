@@ -14,13 +14,16 @@ import java.util.Map.Entry;
 import org.apache.kafka.common.config.ConfigDef.Importance;
 import org.apache.kafka.common.config.ConfigDef.Type;
 import org.apache.kafka.common.config.ConfigDef.Width;
+import org.slf4j.LoggerFactory;
 
 import io.debezium.config.Configuration;
 import io.debezium.config.Field;
 import io.debezium.pipeline.spi.OffsetContext;
 import io.debezium.pipeline.spi.Offsets;
 import io.debezium.pipeline.spi.Partition;
+import io.debezium.relational.DefaultRelationalMetadataFactory;
 import io.debezium.relational.HistorizedRelationalDatabaseSchema;
+import io.debezium.relational.RelationalMetadataFactory;
 import io.debezium.relational.Tables;
 import io.debezium.relational.ddl.DdlParser;
 
@@ -163,6 +166,36 @@ public interface SchemaHistory {
                              second as the table name
      */
     void configure(Configuration config, HistoryRecordComparator comparator, SchemaHistoryListener listener, boolean useCatalogBeforeSchema);
+
+    /**
+     * Configure this instance for the given connector, whose {@link RelationalMetadataFactory} supplies the
+     * serializer that writes and rebuilds table definitions. The default ignores the factory and calls
+     * {@link #configure(Configuration, HistoryRecordComparator, SchemaHistoryListener, boolean)}, so existing
+     * implementations keep working with the standard serializer. Because tables recovered that way lose any
+     * connector-specific metadata, the default logs a warning when the factory is not the
+     * {@link DefaultRelationalMetadataFactory#INSTANCE default factory}. An implementation that supports such a
+     * connector overrides this method, as {@link AbstractSchemaHistory} does, and is never warned about.
+     *
+     * @param config the configuration for this history store
+     * @param comparator the function that should be used to compare history records during
+     *            {@link #recover(Offsets, Tables, DdlParser) recovery}; may be null if the {@link HistoryRecordComparator#INSTANCE default comparator}
+     *            is to be used
+     * @param listener the listener notified of recording and recovery events
+     * @param useCatalogBeforeSchema true if the parsed string for a table contains only 2 items and the first should be used as
+     *            the catalog and the second as the table name, or false if the first should be used as the schema and the
+     *            second as the table name
+     * @param metadataFactory the connector's metadata factory; may not be null
+     */
+    default void configure(Configuration config, HistoryRecordComparator comparator, SchemaHistoryListener listener, boolean useCatalogBeforeSchema,
+                           RelationalMetadataFactory metadataFactory) {
+        if (metadataFactory != DefaultRelationalMetadataFactory.INSTANCE) {
+            LoggerFactory.getLogger(SchemaHistory.class).warn(
+                    "Schema history {} ignores the connector's metadata factory {}, so tables recovered from it lose connector-specific metadata. "
+                            + "Extend AbstractSchemaHistory or override configure with the RelationalMetadataFactory argument.",
+                    getClass().getName(), metadataFactory.getClass().getName());
+        }
+        configure(config, comparator, listener, useCatalogBeforeSchema);
+    }
 
     /**
      * Start the history.

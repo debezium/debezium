@@ -7,20 +7,38 @@ package io.debezium.storage.rocksdb.tablemapping;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import java.io.ByteArrayOutputStream;
+import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.sql.Types;
 import java.util.Comparator;
+import java.util.HashSet;
 import java.util.Set;
 
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.rocksdb.RocksDB;
 
 import io.debezium.config.Configuration;
 import io.debezium.connector.mysql.MySqlConnectorConfig;
+import io.debezium.doc.FixFor;
+import io.debezium.junit.relational.TestRelationalDatabaseConfig;
+import io.debezium.relational.Attribute;
+import io.debezium.relational.Column;
+import io.debezium.relational.ExtendedMetadata;
+import io.debezium.relational.ExtendedMetadata.ExtendedColumn;
+import io.debezium.relational.ExtendedMetadata.ExtendedRelationalMetadataFactory;
+import io.debezium.relational.ExtendedMetadata.ExtendedTable;
+import io.debezium.relational.RelationalDatabaseConnectorConfig;
+import io.debezium.relational.RelationalMetadataFactory;
+import io.debezium.relational.Table;
 import io.debezium.relational.TableId;
+import io.debezium.relational.TableImpl;
 import io.debezium.relational.TableMappingStorage;
+import io.debezium.storage.rocksdb.RocksDbUtil;
 
 /**
  * Unit test for RocksDb-based table mapping storage.
@@ -269,6 +287,200 @@ public class RocksDbTableMappingStorageTest {
         assertThat(storage.get(table2)).isEqualTo("value2");
         assertThat(storage.get(table3)).isEqualTo("value3");
         assertThat(storage.get(table4)).isEqualTo("value4");
+    }
+
+    @Test
+    public void shouldStoreAndRetrieveTablesWithDefaultMetadataFactory() throws Exception {
+        final RocksDbTableMappingStorage<Table> tableStorage = createTableStorage(new MySqlConnectorConfig(baseConfiguration(1, false)));
+        try {
+            final TableId tableId = new TableId("catalog", null, "orders");
+            final Table table = Table.editor()
+                    .tableId(tableId)
+                    .addColumn(Column.editor().name("id").jdbcType(Types.NUMERIC).type("NUMERIC").length(10).scale(0).optional(false).create())
+                    .addColumn(Column.editor().name("status").jdbcType(Types.VARCHAR).type("VARCHAR").length(20)
+                            .defaultValueExpression("'NEW'").enumValues(java.util.List.of("NEW", "PAID")).comment("state").create())
+                    .setPrimaryKeyNames("id")
+                    .setDefaultCharsetName("utf8")
+                    .addAttribute(Attribute.editor().name("object_id").value("12345").create())
+                    .create();
+
+            tableStorage.put(tableId, table);
+            // A second entry pushes the first out of the single-slot cache so the next read goes to RocksDB
+            tableStorage.put(new TableId("catalog", null, "other"), Table.editor().tableId(new TableId("catalog", null, "other")).create());
+
+            final Table stored = tableStorage.get(tableId);
+            assertThat(stored).isExactlyInstanceOf(TableImpl.class);
+            assertThat(stored).isEqualTo(table);
+            assertThat(stored.id()).isEqualTo(tableId);
+            assertThat(stored.attributes()).isEqualTo(table.attributes());
+            assertThat(stored.columnWithName("status").defaultValueExpression()).contains("'NEW'");
+            assertThat(stored.columnWithName("status").enumValues()).containsExactly("NEW", "PAID");
+            assertThat(stored.columnWithName("status").comment()).isEqualTo("state");
+        }
+        finally {
+            tableStorage.close();
+        }
+    }
+
+    @Test
+    public void shouldStoreAndRetrieveTablesThroughConfiguredMetadataFactory() throws Exception {
+        final RelationalDatabaseConnectorConfig config = new TestRelationalDatabaseConfig(baseConfiguration(1, false), null, null, 0) {
+            @Override
+            public RelationalMetadataFactory getRelationalMetadataFactory() {
+                return ExtendedRelationalMetadataFactory.INSTANCE;
+            }
+        };
+        final RocksDbTableMappingStorage<Table> tableStorage = createTableStorage(config);
+        try {
+            final TableId tableId = new TableId(null, "schema", "orders");
+            tableStorage.put(tableId, ExtendedMetadata.table(tableId, "orders-label", "eu"));
+            tableStorage.put(new TableId(null, "schema", "other"), ExtendedMetadata.table(new TableId(null, "schema", "other"), "x", "us"));
+
+            final Table stored = tableStorage.get(tableId);
+            assertThat(stored).isInstanceOf(ExtendedTable.class);
+            assertThat(stored.id()).isEqualTo(tableId);
+            assertThat(stored.unwrap(ExtendedTable.class).label()).isEqualTo("orders-label");
+            assertThat(stored.columnWithName("id").unwrap(ExtendedColumn.class).region()).isEqualTo("eu");
+        }
+        finally {
+            tableStorage.close();
+        }
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2843")
+    public void shouldKeepTableIdCaseWhenTableIdsAreCaseInsensitive() throws Exception {
+        final TableId tableId = new TableId("Catalog", null, "Orders");
+        final TableId otherId = new TableId("Catalog", null, "Other");
+
+        final RocksDbTableMappingStorage<Table> first = createTableStorage(new MySqlConnectorConfig(baseConfiguration(1, false)), true);
+        try {
+            first.put(tableId, Table.editor().tableId(tableId).create());
+            // A second entry pushes the first out of the single-slot cache so the next read goes to RocksDB
+            first.put(otherId, Table.editor().tableId(otherId).create());
+
+            assertThat(first.get(new TableId("Catalog", null, "ORDERS")).id()).isEqualTo(tableId);
+
+            final Set<TableId> storedIds = new HashSet<>();
+            first.forEach((key, table) -> storedIds.add(table.id()));
+            assertThat(storedIds).containsExactlyInAnyOrder(tableId, otherId);
+        }
+        finally {
+            first.close();
+        }
+
+        final RocksDbTableMappingStorage<Table> restarted = createTableStorage(new MySqlConnectorConfig(baseConfiguration(1, false)), true);
+        try {
+            assertThat(restarted.get(tableId).id()).isEqualTo(tableId);
+        }
+        finally {
+            restarted.close();
+        }
+    }
+
+    @Test
+    public void shouldReadTablesStoredInTheEarlierBinaryFormat() throws Exception {
+        final TableId tableId = new TableId("catalog", null, "legacy");
+
+        // Write an entry in the binary layout used before tables were stored as JSON
+        final RocksDbTableMappingStorage<Table> first = createTableStorage(new MySqlConnectorConfig(baseConfiguration(1, false)));
+        first.close();
+        try (var options = RocksDbUtil.createOptions(); RocksDB db = RocksDB.open(options, ROCKSDB_PATH.toString())) {
+            db.put(legacyKey(tableId), legacyTableValue(tableId));
+        }
+
+        final RocksDbTableMappingStorage<Table> tableStorage = createTableStorage(new MySqlConnectorConfig(baseConfiguration(1, false)));
+        try {
+            final Table stored = tableStorage.get(tableId);
+            assertThat(stored.id()).isEqualTo(tableId);
+            assertThat(stored.primaryKeyColumnNames()).containsExactly("id");
+            assertThat(stored.defaultCharsetName()).isEqualTo("utf8");
+            assertThat(stored.columnWithName("id").typeName()).isEqualTo("NUMERIC");
+            assertThat(stored.columnWithName("id").length()).isEqualTo(10);
+            assertThat(stored.columnWithName("id").isOptional()).isFalse();
+            assertThat(stored.attributes()).containsExactly(Attribute.editor().name("object_id").value("12345").create());
+        }
+        finally {
+            tableStorage.close();
+        }
+    }
+
+    private static byte[] legacyKey(final TableId tableId) throws IOException {
+        try (ByteArrayOutputStream baos = new ByteArrayOutputStream(); DataOutputStream dos = new DataOutputStream(baos)) {
+            writeNullableString(dos, tableId.catalog());
+            writeNullableString(dos, tableId.schema());
+            dos.writeUTF(tableId.table());
+            return baos.toByteArray();
+        }
+    }
+
+    private static byte[] legacyTableValue(final TableId tableId) throws IOException {
+        try (ByteArrayOutputStream baos = new ByteArrayOutputStream(); DataOutputStream dos = new DataOutputStream(baos)) {
+            dos.writeByte(1); // table marker of the binary layout
+            writeNullableString(dos, tableId.catalog());
+            writeNullableString(dos, tableId.schema());
+            dos.writeUTF(tableId.table());
+            dos.writeInt(1); // one column
+            dos.writeUTF("id"); // name
+            dos.writeInt(1); // position
+            dos.writeInt(Types.NUMERIC); // jdbcType
+            dos.writeInt(-1); // nativeType
+            dos.writeUTF("NUMERIC"); // typeName
+            writeNullableString(dos, null); // typeExpression
+            writeNullableString(dos, null); // charsetName
+            dos.writeInt(10); // length
+            dos.writeBoolean(true); // scale present
+            dos.writeInt(0); // scale
+            dos.writeBoolean(false); // optional
+            dos.writeBoolean(false); // autoIncremented
+            dos.writeBoolean(false); // generated
+            dos.writeBoolean(false); // defaultValueExpression absent
+            dos.writeBoolean(false); // hasDefaultValue
+            dos.writeInt(0); // enum values
+            writeNullableString(dos, null); // column comment
+            dos.writeInt(1); // one primary key column
+            dos.writeUTF("id");
+            writeNullableString(dos, "utf8"); // default charset
+            writeNullableString(dos, null); // table comment
+            dos.writeInt(1); // one attribute
+            dos.writeUTF("object_id");
+            writeNullableString(dos, "12345");
+            return baos.toByteArray();
+        }
+    }
+
+    private static void writeNullableString(final DataOutputStream dos, final String value) throws IOException {
+        if (value == null) {
+            dos.writeBoolean(false);
+        }
+        else {
+            dos.writeBoolean(true);
+            dos.writeUTF(value);
+        }
+    }
+
+    private RocksDbTableMappingStorage<Table> createTableStorage(final RelationalDatabaseConnectorConfig config) {
+        return createTableStorage(config, false);
+    }
+
+    private RocksDbTableMappingStorage<Table> createTableStorage(final RelationalDatabaseConnectorConfig config, final boolean tableIdCaseInsensitive) {
+        final RocksDbTableMappingStorage<Table> newStorage = new RocksDbTableMappingStorage<>();
+        newStorage.configure(config, tableIdCaseInsensitive, TableMappingStorage.Type.TABLES);
+        return newStorage;
+    }
+
+    private Configuration baseConfiguration(final int cacheSize, final boolean cleanup) {
+        return Configuration.create()
+                .with("memory.management.cache.size", cacheSize)
+                .with("memory.management.tables.rocksdb.path", ROCKSDB_PATH.toString())
+                .with("memory.management.tables.rocksdb.cleanup", cleanup)
+                .with(MySqlConnectorConfig.HOSTNAME, "localhost")
+                .with(MySqlConnectorConfig.PORT, 3306)
+                .with(MySqlConnectorConfig.USER, "testuser")
+                .with(MySqlConnectorConfig.PASSWORD, "testpw")
+                .with(MySqlConnectorConfig.SERVER_ID, 12345)
+                .with(MySqlConnectorConfig.TOPIC_PREFIX, "test-server")
+                .build();
     }
 
     private RocksDbTableMappingStorage<String> createStorage(final int cacheSize, final boolean cleanup) {

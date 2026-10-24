@@ -812,6 +812,18 @@ public abstract class RelationalDatabaseConnectorConfig extends CommonConnectorC
     }
 
     /**
+     * The factory that creates this connector's column and table editors. Connectors that carry
+     * additional metadata on their columns or tables override this to return their own factory;
+     * a stateless factory is a singleton, one that depends on configuration is built once and
+     * cached by the overriding config.
+     *
+     * @return the metadata factory; never {@code null}
+     */
+    public RelationalMetadataFactory getRelationalMetadataFactory() {
+        return DefaultRelationalMetadataFactory.INSTANCE;
+    }
+
+    /**
      * Creates and configures a schema storage instance.
      *
      * @param tableIdCaseInsensitive whether table identifiers should be treated case-insensitively

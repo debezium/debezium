@@ -34,6 +34,15 @@ public class HistoryRecord {
 
     public HistoryRecord(Map<String, ?> source, Map<String, ?> position, String databaseName, String schemaName,
                          String ddl, TableChanges changes, Instant timestamp) {
+        this(source, position, databaseName, schemaName, ddl, changes, timestamp, tableChangesSerializer);
+    }
+
+    /**
+     * Creates a record whose table changes are written by the given serializer, which is the one the
+     * connector's {@code RelationalMetadataFactory} supplies when the changes carry connector-specific metadata.
+     */
+    public HistoryRecord(Map<String, ?> source, Map<String, ?> position, String databaseName, String schemaName,
+                         String ddl, TableChanges changes, Instant timestamp, TableChangesSerializer<Array> serializer) {
         this.doc = Document.create();
 
         Document src = doc.setDocument(Fields.SOURCE);
@@ -70,7 +79,7 @@ public class HistoryRecord {
         }
 
         if (changes != null) {
-            doc.setArray(Fields.TABLE_CHANGES, tableChangesSerializer.serialize(changes));
+            doc.setArray(Fields.TABLE_CHANGES, serializer.serialize(changes));
         }
 
     }
