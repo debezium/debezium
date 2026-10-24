@@ -32,6 +32,7 @@ public abstract class BinlogNonUtfDatabaseCharsetIT<C extends SourceConnector> e
 
     private static final Path SCHEMA_HISTORY_PATH = Files.createTestingPath("file-schema-history-connect.txt").toAbsolutePath();
     private final UniqueDatabase DATABASE = TestHelper.getUniqueDatabase("myServer1", "db_default_charset_noutf", "latin2")
+            .withBinlogMetadataKeyColumns("$DBNAME$\\.(DATA|DATASTREAM):MESSAGE")
             .withDbHistoryPath(SCHEMA_HISTORY_PATH);
 
     private Configuration config;

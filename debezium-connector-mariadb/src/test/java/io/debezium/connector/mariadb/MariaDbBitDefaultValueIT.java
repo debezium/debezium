@@ -48,8 +48,10 @@ public class MariaDbBitDefaultValueIT extends BinlogBitDefaultValueIT<MariaDbCon
 
         executeStatements(database.getDatabaseName(), "ALTER TABLE " + TABLE + " ALTER COLUMN bits SET DEFAULT b'1'",
                 "INSERT INTO " + TABLE + " (id) VALUES (2)");
-        final var knownDefault = ((Struct) consumeRecord(2, "c").value()).getStruct("after");
-        assertThat(asUnsignedDecimal(knownDefault.schema().field("bits").schema().defaultValue())).isEqualTo("1");
+        final var record = consumeRecord(2, "c");
+        final var knownDefault = ((Struct) record.value()).getStruct("after");
+        assertThat(asUnsignedDecimal(knownDefault.getWithoutDefault("bits"))).isEqualTo("1");
+        assertThat(asUnsignedDecimal(knownDefault.schema().field("bits").schema().defaultValue())).isEqualTo(expectedSchemaDefault(record, "1"));
 
         executeStatements(database.getDatabaseName(), "ALTER TABLE " + TABLE + " ALTER COLUMN bits SET DEFAULT " + literal,
                 "INSERT INTO " + TABLE + " (id) VALUES (3)");

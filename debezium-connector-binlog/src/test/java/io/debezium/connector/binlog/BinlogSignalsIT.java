@@ -44,7 +44,9 @@ public abstract class BinlogSignalsIT<C extends SourceConnector> extends Abstrac
     protected static final String SERVER_NAME = "is_test";
     protected static final Path SCHEMA_HISTORY_PATH = Files.createTestingPath("file-schema-history-is.txt")
             .toAbsolutePath();
-    protected final UniqueDatabase DATABASE = TestHelper.getUniqueDatabase(SERVER_NAME, "incremental_snapshot-test").withDbHistoryPath(SCHEMA_HISTORY_PATH);
+    protected final UniqueDatabase DATABASE = TestHelper.getUniqueDatabase(SERVER_NAME, "incremental_snapshot-test")
+            .withBinlogMetadataKeyColumns("$DBNAME$\\.a42:pk1,pk2,pk3,pk4;$DBNAME$\\.debezium_signal:id")
+            .withDbHistoryPath(SCHEMA_HISTORY_PATH);
     protected static StrimziKafkaCluster kafkaCluster;
 
     @BeforeAll

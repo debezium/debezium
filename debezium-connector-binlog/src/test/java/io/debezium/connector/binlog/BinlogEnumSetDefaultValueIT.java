@@ -102,7 +102,7 @@ public abstract class BinlogEnumSetDefaultValueIT<C extends SourceConnector> ext
             final Object storedValue = after.getWithoutDefault(column);
             assertions.assertThat(after.schema().field(column).schema().defaultValue())
                     .as("Schema default of %s, %s", COLUMNS.get(index), description)
-                    .isEqualTo(storedValue);
+                    .isEqualTo(expectedSchemaDefault(record, storedValue));
         }
     }
 

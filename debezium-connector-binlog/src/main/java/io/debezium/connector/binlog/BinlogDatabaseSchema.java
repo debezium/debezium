@@ -7,9 +7,12 @@ package io.debezium.connector.binlog;
 
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.BitSet;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.regex.Pattern;
@@ -17,9 +20,16 @@ import java.util.regex.Pattern;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.github.shyiko.mysql.binlog.event.TableMapEventData;
+import com.github.shyiko.mysql.binlog.event.TableMapEventMetadata;
+
+import io.debezium.DebeziumException;
 import io.debezium.config.CommonConnectorConfig;
+import io.debezium.connector.binlog.charset.BinlogCharsetRegistry;
 import io.debezium.connector.binlog.jdbc.BinlogSystemVariables;
+import io.debezium.connector.binlog.metadata.BinlogMetadataTableBuilder;
 import io.debezium.connector.common.CdcSourceTaskContext;
+import io.debezium.relational.Column;
 import io.debezium.relational.CustomConverterRegistry;
 import io.debezium.relational.DefaultValueConverter;
 import io.debezium.relational.HistorizedRelationalDatabaseSchema;
@@ -66,6 +76,8 @@ public abstract class BinlogDatabaseSchema<P extends BinlogPartition, O extends 
     private final BinlogConnectorConfig connectorConfig;
     private final V valueConverter;
     private final boolean tableIdCaseInsensitive;
+    private final BinlogMetadataTableBuilder metadataTableBuilder;
+    private final Map<TableId, TableMapMetadataSnapshot> tablesRegisteredFromBinlogMetadata = new ConcurrentHashMap<>();
 
     /**
      * Creates a binlog-connector based relational schema based on the supplied configuration. The DDL
@@ -106,6 +118,8 @@ public abstract class BinlogDatabaseSchema<P extends BinlogPartition, O extends 
         this.filters = connectorConfig.getTableFilters();
         this.valueConverter = valueConverter;
         this.tableIdCaseInsensitive = tableIdCaseInsensitive;
+        this.metadataTableBuilder = new BinlogMetadataTableBuilder(
+                () -> connectorConfig.getServiceRegistry().tryGetService(BinlogCharsetRegistry.class));
     }
 
     /**
@@ -227,6 +241,207 @@ public abstract class BinlogDatabaseSchema<P extends BinlogPartition, O extends 
     }
 
     /**
+     * Validates that a captured table has a key that can be selected without a schema history.
+     * DDL parsing can select a nullable unique index as a key, but TABLE_MAP metadata cannot recover it.
+     *
+     * @param table the table to validate; never null
+     * @throws DebeziumException if the captured table has neither a recoverable primary key nor an explicit message key
+     */
+    public void validateBinlogMetadataKey(Table table) {
+        if (!connectorConfig.isBinlogMetadataBasedSchema() || !filters.dataCollectionFilter().isIncluded(table.id())) {
+            return;
+        }
+
+        final var keyMapper = connectorConfig.getKeyMapper();
+        if (keyMapper != null) {
+            // Remove the implicit key so an unmatched configuration cannot pass through the mapper's PK fallback.
+            final Table tableWithoutKey = table.edit().setPrimaryKeyNames(List.of()).create();
+            if (!keyMapper.getKeyColumns(tableWithoutKey).isEmpty()) {
+                return;
+            }
+        }
+
+        final List<Column> primaryKeyColumns = table.primaryKeyColumns();
+        if (!primaryKeyColumns.isEmpty() && primaryKeyColumns.stream().noneMatch(Column::isOptional)) {
+            return;
+        }
+
+        throw new DebeziumException("Table '" + table.id() + "' cannot be captured with '"
+                + BinlogConnectorConfig.BINLOG_METADATA_BASED_SCHEMA.name() + "=true': a primary key reported in TABLE_MAP metadata "
+                + "or a matching '" + BinlogConnectorConfig.MSG_KEY_COLUMNS.name() + "' configuration is required. "
+                + "Nullable unique indexes are not included in TABLE_MAP metadata. Add a primary key, configure message.key.columns "
+                + "for this table, or disable binlog.metadata.based.schema.");
+    }
+
+    private List<String> keyColumnNames(Table table) {
+        final var keyMapper = connectorConfig.getKeyMapper();
+        final List<Column> keyColumns = keyMapper != null ? keyMapper.getKeyColumns(table) : table.primaryKeyColumns();
+        return keyColumns.stream().map(Column::name).toList();
+    }
+
+    /**
+     * Reconstruct and register a table definition from the FULL metadata carried by a binlog
+     * {@code TABLE_MAP} event. This is used by the opt-in binlog-metadata-based schema mode
+     * (see {@link BinlogConnectorConfig#BINLOG_METADATA_BASED_SCHEMA}) where the
+     * streaming schema is derived from the log itself rather than from a persisted schema history
+     * topic, analogous to how the PostgreSQL connector rebuilds schema from pgoutput relation
+     * messages.
+     *
+     * @param metadata the {@code TABLE_MAP} event data, which must include FULL column metadata; never null
+     * @return true if the table is captured and was (re)registered; false if excluded by the filters
+     * @throws IllegalStateException if the event lacks FULL metadata (i.e. {@code binlog_row_metadata} is not FULL)
+     */
+    public boolean registerTableFromBinlogMetadata(TableMapEventData metadata) {
+        final TableId tableId = new TableId(metadata.getDatabase(), null, metadata.getTable());
+        if (!filters.dataCollectionFilter().isIncluded(tableId)) {
+            return false;
+        }
+        // Rebuild after either parsed DDL invalidates the registration or TABLE_MAP metadata changes.
+        // The latter also catches schema changes made with sql_log_bin=OFF.
+        final TableMapMetadataSnapshot registered = tablesRegisteredFromBinlogMetadata.get(tableId);
+        if (registered != null && registered.matches(metadata) && schemaFor(tableId) != null) {
+            return true;
+        }
+        final Table table = metadataTableBuilder.build(tableId, metadata);
+        validateBinlogMetadataKey(table);
+        final Table previousTable = tableFor(tableId);
+        if (registered == null && previousTable != null) {
+            final List<String> previousKeyColumns = keyColumnNames(previousTable);
+            final List<String> reconstructedKeyColumns = keyColumnNames(table);
+            if (!previousKeyColumns.isEmpty() && !previousKeyColumns.equals(reconstructedKeyColumns)) {
+                throw new DebeziumException("Key columns for table '" + tableId + "' reconstructed from TABLE_MAP metadata "
+                        + reconstructedKeyColumns + " differ from the snapshot or DDL key columns " + previousKeyColumns
+                        + ". Configure message.key.columns explicitly or add a primary key to use binlog.metadata.based.schema.");
+            }
+        }
+        refresh(table);
+        tablesRegisteredFromBinlogMetadata.put(tableId, TableMapMetadataSnapshot.of(metadata));
+        return true;
+    }
+
+    /**
+     * Snapshot of the {@code TABLE_MAP} fields the {@link BinlogMetadataTableBuilder} consumes, used to
+     * detect whether a newly received event still structurally matches the registered schema.
+     */
+    private static final class TableMapMetadataSnapshot {
+
+        private final byte[] columnTypes;
+        private final int[] columnMetadata;
+        private final BitSet columnNullability;
+        private final List<String> columnNames;
+        private final BitSet signedness;
+        private final List<Integer> columnCharsets;
+        private final Integer defaultCharsetCollation;
+        private final Map<Integer, Integer> defaultCharsetOverrides;
+        private final List<Integer> enumAndSetColumnCharsets;
+        private final Integer enumAndSetDefaultCharsetCollation;
+        private final Map<Integer, Integer> enumAndSetDefaultCharsetOverrides;
+        private final List<String[]> enumStrValues;
+        private final List<String[]> setStrValues;
+        private final List<Integer> geometryTypes;
+        private final List<Integer> vectorDimensionality;
+        private final List<Integer> simplePrimaryKeys;
+        private final Map<Integer, Integer> primaryKeysWithPrefix;
+
+        private TableMapMetadataSnapshot(TableMapEventData data, TableMapEventMetadata meta) {
+            this.columnTypes = data.getColumnTypes() != null ? data.getColumnTypes().clone() : null;
+            this.columnMetadata = data.getColumnMetadata() != null ? data.getColumnMetadata().clone() : null;
+            this.columnNullability = data.getColumnNullability() != null ? (BitSet) data.getColumnNullability().clone() : null;
+            this.columnNames = meta.getColumnNames();
+            this.signedness = meta.getSignedness() != null ? (BitSet) meta.getSignedness().clone() : null;
+            this.columnCharsets = meta.getColumnCharsets();
+            final TableMapEventMetadata.DefaultCharset defaultCharset = meta.getDefaultCharset();
+            this.defaultCharsetCollation = defaultCharset != null ? defaultCharset.getDefaultCharsetCollation() : null;
+            this.defaultCharsetOverrides = defaultCharset != null ? defaultCharset.getCharsetCollations() : null;
+            final TableMapEventMetadata.DefaultCharset enumAndSetDefaultCharset = meta.getEnumAndSetDefaultCharset();
+            this.enumAndSetColumnCharsets = meta.getEnumAndSetColumnCharsets();
+            this.enumAndSetDefaultCharsetCollation = enumAndSetDefaultCharset != null ? enumAndSetDefaultCharset.getDefaultCharsetCollation() : null;
+            this.enumAndSetDefaultCharsetOverrides = enumAndSetDefaultCharset != null ? enumAndSetDefaultCharset.getCharsetCollations() : null;
+            this.enumStrValues = meta.getEnumStrValues();
+            this.setStrValues = meta.getSetStrValues();
+            this.geometryTypes = meta.getGeometryTypes();
+            this.vectorDimensionality = meta.getVectorDimensionality();
+            this.simplePrimaryKeys = meta.getSimplePrimaryKeys();
+            this.primaryKeysWithPrefix = meta.getPrimaryKeysWithPrefix();
+        }
+
+        static TableMapMetadataSnapshot of(TableMapEventData data) {
+            return new TableMapMetadataSnapshot(data, data.getEventMetadata());
+        }
+
+        boolean matches(TableMapEventData data) {
+            final TableMapEventMetadata meta = data.getEventMetadata();
+            if (meta == null) {
+                return false;
+            }
+            final TableMapEventMetadata.DefaultCharset defaultCharset = meta.getDefaultCharset();
+            final TableMapEventMetadata.DefaultCharset enumAndSetDefaultCharset = meta.getEnumAndSetDefaultCharset();
+            return Arrays.equals(columnTypes, data.getColumnTypes())
+                    && Arrays.equals(columnMetadata, data.getColumnMetadata())
+                    && Objects.equals(columnNullability, data.getColumnNullability())
+                    && Objects.equals(columnNames, meta.getColumnNames())
+                    && Objects.equals(signedness, meta.getSignedness())
+                    && Objects.equals(columnCharsets, meta.getColumnCharsets())
+                    && Objects.equals(defaultCharsetCollation, defaultCharset != null ? defaultCharset.getDefaultCharsetCollation() : null)
+                    && Objects.equals(defaultCharsetOverrides, defaultCharset != null ? defaultCharset.getCharsetCollations() : null)
+                    && Objects.equals(enumAndSetColumnCharsets, meta.getEnumAndSetColumnCharsets())
+                    && Objects.equals(enumAndSetDefaultCharsetCollation, enumAndSetDefaultCharset != null ? enumAndSetDefaultCharset.getDefaultCharsetCollation() : null)
+                    && Objects.equals(enumAndSetDefaultCharsetOverrides, enumAndSetDefaultCharset != null ? enumAndSetDefaultCharset.getCharsetCollations() : null)
+                    && stringArrayListsEqual(enumStrValues, meta.getEnumStrValues())
+                    && stringArrayListsEqual(setStrValues, meta.getSetStrValues())
+                    && Objects.equals(geometryTypes, meta.getGeometryTypes())
+                    && Objects.equals(vectorDimensionality, meta.getVectorDimensionality())
+                    && Objects.equals(simplePrimaryKeys, meta.getSimplePrimaryKeys())
+                    && Objects.equals(primaryKeysWithPrefix, meta.getPrimaryKeysWithPrefix());
+        }
+
+        private static boolean stringArrayListsEqual(List<String[]> left, List<String[]> right) {
+            if (left == null || right == null) {
+                return left == right;
+            }
+            if (left.size() != right.size()) {
+                return false;
+            }
+            for (int i = 0; i < left.size(); i++) {
+                if (!Arrays.equals(left.get(i), right.get(i))) {
+                    return false;
+                }
+            }
+            return true;
+        }
+    }
+
+    /**
+     * Mark tables affected by parsed DDL statements as dirty so that the next {@code TABLE_MAP} event
+     * rebuilds their schema from the binlog metadata. Statements that cannot be attributed to a specific
+     * table (for example database-wide statements) conservatively clear the whole registry; the only cost
+     * of over-invalidation is a single rebuild per table on its next TABLE_MAP event.
+     */
+    private void invalidateBinlogMetadataRegistrations(DdlChanges ddlChanges) {
+        if (tablesRegisteredFromBinlogMetadata.isEmpty() || ddlChanges.isEmpty()) {
+            return;
+        }
+        ddlChanges.getEventsByDatabase((String dbName, List<DdlParserListener.Event> events) -> events.forEach(event -> {
+            if (event instanceof DdlParserListener.SetVariableEvent) {
+                // Variable assignments do not change any table structure.
+                return;
+            }
+            final TableId tableId = getTableId(event);
+            if (tableId == null) {
+                tablesRegisteredFromBinlogMetadata.clear();
+                return;
+            }
+            tablesRegisteredFromBinlogMetadata.remove(tableId);
+            if (event instanceof DdlParserListener.TableAlteredEvent alteredEvent) {
+                final TableId previousTableId = alteredEvent.previousTableId();
+                if (previousTableId != null) {
+                    tablesRegisteredFromBinlogMetadata.remove(previousTableId);
+                }
+            }
+        }));
+    }
+
+    /**
      * Return the table id associated with connector-specific table number.
      *
      * @param tableNumber the table number from binlog
@@ -343,10 +558,19 @@ public abstract class BinlogDatabaseSchema<P extends BinlogPartition, O extends 
         catch (ParsingException | MultipleParsingExceptions e) {
             if (skipUnparseableDdlStatements()) {
                 LOGGER.warn("Ignoring unparseable DDL statement '{}'", ddlStatements, e);
+                if (connectorConfig.isBinlogMetadataBasedSchema()) {
+                    // The affected tables are unknown, so conservatively mark everything dirty; each table is
+                    // rebuilt from its next TABLE_MAP event.
+                    tablesRegisteredFromBinlogMetadata.clear();
+                }
             }
             else {
                 throw e;
             }
+        }
+
+        if (connectorConfig.isBinlogMetadataBasedSchema()) {
+            invalidateBinlogMetadataRegistrations(ddlChanges);
         }
 
         // No need to send schema events or store DDL if no table has changed

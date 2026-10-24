@@ -212,7 +212,7 @@ public abstract class BinlogBitDefaultValueIT<C extends SourceConnector> extends
             assertions.assertThat(asUnsignedDecimal(after.getWithoutDefault(column)))
                     .as("Raw row value: %s", description).isEqualTo(storedValues.get(column));
             assertions.assertThat(asUnsignedDecimal(schema.defaultValue()))
-                    .as("Schema default: %s", description).isEqualTo(expectedDefault);
+                    .as("Schema default: %s", description).isEqualTo(expectedSchemaDefault(record, expectedDefault));
             assertions.assertThat(schema.isOptional()).as("Optional: %s", description).isEqualTo(testCase.nullable());
             assertions.assertThat(schema.type()).as("Schema type: %s", description)
                     .isEqualTo(testCase.width() == 1 ? Schema.Type.BOOLEAN : Schema.Type.BYTES);

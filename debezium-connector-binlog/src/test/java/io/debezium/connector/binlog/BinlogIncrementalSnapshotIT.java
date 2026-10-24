@@ -102,7 +102,8 @@ public abstract class BinlogIncrementalSnapshotIT<C extends SourceConnector>
                 .with(BinlogConnectorConfig.INCLUDE_SCHEMA_CHANGES, false)
                 .with(BinlogConnectorConfig.SIGNAL_DATA_COLLECTION, DATABASE.qualifiedTableName("debezium_signal"))
                 .with(CommonConnectorConfig.SIGNAL_POLL_INTERVAL_MS, 1)
-                .with(RelationalDatabaseConnectorConfig.MSG_KEY_COLUMNS, String.format("%s:%s", DATABASE.qualifiedTableName("a42"), "pk1,pk2,pk3,pk4"))
+                .with(RelationalDatabaseConnectorConfig.MSG_KEY_COLUMNS,
+                        String.format("%s:%s;%s:id", DATABASE.qualifiedTableName("a42"), "pk1,pk2,pk3,pk4", DATABASE.qualifiedTableName("debezium_signal")))
                 .with(BinlogConnectorConfig.INCREMENTAL_SNAPSHOT_CHUNK_SIZE, 10)
                 .with(BinlogConnectorConfig.INCREMENTAL_SNAPSHOT_ALLOW_SCHEMA_CHANGES, true)
                 .with(CommonConnectorConfig.SCHEMA_NAME_ADJUSTMENT_MODE, SchemaNameAdjustmentMode.AVRO);
@@ -126,7 +127,8 @@ public abstract class BinlogIncrementalSnapshotIT<C extends SourceConnector>
                 .with(BinlogConnectorConfig.SIGNAL_DATA_COLLECTION, DATABASE.qualifiedTableName("debezium_signal"))
                 .with(CommonConnectorConfig.SIGNAL_POLL_INTERVAL_MS, 5)
                 .with(BinlogConnectorConfig.TABLE_INCLUDE_LIST, tableIncludeList)
-                .with(RelationalDatabaseConnectorConfig.MSG_KEY_COLUMNS, String.format("%s:%s", DATABASE.qualifiedTableName("a42"), "pk1,pk2,pk3,pk4"))
+                .with(RelationalDatabaseConnectorConfig.MSG_KEY_COLUMNS,
+                        String.format("%s:%s;%s:id", DATABASE.qualifiedTableName("a42"), "pk1,pk2,pk3,pk4", DATABASE.qualifiedTableName("debezium_signal")))
                 .with(BinlogConnectorConfig.INCREMENTAL_SNAPSHOT_CHUNK_SIZE, 10)
                 .with(BinlogConnectorConfig.INCREMENTAL_SNAPSHOT_ALLOW_SCHEMA_CHANGES, true)
                 .with(SchemaHistory.STORE_ONLY_CAPTURED_TABLES_DDL, storeOnlyCapturedDdl)

@@ -43,6 +43,7 @@ import io.debezium.config.Configuration;
 import io.debezium.config.EnumeratedValue;
 import io.debezium.config.Field;
 import io.debezium.connector.binlog.BinlogConnectorConfig.SnapshotMode;
+import io.debezium.connector.binlog.junit.SkipWhenSchemaHistoryDisabled;
 import io.debezium.connector.binlog.util.BinlogTestConnection;
 import io.debezium.connector.binlog.util.TestHelper;
 import io.debezium.connector.binlog.util.UniqueDatabase;
@@ -866,6 +867,7 @@ public abstract class BinlogConnectorIT<C extends SourceConnector, P extends Bin
 
     @Test
     @FixFor("DBZ-1246")
+    @SkipWhenSchemaHistoryDisabled(reason = "Asserts a null key before a UNIQUE index becomes eligible; metadata mode requires a PK or explicit message key")
     public void shouldProcessCreateUniqueIndex() throws SQLException, InterruptedException {
         Files.delete(SCHEMA_HISTORY_PATH);
 

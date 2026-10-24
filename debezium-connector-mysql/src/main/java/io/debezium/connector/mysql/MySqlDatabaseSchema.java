@@ -16,6 +16,7 @@ import io.debezium.connector.binlog.BinlogDatabaseSchema;
 import io.debezium.connector.binlog.charset.BinlogCharsetRegistry;
 import io.debezium.connector.common.CdcSourceTaskContext;
 import io.debezium.connector.mysql.antlr.MySqlAntlrDdlParser;
+import io.debezium.connector.mysql.antlr.MySqlPtAntlrDdlParser;
 import io.debezium.connector.mysql.jdbc.MySqlDefaultValueConverter;
 import io.debezium.connector.mysql.jdbc.MySqlValueConverters;
 import io.debezium.relational.CustomConverterRegistry;
@@ -65,23 +66,27 @@ public class MySqlDatabaseSchema extends BinlogDatabaseSchema<MySqlPartition, My
     }
 
     private DdlParser createOracleParser(BinlogConnectorConfig connectorConfig) {
-        return new MySqlAntlrDdlParser(
+        final var parser = new MySqlAntlrDdlParser(
                 true,
                 false,
                 connectorConfig.isSchemaCommentsHistoryEnabled(),
                 getTableFilter(),
                 connectorConfig.getServiceRegistry().getService(BinlogCharsetRegistry.class),
                 connectorConfig.getRealHandlingMode());
+        parser.setEmitChangesForMissingAlteredTables(connectorConfig.isBinlogMetadataBasedSchema());
+        return parser;
     }
 
     private DdlParser createLegacyPtParser(BinlogConnectorConfig connectorConfig) {
-        return new io.debezium.connector.mysql.antlr.MySqlPtAntlrDdlParser(
+        final var parser = new MySqlPtAntlrDdlParser(
                 true,
                 false,
                 connectorConfig.isSchemaCommentsHistoryEnabled(),
                 getTableFilter(),
                 connectorConfig.getServiceRegistry().getService(BinlogCharsetRegistry.class),
                 connectorConfig.getRealHandlingMode());
+        parser.setEmitChangesForMissingAlteredTables(connectorConfig.isBinlogMetadataBasedSchema());
+        return parser;
     }
 
 }

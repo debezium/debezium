@@ -39,6 +39,7 @@ import io.debezium.config.CommonConnectorConfig.EventProcessingFailureHandlingMo
 import io.debezium.config.Configuration;
 import io.debezium.connector.binlog.junit.SkipWhenDatabaseIs;
 import io.debezium.connector.binlog.junit.SkipWhenDatabaseIs.Type;
+import io.debezium.connector.binlog.junit.SkipWhenSchemaHistoryDisabled;
 import io.debezium.connector.binlog.util.BinlogTestConnection;
 import io.debezium.connector.binlog.util.TestHelper;
 import io.debezium.connector.binlog.util.UniqueDatabase;
@@ -70,6 +71,7 @@ public abstract class BinlogStreamingSourceIT<C extends SourceConnector> extends
 
     protected static final Path SCHEMA_HISTORY_PATH = Files.createTestingPath("file-schema-history-binlog.txt").toAbsolutePath();
     protected final UniqueDatabase DATABASE = TestHelper.getUniqueDatabase("logical_server_name", "connector_test_ro")
+            .withBinlogMetadataKeyColumns("$DBNAME$\\.test_heartbeat_table:text;regression_test_.*\\.(dbz_85_fractest|dbz_342_timetest):c1")
             .withDbHistoryPath(SCHEMA_HISTORY_PATH);
 
     protected Configuration config;
@@ -513,6 +515,9 @@ public abstract class BinlogStreamingSourceIT<C extends SourceConnector> extends
     }
 
     @Test
+    @SkipWhenSchemaHistoryDisabled(reason = "Expects the connector to fail when the row layout no longer matches the recovered schema; the binlog "
+            + "metadata mode rebuilds the schema from the TABLE_MAP event that precedes every row event, so the provoked inconsistency cannot "
+            + "occur")
     void shouldFailOnSchemaInconsistency() throws Exception {
         assertThrows(ConnectException.class, () -> {
             inconsistentSchema(null);

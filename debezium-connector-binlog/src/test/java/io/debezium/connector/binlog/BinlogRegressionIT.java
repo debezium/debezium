@@ -59,6 +59,9 @@ public abstract class BinlogRegressionIT<C extends SourceConnector> extends Abst
 
     private static final Path SCHEMA_HISTORY_PATH = Files.createTestingPath("file-schema-history-regression.txt").toAbsolutePath();
     private final UniqueDatabase DATABASE = TestHelper.getUniqueDatabase("regression", "regression_test")
+            .withBinlogMetadataKeyColumns("$DBNAME$\\.dbz84_integer_types_table:colTinyIntA;"
+                    + "$DBNAME$\\.(dbz_85_fractest|dbz_100_enumsettest|dbz_114_zerovaluetest|dbz_1318_zerovaluetest|dbz_123_bitvaluetest):c1;"
+                    + "$DBNAME$\\.dbz_342_timetest:c11")
             .withDbHistoryPath(SCHEMA_HISTORY_PATH);
 
     private static final TemporalAdjuster ADJUSTER = BinlogValueConverters::adjustTemporal;

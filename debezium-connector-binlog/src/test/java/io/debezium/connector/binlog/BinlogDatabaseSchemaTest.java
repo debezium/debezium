@@ -6,10 +6,14 @@
 package io.debezium.connector.binlog;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatCode;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import java.nio.file.Path;
+import java.sql.Types;
 import java.time.Instant;
+import java.util.BitSet;
 import java.util.List;
 import java.util.Set;
 
@@ -19,13 +23,19 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
+import com.github.shyiko.mysql.binlog.event.TableMapEventData;
+import com.github.shyiko.mysql.binlog.event.TableMapEventMetadata;
+
+import io.debezium.DebeziumException;
 import io.debezium.config.Configuration;
 import io.debezium.connector.binlog.jdbc.BinlogSystemVariables;
 import io.debezium.connector.binlog.util.TestHelper;
 import io.debezium.connector.binlog.util.UniqueDatabase;
+import io.debezium.data.EnumeratedValues;
 import io.debezium.doc.FixFor;
 import io.debezium.pipeline.spi.OffsetContext;
 import io.debezium.pipeline.spi.Offsets;
+import io.debezium.relational.Column;
 import io.debezium.relational.Table;
 import io.debezium.relational.TableId;
 import io.debezium.relational.TableSchema;
@@ -47,6 +57,7 @@ public abstract class BinlogDatabaseSchemaTest<C extends BinlogConnectorConfig, 
             .withDbHistoryPath(TEST_FILE_PATH);
 
     private static final String SERVER_NAME = "testServer";
+    private static final TableId METADATA_KEY_TABLE_ID = new TableId("connector_test", null, "metadataKeys");
     private final String ddlStatements;
 
     protected S schema;
@@ -64,6 +75,149 @@ public abstract class BinlogDatabaseSchemaTest<C extends BinlogConnectorConfig, 
     protected abstract C getConnectorConfig(Configuration config);
 
     protected abstract S getSchema(Configuration config);
+
+    @Test
+    void shouldRejectMissingBinlogMetadataKey() {
+        schema = getSchema(metadataKeyConfig().build());
+        assertThatThrownBy(() -> schema.validateBinlogMetadataKey(metadataKeyTable()))
+                .isInstanceOf(DebeziumException.class)
+                .hasMessageContaining(METADATA_KEY_TABLE_ID.toString())
+                .hasMessageContaining("message.key.columns");
+    }
+
+    @Test
+    void shouldRejectNullableUniqueBinlogMetadataKey() {
+        schema = getSchema(metadataKeyConfig().build());
+        final Table table = metadataKeyTable().edit().setPrimaryKeyNames("candidate").create();
+        assertThatThrownBy(() -> schema.validateBinlogMetadataKey(table))
+                .isInstanceOf(DebeziumException.class)
+                .hasMessageContaining("Nullable unique indexes");
+    }
+
+    @Test
+    void shouldRejectUnmatchedBinlogMetadataKeyConfiguration() {
+        schema = getSchema(metadataKeyConfig()
+                .with(BinlogConnectorConfig.MSG_KEY_COLUMNS, "other.table:id;connector_test.metadataKeys:missing")
+                .build());
+        final Table table = metadataKeyTable().edit().setPrimaryKeyNames("candidate").create();
+        assertThatThrownBy(() -> schema.validateBinlogMetadataKey(table))
+                .isInstanceOf(DebeziumException.class);
+    }
+
+    @Test
+    void shouldAllowExplicitBinlogMetadataKey() {
+        schema = getSchema(metadataKeyConfig()
+                .with(BinlogConnectorConfig.MSG_KEY_COLUMNS, "connector_test.metadataKeys:candidate")
+                .build());
+        assertThatCode(() -> schema.validateBinlogMetadataKey(metadataKeyTable())).doesNotThrowAnyException();
+    }
+
+    @Test
+    void shouldAllowNonNullableBinlogMetadataKey() {
+        schema = getSchema(metadataKeyConfig().build());
+        final Table table = metadataKeyTable().edit().setPrimaryKeyNames("id").create();
+        assertThatCode(() -> schema.validateBinlogMetadataKey(table)).doesNotThrowAnyException();
+    }
+
+    @Test
+    void shouldAllowMissingKeyWhenBinlogMetadataModeIsDisabled() {
+        schema = getSchema(metadataKeyConfig().with(BinlogConnectorConfig.BINLOG_METADATA_BASED_SCHEMA, false).build());
+        assertThatCode(() -> schema.validateBinlogMetadataKey(metadataKeyTable())).doesNotThrowAnyException();
+    }
+
+    @Test
+    void shouldIgnoreFilteredTablesInBinlogMetadataKeyValidation() {
+        schema = getSchema(metadataKeyConfig().build());
+        final Table table = metadataKeyTable().edit().tableId(new TableId("connector_test", null, "excluded")).create();
+        assertThatCode(() -> schema.validateBinlogMetadataKey(table)).doesNotThrowAnyException();
+        final TableMapEventData metadata = metadataKeyTableMap();
+        metadata.setTable("excluded");
+        metadata.getEventMetadata().setSimplePrimaryKeys(List.of());
+        assertThat(schema.registerTableFromBinlogMetadata(metadata)).isFalse();
+    }
+
+    @Test
+    void shouldRejectBinlogMetadataKeyAfterPrimaryKeyDropped() {
+        schema = getSchema(metadataKeyConfig().build());
+        final TableMapEventData metadata = metadataKeyTableMap();
+        assertThat(schema.registerTableFromBinlogMetadata(metadata)).isTrue();
+        metadata.getEventMetadata().setSimplePrimaryKeys(List.of());
+        assertThatThrownBy(() -> schema.registerTableFromBinlogMetadata(metadata))
+                .isInstanceOf(DebeziumException.class);
+    }
+
+    @Test
+    void shouldRejectInconsistentBinlogMetadataKey() {
+        schema = getSchema(metadataKeyConfig().build());
+        schema.refresh(metadataKeyTable().edit().setPrimaryKeyNames("candidate").create());
+        assertThatThrownBy(() -> schema.registerTableFromBinlogMetadata(metadataKeyTableMap()))
+                .isInstanceOf(DebeziumException.class)
+                .hasMessageContaining("differ from the snapshot or DDL key columns");
+    }
+
+    @Test
+    void shouldPreserveExplicitBinlogMetadataKeyAcrossRebuild() {
+        schema = getSchema(metadataKeyConfig()
+                .with(BinlogConnectorConfig.MSG_KEY_COLUMNS, "connector_test.metadataKeys:candidate")
+                .build());
+        schema.refresh(metadataKeyTable().edit().setPrimaryKeyNames("candidate").create());
+        assertThat(schema.registerTableFromBinlogMetadata(metadataKeyTableMap())).isTrue();
+        assertThat(schema.schemaFor(METADATA_KEY_TABLE_ID).keySchema().fields())
+                .extracting(Field::name).containsExactly("candidate");
+    }
+
+    @Test
+    void shouldPreserveDecodedEnumAndSetMetadataValues() {
+        schema = getSchema(metadataKeyConfig().build());
+        final String[] options = { "plain", "a''b", "'quoted'", "\"quoted\"", "a\\'b", "a\\nb", "`quoted`", "" };
+        final TableMapEventData metadata = metadataKeyTableMap();
+        metadata.getEventMetadata().setColumnNames(List.of("id", "e", "s"));
+        metadata.getEventMetadata().setEnumStrValues(List.<String[]> of(options));
+        metadata.getEventMetadata().setSetStrValues(List.<String[]> of(options));
+        metadata.setColumnTypes(new byte[]{ 3, (byte) 247, (byte) 248 });
+        metadata.setColumnMetadata(new int[]{ 0, 1, 1 });
+        metadata.setColumnNullability(new BitSet());
+        assertThat(schema.registerTableFromBinlogMetadata(metadata)).isTrue();
+
+        final var tableSchema = schema.schemaFor(METADATA_KEY_TABLE_ID);
+        for (int i = 0; i < options.length; i++) {
+            final var value = tableSchema.valueFromColumnData(new Object[]{ i, i + 1, 1L << i });
+            for (final var column : List.of("e", "s")) {
+                assertThat(value.getString(column)).as("Decoded %s option %s", column, i).isEqualTo(options[i]);
+                assertThat(value.schema().field(column).schema().parameters().get("allowed"))
+                        .isEqualTo(EnumeratedValues.toCommaSeparatedString(List.of(options)));
+            }
+        }
+    }
+
+    private Configuration.Builder metadataKeyConfig() {
+        return DATABASE.defaultConfig()
+                .with(BinlogConnectorConfig.BINLOG_METADATA_BASED_SCHEMA, true)
+                .with(BinlogConnectorConfig.TABLE_INCLUDE_LIST, "connector_test.metadataKeys");
+    }
+
+    private Table metadataKeyTable() {
+        return Table.editor().tableId(METADATA_KEY_TABLE_ID)
+                .addColumn(Column.editor().name("id").position(1).type("INT").jdbcType(Types.INTEGER).optional(false).create())
+                .addColumn(Column.editor().name("candidate").position(2).type("INT").jdbcType(Types.INTEGER).optional(true).create())
+                .create();
+    }
+
+    private TableMapEventData metadataKeyTableMap() {
+        final TableMapEventMetadata metadata = new TableMapEventMetadata();
+        metadata.setColumnNames(List.of("id", "candidate"));
+        metadata.setSimplePrimaryKeys(List.of(0));
+        final TableMapEventData data = new TableMapEventData();
+        data.setDatabase(METADATA_KEY_TABLE_ID.catalog());
+        data.setTable(METADATA_KEY_TABLE_ID.table());
+        data.setColumnTypes(new byte[]{ 3, 3 });
+        data.setColumnMetadata(new int[]{ 0, 0 });
+        final BitSet nullability = new BitSet();
+        nullability.set(1);
+        data.setColumnNullability(nullability);
+        data.setEventMetadata(metadata);
+        return data;
+    }
 
     @AfterEach
     void afterEach() {

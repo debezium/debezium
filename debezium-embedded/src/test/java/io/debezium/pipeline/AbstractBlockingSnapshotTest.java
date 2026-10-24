@@ -411,7 +411,7 @@ public abstract class AbstractBlockingSnapshotTest<T extends SourceConnector> ex
                 .build(), null, (record) -> {
 
                     if (record.key() != null) {
-                        Testing.print("Consuming record with key {" + ((Struct) record.key()).get(pkFieldName()) + "} from topic {" + record.topic() + "} "
+                        Testing.print("Consuming record with key {" + record.key() + "} from topic {" + record.topic() + "} "
                                 + ((Struct) record.value()).get("source"));
                     }
                     else {

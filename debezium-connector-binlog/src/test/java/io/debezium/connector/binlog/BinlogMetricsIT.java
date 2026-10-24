@@ -33,7 +33,9 @@ public abstract class BinlogMetricsIT<C extends SourceConnector> extends Abstrac
 
     private static final Path SCHEMA_HISTORY_PATH = Files.createTestingPath("file-schema-history-metrics.txt").toAbsolutePath();
     private static final String SERVER_NAME = "myserver";
-    private final UniqueDatabase DATABASE = TestHelper.getUniqueDatabase(SERVER_NAME, "connector_metrics_test").withDbHistoryPath(SCHEMA_HISTORY_PATH);
+    private final UniqueDatabase DATABASE = TestHelper.getUniqueDatabase(SERVER_NAME, "connector_metrics_test")
+            .withBinlogMetadataKeyColumns("$DBNAME$\\.debezium_signal:id")
+            .withDbHistoryPath(SCHEMA_HISTORY_PATH);
 
     private static final String INSERT1 = "INSERT INTO simple (val) VALUES (25);";
     private static final String INSERT2 = "INSERT INTO simple (val) VALUES (50);";
