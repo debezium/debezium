@@ -179,6 +179,25 @@ public class PostgresConnectorIT extends AbstractAsyncEngineConnectorTest {
     }
 
     @Test
+    @FixFor("debezium/dbz#2924")
+    void shouldNotOpenBeanRegistryConnectionWhenNotUsed() throws Exception {
+        TestHelper.execute(SETUP_TABLES_STMT);
+        start(PostgresConnector.class, TestHelper.defaultConfig().build());
+        assertConnectorIsRunning();
+        waitForStreamingRunning();
+
+        // Without post processors or a heartbeat query, only the main connection should stay open
+        try (PostgresConnection connection = TestHelper.create()) {
+            Awaitility.await()
+                    .during(3, TimeUnit.SECONDS)
+                    .atMost(TestHelper.waitTimeForRecords() * 10L, TimeUnit.SECONDS)
+                    .until(() -> connection.queryAndMap(
+                            "SELECT count(*) FROM pg_stat_activity WHERE application_name = '" + PostgresConnection.CONNECTION_GENERAL + "'",
+                            connection.singleResultMapper(rs -> rs.getLong(1), "Could not count connections")) == 1L);
+        }
+    }
+
+    @Test
     void shouldNotStartWithInvalidSlotConfigAndUserRoles() throws Exception {
         // Start with a clean slate and create database objects
         TestHelper.dropAllSchemas();
