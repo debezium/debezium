@@ -7,9 +7,11 @@ package io.debezium.connector.mariadb.jdbc;
 
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.time.DateTimeException;
 import java.time.LocalDateTime;
 import java.util.Objects;
 
+import io.debezium.connector.binlog.event.BinlogDateTimeValue;
 import io.debezium.connector.binlog.jdbc.BinlogFieldReader;
 import io.debezium.connector.mariadb.MariaDbConnectorConfig;
 import io.debezium.relational.Column;
@@ -55,11 +57,22 @@ public class MariaDbFieldReader extends BinlogFieldReader {
         if (Objects.isNull(value)) {
             return null;
         }
+        // The driver formats a DATETIME string with the year of era and in the JVM's default time zone, which changes the
+        // year zero and a value that does not exist in that time zone, so the value is read as a LocalDateTime instead
         if (isStructuredTemporalMode()) {
+            try {
+                final LocalDateTime dateTime = rs.getObject(columnIndex, LocalDateTime.class);
+                if (dateTime != null) {
+                    return new BinlogDateTimeValue(dateTime.getYear(), dateTime.getMonthValue(), dateTime.getDayOfMonth(),
+                            dateTime.getHour(), dateTime.getMinute(), dateTime.getSecond(), dateTime.getNano());
+                }
+            }
+            catch (DateTimeException e) {
+                // Not a valid date
+            }
+            // The driver returns zero values and invalid dates as stored
             return MariaDbValueConverters.stringToBinlogDateTimeValue(value);
         }
-        // The driver returns a DATETIME string in the JVM's default time zone, which changes a value that does not exist
-        // in that time zone, so the value is read as a LocalDateTime instead
         return MariaDbValueConverters.containsZeroValuesInDatePart(value, column, table)
                 ? null
                 : rs.getObject(columnIndex, LocalDateTime.class);
