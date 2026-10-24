@@ -5,6 +5,11 @@
  */
 package io.debezium.connector.binlog.jdbc;
 
+import java.util.Locale;
+import java.util.function.UnaryOperator;
+
+import io.debezium.relational.TableId;
+
 /**
  * The values of the {@code lower_case_table_names} system variable, which determines how the server stores and compares
  * database and table names.
@@ -50,5 +55,24 @@ public enum LowerCaseTableNames {
      */
     public boolean isCaseInsensitive() {
         return this != CASE_SENSITIVE;
+    }
+
+    /**
+     * Returns the identifier under which the server reports a table. With {@code 1}, the table name is lowercase;
+     * with {@code 2}, its declared case is preserved. Database names are resolved by the schema, which knows their
+     * declared names.
+     *
+     * @param tableId the table identifier; may be null
+     * @param databaseNameResolver resolves database names, including null names; may not be null
+     * @return the server table identifier, or null if the given identifier is null
+     */
+    public TableId toServerTableId(TableId tableId, UnaryOperator<String> databaseNameResolver) {
+        if (tableId == null || !isCaseInsensitive()) {
+            return tableId;
+        }
+        final String tableName = this == STORED_IN_LOWERCASE
+                ? tableId.table().toLowerCase(Locale.ROOT)
+                : tableId.table();
+        return new TableId(databaseNameResolver.apply(tableId.catalog()), tableId.schema(), tableName);
     }
 }

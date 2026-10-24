@@ -365,13 +365,7 @@ public abstract class BinlogDatabaseSchema<P extends BinlogPartition, O extends 
      * @return the table identifier as reported by the server, or null if the given identifier is null
      */
     protected TableId toServerTableId(TableId tableId) {
-        if (tableId == null || !lowerCaseTableNames.isCaseInsensitive()) {
-            return tableId;
-        }
-        final String tableName = lowerCaseTableNames == LowerCaseTableNames.STORED_IN_LOWERCASE
-                ? tableId.table().toLowerCase(Locale.ROOT)
-                : tableId.table();
-        return new TableId(toServerDatabaseName(tableId.catalog()), tableId.schema(), tableName);
+        return lowerCaseTableNames.toServerTableId(tableId, this::toServerDatabaseName);
     }
 
     /**
