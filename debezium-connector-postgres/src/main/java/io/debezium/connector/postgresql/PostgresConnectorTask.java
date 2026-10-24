@@ -171,12 +171,12 @@ public class PostgresConnectorTask extends BaseSourceTask<PostgresPartition, Pos
         final Snapshotter snapshotter = snapshotterService.getSnapshotter();
 
         try {
-            checkWalLevel(beanRegistryJdbcConnection, snapshotterService);
+            checkWalLevel(jdbcConnection, snapshotterService);
         }
         catch (SQLException e) {
 
-            LOGGER.error("Failed testing connection for {} with user '{}'", beanRegistryJdbcConnection.connectionString(),
-                    beanRegistryJdbcConnection.username(), e);
+            LOGGER.error("Failed testing connection for {} with user '{}'", jdbcConnection.connectionString(),
+                    jdbcConnection.username(), e);
         }
 
         // Validate guardrail limits for captured tables to prevent loading excessive table schemas into memory

@@ -142,6 +142,17 @@ public class PostgresConnectionIT {
     }
 
     @Test
+    @FixFor("debezium/dbz#2924")
+    void shouldNotConnectUntilDefaultValueConverterIsRequested() throws Exception {
+        try (PostgresConnection connection = TestHelper.createWithTypeRegistry()) {
+            assertFalse(connection.isConnected());
+
+            assertNotNull(connection.getDefaultValueConverter());
+            assertTrue(connection.isConnected());
+        }
+    }
+
+    @Test
     @FixFor("DBZ-934")
     @Disabled
     // Temporary slots no longer supported due to DBZ-2338
