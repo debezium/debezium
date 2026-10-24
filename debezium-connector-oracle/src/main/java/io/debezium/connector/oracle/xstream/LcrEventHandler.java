@@ -50,6 +50,13 @@ class LcrEventHandler implements XStreamLCRCallbackHandler {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(LcrEventHandler.class);
 
+    private static final int ERR_INVALID_PROCESSED_LOW_WATERMARK = 26876;
+
+    // Command types of the trailing pieces of a chunked XMLType row. XStream has no public constants for them.
+    private static final String XML_WRITE = "XML WRITE";
+    private static final String XML_DOC_START = "XML DOC_START";
+    private static final String XML_DOC_END = "XML DOC_END";
+
     private final OracleConnectorConfig connectorConfig;
     private final ErrorHandler errorHandler;
     private final EventDispatcher<OraclePartition, TableId> dispatcher;
@@ -63,6 +70,7 @@ class LcrEventHandler implements XStreamLCRCallbackHandler {
     private final Map<String, ChunkColumnValues> columnChunks;
     private RowLCR currentRow;
     private boolean skipChunksOfIgnoredRow;
+    private boolean watermarkRecorded;
 
     LcrEventHandler(OracleConnectorConfig connectorConfig, ErrorHandler errorHandler,
                     EventDispatcher<OraclePartition, TableId> dispatcher, Clock clock,
@@ -153,10 +161,28 @@ class LcrEventHandler implements XStreamLCRCallbackHandler {
             // the event can be safely dispatched. See processChunk below.
             currentRow = row;
         }
+        else if (isEmptyXmlPiece(row)) {
+            // XMLType chunks (XML DOC_START / XML WRITE / XML DOC_END) normally fold into a row LCR's chunk
+            // stream. One arrives standalone only when an attach lands inside the row's transaction (the
+            // legacy-offset fallback): a trailing piece of an already-emitted row, nothing to emit. Gated on
+            // empty old and new values, not the command type, so a hypothetical standalone XML WRITE that
+            // carried real values would fall through to dispatch rather than be dropped.
+            LOGGER.debug("Ignoring empty standalone XML piece {} at position {}", row.getCommandType(), new LcrPosition(row.getPosition()));
+        }
         else {
             // Since the row has no chunk data, it can be dispatched immediately.
             dispatchDataChangeEvent(row, null);
         }
+    }
+
+    private static boolean isEmptyXmlPiece(RowLCR row) {
+        final String command = row.getCommandType();
+        final boolean xmlPiece = XML_WRITE.equals(command) || XML_DOC_START.equals(command) || XML_DOC_END.equals(command);
+        return xmlPiece && isEmpty(row.getOldValues()) && isEmpty(row.getNewValues());
+    }
+
+    private static boolean isEmpty(ColumnValue[] values) {
+        return values == null || values.length == 0;
     }
 
     private void dispatchDataChangeEvent(RowLCR lcr, Map<String, Object> chunkValues) throws InterruptedException {
@@ -335,11 +361,11 @@ class LcrEventHandler implements XStreamLCRCallbackHandler {
         if (eventSource.getXsOut() == null) {
             return;
         }
+        final PositionAndScn message = eventSource.receivePublishedPosition();
+        if (message == null) {
+            return;
+        }
         try {
-            final PositionAndScn message = eventSource.receivePublishedPosition();
-            if (message == null) {
-                return;
-            }
             LOGGER.debug("Recording offsets to Oracle");
             if (message.position != null) {
                 if (LOGGER.isDebugEnabled()) {
@@ -363,9 +389,28 @@ class LcrEventHandler implements XStreamLCRCallbackHandler {
                 LOGGER.warn("Nothing in offsets could be recorded to Oracle");
                 return;
             }
+            watermarkRecorded = true;
             LOGGER.trace("Offsets recorded to Oracle");
         }
         catch (StreamsException e) {
+            if (e.getErrorCode() == ERR_INVALID_PROCESSED_LOW_WATERMARK) {
+                // ORA-26876: the position is below the server's processed low position, which it never moves
+                // back. Not upgrade-specific (an offset reset/rewind does it too) and harmless, since resume
+                // uses the stored Kafka offset, not this watermark. Before the first accepted watermark it is
+                // the expected upgrade catch-up (INFO, self-heals); after one, the offset moved backwards (WARN).
+                final LcrPosition behind = message.position != null ? message.position : new LcrPosition(message.scn);
+                if (watermarkRecorded) {
+                    LOGGER.warn("Outbound server {} rejected processed low position {} as behind the one already recorded; "
+                            + "the committed offset appears to have moved backwards (for example an offset reset). "
+                            + "Streaming continues from the server's position", connectorConfig.getXStreamOutboundServerName(), behind);
+                }
+                else {
+                    LOGGER.info("Outbound server {} processed low position is ahead of {} and was not moved back; "
+                            + "this is expected on the first start after an upgrade and clears once offsets advance past it",
+                            connectorConfig.getXStreamOutboundServerName(), behind);
+                }
+                return;
+            }
             throw new DebeziumException("Couldn't set processed low watermark", e);
         }
     }
