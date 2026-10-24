@@ -383,6 +383,13 @@ DELETE FROM %s
 |[[jdbc-history-schema-history-table-ddl]]<<jdbc-history-schema-history-table-ddl, `schema.history.internal.jdbc.table.ddl`>>
 |xref:jdbc-history-schema-history-table-ddl-default[Create Query]
 |The DDL statement used to create a table to store the internal schema history.
+When this property is not set and the database product name is available, {prodname} builds the statement for that database.
+MySQL, MariaDB, SingleStore, and MemSQL use `MEDIUMTEXT` for `history_data`.
+PostgreSQL, CockroachDB, and SQLite use `TEXT`.
+SQL Server and Azure SQL use `VARCHAR(MAX)` for `history_data` and `DATETIME2` for `record_insert_ts`, because SQL Server `TIMESTAMP` is a row-version type.
+Oracle and Db2 use `CLOB`.
+Other databases, and connections without a product name, use the default statement.
+Set this property to override that selection.
 
 |[[jdbc-history-schema-history-table-select]]<<jdbc-history-schema-history-table-select, `schema.history.internal.jdbc.table.select`>>
 |xref:jdbc-history-schema-history-table-select-default[Select query]

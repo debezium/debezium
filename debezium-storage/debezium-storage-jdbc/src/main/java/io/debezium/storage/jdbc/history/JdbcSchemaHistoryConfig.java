@@ -82,7 +82,9 @@ public class JdbcSchemaHistoryConfig extends JdbcCommonConfig {
             .withDeprecatedAliases(CONFIGURATION_FIELD_PREFIX_STRING + "schema.history.table.insert");
 
     private String tableName;
+    private String qualifiedTableName;
     private String tableCreate;
+    private boolean tableDdlOverridden;
     private String tableSelect;
     private String tableDataExistsSelect;
     private String tableInsert;
@@ -96,6 +98,8 @@ public class JdbcSchemaHistoryConfig extends JdbcCommonConfig {
     protected void init(Configuration config) {
         super.init(config);
         splitDatabaseAndTableName(config.getString(PROP_TABLE_NAME));
+        this.qualifiedTableName = config.getString(PROP_TABLE_NAME);
+        this.tableDdlOverridden = isTableDdlOverridden(config);
         this.tableCreate = String.format(config.getString(PROP_TABLE_DDL), tableName);
         this.tableSelect = String.format(config.getString(PROP_TABLE_SELECT), tableName);
         this.tableDataExistsSelect = String.format(config.getString(PROP_TABLE_DATA_EXISTS_SELECT), tableName);
@@ -120,6 +124,33 @@ public class JdbcSchemaHistoryConfig extends JdbcCommonConfig {
 
     public String getTableCreate() {
         return tableCreate;
+    }
+
+    /**
+     * Returns the create-table statement to use for the connected database.
+     * <p>
+     * An explicit {@code schema.history.internal.jdbc.table.ddl} value is used as-is.
+     * Otherwise a {@link SchemaHistoryDialect} is resolved from the database product name and
+     * builds the statement. A missing product name uses the configured default statement.
+     *
+     * @param databaseProductName value of {@code DatabaseMetaData.getDatabaseProductName()}; may be {@code null}
+     * @return create-table statement, never {@code null}
+     */
+    public String getTableCreate(String databaseProductName) {
+        if (tableDdlOverridden || databaseProductName == null) {
+            return tableCreate;
+        }
+        return SchemaHistoryDialect.resolve(databaseProductName).createTable(qualifiedTableName);
+    }
+
+    public boolean isTableDdlOverridden() {
+        return tableDdlOverridden;
+    }
+
+    private static boolean isTableDdlOverridden(Configuration config) {
+        // config is already subset by schema.history.internal., so keys are relative to that prefix.
+        // keys() is the raw set. hasKey() also sees field defaults, so it cannot detect an override.
+        return config.keys().contains("jdbc.table.ddl") || config.keys().contains("jdbc.schema.history.table.ddl");
     }
 
     public String getTableSelect() {
