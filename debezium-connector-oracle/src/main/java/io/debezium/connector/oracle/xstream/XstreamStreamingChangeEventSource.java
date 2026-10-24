@@ -165,7 +165,10 @@ public class XstreamStreamingChangeEventSource implements StreamingChangeEventSo
     public void commitOffset(Map<String, ?> partition, Map<String, ?> offset) {
         if (xsOut != null) {
             LOGGER.debug("Sending message to request recording of offsets to Oracle");
-            final LcrPosition lcrPosition = LcrPosition.valueOf((String) offset.get(SourceInfo.LCR_POSITION_KEY));
+            final LcrPosition offsetPosition = LcrPosition.valueOf((String) offset.get(SourceInfo.LCR_POSITION_KEY));
+            // The processed low watermark must never be above the position a restart attaches at, which is
+            // the start of the committed position's {commit SCN, SCN} tuple, see getStartPosition
+            final LcrPosition lcrPosition = offsetPosition != null ? offsetPosition.getTupleStartPosition() : null;
             final Scn scn = OracleOffsetContext.getScnFromOffsetMapByKey(offset, SourceInfo.SCN_KEY);
             // We can safely overwrite the message even if it was not processed. The watermarked will be set to the highest
             // (last) delivered value in a single step instead of incrementally
@@ -234,8 +237,16 @@ public class XstreamStreamingChangeEventSource implements StreamingChangeEventSo
     private byte[] getStartPosition(OracleOffsetContext offsetContext) {
         final String lcrPosition = offsetContext.getLcrPosition();
         if (lcrPosition != null) {
-            return LcrPosition.valueOf(lcrPosition).getRawPosition();
+            LOGGER.info("Attaching to XStream at LCR position [{}]", lcrPosition);
+            // The stored position is that of the last emitted row LCR. When that row carried chunk data
+            // (LOB, XMLType), its trailing pieces have positions after the row's within the same
+            // {commit SCN, SCN} tuple; attaching at the row's position makes the outbound server send
+            // those pieces as standalone row LCRs without column values. Attaching at the start of the
+            // tuple makes it send the row again, complete with its chunks, and LcrEventHandler skips
+            // everything up to and including the stored position.
+            return LcrPosition.valueOf(lcrPosition).getTupleStartPosition().getRawPosition();
         }
+        LOGGER.info("Attaching to XStream at SCN {}", offsetContext.getScn());
         return convertScnToPosition(offsetContext.getScn());
     }
 
