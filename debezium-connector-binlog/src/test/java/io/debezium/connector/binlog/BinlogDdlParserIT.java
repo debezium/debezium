@@ -32,7 +32,9 @@ import io.debezium.relational.history.MemorySchemaHistory;
 public abstract class BinlogDdlParserIT<C extends SourceConnector> extends AbstractBinlogConnectorIT<C> {
 
     private static final Path SCHEMA_HISTORY_PATH = Files.createTestingPath("file-schema-history-ddl-parser.txt").toAbsolutePath();
-    private final UniqueDatabase DATABASE = TestHelper.getUniqueDatabase("myServer1", "binlog_ddl_parser").withDbHistoryPath(SCHEMA_HISTORY_PATH);
+    private final UniqueDatabase DATABASE = TestHelper.getUniqueDatabase("myServer1", "binlog_ddl_parser")
+            .withBinlogMetadataKeyColumns("$DBNAME$\\.table2:ID")
+            .withDbHistoryPath(SCHEMA_HISTORY_PATH);
 
     @BeforeEach
     void beforeEach() {

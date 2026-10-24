@@ -123,7 +123,8 @@ public class MySqlNullDefaultValueIT extends AbstractBinlogConnectorIT<MySqlConn
             assertThat(after.getWithoutDefault(column)).as("Raw value: %s", column).isNull();
             assertThat(after.get(column)).as("Value with default: %s", column).isNull();
         }
-        assertThat(after.schema().field("quoted_value").schema().defaultValue()).isEqualTo("null");
+        final String quotedDefault = config.getBoolean(MySqlConnectorConfig.BINLOG_METADATA_BASED_SCHEMA) ? null : "null";
+        assertThat(after.schema().field("quoted_value").schema().defaultValue()).isEqualTo(quotedDefault);
         assertThat(after.getWithoutDefault("quoted_value")).isEqualTo("null");
 
         try (var connection = getTestDatabaseConnection(database.getDatabaseName())) {

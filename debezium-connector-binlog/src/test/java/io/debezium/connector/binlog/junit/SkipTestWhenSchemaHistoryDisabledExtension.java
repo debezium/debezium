@@ -22,7 +22,7 @@ public class SkipTestWhenSchemaHistoryDisabledExtension extends AnnotationBasedE
     public ConditionEvaluationResult evaluateExecutionCondition(ExtensionContext context) {
         SkipWhenSchemaHistoryDisabled annotation = hasAnnotation(context, SkipWhenSchemaHistoryDisabled.class);
         if (annotation != null && UniqueDatabase.isBinlogMetadataBasedSchemaTestsuite()) {
-            String reasonForSkipping = "Test depends on the schema history, but the testsuite runs with the "
+            String reasonForSkipping = "Test requires schema-history mode, but the testsuite runs with the "
                     + "binlog-metadata-based schema mode" + System.lineSeparator() + annotation.reason();
             return ConditionEvaluationResult.disabled(reasonForSkipping);
         }

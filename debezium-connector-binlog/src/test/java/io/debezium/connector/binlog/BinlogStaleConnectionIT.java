@@ -77,6 +77,7 @@ public abstract class BinlogStaleConnectionIT<C extends SourceConnector> extends
                     .with(BinlogConnectorConfig.HOSTNAME, proxy.getHostname())
                     .with(BinlogConnectorConfig.PORT, proxy.getPort())
                     .with(BinlogConnectorConfig.SNAPSHOT_MODE, BinlogConnectorConfig.SnapshotMode.NO_DATA)
+                    .with(BinlogConnectorConfig.INCLUDE_SCHEMA_CHANGES, false)
                     .with(BinlogConnectorConfig.KEEP_ALIVE_INTERVAL_MS, KEEP_ALIVE_INTERVAL_MS)
                     .with(BinlogConnectorConfig.KEEP_ALIVE_MAX_RECONNECT_ATTEMPTS, MAX_RECONNECT_ATTEMPTS)
                     .build();
@@ -91,7 +92,7 @@ public abstract class BinlogStaleConnectionIT<C extends SourceConnector> extends
             executeStatements(DATABASE.getDatabaseName(),
                     "CREATE TABLE dbz9755 (id INT PRIMARY KEY, name VARCHAR(64))",
                     "INSERT INTO dbz9755 VALUES (1, 'before')");
-            assertThat(consumeRecordsByTopic(1).allRecordsInOrder()).hasSize(1);
+            assertThat(consumeRecordsByTopic(1).recordsForTopic(DATABASE.topicForTable("dbz9755"))).hasSize(1);
 
             // The TCP connection stays ESTABLISHED but nothing flows over it any more, and no new
             // connection can be established either ...

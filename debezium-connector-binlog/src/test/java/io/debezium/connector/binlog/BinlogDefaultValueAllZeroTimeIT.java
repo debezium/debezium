@@ -29,6 +29,7 @@ public abstract class BinlogDefaultValueAllZeroTimeIT<C extends SourceConnector>
 
     private static final Path SCHEMA_HISTORY_PATH = Files.createTestingPath("file-schema-history-connect.txt").toAbsolutePath();
     private final UniqueDatabase DATABASE = TestHelper.getUniqueDatabase("myServer1", "default_value_all_zero_time")
+            .withBinlogMetadataKeyColumns("$DBNAME$\\..*:A")
             .withDbHistoryPath(SCHEMA_HISTORY_PATH);
 
     private Configuration config;

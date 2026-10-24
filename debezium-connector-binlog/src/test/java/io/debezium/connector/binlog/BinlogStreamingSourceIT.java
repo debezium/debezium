@@ -71,6 +71,7 @@ public abstract class BinlogStreamingSourceIT<C extends SourceConnector> extends
 
     protected static final Path SCHEMA_HISTORY_PATH = Files.createTestingPath("file-schema-history-binlog.txt").toAbsolutePath();
     protected final UniqueDatabase DATABASE = TestHelper.getUniqueDatabase("logical_server_name", "connector_test_ro")
+            .withBinlogMetadataKeyColumns("$DBNAME$\\.test_heartbeat_table:text;regression_test_.*\\.(dbz_85_fractest|dbz_342_timetest):c1")
             .withDbHistoryPath(SCHEMA_HISTORY_PATH);
 
     protected Configuration config;

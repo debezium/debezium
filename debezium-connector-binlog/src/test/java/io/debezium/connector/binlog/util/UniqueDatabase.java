@@ -71,6 +71,7 @@ public abstract class UniqueDatabase {
     private final String templateName;
     private final String serverName;
     private Path dbHistoryPath;
+    private String binlogMetadataKeyColumns;
     private final String identifier;
 
     public UniqueDatabase(final String serverName, final String databaseName, final String identifier, final String charset) {
@@ -357,8 +358,21 @@ public abstract class UniqueDatabase {
             // of from the schema history, so that the suite verifies both modes are compatible. The schema
             // history configured above is ignored by the connector in this mode.
             builder.with(BinlogConnectorConfig.BINLOG_METADATA_BASED_SCHEMA, true);
+            if (binlogMetadataKeyColumns != null) {
+                builder.with(BinlogConnectorConfig.MSG_KEY_COLUMNS, convertSQL(binlogMetadataKeyColumns));
+            }
         }
         return builder;
+    }
+
+    /**
+     * Supplies explicit message keys for keyless test tables when running the metadata-based suite.
+     * The mapping uses the message.key.columns syntax; $DBNAME$ is replaced with this database's unique name.
+     * Tests that exercise missing-key validation must leave this unset.
+     */
+    public UniqueDatabase withBinlogMetadataKeyColumns(String keyColumns) {
+        this.binlogMetadataKeyColumns = keyColumns;
+        return this;
     }
 
     /**

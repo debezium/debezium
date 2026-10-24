@@ -37,6 +37,7 @@ public abstract class BinlogDefaultGeneratedValueIT<C extends SourceConnector> e
 
     private static final Path SCHEMA_HISTORY_PATH = Files.createTestingPath("file-schema-history-connect.txt").toAbsolutePath();
     private final UniqueDatabase DATABASE = TestHelper.getUniqueDatabase("myServer1", "default_value_generated")
+            .withBinlogMetadataKeyColumns("$DBNAME$\\.GENERATED_TABLE:A")
             .withDbHistoryPath(SCHEMA_HISTORY_PATH);
 
     private Configuration config;

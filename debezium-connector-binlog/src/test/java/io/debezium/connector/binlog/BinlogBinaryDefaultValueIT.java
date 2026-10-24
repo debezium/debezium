@@ -108,7 +108,7 @@ public abstract class BinlogBinaryDefaultValueIT<C extends SourceConnector> exte
             assertions.assertThat(storedValue).as("Stored value of %s, %s", column, phase).isNotNull();
             assertions.assertThat(after.schema().field(column).schema().defaultValue())
                     .as("Schema default of %s, %s", column, phase)
-                    .isEqualTo(storedValue);
+                    .isEqualTo(expectedSchemaDefault(record, storedValue));
         }
     }
 }

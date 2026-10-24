@@ -246,7 +246,7 @@
         <docker.platform>linux/amd64</docker.platform>
         <docker.initimage>rm -f /etc/localtime; ln -s /usr/share/zoneinfo/US/Samoa /etc/localtime</docker.initimage>
 
-        <!-- Toggled to true by the mysql-feature-binlog-metadata profile to run the selected tests with the
+        <!-- Toggled to true by the mysql-feature-binlog-metadata profile to run the testsuite with the
              binlog-metadata-based schema mode, i.e. without a schema history (debezium/dbz#978) -->
         <use.binlog.metadata.based.schema>false</use.binlog.metadata.based.schema>
 
@@ -1209,7 +1209,7 @@
         </profile>
 
         <!-- Feature toggle meant to be combined with a mysql-ci* profile: enables the binlog-metadata-based
-             schema mode for tests that satisfy its key requirement (debezium/dbz#978),
+             schema mode so the same testsuite runs without a schema history (debezium/dbz#978),
              e.g. -P mysql-ci,mysql-feature-binlog-metadata -->
         <profile>
             <id>mysql-feature-binlog-metadata</id>
@@ -1218,9 +1218,6 @@
             </activation>
             <properties>
                 <use.binlog.metadata.based.schema>true</use.binlog.metadata.based.schema>
-                <!-- The full suite also captures keyless tables, which this mode rejects. The dedicated
-                     suite covers the key requirement and explicit message keys as well as schema reconstruction. -->
-                <it.test>MySqlBinlogMetadataSchemaIT,MysqlDefaultValueIT#shouldPreserveIntegerSchemaDefaults</it.test>
             </properties>
         </profile>
 
