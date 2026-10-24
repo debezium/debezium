@@ -169,6 +169,10 @@ public class DefaultRecordWriter implements RecordWriter {
     }
 
     private TableDescriptor alterTableIfNeeded(CollectionId collectionId, JdbcSinkRecord record) throws SQLException {
+        return alterTableIfNeeded(collectionId, record, true);
+    }
+
+    private TableDescriptor alterTableIfNeeded(CollectionId collectionId, JdbcSinkRecord record, boolean retryOnFailure) throws SQLException {
         LOGGER.debug("Attempting to alter table '{}'.", collectionId.toFullIdentiferString());
 
         if (!hasTable(collectionId)) {
@@ -209,9 +213,30 @@ public class DefaultRecordWriter implements RecordWriter {
             session.createNativeQuery(alterSql, Object.class).executeUpdate();
             transaction.commit();
         }
-        catch (Exception e) {
+        catch (Exception alterFailure) {
             transaction.rollback();
-            throw e;
+            if (!retryOnFailure) {
+                throw alterFailure;
+            }
+            final TableDescriptor currentTable;
+            try {
+                currentTable = readTable(collectionId);
+            }
+            catch (Exception readFailure) {
+                readFailure.addSuppressed(alterFailure);
+                throw readFailure;
+            }
+            LOGGER.warn("Alter of table '{}' failed, rechecking schema before failing", collectionId.toFullIdentiferString());
+            if (dialect.resolveMissingFields(record, currentTable).isEmpty()) {
+                return currentTable;
+            }
+            try {
+                return alterTableIfNeeded(collectionId, record, false);
+            }
+            catch (Exception retryFailure) {
+                retryFailure.addSuppressed(alterFailure);
+                throw retryFailure;
+            }
         }
         progressListener().tableAltered();
 
