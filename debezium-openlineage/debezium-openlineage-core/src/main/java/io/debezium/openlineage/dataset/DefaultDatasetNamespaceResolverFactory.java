@@ -16,7 +16,6 @@ public class DefaultDatasetNamespaceResolverFactory implements DatasetNamespaceR
         return switch (dataStore) {
             case DATABASE -> resolveDatabase(connectorName);
             case KAFKA -> new KafkaDatasetNamespaceResolver();
-            case SINK_PROVIDED -> DatasetNamespaceResolverProviders.get(connectorName);
         };
     }
 
@@ -25,7 +24,9 @@ public class DefaultDatasetNamespaceResolverFactory implements DatasetNamespaceR
             case MONGODB, MONGODB_SINK -> new MongoDbDatasetNamespaceResolver();
             case POSTGRESQL -> new PostgresDatasetNamespaceResolver();
             case JDBC -> new JdbcDatasetNamespaceResolver();
-            default -> new DefaultDatabaseNamespaceResolver();
+            default -> DatasetNamespaceResolverProviders.get(connectorName)
+                    .map(DatasetNamespaceResolverProvider::create)
+                    .orElse(new DefaultDatabaseNamespaceResolver());
         };
     }
 }

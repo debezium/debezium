@@ -10,8 +10,6 @@ import java.util.List;
 import java.util.Optional;
 import java.util.ServiceLoader;
 
-import io.debezium.DebeziumException;
-
 /**
  * Loads {@link DatasetNamespaceResolverProvider} implementations via {@link ServiceLoader}.
  */
@@ -23,13 +21,7 @@ final class DatasetNamespaceResolverProviders {
     private DatasetNamespaceResolverProviders() {
     }
 
-    static DatasetNamespaceResolver get(String connectorName) {
-        return getProvider(connectorName)
-                .map(DatasetNamespaceResolverProvider::create)
-                .orElseThrow(() -> new DebeziumException("No DatasetNamespaceResolverProvider found for connector: " + connectorName));
-    }
-
-    private static Optional<DatasetNamespaceResolverProvider> getProvider(String connectorName) {
+    static Optional<DatasetNamespaceResolverProvider> get(String connectorName) {
         for (DatasetNamespaceResolverProvider provider : allProviders()) {
             if (provider.supports(connectorName)) {
                 return Optional.of(provider);

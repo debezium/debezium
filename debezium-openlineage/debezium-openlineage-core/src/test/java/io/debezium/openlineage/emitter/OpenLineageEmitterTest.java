@@ -149,7 +149,7 @@ public class OpenLineageEmitterTest {
                 "sink_collection",
                 DatasetMetadata.DatasetKind.OUTPUT,
                 DatasetMetadata.TABLE_DATASET_TYPE,
-                DatasetMetadata.DataStore.SINK_PROVIDED,
+                DatasetMetadata.DataStore.DATABASE,
                 List.of(field));
 
         sinkEmitter.emit(DebeziumTaskState.RUNNING, List.of(outputDataset));

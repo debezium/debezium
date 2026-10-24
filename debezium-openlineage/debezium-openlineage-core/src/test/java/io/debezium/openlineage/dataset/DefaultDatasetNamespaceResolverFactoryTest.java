@@ -19,7 +19,7 @@ class DefaultDatasetNamespaceResolverFactoryTest {
 
     @Test
     void shouldCreateSinkProvidedResolverFromServiceLoader() {
-        DatasetNamespaceResolver resolver = FACTORY.create(DataStore.SINK_PROVIDED, TestDatasetNamespaceResolverProvider.CONNECTOR_NAME);
+        DatasetNamespaceResolver resolver = FACTORY.create(DataStore.DATABASE, TestDatasetNamespaceResolverProvider.CONNECTOR_NAME);
         assertSame(TestDatasetNamespaceResolverProvider.RESOLVED_NAMESPACE,
                 resolver.resolve(Collections.emptyMap(), TestDatasetNamespaceResolverProvider.CONNECTOR_NAME));
     }

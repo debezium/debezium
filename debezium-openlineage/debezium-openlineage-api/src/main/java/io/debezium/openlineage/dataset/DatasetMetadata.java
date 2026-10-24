@@ -6,7 +6,6 @@
 package io.debezium.openlineage.dataset;
 
 import java.util.List;
-import java.util.Optional;
 
 /**
  * Represents metadata for a dataset, including its name, kind, type, and field definitions.
@@ -39,13 +38,10 @@ public record DatasetMetadata(String name, DatasetKind kind, String type, DataSt
      */
     public enum DataStore {
         KAFKA,
-        DATABASE,
-        SINK_PROVIDED;
+        DATABASE;
 
         public interface Provider {
-            default Optional<DataStore> get() {
-                return Optional.empty();
-            }
+            DataStore get();
         }
     }
 

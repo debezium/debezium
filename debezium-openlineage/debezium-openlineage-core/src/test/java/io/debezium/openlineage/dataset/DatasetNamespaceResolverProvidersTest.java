@@ -6,28 +6,26 @@
 package io.debezium.openlineage.dataset;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.util.Map;
 
 import org.junit.jupiter.api.Test;
 
-import io.debezium.DebeziumException;
-
 class DatasetNamespaceResolverProvidersTest {
 
     @Test
     void shouldLoadResolverFromServiceLoader() {
-        DatasetNamespaceResolver resolver = DatasetNamespaceResolverProviders.get(TestDatasetNamespaceResolverProvider.CONNECTOR_NAME);
+        DatasetNamespaceResolver resolver = DatasetNamespaceResolverProviders
+                .get(TestDatasetNamespaceResolverProvider.CONNECTOR_NAME)
+                .map(DatasetNamespaceResolverProvider::create)
+                .orElseThrow();
 
         assertThat(resolver.resolve(Map.of(), TestDatasetNamespaceResolverProvider.CONNECTOR_NAME))
                 .isEqualTo(TestDatasetNamespaceResolverProvider.RESOLVED_NAMESPACE);
     }
 
     @Test
-    void shouldFailWhenNoProviderSupportsConnector() {
-        assertThatThrownBy(() -> DatasetNamespaceResolverProviders.get("connector-without-provider"))
-                .isInstanceOf(DebeziumException.class)
-                .hasMessageContaining("connector-without-provider");
+    void shouldReturnEmptyWhenNoProviderSupportsConnector() {
+        assertThat(DatasetNamespaceResolverProviders.get("connector-without-provider")).isEmpty();
     }
 }
