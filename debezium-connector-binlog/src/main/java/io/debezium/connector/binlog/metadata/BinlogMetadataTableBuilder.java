@@ -14,6 +14,7 @@ import java.util.function.Supplier;
 
 import com.github.shyiko.mysql.binlog.event.TableMapEventData;
 import com.github.shyiko.mysql.binlog.event.TableMapEventMetadata;
+import com.github.shyiko.mysql.binlog.event.deserialization.ColumnType;
 
 import io.debezium.connector.binlog.charset.BinlogCharsetRegistry;
 import io.debezium.relational.Column;
@@ -69,39 +70,6 @@ public class BinlogMetadataTableBuilder {
         this.charsetRegistrySupplier = charsetRegistrySupplier;
     }
 
-    // MySQL binlog column type codes (com.github.shyiko...deserialization.ColumnType getCode()).
-    private static final int TYPE_DECIMAL = 0;
-    private static final int TYPE_TINY = 1;
-    private static final int TYPE_SHORT = 2;
-    private static final int TYPE_LONG = 3;
-    private static final int TYPE_FLOAT = 4;
-    private static final int TYPE_DOUBLE = 5;
-    private static final int TYPE_TIMESTAMP = 7;
-    private static final int TYPE_LONGLONG = 8;
-    private static final int TYPE_INT24 = 9;
-    private static final int TYPE_DATE = 10;
-    private static final int TYPE_TIME = 11;
-    private static final int TYPE_DATETIME = 12;
-    private static final int TYPE_YEAR = 13;
-    private static final int TYPE_NEWDATE = 14;
-    private static final int TYPE_VARCHAR = 15;
-    private static final int TYPE_BIT = 16;
-    private static final int TYPE_TIMESTAMP_V2 = 17;
-    private static final int TYPE_DATETIME_V2 = 18;
-    private static final int TYPE_TIME_V2 = 19;
-    private static final int TYPE_VECTOR = 242;
-    private static final int TYPE_JSON = 245;
-    private static final int TYPE_NEWDECIMAL = 246;
-    private static final int TYPE_ENUM = 247;
-    private static final int TYPE_SET = 248;
-    private static final int TYPE_TINY_BLOB = 249;
-    private static final int TYPE_MEDIUM_BLOB = 250;
-    private static final int TYPE_LONG_BLOB = 251;
-    private static final int TYPE_BLOB = 252;
-    private static final int TYPE_VAR_STRING = 253;
-    private static final int TYPE_STRING = 254;
-    private static final int TYPE_GEOMETRY = 255;
-
     private static final int BINARY_COLLATION_ID = 63;
 
     /**
@@ -121,8 +89,8 @@ public class BinlogMetadataTableBuilder {
                     "TABLE_MAP for '" + tableId + "' has no column metadata; binlog_row_metadata=FULL is required for the binlog-metadata schema mode");
         }
 
-        final byte[] columnTypes = data.getColumnTypes();
         final int[] columnMetadata = data.getColumnMetadata();
+        final ColumnType[] columnTypes = resolveColumnTypes(data.getColumnTypes(), columnMetadata);
         final BitSet nullability = data.getColumnNullability();
         final List<String> names = eventMetadata.getColumnNames();
         final BitSet signedness = eventMetadata.getSignedness();
@@ -133,7 +101,7 @@ public class BinlogMetadataTableBuilder {
         final List<Integer> simplePk = eventMetadata.getSimplePrimaryKeys();
 
         final int columnCount = columnTypes.length;
-        final int[] collationPerColumn = resolveColumnCollations(columnTypes, columnMetadata, eventMetadata);
+        final int[] collationPerColumn = resolveColumnCollations(columnTypes, eventMetadata);
 
         final TableEditor table = Table.editor().tableId(tableId);
 
@@ -142,67 +110,55 @@ public class BinlogMetadataTableBuilder {
         int geometryColumnIndex = 0;
         int vectorColumnIndex = 0;
         for (int i = 0; i < columnCount; i++) {
-            final int columnTypeCode = columnTypes[i] & 0xFF;
+            final var columnType = columnTypes[i];
             final ColumnEditor column = Column.editor()
                     .name(names.get(i))
                     .position(i + 1)
                     .optional(nullability != null && nullability.get(i));
 
+            if (columnType == null) {
+                column.type("UNKNOWN").jdbcType(Types.OTHER);
+                table.addColumn(column.create());
+                continue;
+            }
+
             // The deserializer expands the wire's numeric-only signedness bitmap to all column positions.
-            final boolean unsigned = isNumericType(columnTypeCode) && signedness != null && signedness.get(i);
+            final boolean unsigned = signedness != null && signedness.get(i);
 
             final int collation = collationPerColumn[i];
             final boolean binary = collation == BINARY_COLLATION_ID;
 
-            switch (columnTypeCode) {
-                case TYPE_TINY -> numericType(column, "TINYINT", Types.TINYINT, unsigned);
-                case TYPE_SHORT -> numericType(column, "SMALLINT", Types.SMALLINT, unsigned);
-                case TYPE_INT24 -> numericType(column, "MEDIUMINT", Types.INTEGER, unsigned);
-                case TYPE_LONG -> numericType(column, "INT", Types.INTEGER, unsigned);
-                case TYPE_LONGLONG -> numericType(column, "BIGINT", Types.BIGINT, unsigned);
-                case TYPE_FLOAT -> numericType(column, "FLOAT", Types.FLOAT, unsigned);
-                case TYPE_DOUBLE -> numericType(column, "DOUBLE", Types.DOUBLE, unsigned);
-                case TYPE_YEAR -> column.type("YEAR").jdbcType(Types.INTEGER);
+            switch (columnType) {
+                case TINY -> numericType(column, "TINYINT", Types.TINYINT, unsigned);
+                case SHORT -> numericType(column, "SMALLINT", Types.SMALLINT, unsigned);
+                case INT24 -> numericType(column, "MEDIUMINT", Types.INTEGER, unsigned);
+                case LONG -> numericType(column, "INT", Types.INTEGER, unsigned);
+                case LONGLONG -> numericType(column, "BIGINT", Types.BIGINT, unsigned);
+                case FLOAT -> numericType(column, "FLOAT", Types.FLOAT, unsigned);
+                case DOUBLE -> numericType(column, "DOUBLE", Types.DOUBLE, unsigned);
+                case YEAR -> column.type("YEAR").jdbcType(Types.INTEGER);
                 // DECIMAL metadata is encoded as (scale << 8) | precision.
-                case TYPE_DECIMAL, TYPE_NEWDECIMAL -> {
+                case DECIMAL, NEWDECIMAL -> {
                     column.type(unsigned ? "DECIMAL UNSIGNED" : "DECIMAL").jdbcType(Types.DECIMAL);
                     column.length(columnMetadata[i] & 0xFF);
                     column.scale((columnMetadata[i] >> 8) & 0xFF);
                 }
                 // BIT metadata is encoded as (bytes << 8) | remaining_bits, so BIT(8) arrives as 0x0100.
-                case TYPE_BIT -> column.type("BIT").jdbcType(Types.BIT).length(((columnMetadata[i] >> 8) * 8) + (columnMetadata[i] & 0xFF));
-                case TYPE_DATE, TYPE_NEWDATE -> column.type("DATE").jdbcType(Types.DATE);
-                case TYPE_TIME, TYPE_TIME_V2 -> column.type("TIME").jdbcType(Types.TIME).length(columnMetadata[i]);
-                case TYPE_DATETIME, TYPE_DATETIME_V2 -> column.type("DATETIME").jdbcType(Types.TIMESTAMP).length(columnMetadata[i]);
-                case TYPE_TIMESTAMP, TYPE_TIMESTAMP_V2 -> column.type("TIMESTAMP").jdbcType(Types.TIMESTAMP_WITH_TIMEZONE).length(columnMetadata[i]);
-                case TYPE_JSON -> column.type("JSON").jdbcType(Types.OTHER);
-                case TYPE_GEOMETRY -> column.type(geometryTypeName(geometryTypes, geometryColumnIndex++)).jdbcType(Types.OTHER);
-                case TYPE_VECTOR -> vectorType(column, vectorDimensions, vectorColumnIndex++);
-                case TYPE_VARCHAR, TYPE_VAR_STRING -> charType(column, binary ? "VARBINARY" : "VARCHAR",
+                case BIT -> column.type("BIT").jdbcType(Types.BIT).length(((columnMetadata[i] >> 8) * 8) + (columnMetadata[i] & 0xFF));
+                case DATE, NEWDATE -> column.type("DATE").jdbcType(Types.DATE);
+                case TIME, TIME_V2 -> column.type("TIME").jdbcType(Types.TIME).length(columnMetadata[i]);
+                case DATETIME, DATETIME_V2 -> column.type("DATETIME").jdbcType(Types.TIMESTAMP).length(columnMetadata[i]);
+                case TIMESTAMP, TIMESTAMP_V2 -> column.type("TIMESTAMP").jdbcType(Types.TIMESTAMP_WITH_TIMEZONE).length(columnMetadata[i]);
+                case JSON -> column.type("JSON").jdbcType(Types.OTHER);
+                case GEOMETRY -> column.type(geometryTypeName(geometryTypes, geometryColumnIndex++)).jdbcType(Types.OTHER);
+                case VECTOR -> vectorType(column, vectorDimensions, vectorColumnIndex++);
+                case VARCHAR, VAR_STRING -> charType(column, binary ? "VARBINARY" : "VARCHAR",
                         binary ? Types.VARBINARY : Types.VARCHAR, byteToCharLength(columnMetadata[i], collation), binary ? null : collation);
-                case TYPE_TINY_BLOB, TYPE_BLOB, TYPE_MEDIUM_BLOB, TYPE_LONG_BLOB -> blobType(column, columnTypeCode, columnMetadata[i], binary, collation);
-                case TYPE_STRING -> stringType(column, columnMetadata[i], binary, collation,
-                        enumValues, setValues, enumColumnIndex, setColumnIndex);
-                case TYPE_ENUM -> enumOrSet(column, "ENUM", enumValues, enumColumnIndex, collation);
-                case TYPE_SET -> enumOrSet(column, "SET", setValues, setColumnIndex, collation);
+                case TINY_BLOB, BLOB, MEDIUM_BLOB, LONG_BLOB -> blobType(column, columnType, columnMetadata[i], binary, collation);
+                case STRING -> stringType(column, columnMetadata[i], binary, collation);
+                case ENUM -> enumOrSet(column, "ENUM", enumValues, enumColumnIndex++, collation);
+                case SET -> enumOrSet(column, "SET", setValues, setColumnIndex++, collation);
                 default -> column.type("UNKNOWN").jdbcType(Types.OTHER);
-            }
-
-            // STRING columns may carry ENUM/SET values; advance the corresponding value-list index.
-            if (columnTypeCode == TYPE_STRING) {
-                final int realType = unpackStringRealType(columnMetadata[i]);
-                if (realType == TYPE_ENUM) {
-                    enumColumnIndex++;
-                }
-                else if (realType == TYPE_SET) {
-                    setColumnIndex++;
-                }
-            }
-            else if (columnTypeCode == TYPE_ENUM) {
-                enumColumnIndex++;
-            }
-            else if (columnTypeCode == TYPE_SET) {
-                setColumnIndex++;
             }
 
             table.addColumn(column.create());
@@ -245,12 +201,12 @@ public class BinlogMetadataTableBuilder {
         }
     }
 
-    private void blobType(ColumnEditor column, int columnTypeCode, int columnMetadata, boolean binary, int collation) {
+    private void blobType(ColumnEditor column, ColumnType columnType, int columnMetadata, boolean binary, int collation) {
         // TABLE_MAP uses BLOB for every size, with metadata carrying the number of length bytes.
-        final int lengthBytes = switch (columnTypeCode) {
-            case TYPE_TINY_BLOB -> 1;
-            case TYPE_MEDIUM_BLOB -> 3;
-            case TYPE_LONG_BLOB -> 4;
+        final int lengthBytes = switch (columnType) {
+            case TINY_BLOB -> 1;
+            case MEDIUM_BLOB -> 3;
+            case LONG_BLOB -> 4;
             default -> columnMetadata;
         };
         final String prefix = switch (lengthBytes) {
@@ -267,18 +223,7 @@ public class BinlogMetadataTableBuilder {
         }
     }
 
-    private void stringType(ColumnEditor column, int columnMetadata, boolean binary, int collation,
-                            List<String[]> enumValues, List<String[]> setValues, int enumColumnIndex, int setColumnIndex) {
-        final int realType = unpackStringRealType(columnMetadata);
-        if (realType == TYPE_ENUM) {
-            enumOrSet(column, "ENUM", enumValues, enumColumnIndex, collation);
-            return;
-        }
-        if (realType == TYPE_SET) {
-            enumOrSet(column, "SET", setValues, setColumnIndex, collation);
-            return;
-        }
-        // Plain CHAR / BINARY.
+    private void stringType(ColumnEditor column, int columnMetadata, boolean binary, int collation) {
         final int byteLength = unpackStringLength(columnMetadata);
         if (binary) {
             column.type("BINARY").jdbcType(Types.BINARY).length(byteLength);
@@ -346,18 +291,37 @@ public class BinlogMetadataTableBuilder {
     }
 
     /**
+     * Resolve ENUM/SET transported as STRING once, before charset resolution and relational type mapping.
+     * Unknown type codes remain null and are mapped to UNKNOWN by the builder.
+     */
+    private static ColumnType[] resolveColumnTypes(byte[] columnTypeCodes, int[] columnMetadata) {
+        final var columnTypes = new ColumnType[columnTypeCodes.length];
+        for (int i = 0; i < columnTypeCodes.length; i++) {
+            final var columnType = ColumnType.byCode(columnTypeCodes[i] & 0xFF);
+            columnTypes[i] = columnType;
+            if (columnType == ColumnType.STRING) {
+                final var realType = unpackStringRealType(columnMetadata[i]);
+                if (realType == ColumnType.ENUM || realType == ColumnType.SET) {
+                    columnTypes[i] = realType;
+                }
+            }
+        }
+        return columnTypes;
+    }
+
+    /**
      * Unpack the real type packed into a {@code MYSQL_TYPE_STRING} metadata value (CHAR longer than
      * 255 bytes, ENUM, or SET are all transported as STRING). Canonical MySQL algorithm.
      */
-    private static int unpackStringRealType(int columnMetadata) {
+    private static ColumnType unpackStringRealType(int columnMetadata) {
         if (columnMetadata < 256) {
-            return TYPE_STRING;
+            return ColumnType.STRING;
         }
         final int byte0 = columnMetadata >> 8;
         if ((byte0 & 0x30) != 0x30) {
-            return byte0 | 0x30;
+            return ColumnType.byCode(byte0 | 0x30);
         }
-        return byte0;
+        return ColumnType.byCode(byte0);
     }
 
     private static int unpackStringLength(int columnMetadata) {
@@ -372,15 +336,6 @@ public class BinlogMetadataTableBuilder {
         return byte1;
     }
 
-    private static boolean isNumericType(int columnTypeCode) {
-        return switch (columnTypeCode) {
-            case TYPE_TINY, TYPE_SHORT, TYPE_INT24, TYPE_LONG, TYPE_LONGLONG,
-                    TYPE_FLOAT, TYPE_DOUBLE, TYPE_YEAR, TYPE_DECIMAL, TYPE_NEWDECIMAL ->
-                true;
-            default -> false;
-        };
-    }
-
     /**
      * Whether the column takes part in the DEFAULT_CHARSET/COLUMN_CHARSET numbering. Mirrors
      * {@code is_character_type()} in MySQL {@code sql/log_event.cc}: STRING, VAR_STRING, VARCHAR and the
@@ -388,24 +343,15 @@ public class BinlogMetadataTableBuilder {
      * because the server tests the field's real type; they are numbered separately and take their
      * charset from the ENUM_AND_SET_* fields instead.
      */
-    private static boolean isCharacterType(int columnTypeCode) {
-        return switch (columnTypeCode) {
-            case TYPE_VARCHAR, TYPE_VAR_STRING, TYPE_STRING,
-                    TYPE_TINY_BLOB, TYPE_BLOB, TYPE_MEDIUM_BLOB, TYPE_LONG_BLOB ->
+    private static boolean isCharacterType(ColumnType columnType) {
+        if (columnType == null) {
+            return false;
+        }
+        return switch (columnType) {
+            case VARCHAR, VAR_STRING, STRING, TINY_BLOB, BLOB, MEDIUM_BLOB, LONG_BLOB ->
                 true;
             default -> false;
         };
-    }
-
-    private static boolean isEnumOrSetColumn(int columnTypeCode, int columnMetadata) {
-        if (columnTypeCode == TYPE_ENUM || columnTypeCode == TYPE_SET) {
-            return true;
-        }
-        if (columnTypeCode == TYPE_STRING) {
-            final int realType = unpackStringRealType(columnMetadata);
-            return realType == TYPE_ENUM || realType == TYPE_SET;
-        }
-        return false;
     }
 
     /**
@@ -415,16 +361,16 @@ public class BinlogMetadataTableBuilder {
      * ({@code ENUM_AND_SET_COLUMN_CHARSET}/{@code ENUM_AND_SET_DEFAULT_CHARSET}) with an independent
      * numbering (see {@code Table_map_log_event::init_charset_field()} in MySQL {@code sql/log_event.cc}).
      */
-    private int[] resolveColumnCollations(byte[] columnTypes, int[] columnMetadata, TableMapEventMetadata eventMetadata) {
+    private int[] resolveColumnCollations(ColumnType[] columnTypes, TableMapEventMetadata eventMetadata) {
         final int[] result = new int[columnTypes.length];
         int characterColumnIndex = 0;
         int enumSetColumnIndex = 0;
         for (int i = 0; i < columnTypes.length; i++) {
-            final int columnTypeCode = columnTypes[i] & 0xFF;
-            if (isEnumOrSetColumn(columnTypeCode, columnMetadata[i])) {
+            final var columnType = columnTypes[i];
+            if (columnType == ColumnType.ENUM || columnType == ColumnType.SET) {
                 result[i] = resolveCollation(eventMetadata.getEnumAndSetColumnCharsets(), eventMetadata.getEnumAndSetDefaultCharset(), enumSetColumnIndex++);
             }
-            else if (isCharacterType(columnTypeCode)) {
+            else if (isCharacterType(columnType)) {
                 result[i] = resolveCollation(eventMetadata.getColumnCharsets(), eventMetadata.getDefaultCharset(), characterColumnIndex++);
             }
             else {
