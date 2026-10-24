@@ -160,7 +160,13 @@ public abstract class BinlogDefaultValueIT<C extends SourceConnector> extends Ab
                 assertThat(result.next()).isFalse();
             });
         }
-        assertThat(after.schema().field("v").schema().defaultValue()).as("Schema default").isEqualTo(rawValue);
+        final var schemaDefault = after.schema().field("v").schema().defaultValue();
+        if ("c".equals(operation) && config.getBoolean(BinlogConnectorConfig.BINLOG_METADATA_BASED_SCHEMA)) {
+            assertThat(schemaDefault).as("Schema defaults are not carried by binlog metadata").isNull();
+        }
+        else {
+            assertThat(schemaDefault).as("Schema default").isEqualTo(rawValue);
+        }
     }
 
     @Test
