@@ -115,50 +115,46 @@ public class BinlogMetadataTableBuilder {
      * @throws IllegalStateException if the FULL metadata (column names) is not present
      */
     public Table build(TableId tableId, TableMapEventData data) {
-        final TableMapEventMetadata meta = data.getEventMetadata();
-        if (meta == null || meta.getColumnNames() == null || meta.getColumnNames().isEmpty()) {
+        final TableMapEventMetadata eventMetadata = data.getEventMetadata();
+        if (eventMetadata == null || eventMetadata.getColumnNames() == null || eventMetadata.getColumnNames().isEmpty()) {
             throw new IllegalStateException(
                     "TABLE_MAP for '" + tableId + "' has no column metadata; binlog_row_metadata=FULL is required for the binlog-metadata schema mode");
         }
 
-        final byte[] types = data.getColumnTypes();
-        final int[] columnMeta = data.getColumnMetadata();
+        final byte[] columnTypes = data.getColumnTypes();
+        final int[] columnMetadata = data.getColumnMetadata();
         final BitSet nullability = data.getColumnNullability();
-        final List<String> names = meta.getColumnNames();
-        final BitSet signedness = meta.getSignedness();
-        final List<String[]> enumValues = meta.getEnumStrValues();
-        final List<String[]> setValues = meta.getSetStrValues();
-        final List<Integer> geometryTypes = meta.getGeometryTypes();
-        final List<Integer> vectorDimensions = meta.getVectorDimensionality();
-        final List<Integer> simplePk = meta.getSimplePrimaryKeys();
+        final List<String> names = eventMetadata.getColumnNames();
+        final BitSet signedness = eventMetadata.getSignedness();
+        final List<String[]> enumValues = eventMetadata.getEnumStrValues();
+        final List<String[]> setValues = eventMetadata.getSetStrValues();
+        final List<Integer> geometryTypes = eventMetadata.getGeometryTypes();
+        final List<Integer> vectorDimensions = eventMetadata.getVectorDimensionality();
+        final List<Integer> simplePk = eventMetadata.getSimplePrimaryKeys();
 
-        final int columnCount = types.length;
-        final int[] collationPerColumn = resolveColumnCollations(types, columnMeta, meta);
+        final int columnCount = columnTypes.length;
+        final int[] collationPerColumn = resolveColumnCollations(columnTypes, columnMetadata, eventMetadata);
 
         final TableEditor table = Table.editor().tableId(tableId);
 
-        int numericIndex = 0;
-        int enumIndex = 0;
-        int setIndex = 0;
-        int geometryIndex = 0;
-        int vectorIndex = 0;
+        int enumColumnIndex = 0;
+        int setColumnIndex = 0;
+        int geometryColumnIndex = 0;
+        int vectorColumnIndex = 0;
         for (int i = 0; i < columnCount; i++) {
-            final int code = types[i] & 0xFF;
+            final int columnTypeCode = columnTypes[i] & 0xFF;
             final ColumnEditor column = Column.editor()
                     .name(names.get(i))
                     .position(i + 1)
                     .optional(nullability != null && nullability.get(i));
 
-            final boolean isNumeric = isNumericType(code);
-            final boolean unsigned = isNumeric && signedness != null && signedness.get(numericIndex);
-            if (isNumeric) {
-                numericIndex++;
-            }
+            // The deserializer expands the wire's numeric-only signedness bitmap to all column positions.
+            final boolean unsigned = isNumericType(columnTypeCode) && signedness != null && signedness.get(i);
 
             final int collation = collationPerColumn[i];
             final boolean binary = collation == BINARY_COLLATION_ID;
 
-            switch (code) {
+            switch (columnTypeCode) {
                 case TYPE_TINY -> numericType(column, "TINYINT", Types.TINYINT, unsigned);
                 case TYPE_SHORT -> numericType(column, "SMALLINT", Types.SMALLINT, unsigned);
                 case TYPE_INT24 -> numericType(column, "MEDIUMINT", Types.INTEGER, unsigned);
@@ -170,43 +166,43 @@ public class BinlogMetadataTableBuilder {
                 // DECIMAL metadata is encoded as (scale << 8) | precision.
                 case TYPE_DECIMAL, TYPE_NEWDECIMAL -> {
                     column.type(unsigned ? "DECIMAL UNSIGNED" : "DECIMAL").jdbcType(Types.DECIMAL);
-                    column.length(columnMeta[i] & 0xFF);
-                    column.scale((columnMeta[i] >> 8) & 0xFF);
+                    column.length(columnMetadata[i] & 0xFF);
+                    column.scale((columnMetadata[i] >> 8) & 0xFF);
                 }
                 // BIT metadata is encoded as (bytes << 8) | remaining_bits, so BIT(8) arrives as 0x0100.
-                case TYPE_BIT -> column.type("BIT").jdbcType(Types.BIT).length(((columnMeta[i] >> 8) * 8) + (columnMeta[i] & 0xFF));
+                case TYPE_BIT -> column.type("BIT").jdbcType(Types.BIT).length(((columnMetadata[i] >> 8) * 8) + (columnMetadata[i] & 0xFF));
                 case TYPE_DATE, TYPE_NEWDATE -> column.type("DATE").jdbcType(Types.DATE);
-                case TYPE_TIME, TYPE_TIME_V2 -> column.type("TIME").jdbcType(Types.TIME).length(columnMeta[i]);
-                case TYPE_DATETIME, TYPE_DATETIME_V2 -> column.type("DATETIME").jdbcType(Types.TIMESTAMP).length(columnMeta[i]);
-                case TYPE_TIMESTAMP, TYPE_TIMESTAMP_V2 -> column.type("TIMESTAMP").jdbcType(Types.TIMESTAMP_WITH_TIMEZONE).length(columnMeta[i]);
+                case TYPE_TIME, TYPE_TIME_V2 -> column.type("TIME").jdbcType(Types.TIME).length(columnMetadata[i]);
+                case TYPE_DATETIME, TYPE_DATETIME_V2 -> column.type("DATETIME").jdbcType(Types.TIMESTAMP).length(columnMetadata[i]);
+                case TYPE_TIMESTAMP, TYPE_TIMESTAMP_V2 -> column.type("TIMESTAMP").jdbcType(Types.TIMESTAMP_WITH_TIMEZONE).length(columnMetadata[i]);
                 case TYPE_JSON -> column.type("JSON").jdbcType(Types.OTHER);
-                case TYPE_GEOMETRY -> column.type(geometryTypeName(geometryTypes, geometryIndex++)).jdbcType(Types.OTHER);
-                case TYPE_VECTOR -> vectorType(column, vectorDimensions, vectorIndex++);
+                case TYPE_GEOMETRY -> column.type(geometryTypeName(geometryTypes, geometryColumnIndex++)).jdbcType(Types.OTHER);
+                case TYPE_VECTOR -> vectorType(column, vectorDimensions, vectorColumnIndex++);
                 case TYPE_VARCHAR, TYPE_VAR_STRING -> charType(column, binary ? "VARBINARY" : "VARCHAR",
-                        binary ? Types.VARBINARY : Types.VARCHAR, byteToCharLength(columnMeta[i], collation), binary ? null : collation);
-                case TYPE_TINY_BLOB, TYPE_BLOB, TYPE_MEDIUM_BLOB, TYPE_LONG_BLOB -> blobType(column, code, columnMeta[i], binary, collation);
-                case TYPE_STRING -> stringType(column, columnMeta[i], binary, collation,
-                        enumValues, setValues, enumIndex, setIndex);
-                case TYPE_ENUM -> enumOrSet(column, "ENUM", enumValues, enumIndex, collation);
-                case TYPE_SET -> enumOrSet(column, "SET", setValues, setIndex, collation);
+                        binary ? Types.VARBINARY : Types.VARCHAR, byteToCharLength(columnMetadata[i], collation), binary ? null : collation);
+                case TYPE_TINY_BLOB, TYPE_BLOB, TYPE_MEDIUM_BLOB, TYPE_LONG_BLOB -> blobType(column, columnTypeCode, columnMetadata[i], binary, collation);
+                case TYPE_STRING -> stringType(column, columnMetadata[i], binary, collation,
+                        enumValues, setValues, enumColumnIndex, setColumnIndex);
+                case TYPE_ENUM -> enumOrSet(column, "ENUM", enumValues, enumColumnIndex, collation);
+                case TYPE_SET -> enumOrSet(column, "SET", setValues, setColumnIndex, collation);
                 default -> column.type("UNKNOWN").jdbcType(Types.OTHER);
             }
 
-            // STRING code may resolve to ENUM/SET internally; advance those indices there.
-            if (code == TYPE_STRING) {
-                final int realType = unpackStringRealType(columnMeta[i]);
+            // STRING columns may carry ENUM/SET values; advance the corresponding value-list index.
+            if (columnTypeCode == TYPE_STRING) {
+                final int realType = unpackStringRealType(columnMetadata[i]);
                 if (realType == TYPE_ENUM) {
-                    enumIndex++;
+                    enumColumnIndex++;
                 }
                 else if (realType == TYPE_SET) {
-                    setIndex++;
+                    setColumnIndex++;
                 }
             }
-            else if (code == TYPE_ENUM) {
-                enumIndex++;
+            else if (columnTypeCode == TYPE_ENUM) {
+                enumColumnIndex++;
             }
-            else if (code == TYPE_SET) {
-                setIndex++;
+            else if (columnTypeCode == TYPE_SET) {
+                setColumnIndex++;
             }
 
             table.addColumn(column.create());
@@ -214,8 +210,8 @@ public class BinlogMetadataTableBuilder {
 
         if (simplePk != null && !simplePk.isEmpty()) {
             final List<String> pkNames = new ArrayList<>(simplePk.size());
-            for (Integer idx : simplePk) {
-                pkNames.add(names.get(idx));
+            for (Integer columnIndex : simplePk) {
+                pkNames.add(names.get(columnIndex));
             }
             table.setPrimaryKeyNames(pkNames);
         }
@@ -225,11 +221,11 @@ public class BinlogMetadataTableBuilder {
             // Table_map_log_event::init_primary_key_field() in MySQL sql/log_event.cc). The map keeps
             // the key part order and the prefix length is irrelevant here: the relational model tracks
             // key column names only, exactly like the DDL parser does for a prefixed key.
-            final Map<Integer, Integer> prefixPk = meta.getPrimaryKeysWithPrefix();
+            final Map<Integer, Integer> prefixPk = eventMetadata.getPrimaryKeysWithPrefix();
             if (prefixPk != null && !prefixPk.isEmpty()) {
                 final List<String> pkNames = new ArrayList<>(prefixPk.size());
-                for (Integer idx : prefixPk.keySet()) {
-                    pkNames.add(names.get(idx));
+                for (Integer columnIndex : prefixPk.keySet()) {
+                    pkNames.add(names.get(columnIndex));
                 }
                 table.setPrimaryKeyNames(pkNames);
             }
@@ -249,12 +245,18 @@ public class BinlogMetadataTableBuilder {
         }
     }
 
-    private void blobType(ColumnEditor column, int code, int meta, boolean binary, int collation) {
-        // BLOB family: meta = number of length bytes (1=TINY, 2=normal, 3=MEDIUM, 4=LONG).
-        final String prefix = switch (code) {
-            case TYPE_TINY_BLOB -> "TINY";
-            case TYPE_MEDIUM_BLOB -> "MEDIUM";
-            case TYPE_LONG_BLOB -> "LONG";
+    private void blobType(ColumnEditor column, int columnTypeCode, int columnMetadata, boolean binary, int collation) {
+        // TABLE_MAP uses BLOB for every size, with metadata carrying the number of length bytes.
+        final int lengthBytes = switch (columnTypeCode) {
+            case TYPE_TINY_BLOB -> 1;
+            case TYPE_MEDIUM_BLOB -> 3;
+            case TYPE_LONG_BLOB -> 4;
+            default -> columnMetadata;
+        };
+        final String prefix = switch (lengthBytes) {
+            case 1 -> "TINY";
+            case 3 -> "MEDIUM";
+            case 4 -> "LONG";
             default -> "";
         };
         if (binary) {
@@ -265,19 +267,19 @@ public class BinlogMetadataTableBuilder {
         }
     }
 
-    private void stringType(ColumnEditor column, int meta, boolean binary, int collation,
-                            List<String[]> enumValues, List<String[]> setValues, int enumIdx, int setIdx) {
-        final int realType = unpackStringRealType(meta);
+    private void stringType(ColumnEditor column, int columnMetadata, boolean binary, int collation,
+                            List<String[]> enumValues, List<String[]> setValues, int enumColumnIndex, int setColumnIndex) {
+        final int realType = unpackStringRealType(columnMetadata);
         if (realType == TYPE_ENUM) {
-            enumOrSet(column, "ENUM", enumValues, enumIdx, collation);
+            enumOrSet(column, "ENUM", enumValues, enumColumnIndex, collation);
             return;
         }
         if (realType == TYPE_SET) {
-            enumOrSet(column, "SET", setValues, setIdx, collation);
+            enumOrSet(column, "SET", setValues, setColumnIndex, collation);
             return;
         }
         // Plain CHAR / BINARY.
-        final int byteLength = unpackStringLength(meta);
+        final int byteLength = unpackStringLength(columnMetadata);
         if (binary) {
             column.type("BINARY").jdbcType(Types.BINARY).length(byteLength);
         }
@@ -316,10 +318,10 @@ public class BinlogMetadataTableBuilder {
      * The {@code VECTOR_DIMENSIONALITY} metadata field (MySQL 9) carries the dimensionality of every
      * vector column, which the DDL parser stores as the column length.
      */
-    private static void vectorType(ColumnEditor column, List<Integer> vectorDimensions, int vectorIndex) {
+    private static void vectorType(ColumnEditor column, List<Integer> vectorDimensions, int vectorColumnIndex) {
         column.type("VECTOR").jdbcType(Types.OTHER);
-        if (vectorDimensions != null && vectorIndex < vectorDimensions.size()) {
-            column.length(vectorDimensions.get(vectorIndex));
+        if (vectorDimensions != null && vectorColumnIndex < vectorDimensions.size()) {
+            column.length(vectorDimensions.get(vectorColumnIndex));
         }
     }
 
@@ -327,11 +329,11 @@ public class BinlogMetadataTableBuilder {
      * Resolve the concrete spatial type name from the {@code GEOMETRY_TYPE} metadata field, which carries
      * the real type of every geometry column ({@code Field::geometry_type} codes).
      */
-    private static String geometryTypeName(List<Integer> geometryTypes, int geometryIndex) {
-        if (geometryTypes == null || geometryIndex >= geometryTypes.size()) {
+    private static String geometryTypeName(List<Integer> geometryTypes, int geometryColumnIndex) {
+        if (geometryTypes == null || geometryColumnIndex >= geometryTypes.size()) {
             return "GEOMETRY";
         }
-        return switch (geometryTypes.get(geometryIndex)) {
+        return switch (geometryTypes.get(geometryColumnIndex)) {
             case 1 -> "POINT";
             case 2 -> "LINESTRING";
             case 3 -> "POLYGON";
@@ -347,31 +349,31 @@ public class BinlogMetadataTableBuilder {
      * Unpack the real type packed into a {@code MYSQL_TYPE_STRING} metadata value (CHAR longer than
      * 255 bytes, ENUM, or SET are all transported as STRING). Canonical MySQL algorithm.
      */
-    private static int unpackStringRealType(int meta) {
-        if (meta < 256) {
+    private static int unpackStringRealType(int columnMetadata) {
+        if (columnMetadata < 256) {
             return TYPE_STRING;
         }
-        final int byte0 = meta >> 8;
+        final int byte0 = columnMetadata >> 8;
         if ((byte0 & 0x30) != 0x30) {
             return byte0 | 0x30;
         }
         return byte0;
     }
 
-    private static int unpackStringLength(int meta) {
-        if (meta < 256) {
-            return meta;
+    private static int unpackStringLength(int columnMetadata) {
+        if (columnMetadata < 256) {
+            return columnMetadata;
         }
-        final int byte0 = meta >> 8;
-        final int byte1 = meta & 0xFF;
+        final int byte0 = columnMetadata >> 8;
+        final int byte1 = columnMetadata & 0xFF;
         if ((byte0 & 0x30) != 0x30) {
             return byte1 | (((byte0 & 0x30) ^ 0x30) << 4);
         }
         return byte1;
     }
 
-    private static boolean isNumericType(int code) {
-        return switch (code) {
+    private static boolean isNumericType(int columnTypeCode) {
+        return switch (columnTypeCode) {
             case TYPE_TINY, TYPE_SHORT, TYPE_INT24, TYPE_LONG, TYPE_LONGLONG,
                     TYPE_FLOAT, TYPE_DOUBLE, TYPE_YEAR, TYPE_DECIMAL, TYPE_NEWDECIMAL ->
                 true;
@@ -386,8 +388,8 @@ public class BinlogMetadataTableBuilder {
      * because the server tests the field's real type; they are numbered separately and take their
      * charset from the ENUM_AND_SET_* fields instead.
      */
-    private static boolean isCharacterType(int code) {
-        return switch (code) {
+    private static boolean isCharacterType(int columnTypeCode) {
+        return switch (columnTypeCode) {
             case TYPE_VARCHAR, TYPE_VAR_STRING, TYPE_STRING,
                     TYPE_TINY_BLOB, TYPE_BLOB, TYPE_MEDIUM_BLOB, TYPE_LONG_BLOB ->
                 true;
@@ -395,12 +397,12 @@ public class BinlogMetadataTableBuilder {
         };
     }
 
-    private static boolean isEnumOrSetColumn(int code, int meta) {
-        if (code == TYPE_ENUM || code == TYPE_SET) {
+    private static boolean isEnumOrSetColumn(int columnTypeCode, int columnMetadata) {
+        if (columnTypeCode == TYPE_ENUM || columnTypeCode == TYPE_SET) {
             return true;
         }
-        if (code == TYPE_STRING) {
-            final int realType = unpackStringRealType(meta);
+        if (columnTypeCode == TYPE_STRING) {
+            final int realType = unpackStringRealType(columnMetadata);
             return realType == TYPE_ENUM || realType == TYPE_SET;
         }
         return false;
@@ -413,17 +415,17 @@ public class BinlogMetadataTableBuilder {
      * ({@code ENUM_AND_SET_COLUMN_CHARSET}/{@code ENUM_AND_SET_DEFAULT_CHARSET}) with an independent
      * numbering (see {@code Table_map_log_event::init_charset_field()} in MySQL {@code sql/log_event.cc}).
      */
-    private int[] resolveColumnCollations(byte[] types, int[] columnMeta, TableMapEventMetadata meta) {
-        final int[] result = new int[types.length];
-        int charIndex = 0;
-        int enumSetIndex = 0;
-        for (int i = 0; i < types.length; i++) {
-            final int code = types[i] & 0xFF;
-            if (isEnumOrSetColumn(code, columnMeta[i])) {
-                result[i] = resolveCollation(meta.getEnumAndSetColumnCharsets(), meta.getEnumAndSetDefaultCharset(), enumSetIndex++);
+    private int[] resolveColumnCollations(byte[] columnTypes, int[] columnMetadata, TableMapEventMetadata eventMetadata) {
+        final int[] result = new int[columnTypes.length];
+        int characterColumnIndex = 0;
+        int enumSetColumnIndex = 0;
+        for (int i = 0; i < columnTypes.length; i++) {
+            final int columnTypeCode = columnTypes[i] & 0xFF;
+            if (isEnumOrSetColumn(columnTypeCode, columnMetadata[i])) {
+                result[i] = resolveCollation(eventMetadata.getEnumAndSetColumnCharsets(), eventMetadata.getEnumAndSetDefaultCharset(), enumSetColumnIndex++);
             }
-            else if (isCharacterType(code)) {
-                result[i] = resolveCollation(meta.getColumnCharsets(), meta.getDefaultCharset(), charIndex++);
+            else if (isCharacterType(columnTypeCode)) {
+                result[i] = resolveCollation(eventMetadata.getColumnCharsets(), eventMetadata.getDefaultCharset(), characterColumnIndex++);
             }
             else {
                 result[i] = -1;
