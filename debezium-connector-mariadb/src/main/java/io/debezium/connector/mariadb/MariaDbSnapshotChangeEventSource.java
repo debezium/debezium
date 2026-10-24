@@ -5,6 +5,7 @@
  */
 package io.debezium.connector.mariadb;
 
+import java.util.List;
 import java.util.function.Function;
 
 import org.apache.kafka.connect.source.SourceRecord;
@@ -20,6 +21,8 @@ import io.debezium.function.BlockingConsumer;
 import io.debezium.jdbc.MainConnectionProvidingConnectionFactory;
 import io.debezium.pipeline.EventDispatcher;
 import io.debezium.pipeline.notification.NotificationService;
+import io.debezium.relational.Column;
+import io.debezium.relational.Table;
 import io.debezium.relational.TableId;
 import io.debezium.snapshot.SnapshotterService;
 import io.debezium.util.Clock;
@@ -48,6 +51,22 @@ public class MariaDbSnapshotChangeEventSource extends BinlogSnapshotChangeEventS
         super(connectorConfig, connectionFactory, schema, dispatcher, clock, metrics, lastEventProcessor,
                 preSnapshotAction, notificationService, snapshotterService);
         this.connectorConfig = connectorConfig;
+    }
+
+    @Override
+    protected List<String> getPreparedColumnNames(MariaDbPartition partition, Table table) {
+        final List<String> columnNames = super.getPreparedColumnNames(partition, table);
+        for (Column column : table.columns()) {
+            if (!Year2Column.isYear2(column)) {
+                continue;
+            }
+            final int index = columnNames.indexOf(connection.quoteIdentifier(column.name()));
+            if (index < 0) {
+                continue;
+            }
+            columnNames.set(index, Year2Column.selectExpression(connection, column));
+        }
+        return columnNames;
     }
 
     @Override

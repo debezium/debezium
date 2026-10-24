@@ -16,8 +16,12 @@ import io.debezium.connector.binlog.gtid.GtidSet;
 import io.debezium.connector.binlog.jdbc.BinlogConnectorConnection;
 import io.debezium.connector.binlog.jdbc.BinlogFieldReader;
 import io.debezium.connector.binlog.jdbc.ConnectionConfiguration;
+import io.debezium.connector.mariadb.MariaDbChunkQueryBuilder;
 import io.debezium.connector.mariadb.gtid.MariaDbGtidSet;
 import io.debezium.connector.mariadb.gtid.MariaDbGtidSet.MariaDbGtid;
+import io.debezium.pipeline.source.snapshot.incremental.ChunkQueryBuilder;
+import io.debezium.relational.RelationalDatabaseConnectorConfig;
+import io.debezium.spi.schema.DataCollectionId;
 
 /**
  * A concrete implementation of {@link BinlogConnectorConnection} for MariaDB.
@@ -30,6 +34,11 @@ public class MariaDbConnection extends BinlogConnectorConnection {
 
     public MariaDbConnection(ConnectionConfiguration configuration, BinlogFieldReader fieldReader) {
         super(configuration, fieldReader);
+    }
+
+    @Override
+    public <T extends DataCollectionId> ChunkQueryBuilder<T> chunkQueryBuilder(RelationalDatabaseConnectorConfig connectorConfig) {
+        return new MariaDbChunkQueryBuilder<>(connectorConfig, this);
     }
 
     @Override
