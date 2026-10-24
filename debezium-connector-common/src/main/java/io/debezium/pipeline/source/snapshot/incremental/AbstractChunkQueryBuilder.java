@@ -144,15 +144,16 @@ public abstract class AbstractChunkQueryBuilder<T extends DataCollectionId>
             condition.append('(');
             for (int j = 0; j < i + 1; j++) {
                 final boolean isLastIterationForJ = (i == j);
+                final String placeholder = jdbcConnection.getQueryParameterPlaceholder(pkColumns.get(j));
                 final String operator =
                         // not the last item in this iteration
-                        !isLastIterationForJ ? " = ?" :
+                        !isLastIterationForJ ? " = " + placeholder :
                         // the last item in this iteration
                         // and in all iterations
                         // and the last condition should be inclusive
-                                (isLastIterationForI && inclusiveFinal) ? " >= ?"
+                                (isLastIterationForI && inclusiveFinal) ? " >= " + placeholder
                                         // the last item in this iteration but we don't need an inclusive condition
-                                        : " > ?";
+                                        : " > " + placeholder;
                 final String pkColumnName = jdbcConnection.quoteIdentifier(pkColumns.get(j).name());
                 if (pkColumns.get(j).isRequired()) {
                     condition.append(pkColumnName);

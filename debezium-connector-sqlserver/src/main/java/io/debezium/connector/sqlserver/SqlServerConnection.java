@@ -851,6 +851,14 @@ public class SqlServerConnection extends JdbcConnection {
     }
 
     @Override
+    public String getQueryParameterPlaceholder(Column column) {
+        if ("datetime".equalsIgnoreCase(column.typeName())) {
+            return "CAST(? AS datetime)";
+        }
+        return super.getQueryParameterPlaceholder(column);
+    }
+
+    @Override
     public String buildSelectWithRowLimits(TableId tableId, int limit, String projection, Optional<String> condition,
                                            Optional<String> additionalCondition, String orderBy, Optional<String> tableAlias) {
         final StringBuilder sql = new StringBuilder("SELECT TOP ");

@@ -1828,6 +1828,13 @@ public class JdbcConnection implements AutoCloseable {
     }
 
     /**
+     * Gets the query bind parameter placeholder based on the column.
+     */
+    public String getQueryParameterPlaceholder(Column column) {
+        return "?";
+    }
+
+    /**
      * Converts a {@link ResultSet} row to an array of Objects
      */
     public Object[] rowToArray(Table table, ResultSet rs, ColumnUtils.ColumnArray columnArray) throws SQLException {
