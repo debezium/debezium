@@ -2853,7 +2853,13 @@ endif::MARIADB[]
 |The `binlog-format` must be set to `ROW` or `row`.
 
 |`binlog_row_image`
-|The `binlog_row_image` must be set to `FULL` or `full`.
+|The `binlog_row_image` must be set to `FULL` or `NOBLOB`.
+With `NOBLOB`, the connector emits the BLOB and TEXT columns that the binlog omits with the value of the `unavailable.value.placeholder` property.
+ifdef::MARIADB[]
+Because MariaDB stores `JSON` columns as `LONGTEXT`, the connector also emits the `JSON` columns that the binlog omits with this placeholder value.
+endif::MARIADB[]
+Clients that change captured tables must not set another value, such as `MINIMAL`, for their sessions.
+If the connector reads a row image that omits other columns, the connector fails.
 
 |`binlog_expire_logs_seconds`
 |The `binlog_expire_logs_seconds` corresponds to deprecated system variable `expire_logs_days`.

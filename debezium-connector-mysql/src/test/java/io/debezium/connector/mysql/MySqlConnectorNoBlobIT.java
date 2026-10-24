@@ -12,22 +12,27 @@ import java.nio.file.Path;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 
 import org.apache.kafka.connect.data.Field;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceRecord;
+import org.awaitility.Awaitility;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import io.debezium.config.Configuration;
+import io.debezium.connector.binlog.BinlogStreamingChangeEventSource;
 import io.debezium.connector.binlog.util.TestHelper;
 import io.debezium.connector.binlog.util.UniqueDatabase;
 import io.debezium.data.KeyValueStore;
 import io.debezium.data.SchemaChangeHistory;
 import io.debezium.data.VerifyRecord;
+import io.debezium.doc.FixFor;
 import io.debezium.embedded.async.AbstractAsyncEngineConnectorTest;
+import io.debezium.junit.logging.LogInterceptor;
 import io.debezium.util.Testing.Files;
 
 /**
@@ -211,6 +216,29 @@ public class MySqlConnectorNoBlobIT extends AbstractAsyncEngineConnectorTest {
         assertThat(beforeImage.getInt32("id")).isEqualTo(1);
         assertThat(beforeImage.getString("name")).isEqualTo("scooter");
         assertThat(new String(beforeImage.getBytes("description"))).isEqualTo("__debezium_unavailable_value");
+    }
+
+    /**
+     * A row image of a client that sets binlog_row_image=MINIMAL for its session also omits columns that are not BLOB or
+     * TEXT, which must not be emitted as null.
+     */
+    @Test
+    @FixFor("debezium/dbz#962")
+    public void shouldFailOnRowImageThatOmitsColumnsOtherThanBlobOrText() throws InterruptedException, SQLException {
+        final LogInterceptor logInterceptor = new LogInterceptor(BinlogStreamingChangeEventSource.class);
+        config = simpleConfig()
+                .build();
+        start(MySqlConnector.class, config);
+        consumeAtLeast(15);
+
+        try (MySqlTestConnection db = MySqlTestConnection.forTestDatabase(DATABASE.getDatabaseName())) {
+            db.execute("SET SESSION binlog_row_image='MINIMAL'", "UPDATE Products SET name = 'updated-scooter' WHERE id = 1");
+        }
+
+        Awaitility.await().atMost(60, TimeUnit.SECONDS).until(() -> !isEngineRunning.get());
+        assertThat(logInterceptor.containsMessage("Incomplete row image (UPDATE before) for table")).isTrue();
+        assertThat(logInterceptor.containsMessage("A client may have set binlog_row_image=MINIMAL or NOBLOB, or FULL_NODUP on MariaDB, for its session"))
+                .isTrue();
     }
 
     private int consumeAtLeast(int minNumber) throws InterruptedException {
