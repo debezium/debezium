@@ -8,6 +8,7 @@ package io.debezium.connector.binlog.metadata;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import java.io.IOException;
 import java.sql.Types;
 import java.util.BitSet;
 import java.util.LinkedHashMap;
@@ -15,10 +16,14 @@ import java.util.List;
 import java.util.Map;
 
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 
 import com.github.shyiko.mysql.binlog.event.TableMapEventData;
 import com.github.shyiko.mysql.binlog.event.TableMapEventMetadata;
 import com.github.shyiko.mysql.binlog.event.TableMapEventMetadata.DefaultCharset;
+import com.github.shyiko.mysql.binlog.event.deserialization.TableMapEventMetadataDeserializer;
+import com.github.shyiko.mysql.binlog.io.ByteArrayInputStream;
 
 import io.debezium.relational.Column;
 import io.debezium.relational.Table;
@@ -51,7 +56,8 @@ class BinlogMetadataTableBuilderTest {
         meta.setColumnNames(List.of(
                 "id", "big_u", "small_s", "is_active", "price", "ratio", "name", "code",
                 "raw_b", "descr", "blob_c", "status", "tags", "flags", "created_at", "ts", "d", "doc"));
-        // signedness is indexed over numeric columns only: id,big_u,small_s,is_active,price,ratio -> bit 1 (big_u) unsigned
+        // The wire format numbers numeric columns only, but the deserializer expands signedness to
+        // positions in the full column list. big_u is column 1, so its unsigned flag is bit 1.
         final BitSet signedness = new BitSet();
         signedness.set(1);
         meta.setSignedness(signedness);
@@ -153,6 +159,53 @@ class BinlogMetadataTableBuilderTest {
 
         assertColumn(table, "d", "DATE", Types.DATE, true);
         assertColumn(table, "doc", "JSON", Types.OTHER, true);
+    }
+
+    @Test
+    void shouldPreserveSignednessWhenNumericAndCharacterColumnsAreInterleaved() throws IOException {
+        final byte[] columnTypes = { 3, 15, 8, 3, 15, 3 };
+        // SIGNEDNESS field (1), payload length (1), then flags for id, bigUnsigned, signedInt,
+        // unsignedInt: 0101. The deserializer expands the two unsigned flags to columns 2 and 5.
+        final TableMapEventMetadata metadata = new TableMapEventMetadataDeserializer().deserialize(
+                new ByteArrayInputStream(new byte[]{ 1, 1, 0x50 }), columnTypes.length, columnTypes);
+        metadata.setColumnNames(List.of("id", "firstText", "bigUnsigned", "signedInt", "secondText", "unsignedInt"));
+
+        final TableMapEventData data = new TableMapEventData();
+        data.setColumnTypes(columnTypes);
+        data.setColumnMetadata(new int[]{ 0, 10, 0, 0, 10, 0 });
+        data.setColumnNullability(new BitSet());
+        data.setEventMetadata(metadata);
+
+        final Table table = builder.build(TableId.parse("test.interleavedNumbers"), data);
+        assertColumn(table, "id", "INT", Types.INTEGER, false);
+        assertColumn(table, "bigUnsigned", "BIGINT UNSIGNED", Types.BIGINT, false);
+        assertColumn(table, "signedInt", "INT", Types.INTEGER, false);
+        assertColumn(table, "unsignedInt", "INT UNSIGNED", Types.INTEGER, false);
+    }
+
+    @ParameterizedTest
+    @CsvSource({
+            "1,TINYBLOB,TINYTEXT",
+            "2,BLOB,TEXT",
+            "3,MEDIUMBLOB,MEDIUMTEXT",
+            "4,LONGBLOB,LONGTEXT"
+    })
+    void shouldPreserveBlobAndTextTypesFromLengthMetadata(int lengthBytes, String binaryType, String textType) {
+        final TableMapEventMetadata metadata = new TableMapEventMetadata();
+        metadata.setColumnNames(List.of("binaryValue", "textValue"));
+        metadata.setColumnCharsets(List.of(63, 255));
+
+        final TableMapEventData data = new TableMapEventData();
+        // The server emits BLOB (252) for every size; metadata carries the number of length bytes.
+        data.setColumnTypes(new byte[]{ (byte) 252, (byte) 252 });
+        data.setColumnMetadata(new int[]{ lengthBytes, lengthBytes });
+        data.setColumnNullability(new BitSet());
+        data.setEventMetadata(metadata);
+
+        final Table table = builder.build(TableId.parse("test.blobs"), data);
+        assertColumn(table, "binaryValue", binaryType, Types.BLOB, false);
+        assertColumn(table, "textValue", textType, Types.VARCHAR, false);
+        assertThat(table.columnWithName("textValue").charsetName()).isEqualTo("utf8mb4");
     }
 
     @Test

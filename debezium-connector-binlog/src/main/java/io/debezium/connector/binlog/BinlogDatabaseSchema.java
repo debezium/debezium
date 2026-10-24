@@ -255,16 +255,8 @@ public abstract class BinlogDatabaseSchema<P extends BinlogPartition, O extends 
         if (!filters.dataCollectionFilter().isIncluded(tableId)) {
             return false;
         }
-        // A TABLE_MAP event precedes the row events for its table within every transaction, so it is seen
-        // very frequently. Rebuilding the table and its Kafka Connect schema on every event would be
-        // wasteful (the PostgreSQL connector rebuilds unconditionally, but its pgoutput relation messages
-        // are rare, whereas TABLE_MAP is per-transaction). Instead, each table is populated once and
-        // rebuilt when either:
-        // - a DDL statement for it has been parsed from the binlog, which marks it dirty by removing it
-        // from this registry (see the invalidation in parseDdl); or
-        // - the TABLE_MAP metadata no longer structurally matches what was registered, which catches
-        // schema drift that never appears as a binlog DDL statement (for example an ALTER executed
-        // with sql_log_bin=OFF); the comparison is a cheap field-by-field check without allocations.
+        // Rebuild after either parsed DDL invalidates the registration or TABLE_MAP metadata changes.
+        // The latter also catches schema changes made with sql_log_bin=OFF.
         final TableMapMetadataSnapshot registered = tablesRegisteredFromBinlogMetadata.get(tableId);
         if (registered != null && registered.matches(metadata) && schemaFor(tableId) != null) {
             return true;

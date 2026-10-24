@@ -7,6 +7,7 @@ package io.debezium.connector.binlog;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import java.math.BigDecimal;
 import java.nio.file.Path;
 import java.sql.SQLException;
 import java.util.ArrayList;
@@ -30,6 +31,7 @@ import io.debezium.connector.binlog.util.BinlogTestConnection;
 import io.debezium.connector.binlog.util.TestHelper;
 import io.debezium.connector.binlog.util.UniqueDatabase;
 import io.debezium.data.Envelope;
+import io.debezium.relational.mapping.PropagateSourceMetadataToSchemaParameter;
 import io.debezium.util.Testing;
 
 /**
@@ -103,7 +105,9 @@ public abstract class BinlogMetadataBasedSchemaIT<C extends SourceConnector> ext
 
     @Test
     public void shouldReconstructAllDataTypesFromBinlogMetadata() throws Exception {
-        final Configuration config = metadataModeConfig().build();
+        final Configuration config = metadataModeConfig()
+                .with(BinlogConnectorConfig.PROPAGATE_COLUMN_SOURCE_TYPE, ".*")
+                .build();
         start(getConnectorClass(), config);
         waitForStreamingRunning(getConnectorName(), DATABASE.getServerName());
 
@@ -130,6 +134,38 @@ public abstract class BinlogMetadataBasedSchemaIT<C extends SourceConnector> ext
         assertThat(after.getString("c_varchar")).isEqualTo("hello");
         assertThat(after.getString("c_enum")).isEqualTo("OK");
         assertThat(after.getString("c_set")).isEqualTo("a,c");
+
+        assertSourceColumnType(after, "c_tinyblob", "TINYBLOB");
+        assertSourceColumnType(after, "c_blob", "BLOB");
+        assertSourceColumnType(after, "c_mediumblob", "MEDIUMBLOB");
+        assertSourceColumnType(after, "c_longblob", "LONGBLOB");
+        assertSourceColumnType(after, "c_tinytext", "TINYTEXT");
+        assertSourceColumnType(after, "c_text", "TEXT");
+        assertSourceColumnType(after, "c_mediumtext", "MEDIUMTEXT");
+        assertSourceColumnType(after, "c_longtext", "LONGTEXT");
+
+        stopConnector();
+    }
+
+    @Test
+    public void shouldPreserveSignednessWhenNumericAndCharacterColumnsAreInterleaved() throws Exception {
+        executeStatements(DATABASE.getDatabaseName(),
+                "CREATE TABLE numbers (id INT PRIMARY KEY, firstText VARCHAR(10), "
+                        + "bigUnsigned BIGINT UNSIGNED, signedInt INT, secondText VARCHAR(10), unsignedInt INT UNSIGNED)");
+        final Configuration config = metadataModeConfig()
+                .with(BinlogConnectorConfig.BIGINT_UNSIGNED_HANDLING_MODE, BinlogConnectorConfig.BigIntUnsignedHandlingMode.PRECISE)
+                .build();
+        start(getConnectorClass(), config);
+        waitForStreamingRunning(getConnectorName(), DATABASE.getServerName());
+
+        executeStatements(DATABASE.getDatabaseName(),
+                "INSERT INTO numbers VALUES (1, 'first', 18446744073709551615, -42, 'second', 4294967295)");
+        final List<SourceRecord> records = consumeTable("numbers", 1);
+        assertThat(records).hasSize(1);
+        final Struct after = afterOf(records.get(0));
+        assertThat(after.get("bigUnsigned")).isEqualTo(new BigDecimal("18446744073709551615"));
+        assertThat(after.getInt32("signedInt")).isEqualTo(-42);
+        assertThat(after.getInt64("unsignedInt")).isEqualTo(4294967295L);
 
         stopConnector();
     }
@@ -172,7 +208,7 @@ public abstract class BinlogMetadataBasedSchemaIT<C extends SourceConnector> ext
                 .build();
         start(getConnectorClass(), config);
 
-        // Snapshot read events (op=r) for the pre-existing rows, decoded with the reconstructed schema.
+        // Snapshot read events (op=r) use the table schema obtained through the existing DDL path.
         final List<SourceRecord> snapshot = consumeOrders(4);
         assertThat(snapshot).hasSize(4);
         for (SourceRecord record : snapshot) {
@@ -180,7 +216,8 @@ public abstract class BinlogMetadataBasedSchemaIT<C extends SourceConnector> ext
             assertOrderSchema(afterOf(record));
         }
 
-        // Handoff to streaming: a subsequent change is captured as a create event with the same schema.
+        // The first streaming change uses TABLE_MAP metadata. Check the operation and selected fields;
+        // the full schema can differ from the snapshot schema, for example in column defaults.
         waitForStreamingRunning(getConnectorName(), DATABASE.getServerName());
         insertOrders(1);
         final List<SourceRecord> streamed = consumeOrders(1);
@@ -540,6 +577,11 @@ public abstract class BinlogMetadataBasedSchemaIT<C extends SourceConnector> ext
         return ((Struct) record.value()).getString(Envelope.FieldName.OPERATION);
     }
 
+    private static void assertSourceColumnType(Struct after, String columnName, String expectedType) {
+        assertThat(after.schema().field(columnName).schema().parameters())
+                .containsEntry(PropagateSourceMetadataToSchemaParameter.TYPE_NAME_PARAMETER_KEY, expectedType);
+    }
+
     private static void assertOrderSchema(Struct after) {
         final Schema schema = after.schema();
         assertThat(schema.field("id")).isNotNull();
@@ -549,7 +591,7 @@ public abstract class BinlogMetadataBasedSchemaIT<C extends SourceConnector> ext
         assertThat(schema.field("code")).isNotNull();
         assertThat(schema.field("note")).isNotNull();
         assertThat(schema.field("created_at")).isNotNull();
-        // Types reconstructed from TABLE_MAP metadata.
+        // Selected types shared by the snapshot and streaming schemas.
         assertThat(schema.field("id").schema().type()).isEqualTo(Schema.Type.INT32);
         assertThat(schema.field("code").schema().type()).isEqualTo(Schema.Type.STRING);
         assertThat(schema.field("quantity").schema().type()).isEqualTo(Schema.Type.INT64);
