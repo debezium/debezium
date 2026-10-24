@@ -156,13 +156,21 @@ The xref:{context}-connector-snapshot-mode-options[`recovery` snapshot mode] reb
 * The connector requires no schema history topic and no `schema.history.internal.*` settings; there is no history storage to provision, monitor, or recover.
 * The connector restarts without a history recovery phase.
 * Schema changes that are never written to the binlog, for example, an `ALTER TABLE` statement that runs with `sql_log_bin=OFF`, heal themselves as soon as the connector reads the next change for the table.
-* The connector offset can be seeded or rewound to any position that the binlog still retains, even across past DDL statements, because the binlog carries the schema that was in effect at every position.
+* The connector offset can be seeded or rewound across past DDL statements to a position that the binlog still retains, provided that the events contain full metadata and meet the key requirements below.
+The connector reconstructs the schema that was in effect at that position.
 
 .Limitations of the binlog metadata mode
 The binlog metadata mode has the following limitations:
 
 * The source server must support `binlog_row_metadata` and run with `binlog_row_metadata=FULL`.
 The connector fails at startup if full row metadata is not enabled.
+* Each captured table must have a primary key reported in `TABLE_MAP` metadata or an explicit xref:{context}-property-message-key-columns[`message.key.columns`] mapping that selects existing columns in that table.
+A `UNIQUE` index whose columns are all `NOT NULL` can satisfy this requirement if the server reports it as the primary key.
+A nullable `UNIQUE` index alone does not satisfy the requirement.
+The connector validates captured tables before emitting snapshot data and whenever it rebuilds a streaming table schema from `TABLE_MAP` metadata, including after a restart or when replaying older events.
+If a table has no usable key, the connector stops with an error that identifies the table and suggests adding a primary key, configuring `message.key.columns`, or disabling this mode.
+The first `TABLE_MAP` after a snapshot or DDL statement must also select the same key columns as the snapshot or DDL schema.
+If different unique index candidates cause the selected keys to differ, add an explicit primary key or configure `message.key.columns`.
 * Integer display width is not available, so `TINYINT(1)` cannot be distinguished from `TINYINT`.
 The default mapping (`INT8`) is identical in both modes, but the optional `TinyIntOneToBooleanConverter` relies on the column length.
 To use the converter in binlog metadata mode, set its `length.checker` option to `false` and configure an explicit selector for the columns to convert.
@@ -174,9 +182,17 @@ Relaxing the subject compatibility, for example to `NONE`, avoids the rejection;
 * Source column types propagated with `column.propagate.source.type` reflect the reconstructed types, without display width or precision, and column comments are not available.
 * After a restart, a schema change event for a table whose structure has not been observed yet carries the DDL statement without the `tableChanges` structure; the table structure is restored as soon as the connector reads the next change for the table.
 
+Even with row-based logging, the server writes DDL statements such as `CREATE TABLE` and `ALTER TABLE` to the binlog as SQL statements.
+These statements can describe unique indexes, but the `FULL` metadata in subsequent `TABLE_MAP` events does not include the complete list of unique or secondary indexes.
+If the connector starts reading after the DDL, the row metadata cannot recover a nullable unique index definition for key selection.
+This mode does not persist schema history, so a unique index learned from an earlier DDL statement is also unavailable after a restart until that DDL is read again.
+The key requirement prevents snapshot and streaming events from silently switching to a different or missing message key.
+An explicit `message.key.columns` mapping is retained in the connector configuration and can supply the same key after a restart.
+Choose columns that identify rows consistently; this setting does not enforce uniqueness in the database.
+
 .Choosing a mode
-Use the schema history mode if the source server cannot provide full binlog row metadata, or if consumers depend on attributes such as integer display widths, column default values, column comments, or fully populated `tableChanges` structures in schema change events.
-Use the binlog metadata mode when the source server provides full row metadata and those attributes are not required, especially if you want to remove schema history storage and recovery or start from any position that the binlog still retains.
+Use the schema history mode if the source server cannot provide full binlog row metadata, if captured tables cannot meet the key requirement, or if consumers depend on attributes such as integer display widths, column default values, column comments, or fully populated `tableChanges` structures in schema change events.
+Use the binlog metadata mode when the source server provides full row metadata, captured tables meet the key requirement, and those attributes are not required, especially if you want to remove schema history storage and recovery or replay retained binlog events that meet these requirements.
 
 end::schema-history[]
 

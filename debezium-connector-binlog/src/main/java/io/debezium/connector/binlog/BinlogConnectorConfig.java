@@ -526,7 +526,8 @@ public abstract class BinlogConnectorConfig extends HistorizedRelationalDatabase
                     + "history topic. This is an opt-in mode that requires the source server to run with "
                     + "'binlog_row_metadata=FULL' so that column names, types, charsets, enum/set values and the "
                     + "primary key are present in every TABLE_MAP event. When enabled, no external schema history "
-                    + "topic is created or required. Defaults to 'false'.");
+                    + "topic is created or required. Each captured table must have a primary key available in the "
+                    + "binlog metadata or a matching 'message.key.columns' configuration. Defaults to 'false'.");
 
     public static final Field TOPIC_NAMING_STRATEGY = Field.create("topic.naming.strategy")
             .withDisplayName("Topic naming strategy class")

@@ -563,9 +563,14 @@ Description:::
 Specifies whether the connector reconstructs the table schema from the metadata that the server writes into the binlog when it runs with `binlog_row_metadata=FULL` (the `TABLE_MAP` events), instead of from a persisted schema history topic.
 +
 When set to `true`, the connector rebuilds each table's schema (column names, types, character sets, `ENUM`/`SET` values, and the primary key) from the binlog itself, and it does not create or depend on a schema history topic.
-In this mode you do not need to provide any `schema.history.internal.*` settings; the connector uses an in-memory schema history automatically, so no schema history storage or connection settings are required.
+In this mode the connector does not persist schema history, so no `schema.history.internal.*` storage or connection settings are required.
 This is an opt-in mode that requires the source server to run with `binlog_row_metadata=FULL`, which is available on MySQL 8.0 and later and on MariaDB 10.5 and later.
 If the variable is not set to `FULL`, the connector fails fast at startup.
++
+Each captured table must have a primary key reported in `TABLE_MAP` metadata or a matching xref:{context}-property-message-key-columns[`message.key.columns`] mapping that selects existing columns.
+A nullable `UNIQUE` index alone is insufficient because its definition is not included in `TABLE_MAP` metadata, even with `binlog_row_metadata=FULL`.
+The connector rejects an unsupported table before emitting snapshot data or streaming rows from its reconstructed schema, including when resuming older binlog events.
+Add a primary key, configure an explicit message key, or disable this mode to capture such a table.
 +
 Because the schema is read from the binlog itself, the connector correctly resumes streaming after a restart that occurs in the middle of a multi-row `INSERT` or `UPDATE` operation.
 +
