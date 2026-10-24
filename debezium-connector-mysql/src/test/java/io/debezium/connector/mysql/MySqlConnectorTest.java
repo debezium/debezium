@@ -5,6 +5,7 @@
  */
 package io.debezium.connector.mysql;
 
+import io.debezium.config.Configuration;
 import io.debezium.config.Field;
 import io.debezium.connector.binlog.BinlogConnectorConfigTest;
 
@@ -20,5 +21,10 @@ public class MySqlConnectorTest extends BinlogConnectorConfigTest<MySqlConnector
     @Override
     protected Field.Set getAllFields() {
         return MySqlConnectorConfig.ALL_FIELDS;
+    }
+
+    @Override
+    protected MySqlConnectorConfig getConnectorConfig(Configuration config) {
+        return new MySqlConnectorConfig(config);
     }
 }

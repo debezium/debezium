@@ -21,6 +21,7 @@ import org.junit.jupiter.api.Test;
 
 import io.debezium.config.Configuration;
 import io.debezium.connector.binlog.jdbc.BinlogSystemVariables;
+import io.debezium.connector.binlog.jdbc.LowerCaseTableNames;
 import io.debezium.connector.binlog.util.TestHelper;
 import io.debezium.connector.binlog.util.UniqueDatabase;
 import io.debezium.doc.FixFor;
@@ -63,7 +64,11 @@ public abstract class BinlogDatabaseSchemaTest<C extends BinlogConnectorConfig, 
 
     protected abstract C getConnectorConfig(Configuration config);
 
-    protected abstract S getSchema(Configuration config);
+    protected abstract S getSchema(Configuration config, LowerCaseTableNames lowerCaseTableNames);
+
+    protected S getSchema(Configuration config) {
+        return getSchema(config, LowerCaseTableNames.CASE_SENSITIVE);
+    }
 
     @AfterEach
     void afterEach() {
@@ -417,6 +422,88 @@ public abstract class BinlogDatabaseSchemaTest<C extends BinlogConnectorConfig, 
         assertThat(tableChange.getType()).isEqualTo(TableChanges.TableChangeType.DROP);
         assertThat(tableChange.getId()).isEqualTo(TableId.parse("connector_test.products"));
 
+    }
+
+    @Test
+    @FixFor("debezium/dbz#125")
+    public void shouldKeepNamesAsWrittenWithCaseSensitiveTableNames() throws InterruptedException {
+        final var partitionAndOffset = applyMixedCaseDdl(LowerCaseTableNames.CASE_SENSITIVE);
+
+        assertThat(schema.tableFor(new TableId("MyDb", null, "Qualified")).id()).isEqualTo(new TableId("MyDb", null, "Qualified"));
+        assertThat(schema.tableFor(new TableId("mydb", null, "qualified"))).isNull();
+        assertRecoveredTableIds(LowerCaseTableNames.CASE_SENSITIVE, partitionAndOffset, new TableId("MyDb", null, "Qualified"));
+    }
+
+    @Test
+    @FixFor("debezium/dbz#125")
+    public void shouldUseLowercaseNamesWhenTableNamesAreStoredInLowercase() throws InterruptedException {
+        final var partitionAndOffset = applyMixedCaseDdl(LowerCaseTableNames.STORED_IN_LOWERCASE);
+
+        assertTableId(new TableId("MYDB", null, "QUALIFIED"), new TableId("mydb", null, "qualified"));
+        assertTableId(new TableId("MyDb", null, "Unqualified"), new TableId("mydb", null, "unqualified"));
+        assertTableIncluded("mydb.qualified");
+        assertThat(schema.assignTableNumber(1, new TableId("mydb", null, "qualified"))).isTrue();
+        assertThat(schema.getTableId(1)).isEqualTo(new TableId("mydb", null, "qualified"));
+        assertThat(schema.capturedTablesAsStringArray()).contains("mydb.qualified", "mydb.unqualified");
+        assertRecoveredTableIds(LowerCaseTableNames.STORED_IN_LOWERCASE, partitionAndOffset,
+                new TableId("mydb", null, "qualified"), new TableId("mydb", null, "unqualified"));
+    }
+
+    @Test
+    @FixFor("debezium/dbz#125")
+    public void shouldUseNamesAsCreatedWhenTableNamesAreCaseInsensitive() throws InterruptedException {
+        final var partitionAndOffset = applyMixedCaseDdl(LowerCaseTableNames.CASE_INSENSITIVE);
+
+        // TABLE_MAP events use lowercase names, and MySQL records the session database in lowercase
+        assertTableId(new TableId("mydb", null, "qualified"), new TableId("MyDb", null, "Qualified"));
+        assertTableId(new TableId("mydb", null, "unqualified"), new TableId("MyDb", null, "Unqualified"));
+        assertTableIncluded("MyDb.Qualified");
+        assertThat(schema.assignTableNumber(1, new TableId("mydb", null, "qualified"))).isTrue();
+        assertThat(schema.getTableId(1)).isEqualTo(new TableId("MyDb", null, "Qualified"));
+        assertThat(schema.capturedTablesAsStringArray()).contains("MyDb.Qualified", "MyDb.Unqualified");
+        assertRecoveredTableIds(LowerCaseTableNames.CASE_INSENSITIVE, partitionAndOffset,
+                new TableId("MyDb", null, "Qualified"), new TableId("MyDb", null, "Unqualified"));
+    }
+
+    /**
+     * Applies DDL that names a database and tables with mixed case, the way the statements are recorded in the binlog.
+     */
+    private Offsets<P, O> applyMixedCaseDdl(LowerCaseTableNames lowerCaseTableNames) {
+        final Configuration config = DATABASE.defaultConfigWithoutDatabaseFilter().build();
+        schema = getSchema(config, lowerCaseTableNames);
+        schema.initializeStorage();
+        final P partition = initializePartition(connectorConfig, config);
+        final O offset = initializeOffset(connectorConfig);
+        offset.setBinlogStartPoint("binlog.001", 400);
+
+        final String sessionDatabase = lowerCaseTableNames == LowerCaseTableNames.CASE_SENSITIVE ? "MyDb" : "mydb";
+        schema.parseStreamingDdl(partition, "CREATE DATABASE MyDb", null, offset, Instant.now()).forEach(schema::applySchemaChange);
+        schema.parseStreamingDdl(partition, "CREATE TABLE MyDb.Qualified (id INT PRIMARY KEY)", null, offset, Instant.now())
+                .forEach(schema::applySchemaChange);
+        schema.parseStreamingDdl(partition, "CREATE TABLE Unqualified (id INT PRIMARY KEY)", sessionDatabase, offset, Instant.now())
+                .forEach(schema::applySchemaChange);
+        return Offsets.of(partition, offset);
+    }
+
+    private void assertTableId(TableId lookupId, TableId expectedId) {
+        final Table table = schema.tableFor(lookupId);
+        assertThat(table).isNotNull();
+        assertThat(table.id()).isEqualTo(expectedId);
+        assertThat(schema.schemaFor(lookupId).id()).isEqualTo(expectedId);
+    }
+
+    private void assertRecoveredTableIds(LowerCaseTableNames lowerCaseTableNames, Offsets<P, O> offsets, TableId... expectedIds)
+            throws InterruptedException {
+        // Close the schema first, so that the recovered schema can register its metrics under the same name
+        schema.close();
+        try (S recovered = getSchema(DATABASE.defaultConfigWithoutDatabaseFilter().build(), lowerCaseTableNames)) {
+            recovered.recover(offsets);
+            for (TableId expectedId : expectedIds) {
+                final Table table = recovered.tableFor(expectedId);
+                assertThat(table).isNotNull();
+                assertThat(table.id()).isEqualTo(expectedId);
+            }
+        }
     }
 
     protected void assertTableSchemaComments(String tableName, String column, String comments) {

@@ -963,6 +963,25 @@ _tableName_:: The name of the table in which the operation occurred.
 
 The connector applies similar naming conventions to label its internal database schema history topics, xref:{context}-schema-change-topic[schema change topics], and xref:{context}-transaction-metadata[transaction metadata topics].
 
+The letter case of the database and table names follows the `lower_case_table_names` setting of the database server.
+The same names are used in topic names, schema names, the `source` metadata of change events, and transaction metadata.
+
+[cols="1,4",options="header"]
+|===
+|`lower_case_table_names` |Database and table names
+
+|`0`
+|The names as they are written in the statements that create the database and the tables.
+
+|`1`
+|Lowercase names, as the database server stores them.
+
+|`2`
+|The names as the database server stores them, that is, as they are written in the statements that create the database and the tables.
+|===
+
+When `lower_case_table_names` is set to `1` or `2`, the connector matches the xref:{context}-property-signal-data-collection[`signal.data.collection`] property and the data collections in incremental snapshot signals regardless of letter case.
+
 If the default topic name do not meet your requirements, you can configure custom topic names.
 To configure custom topic names, you specify regular expressions in the logical topic routing SMT.
 For more information about using the logical topic routing SMT to customize topic naming, see {link-prefix}:{link-topic-routing}#topic-routing[Topic routing].
@@ -1547,6 +1566,7 @@ The source metadata provides the following information:
 `ts_ms, ts_us, ts_ns`::: Displays timestamps in milliseconds, microseconds, and nanoseconds that indicate when the change was made in the database.
 `snapshot`::: Specifies whether the event resulted from a snapshot operation.
 `db`, `table`::: Names of the database and table that contain the new row.
+The letter case of these names follows the `lower_case_table_names` setting of the database server, as described in xref:{context}-topic-names[Topic names].
 `server_id`::: {connector-name} server ID (if available).
 `file`::: Binary log name where the event was recorded.
 `pos`::: Binary log position.

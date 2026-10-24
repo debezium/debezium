@@ -42,6 +42,15 @@ public interface DatabaseSchema<I extends DataCollectionId> extends AutoCloseabl
     }
 
     /**
+     * Whether data collection identifiers are looked up case-insensitively, because the database compares them that way.
+     *
+     * @return {@code true} if identifiers are case-insensitive, {@code false} otherwise
+     */
+    default boolean isTableIdCaseInsensitive() {
+        return false;
+    }
+
+    /**
      * Whether this schema is historized (i.e. a history of all schema changes is kept which is recovered upon connector restart) or not.
      */
     boolean isHistorized();

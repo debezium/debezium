@@ -585,6 +585,8 @@
                         <!-- Specifies which driver to use for the tests -->
                         <skipLongRunningTests>${skipLongRunningTests}</skipLongRunningTests>
                         <database.ssl.mode>disable</database.ssl.mode>
+                        <!-- Image for tests that start their own server container -->
+                        <mariadb.server.image>${mariadb.server.image.source}:${version.mariadb.server}</mariadb.server.image>
                     </systemPropertyVariables>
                     <argLine>@{argLine} -javaagent:"${settings.localRepository}/@{opentelemetry.agent.for.testing.artifact.relative.path}" -Dio.opentelemetry.javaagent.slf4j.simpleLogger.defaultLogLevel=off</argLine>
                     <runOrder>${runOrder}</runOrder>
