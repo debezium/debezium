@@ -365,7 +365,7 @@ public abstract class BinlogDatabaseSchema<P extends BinlogPartition, O extends 
      * @return the table identifier as reported by the server, or null if the given identifier is null
      */
     protected TableId toServerTableId(TableId tableId) {
-        return lowerCaseTableNames.toServerTableId(tableId, this::toServerDatabaseName);
+        return lowerCaseTableNames.toServerTableId(tableId, databaseNames::get);
     }
 
     /**
@@ -375,13 +375,7 @@ public abstract class BinlogDatabaseSchema<P extends BinlogPartition, O extends 
      * @return the database name as reported by the server, or null if the given name is null
      */
     protected String toServerDatabaseName(String databaseName) {
-        if (databaseName == null || !lowerCaseTableNames.isCaseInsensitive()) {
-            return databaseName;
-        }
-        final String lowercaseName = databaseName.toLowerCase(Locale.ROOT);
-        return lowerCaseTableNames == LowerCaseTableNames.STORED_IN_LOWERCASE
-                ? lowercaseName
-                : databaseNames.getOrDefault(lowercaseName, databaseName);
+        return lowerCaseTableNames.toServerDatabaseName(databaseName, databaseNames::get);
     }
 
     /**

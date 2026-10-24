@@ -59,11 +59,10 @@ public enum LowerCaseTableNames {
 
     /**
      * Returns the identifier under which the server reports a table. With {@code 1}, the table name is lowercase;
-     * with {@code 2}, its declared case is preserved. Database names are resolved by the schema, which knows their
-     * declared names.
+     * with {@code 2}, its declared case is preserved. Known database names are supplied by the schema.
      *
      * @param tableId the table identifier; may be null
-     * @param databaseNameResolver resolves database names, including null names; may not be null
+     * @param databaseNameResolver looks up declared database names by their lowercase name, returning null if unknown; may not be null
      * @return the server table identifier, or null if the given identifier is null
      */
     public TableId toServerTableId(TableId tableId, UnaryOperator<String> databaseNameResolver) {
@@ -73,6 +72,26 @@ public enum LowerCaseTableNames {
         final String tableName = this == STORED_IN_LOWERCASE
                 ? tableId.table().toLowerCase(Locale.ROOT)
                 : tableId.table();
-        return new TableId(databaseNameResolver.apply(tableId.catalog()), tableId.schema(), tableName);
+        return new TableId(toServerDatabaseName(tableId.catalog(), databaseNameResolver), tableId.schema(), tableName);
+    }
+
+    /**
+     * Returns the database name reported by the server. With {@code 2}, the schema supplies the known declared name;
+     * otherwise the given spelling is retained if the name is unknown.
+     *
+     * @param databaseName the database name; may be null
+     * @param databaseNameResolver looks up declared database names by their lowercase name, returning null if unknown; may not be null
+     * @return the server database name, or null if the given name is null
+     */
+    public String toServerDatabaseName(String databaseName, UnaryOperator<String> databaseNameResolver) {
+        if (databaseName == null || !isCaseInsensitive()) {
+            return databaseName;
+        }
+        final String lowercaseName = databaseName.toLowerCase(Locale.ROOT);
+        if (this == STORED_IN_LOWERCASE) {
+            return lowercaseName;
+        }
+        final String declaredName = databaseNameResolver.apply(lowercaseName);
+        return declaredName != null ? declaredName : databaseName;
     }
 }
