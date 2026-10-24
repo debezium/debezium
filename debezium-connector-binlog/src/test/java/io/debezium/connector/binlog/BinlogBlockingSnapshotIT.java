@@ -34,7 +34,9 @@ public abstract class BinlogBlockingSnapshotIT<C extends SourceConnector>
 
     protected static final String SERVER_NAME = "is_test";
     public static final int MYSQL8 = 8;
-    protected final UniqueDatabase DATABASE = TestHelper.getUniqueDatabase(SERVER_NAME, "blocking_snapshot_test", "1", null).withDbHistoryPath(SCHEMA_HISTORY_PATH);
+    protected final UniqueDatabase DATABASE = TestHelper.getUniqueDatabase(SERVER_NAME, "blocking_snapshot_test", "1", null)
+            .withBinlogMetadataKeyColumns("$DBNAME$\\.debezium_signal:id")
+            .withDbHistoryPath(SCHEMA_HISTORY_PATH);
     private final BinlogDatabaseVersionResolver databaseVersionResolver = new BinlogDatabaseVersionResolver();
 
     @BeforeEach

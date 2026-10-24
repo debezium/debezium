@@ -97,7 +97,8 @@ public abstract class BinlogReadOnlyIncrementalSnapshotIT<C extends SourceConnec
                 .with(KafkaSignalChannel.BOOTSTRAP_SERVERS, kafkaCluster.getBootstrapServers())
                 .with(CommonConnectorConfig.SIGNAL_ENABLED_CHANNELS, "source,kafka")
                 .with(BinlogConnectorConfig.INCLUDE_SQL_QUERY, true)
-                .with(RelationalDatabaseConnectorConfig.MSG_KEY_COLUMNS, String.format("%s:%s", DATABASE.qualifiedTableName("a42"), "pk1,pk2,pk3,pk4"));
+                .with(RelationalDatabaseConnectorConfig.MSG_KEY_COLUMNS,
+                        String.format("%s:%s;%s:id", DATABASE.qualifiedTableName("a42"), "pk1,pk2,pk3,pk4", DATABASE.qualifiedTableName("debezium_signal")));
         if (snapshotStopSynchronization != null) {
             builder.with(CommonConnectorConfig.NOTIFICATION_ENABLED_CHANNELS, "sink")
                     .with(SinkNotificationChannel.NOTIFICATION_TOPIC, NOTIFICATION_TOPIC);

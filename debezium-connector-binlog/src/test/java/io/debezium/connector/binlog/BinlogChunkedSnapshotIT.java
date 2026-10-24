@@ -12,8 +12,10 @@ import java.util.List;
 import org.apache.kafka.connect.source.SourceConnector;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 import io.debezium.config.Configuration;
+import io.debezium.connector.binlog.junit.SkipWhenSchemaHistoryDisabled;
 import io.debezium.connector.binlog.util.BinlogTestConnection;
 import io.debezium.connector.binlog.util.TestHelper;
 import io.debezium.connector.binlog.util.UniqueDatabase;
@@ -104,6 +106,13 @@ public abstract class BinlogChunkedSnapshotIT<T extends SourceConnector>
     @Override
     protected void createKeylessTable(String tableName) throws SQLException {
         connection.execute("CREATE TABLE %s (id int, data varchar(50))".formatted(DATABASE.qualifiedTableName(tableName)));
+    }
+
+    @Override
+    @Test
+    @SkipWhenSchemaHistoryDisabled(reason = "Exercises snapshot chunking without any key; metadata mode requires a primary key or explicit message key")
+    public void shouldSnapshotKeylessTableUsingLegacyTablePerThreadStrategy() throws Exception {
+        super.shouldSnapshotKeylessTableUsingLegacyTablePerThreadStrategy();
     }
 
     @Override

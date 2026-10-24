@@ -12,9 +12,12 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
+import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceConnector;
+import org.apache.kafka.connect.source.SourceRecord;
 
 import io.debezium.connector.binlog.util.BinlogTestConnection;
+import io.debezium.data.Envelope;
 import io.debezium.embedded.async.AbstractAsyncEngineConnectorTest;
 import io.debezium.jdbc.JdbcConnection;
 
@@ -26,6 +29,19 @@ import io.debezium.jdbc.JdbcConnection;
 public abstract class AbstractBinlogConnectorIT<C extends SourceConnector>
         extends AbstractAsyncEngineConnectorTest
         implements BinlogConnectorTest<C> {
+
+    /**
+     * Initial snapshots use DDL schemas; streaming schemas reconstructed from TABLE_MAP have no defaults.
+     * Row values are asserted separately against the values materialized by the database in both modes.
+     */
+    protected <T> T expectedSchemaDefault(SourceRecord record, T ddlDefault) {
+        final var envelope = (Struct) record.value();
+        if (config.getBoolean(BinlogConnectorConfig.BINLOG_METADATA_BASED_SCHEMA)
+                && !Envelope.Operation.READ.code().equals(envelope.getString(Envelope.FieldName.OPERATION))) {
+            return null;
+        }
+        return ddlDefault;
+    }
 
     // todo: find a better way to refactor this
     @Override

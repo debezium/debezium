@@ -13,8 +13,8 @@ import java.lang.annotation.Target;
 import org.junit.jupiter.api.extension.ExtendWith;
 
 /**
- * Marker annotation for tests that inherently depend on the schema history (its storage, recovery, or the
- * schema change events emitted during a schema snapshot). Such tests are skipped when the testsuite runs
+ * Marker annotation for tests that require schema-history mode, including history storage and recovery,
+ * DDL-only schema attributes, or captured tables without a recoverable message key. Such tests are skipped when the testsuite runs
  * with the binlog-metadata-based schema mode enabled (see
  * {@link io.debezium.connector.binlog.util.UniqueDatabase#BINLOG_METADATA_BASED_SCHEMA_PROPERTY}), where no
  * schema history is used.

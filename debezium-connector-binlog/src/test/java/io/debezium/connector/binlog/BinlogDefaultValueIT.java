@@ -74,6 +74,7 @@ public abstract class BinlogDefaultValueIT<C extends SourceConnector> extends Ab
 
     private static final Path SCHEMA_HISTORY_PATH = Files.createTestingPath("file-schema-history-connect.txt").toAbsolutePath();
     private final UniqueDatabase DATABASE = TestHelper.getUniqueDatabase("myServer1", "default_value")
+            .withBinlogMetadataKeyColumns("$DBNAME$\\..*:A;$DBNAME$\\.FlOAT_DOUBLE_TABLE:F")
             .withDbHistoryPath(SCHEMA_HISTORY_PATH);
 
     private Configuration config;
@@ -161,12 +162,7 @@ public abstract class BinlogDefaultValueIT<C extends SourceConnector> extends Ab
             });
         }
         final var schemaDefault = after.schema().field("v").schema().defaultValue();
-        if ("c".equals(operation) && config.getBoolean(BinlogConnectorConfig.BINLOG_METADATA_BASED_SCHEMA)) {
-            assertThat(schemaDefault).as("Schema defaults are not carried by binlog metadata").isNull();
-        }
-        else {
-            assertThat(schemaDefault).as("Schema default").isEqualTo(rawValue);
-        }
+        assertThat(schemaDefault).as("Schema default").isEqualTo(expectedSchemaDefault(records.get(0), rawValue));
     }
 
     @Test

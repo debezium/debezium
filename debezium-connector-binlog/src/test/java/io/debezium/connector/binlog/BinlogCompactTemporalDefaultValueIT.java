@@ -108,7 +108,7 @@ public abstract class BinlogCompactTemporalDefaultValueIT<C extends SourceConnec
             final Object storedValue = after.getWithoutDefault(column);
             assertions.assertThat(after.schema().field(column).schema().defaultValue())
                     .as("Schema default of %s, %s", COLUMNS.get(index), description)
-                    .isEqualTo(storedValue);
+                    .isEqualTo(expectedSchemaDefault(record, storedValue));
         }
     }
 

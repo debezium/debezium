@@ -68,6 +68,7 @@ public abstract class BinlogSnapshotSourceIT<C extends SourceConnector> extends 
 
     private static final Path SCHEMA_HISTORY_PATH = Files.createTestingPath("file-schema-history-snapshot.txt").toAbsolutePath();
     protected final UniqueDatabase DATABASE = TestHelper.getUniqueDatabase("logical_server_name", "connector_test_ro")
+            .withBinlogMetadataKeyColumns("$DBNAME$\\.zero_date_table:zero_date")
             .withDbHistoryPath(SCHEMA_HISTORY_PATH);
     protected final UniqueDatabase OTHER_DATABASE = TestHelper.getUniqueDatabase("logical_server_name", "connector_test", DATABASE);
     protected final UniqueDatabase BINARY_FIELD_DATABASE = TestHelper.getUniqueDatabase("logical_server_name", "connector_read_binary_field_test");

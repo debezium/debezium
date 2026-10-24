@@ -130,7 +130,7 @@ public abstract class BinlogBinaryLiteralDefaultValueIT<C extends SourceConnecto
             assertions.assertThat(storedValue).as("Stored value of %s, %s", COLUMNS.get(index), description).isNotNull();
             assertions.assertThat(after.schema().field(column).schema().defaultValue())
                     .as("Schema default of %s, %s", COLUMNS.get(index), description)
-                    .isEqualTo(storedValue);
+                    .isEqualTo(expectedSchemaDefault(record, storedValue));
         }
     }
 

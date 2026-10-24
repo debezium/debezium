@@ -184,6 +184,6 @@ public abstract class BinlogStringDefaultValueIT<C extends SourceConnector> exte
         final var after = envelope.getStruct("after");
         assertThat(after.getInt32("id")).isEqualTo(id);
         assertThat(after.getWithoutDefault("v")).as("Raw value").isEqualTo(expected);
-        assertThat(after.schema().field("v").schema().defaultValue()).as("Schema default").isEqualTo(expected);
+        assertThat(after.schema().field("v").schema().defaultValue()).as("Schema default").isEqualTo(expectedSchemaDefault(records.get(0), expected));
     }
 }

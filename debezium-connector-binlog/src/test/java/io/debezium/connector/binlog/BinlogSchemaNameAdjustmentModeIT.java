@@ -31,6 +31,7 @@ public abstract class BinlogSchemaNameAdjustmentModeIT<C extends SourceConnector
     private static final Path SCHEMA_HISTORY_PATH = Files.createTestingPath("file-schema-history-json.txt")
             .toAbsolutePath();
     private final UniqueDatabase DATABASE = TestHelper.getUniqueDatabase("adjustment1", "schema_name_adjustment")
+            .withBinlogMetadataKeyColumns("$DBNAME$\\.name-adjustment:id")
             .withDbHistoryPath(SCHEMA_HISTORY_PATH);
 
     @BeforeEach
