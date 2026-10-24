@@ -334,7 +334,7 @@ public class KafkaDebeziumSinkRecord implements DebeziumSinkRecord {
                     throw new ConnectException("Configured primary key mode 'record_key' cannot have null schema");
                 }
                 else if (keySchema.type().isPrimitive()) {
-                    return keyAsStruct();
+                    return primitiveKeyAsStruct(keySchema, allowedPrimaryKeyFields);
                 }
                 if (Schema.Type.STRUCT.equals(keySchema.type())) {
                     return filterFields(keyAsStruct(), topicName(), allowedPrimaryKeyFields, fieldsFilter);
@@ -410,6 +410,17 @@ public class KafkaDebeziumSinkRecord implements DebeziumSinkRecord {
             getKafkaCoordinates();
         }
         return kafkaFields;
+    }
+
+    private Struct primitiveKeyAsStruct(Schema keySchema, Set<String> primaryKeyFields) {
+        // A primitive key has no field name of its own; the single name in primary.key.fields becomes the key column.
+        if (primaryKeyFields.size() != 1) {
+            throw new ConnectException("Configured primary key mode 'record_key' with a primitive key of type " + keySchema.type()
+                    + " requires exactly one field name in 'primary.key.fields', but found " + primaryKeyFields.size());
+        }
+        final String fieldName = primaryKeyFields.iterator().next();
+        final Schema schema = SchemaBuilder.struct().field(fieldName, keySchema).build();
+        return new Struct(schema).put(fieldName, originalKafkaRecord.key());
     }
 
     private Struct keyAsStruct() {
