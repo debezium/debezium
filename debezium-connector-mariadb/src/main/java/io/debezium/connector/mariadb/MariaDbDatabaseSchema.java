@@ -40,7 +40,7 @@ public class MariaDbDatabaseSchema extends BinlogDatabaseSchema<MariaDbPartition
 
     @Override
     protected DdlParser createDdlParser(BinlogConnectorConfig connectorConfig, MariaDbValueConverters valueConverter) {
-        MariaDbAntlrDdlParser parser = new MariaDbAntlrDdlParser(
+        final var parser = new MariaDbAntlrDdlParser(
                 true,
                 false,
                 connectorConfig.isSchemaChangesHistoryEnabled(),
