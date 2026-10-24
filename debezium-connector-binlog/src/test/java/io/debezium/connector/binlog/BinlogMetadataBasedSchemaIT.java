@@ -6,6 +6,7 @@
 package io.debezium.connector.binlog;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.awaitility.Awaitility.await;
 
 import java.math.BigDecimal;
 import java.nio.file.Path;
@@ -24,6 +25,8 @@ import org.apache.kafka.connect.source.SourceRecord;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 
 import io.debezium.config.Configuration;
 import io.debezium.connector.binlog.BinlogConnectorConfig.SnapshotMode;
@@ -226,6 +229,153 @@ public abstract class BinlogMetadataBasedSchemaIT<C extends SourceConnector> ext
         assertOrderSchema(afterOf(streamed.get(0)));
 
         stopConnector();
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = { "candidate INT", "candidate INT UNIQUE" })
+    public void shouldRejectSnapshotWithoutRecoverableKey(String keyDefinition) throws Exception {
+        executeStatements(DATABASE.getDatabaseName(),
+                "CREATE TABLE keytest (" + keyDefinition + ", payload VARCHAR(10))",
+                "INSERT INTO keytest VALUES (1, 'snapshot')");
+
+        final AtomicReference<Throwable> error = startWithErrorCapture(keyTestConfig()
+                .with(BinlogConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL).build());
+
+        assertKeyValidationFailure(error);
+        assertNoRecordsToConsume();
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = { "other:candidate", "keytest:missing" })
+    public void shouldRejectSnapshotWithoutMatchingKeyConfiguration(String keyMapping) throws Exception {
+        executeStatements(DATABASE.getDatabaseName(),
+                "CREATE TABLE keytest (candidate INT UNIQUE, payload VARCHAR(10))",
+                "INSERT INTO keytest VALUES (1, 'snapshot')");
+
+        final AtomicReference<Throwable> error = startWithErrorCapture(keyTestConfig()
+                .with(BinlogConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL)
+                .with(BinlogConnectorConfig.MSG_KEY_COLUMNS, DATABASE.getDatabaseName() + "." + keyMapping).build());
+
+        assertKeyValidationFailure(error);
+        assertNoRecordsToConsume();
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = { "candidate INT", "candidate INT UNIQUE", "candidate INT NOT NULL UNIQUE" })
+    public void shouldPreserveKeyAcrossSnapshotStreamingAndRestart(String keyDefinition) throws Exception {
+        executeStatements(DATABASE.getDatabaseName(),
+                "CREATE TABLE keytest (" + keyDefinition + ", payload VARCHAR(10))",
+                "INSERT INTO keytest VALUES (1, 'snapshot')");
+        final Configuration.Builder configBuilder = keyTestConfig()
+                .with(BinlogConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL);
+        // The server reports a NOT NULL UNIQUE candidate as a primary key. Other cases need an explicit key.
+        if (!keyDefinition.contains("NOT NULL")) {
+            configBuilder.with(BinlogConnectorConfig.MSG_KEY_COLUMNS, DATABASE.qualifiedTableName("keytest") + ":candidate");
+        }
+        final Configuration config = configBuilder.build();
+        start(getConnectorClass(), config);
+        final SourceRecord snapshot = consumeTable("keytest", 1).get(0);
+        assertKeyRecord(snapshot, 1, "r");
+        waitForStreamingRunning(getConnectorName(), DATABASE.getServerName());
+
+        executeStatements(DATABASE.getDatabaseName(), "UPDATE keytest SET payload = 'stream' WHERE candidate = 1");
+        assertKeyRecord(consumeTable("keytest", 1).get(0), 1, "u");
+        stopConnector();
+
+        start(getConnectorClass(), config);
+        waitForStreamingRunning(getConnectorName(), DATABASE.getServerName());
+        executeStatements(DATABASE.getDatabaseName(), "INSERT INTO keytest VALUES (2, 'restart')");
+        assertKeyRecord(consumeTable("keytest", 1).get(0), 2, "c");
+        assertThat(SCHEMA_HISTORY_PATH).doesNotExist();
+    }
+
+    @Test
+    public void shouldIgnoreExcludedTableWithoutKey() throws Exception {
+        executeStatements(DATABASE.getDatabaseName(), "CREATE TABLE keytest (candidate INT)");
+        insertOrders(1);
+        start(getConnectorClass(), metadataModeConfig()
+                .with(BinlogConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL)
+                .with(BinlogConnectorConfig.TABLE_INCLUDE_LIST, DATABASE.qualifiedTableName("orders")).build());
+        assertThat(operationOf(consumeOrders(1).get(0))).isEqualTo("r");
+        waitForStreamingRunning(getConnectorName(), DATABASE.getServerName());
+
+        executeStatements(DATABASE.getDatabaseName(), "INSERT INTO keytest VALUES (1)");
+        insertOrders(1);
+        assertThat(operationOf(consumeOrders(1).get(0))).isEqualTo("c");
+    }
+
+    @Test
+    public void shouldRejectNewStreamingTableWithoutKey() throws Exception {
+        final AtomicReference<Throwable> error = startWithErrorCapture(keyTestConfig().build());
+        waitForStreamingRunning(getConnectorName(), DATABASE.getServerName());
+        executeStatements(DATABASE.getDatabaseName(),
+                "CREATE TABLE keytest (candidate INT UNIQUE, payload VARCHAR(10))",
+                "INSERT INTO keytest VALUES (1, 'stream')");
+
+        assertKeyValidationFailure(error);
+        assertNoRecordsToConsume();
+    }
+
+    @Test
+    public void shouldRejectStreamingTableAfterPrimaryKeyDropped() throws Exception {
+        executeStatements(DATABASE.getDatabaseName(), "CREATE TABLE keytest (candidate INT PRIMARY KEY, payload VARCHAR(10))");
+        final AtomicReference<Throwable> error = startWithErrorCapture(keyTestConfig().build());
+        waitForStreamingRunning(getConnectorName(), DATABASE.getServerName());
+        executeStatements(DATABASE.getDatabaseName(), "INSERT INTO keytest VALUES (1, 'before')");
+        assertKeyRecord(consumeTable("keytest", 1).get(0), 1, "c");
+
+        executeStatements(DATABASE.getDatabaseName(),
+                "ALTER TABLE keytest DROP PRIMARY KEY",
+                "INSERT INTO keytest VALUES (2, 'after')");
+        assertKeyValidationFailure(error);
+        assertNoRecordsToConsume();
+    }
+
+    @Test
+    public void shouldRejectHistoricalTableMapWithoutKeyAfterPrimaryKeyAdded() throws Exception {
+        executeStatements(DATABASE.getDatabaseName(), "CREATE TABLE keytest (candidate INT, payload VARCHAR(10))");
+        final Configuration explicitKeyConfig = keyTestConfig()
+                .with(BinlogConnectorConfig.MSG_KEY_COLUMNS, DATABASE.qualifiedTableName("keytest") + ":candidate").build();
+        start(getConnectorClass(), explicitKeyConfig);
+        waitForStreamingRunning(getConnectorName(), DATABASE.getServerName());
+        executeStatements(DATABASE.getDatabaseName(), "INSERT INTO keytest VALUES (1, 'before')");
+        assertKeyRecord(consumeTable("keytest", 1).get(0), 1, "c");
+        stopConnector();
+        final byte[] rewindPoint = java.nio.file.Files.readAllBytes(OFFSET_STORE_PATH);
+
+        executeStatements(DATABASE.getDatabaseName(),
+                "INSERT INTO keytest VALUES (2, 'keyless')",
+                "ALTER TABLE keytest ADD PRIMARY KEY (candidate)",
+                "INSERT INTO keytest VALUES (3, 'keyed')");
+        start(getConnectorClass(), explicitKeyConfig);
+        waitForStreamingRunning(getConnectorName(), DATABASE.getServerName());
+        assertThat(consumeTable("keytest", 2)).hasSize(2);
+        stopConnector();
+
+        // The current table has a PK, but the replayed TABLE_MAP does not. Startup-only validation is insufficient.
+        java.nio.file.Files.write(OFFSET_STORE_PATH, rewindPoint);
+        final AtomicReference<Throwable> error = startWithErrorCapture(keyTestConfig().build());
+        assertKeyValidationFailure(error);
+        assertNoRecordsToConsume();
+    }
+
+    @Test
+    public void shouldAllowTableWithoutRecoverableKeyWithSchemaHistory() throws Exception {
+        executeStatements(DATABASE.getDatabaseName(),
+                "CREATE TABLE keytest (candidate INT UNIQUE, payload VARCHAR(10))",
+                "INSERT INTO keytest VALUES (1, 'snapshot')");
+        start(getConnectorClass(), keyTestConfig()
+                .with(BinlogConnectorConfig.BINLOG_METADATA_BASED_SCHEMA, false)
+                .with(BinlogConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL).build());
+        final SourceRecord snapshot = consumeTable("keytest", 1).get(0);
+        assertThat(operationOf(snapshot)).isEqualTo("r");
+        assertThat(snapshot.key()).isNull();
+        waitForStreamingRunning(getConnectorName(), DATABASE.getServerName());
+        executeStatements(DATABASE.getDatabaseName(), "INSERT INTO keytest VALUES (2, 'stream')");
+        final SourceRecord streamed = consumeTable("keytest", 1).get(0);
+        assertThat(operationOf(streamed)).isEqualTo("c");
+        assertThat(streamed.key()).isNull();
+        assertThat(SCHEMA_HISTORY_PATH).exists();
     }
 
     @Test
@@ -506,6 +656,35 @@ public abstract class BinlogMetadataBasedSchemaIT<C extends SourceConnector> ext
                 // here so that the tests can consume data change records by plain counts.
                 .with(BinlogConnectorConfig.INCLUDE_SCHEMA_CHANGES, false)
                 .with(BinlogConnectorConfig.BINLOG_METADATA_BASED_SCHEMA, true);
+    }
+
+    private Configuration.Builder keyTestConfig() {
+        return metadataModeConfig().with(BinlogConnectorConfig.TABLE_INCLUDE_LIST, DATABASE.qualifiedTableName("keytest"));
+    }
+
+    private AtomicReference<Throwable> startWithErrorCapture(Configuration config) {
+        final AtomicReference<Throwable> error = new AtomicReference<>();
+        start(getConnectorClass(), config, (success, message, throwable) -> {
+            if (!success) {
+                error.set(throwable);
+            }
+        });
+        return error;
+    }
+
+    private void assertKeyValidationFailure(AtomicReference<Throwable> error) {
+        await().atMost(30, TimeUnit.SECONDS).untilAsserted(() -> assertThat(error.get()).isNotNull());
+        assertThat(error.get()).hasStackTraceContaining(DATABASE.qualifiedTableName("keytest"))
+                .hasStackTraceContaining("binlog.metadata.based.schema")
+                .hasStackTraceContaining("message.key.columns");
+    }
+
+    private static void assertKeyRecord(SourceRecord record, int candidate, String operation) {
+        final Struct key = (Struct) record.key();
+        assertThat(key).isNotNull();
+        assertThat(key.schema().fields()).extracting(org.apache.kafka.connect.data.Field::name).containsExactly("candidate");
+        assertThat(key.getInt32("candidate")).isEqualTo(candidate);
+        assertThat(operationOf(record)).isEqualTo(operation);
     }
 
     private static final List<String> ALL_TYPES_COLUMNS = List.of(

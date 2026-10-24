@@ -368,6 +368,15 @@ public abstract class BinlogSnapshotChangeEventSource<P extends BinlogPartition,
                 executorService.shutdownNow();
             }
         }
+
+        if (connectorConfig.isBinlogMetadataBasedSchema()) {
+            for (TableId tableId : snapshotContext.capturedTables) {
+                final Table table = databaseSchema.tableFor(tableId);
+                if (table != null) {
+                    databaseSchema.validateBinlogMetadataKey(table);
+                }
+            }
+        }
     }
 
     private void createSchemaEventsForTables(RelationalSnapshotContext<P, O> snapshotContext,
