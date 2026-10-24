@@ -4592,6 +4592,18 @@ Use the following format to specify the collection name:
 
 `_<schemaName>_._<tableName>_`
 
+|[[postgresql-property-signal-data-collection-validation-enabled]]<<postgresql-property-signal-data-collection-validation-enabled,`+signal.data.collection.validation.enabled+`>>
+|`false`
+|Specifies whether the connector validates the configured `signal.data.collection` when the connector starts.
+When set to `true`, the connector reports a problem and fails to start if any of the following checks do not pass:
+
+* The signal data collection exists.
+* The value uses the expected fully-qualified format.
+* The collection has exactly three columns after `column.include.list` or `column.exclude.list` filtering is applied.
+* When the `insert_delete` incremental snapshot watermarking strategy is used, the first column is named `id`.
+
+Because enabling this option can prevent a connector from starting even if its signal table worked previously, for example, a table that has an extra column that is not excluded by filtering, review your signal table configuration before you set the value to `true`.
+
 |[[postgresql-property-signal-enabled-channels]]<<postgresql-property-signal-enabled-channels, `+signal.enabled.channels+`>>
 |source
 | List of the signaling channel names that are enabled for the connector.
