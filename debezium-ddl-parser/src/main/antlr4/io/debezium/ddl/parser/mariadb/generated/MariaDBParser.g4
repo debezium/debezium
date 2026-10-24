@@ -668,7 +668,9 @@ partitionOption
 //    Alter statements
 
 alterDatabase
-    : ALTER dbFormat = (DATABASE | SCHEMA) uid? createDatabaseOption+      # alterSimpleDatabase
+    // Options without a database name come first: DEFAULT is also allowed as an identifier, so with
+    // "uid?" first, 'ALTER DATABASE DEFAULT CHARSET x' would take DEFAULT as the database name.
+    : ALTER dbFormat = (DATABASE | SCHEMA) (createDatabaseOption+ | uid createDatabaseOption+) # alterSimpleDatabase
     | ALTER dbFormat = (DATABASE | SCHEMA) uid UPGRADE DATA DIRECTORY NAME # alterUpgradeName
     ;
 

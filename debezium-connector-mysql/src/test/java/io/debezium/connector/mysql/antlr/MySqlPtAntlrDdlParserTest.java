@@ -83,6 +83,35 @@ public class MySqlPtAntlrDdlParserTest
     }
 
     @Test
+    @FixFor("debezium/dbz#2842")
+    void shouldParseAlterDatabaseWithDefaultCharsetWithoutDatabaseName() {
+        parser.parse("CREATE DATABASE db1 CHARACTER SET latin1;", tables);
+        parser.parse("USE db1;", tables);
+
+        parser.parse("ALTER DATABASE DEFAULT CHARACTER SET utf8mb4;", tables);
+        parser.parse("USE db1;", tables);
+        assertThat(parser.systemVariables().getVariable("character_set_database")).isEqualToIgnoringCase("utf8mb4");
+
+        parser.parse("ALTER SCHEMA DEFAULT CHARSET latin2 DEFAULT COLLATE latin2_general_ci;", tables);
+        parser.parse("USE db1;", tables);
+        assertThat(parser.systemVariables().getVariable("character_set_database")).isEqualToIgnoringCase("latin2");
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2842")
+    void shouldParseAlterDatabaseWithDefaultCharsetAndDatabaseName() {
+        parser.parse("CREATE DATABASE db1 CHARACTER SET latin1;", tables);
+        parser.parse("CREATE DATABASE db2 CHARACTER SET latin1;", tables);
+        parser.parse("USE db1;", tables);
+
+        parser.parse("ALTER DATABASE db2 DEFAULT CHARSET latin2;", tables);
+        parser.parse("USE db1;", tables);
+        assertThat(parser.systemVariables().getVariable("character_set_database")).isEqualToIgnoringCase("latin1");
+        parser.parse("USE db2;", tables);
+        assertThat(parser.systemVariables().getVariable("character_set_database")).isEqualToIgnoringCase("latin2");
+    }
+
+    @Test
     @FixFor("debezium/dbz#2217")
     public void shouldApplyRealHandlingMode() {
         final String ddl = "CREATE TABLE realtable (id INT PRIMARY KEY, r REAL);";
