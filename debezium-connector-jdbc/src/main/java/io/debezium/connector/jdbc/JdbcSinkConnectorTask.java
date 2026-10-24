@@ -212,13 +212,13 @@ public class JdbcSinkConnectorTask extends SinkTask {
 
     /**
      * Creates the appropriate RecordWriter based on dialect and configuration.
-     * If PostgreSQL UNNEST optimization is enabled, returns UnnestRecordWriter;
-     * otherwise returns StandardRecordWriter.
+     * If the PostgreSQL-compatible UNNEST optimization is enabled, returns UnnestRecordWriter;
+     * otherwise returns DefaultRecordWriter.
      */
     private RecordWriter createRecordWriter(StatelessSession session, QueryBinderResolver queryBinderResolver,
                                             JdbcSinkConnectorConfig config, DatabaseDialect databaseDialect, SinkProgressListener progressListener) {
         // Use UNNEST writer when explicitly enabled (opt-in)
-        // This allows any PostgreSQL-compatible dialect to use UNNEST without code changes
+        // This allows PostgreSQL-compatible dialects, such as CockroachDB, to use UNNEST.
         if (config.isPostgresUnnestInsertEnabled()) {
             LOGGER.info("Using UnnestRecordWriter for UNNEST optimization");
             return new UnnestRecordWriter(session, queryBinderResolver, config, databaseDialect, progressListener);
