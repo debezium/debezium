@@ -57,6 +57,17 @@ public interface ChangeRecordEmitter<P extends Partition> {
                           OffsetContext offset, ConnectHeaders headers)
                 throws InterruptedException;
 
+        /**
+         * Emits one of potentially multiple records produced from a single source event.
+         *
+         * @param sourceEventComplete whether this record completes processing of the source event
+         */
+        default void changeRecord(P partition, DataCollectionSchema schema, Operation operation, Object key, Struct value,
+                                  OffsetContext offset, ConnectHeaders headers, boolean sourceEventComplete)
+                throws InterruptedException {
+            changeRecord(partition, schema, operation, key, value, offset, headers);
+        }
+
         default void unchangedEventSkipped(P partition) {
         }
     }
