@@ -171,9 +171,11 @@ public class JdbcSchemaHistoryTest {
         assertTrue(SchemaHistoryDialect.resolve("PostgreSQL").createTable("history").contains("history_data TEXT"));
         assertTrue(SchemaHistoryDialect.resolve("CockroachDB").createTable("history").contains("history_data TEXT"));
         assertTrue(SchemaHistoryDialect.resolve("SQLite").createTable("history").contains("history_data TEXT"));
-        assertTrue(SchemaHistoryDialect.resolve("Microsoft SQL Server").createTable("history").contains("history_data VARCHAR(MAX)"));
+        assertTrue(SchemaHistoryDialect.resolve("Microsoft SQL Server").createTable("history").contains("history_data NVARCHAR(MAX)"));
+        assertFalse(SchemaHistoryDialect.resolve("Microsoft SQL Server").createTable("history").contains("history_data VARCHAR(MAX)"));
         assertTrue(SchemaHistoryDialect.resolve("Microsoft SQL Server").createTable("history").contains("record_insert_ts DATETIME2 NOT NULL"));
         assertTrue(SchemaHistoryDialect.resolve("SQL Server").createTable("history").contains("record_insert_ts DATETIME2 NOT NULL"));
+        assertTrue(SchemaHistoryDialect.resolve("Azure SQL Edge").createTable("history").contains("history_data NVARCHAR(MAX)"));
         assertTrue(SchemaHistoryDialect.resolve("Azure SQL Edge").createTable("history").contains("record_insert_ts DATETIME2 NOT NULL"));
         assertTrue(SchemaHistoryDialect.resolve("MemSQL").createTable("history").contains("history_data MEDIUMTEXT"));
         assertTrue(SchemaHistoryDialect.resolve("Oracle MySQL").createTable("history").contains("history_data MEDIUMTEXT"));
@@ -189,6 +191,51 @@ public class JdbcSchemaHistoryTest {
         assertTrue(SchemaHistoryDialect.resolve("Unknown").createTable("history").contains("history_data VARCHAR(65000)"));
         assertTrue(SchemaHistoryDialect.resolve((String) null).createTable("history").contains("history_data VARCHAR(65000)"));
         assertTrue(SchemaHistoryDialect.resolve("MySQL").createTable("debezium_database_history").startsWith("CREATE TABLE debezium_database_history"));
+        assertTrue(SchemaHistoryDialect.resolve("Oracle").createTable("history").contains("history_data_seq INTEGER NOT NULL"));
+        assertEquals("HISTORY", SchemaHistoryDialect.resolve("Oracle").metadataTableName("history"));
+        assertEquals("HISTORY", SchemaHistoryDialect.resolve("DB2/LINUXX8664").metadataTableName("history"));
+        assertEquals("history", SchemaHistoryDialect.resolve("PostgreSQL").metadataTableName("history"));
+    }
+
+    @Test
+    @FixFor("debezium/dbz#70")
+    public void shouldResolveDb2ProductNames() {
+        for (String product : List.of("DB2", "DB2/LINUXX8664", "DB2 for i", "DB2 for z/OS")) {
+            var dialect = SchemaHistoryDialect.resolve(product);
+            assertTrue(SchemaHistoryDialect.isKnown(product), product);
+            assertTrue(dialect.createTable("history").contains("history_data CLOB"), product);
+            assertEquals("SELECT * FROM history FETCH FIRST 1 ROWS ONLY", dialect.tableExistsSelect("history"), product);
+        }
+        assertFalse(SchemaHistoryDialect.isKnown("mydb2extra"));
+        assertFalse(SchemaHistoryDialect.resolve("mydb2extra").createTable("history").contains("CLOB"));
+        assertFalse(SchemaHistoryDialect.isKnown("Unknown"));
+        assertFalse(SchemaHistoryDialect.resolve("Unknown").createTable("history").contains("CLOB"));
+    }
+
+    @Test
+    @FixFor("debezium/dbz#70")
+    public void shouldDeclareHistoryDataSeqNotNullForEveryProduct() {
+        var products = List.of("MySQL", "MariaDB", "SingleStore", "MemSQL", "PostgreSQL", "CockroachDB", "SQLite",
+                "Microsoft SQL Server", "SQL Server", "Azure SQL Edge", "Oracle", "DB2", "DB2/LINUXX8664", "DB2 for i",
+                "DB2 for z/OS", "Unknown");
+        for (String product : products) {
+            assertTrue(SchemaHistoryDialect.resolve(product).createTable("history").contains("history_data_seq INTEGER NOT NULL"), product);
+        }
+        assertTrue(SchemaHistoryDialect.resolve((String) null).createTable("history").contains("history_data_seq INTEGER NOT NULL"));
+    }
+
+    @Test
+    @FixFor("debezium/dbz#70")
+    public void shouldResolveExistsSelectFromDatabaseProduct() {
+        assertEquals("SELECT TOP 1 * FROM history", SchemaHistoryDialect.resolve("Microsoft SQL Server").tableExistsSelect("history"));
+        assertEquals("SELECT TOP 1 * FROM history", SchemaHistoryDialect.resolve("SQL Server").tableExistsSelect("history"));
+        assertEquals("SELECT TOP 1 * FROM history", SchemaHistoryDialect.resolve("Azure SQL Edge").tableExistsSelect("history"));
+        assertEquals("SELECT * FROM history LIMIT 1", SchemaHistoryDialect.resolve("MySQL").tableExistsSelect("history"));
+        assertEquals("SELECT * FROM history LIMIT 1", SchemaHistoryDialect.resolve("PostgreSQL").tableExistsSelect("history"));
+        assertEquals("SELECT * FROM history FETCH FIRST 1 ROWS ONLY", SchemaHistoryDialect.resolve("Oracle").tableExistsSelect("history"));
+        assertEquals("SELECT * FROM history LIMIT 1", SchemaHistoryDialect.resolve("Oracle MySQL").tableExistsSelect("history"));
+        assertEquals("SELECT * FROM history FETCH FIRST 1 ROWS ONLY", SchemaHistoryDialect.resolve("DB2/LINUXX8664").tableExistsSelect("history"));
+        assertEquals("SELECT * FROM history LIMIT 1", SchemaHistoryDialect.resolve("Unknown").tableExistsSelect("history"));
     }
 
     @Test
@@ -217,6 +264,91 @@ public class JdbcSchemaHistoryTest {
     }
 
     @Test
+    @FixFor("debezium/dbz#70")
+    public void shouldUseFormattedDefaultExistsSelectForNullProductName() {
+        JdbcSchemaHistory schemaHistory = (JdbcSchemaHistory) history;
+        assertEquals("SELECT * FROM debezium_database_history LIMIT 1", schemaHistory.getConfig().getTableDataExistsSelect((String) null));
+        assertEquals("SELECT * FROM debezium_database_history LIMIT 1", schemaHistory.getConfig().getTableDataExistsSelect("Unknown"));
+    }
+
+    @Test
+    @FixFor("debezium/dbz#70")
+    public void shouldKeepExplicitExistsSelectOverride() {
+        String override = "SELECT TOP 1 id FROM %s";
+        JdbcSchemaHistory schemaHistory = new JdbcSchemaHistory();
+        schemaHistory.configure(Configuration.create()
+                .with(SchemaHistory.CONFIGURATION_FIELD_PREFIX_STRING + JdbcSchemaHistoryConfig.PROP_JDBC_URL.name(), "jdbc:sqlite:" + dbFile)
+                .with(SchemaHistory.CONFIGURATION_FIELD_PREFIX_STRING + JdbcSchemaHistoryConfig.PROP_TABLE_DATA_EXISTS_SELECT.name(), override)
+                .build(), null, SchemaHistoryMetrics.NOOP, true);
+
+        assertEquals("SELECT TOP 1 id FROM debezium_database_history", schemaHistory.getConfig().getTableDataExistsSelect("Microsoft SQL Server"));
+    }
+
+    @Test
+    @FixFor("debezium/dbz#70")
+    public void shouldResolveMetadataTableNameFromDatabaseProduct() {
+        var upperCaseProducts = List.of("Oracle", "DB2", "DB2/LINUXX8664", "DB2 for i", "DB2 for z/OS");
+        var unchangedProducts = List.of("PostgreSQL", "CockroachDB", "MySQL", "SQLite", "SQL Server", "Microsoft SQL Server", "Unknown");
+        for (String product : upperCaseProducts) {
+            assertEquals("DEBEZIUM_DATABASE_HISTORY", SchemaHistoryDialect.resolve(product).metadataTableName("debezium_database_history"), product);
+        }
+        for (String product : unchangedProducts) {
+            assertEquals("debezium_database_history", SchemaHistoryDialect.resolve(product).metadataTableName("debezium_database_history"), product);
+        }
+        assertEquals("debezium_database_history", SchemaHistoryDialect.resolve((String) null).metadataTableName("debezium_database_history"));
+    }
+
+    @Test
+    @FixFor("debezium/dbz#70")
+    public void shouldFindTableCreatedByEarlierRelease() throws SQLException, IOException {
+        history.stop();
+        Files.delete(Paths.get(dbFile));
+        try (Connection connection = DriverManager.getConnection("jdbc:sqlite:" + dbFile);
+                Statement stmt = connection.createStatement()) {
+            stmt.execute("CREATE TABLE debezium_database_history (id VARCHAR(36) NOT NULL, history_data VARCHAR(65000), "
+                    + "history_data_seq INTEGER, record_insert_ts TIMESTAMP NOT NULL, record_insert_seq INTEGER NOT NULL, "
+                    + "PRIMARY KEY (id, history_data_seq))");
+        }
+        history = new JdbcSchemaHistory();
+        history.configure(Configuration.create()
+                .with(SchemaHistory.CONFIGURATION_FIELD_PREFIX_STRING + JdbcSchemaHistoryConfig.PROP_JDBC_URL.name(), "jdbc:sqlite:" + dbFile)
+                .with(SchemaHistory.CONFIGURATION_FIELD_PREFIX_STRING + JdbcSchemaHistoryConfig.PROP_USER.name(), "user")
+                .with(SchemaHistory.CONFIGURATION_FIELD_PREFIX_STRING + JdbcSchemaHistoryConfig.PROP_PASSWORD.name(), "pass")
+                .build(), null, SchemaHistoryMetrics.NOOP, true);
+        history.start();
+
+        assertTrue(history.storageExists());
+    }
+
+    @Test
+    @FixFor("debezium/dbz#70")
+    public void shouldUseFallbackStatementsForUnknownProduct() {
+        JdbcSchemaHistory schemaHistory = (JdbcSchemaHistory) history;
+        assertTrue(schemaHistory.getConfig().getTableCreate("Unknown").contains("history_data VARCHAR(65000)"));
+        assertTrue(schemaHistory.getConfig().getTableCreate("Unknown").contains("history_data_seq INTEGER NOT NULL"));
+        assertEquals("SELECT * FROM debezium_database_history LIMIT 1", schemaHistory.getConfig().getTableDataExistsSelect("Unknown"));
+        assertEquals("debezium_database_history", schemaHistory.getConfig().getTableMetadataName("Unknown"));
+    }
+
+    @Test
+    @FixFor("debezium/dbz#70")
+    public void shouldUseOnlyTablePartForMetadataLookup() {
+        history.stop();
+        history = new JdbcSchemaHistory();
+        history.configure(Configuration.create()
+                .with(SchemaHistory.CONFIGURATION_FIELD_PREFIX_STRING + JdbcSchemaHistoryConfig.PROP_JDBC_URL.name(), "jdbc:sqlite:" + dbFile)
+                .with(SchemaHistory.CONFIGURATION_FIELD_PREFIX_STRING + JdbcSchemaHistoryConfig.PROP_TABLE_NAME.name(), "public.employee")
+                .build(), null, SchemaHistoryMetrics.NOOP, true);
+        history.start();
+
+        JdbcSchemaHistory schemaHistory = (JdbcSchemaHistory) history;
+        assertTrue(schemaHistory.storageExists());
+        assertEquals("employee", schemaHistory.getConfig().getTableMetadataName("PostgreSQL"));
+        assertEquals("EMPLOYEE", schemaHistory.getConfig().getTableMetadataName("Oracle"));
+    }
+
+    @Test
+    @FixFor("debezium/dbz#70")
     public void shouldSplitDatabaseAndTableName() {
         JdbcSchemaHistory schemaHistory = new JdbcSchemaHistory();
         schemaHistory.configure(Configuration.create()
@@ -227,7 +359,20 @@ public class JdbcSchemaHistoryTest {
                 .build(), null, SchemaHistoryMetrics.NOOP, true);
         assertTrue(schemaHistory.getConfig().getDatabaseName().equalsIgnoreCase("public"));
         assertTrue(schemaHistory.getConfig().getTableName().equalsIgnoreCase("employee"));
-        assertTrue(schemaHistory.getConfig().getTableCreate("PostgreSQL").startsWith("CREATE TABLE public.employee"));
+        assertTrue(schemaHistory.getConfig().getTableCreate("PostgreSQL").startsWith("CREATE TABLE employee"));
+        assertTrue(schemaHistory.getConfig().getTableSelect().startsWith("SELECT id, history_data FROM employee"));
+        assertTrue(schemaHistory.getConfig().getTableInsert().startsWith("INSERT INTO employee("));
+    }
+
+    @Test
+    @FixFor("debezium/dbz#70")
+    public void shouldNotSplitTableNameWithMoreThanTwoParts() {
+        JdbcSchemaHistory schemaHistory = new JdbcSchemaHistory();
+        schemaHistory.configure(Configuration.create()
+                .with(SchemaHistory.CONFIGURATION_FIELD_PREFIX_STRING + JdbcSchemaHistoryConfig.PROP_JDBC_URL.name(), "jdbc:sqlite:" + dbFile)
+                .with(SchemaHistory.CONFIGURATION_FIELD_PREFIX_STRING + JdbcSchemaHistoryConfig.PROP_TABLE_NAME.name(), "a.b.c")
+                .build(), null, SchemaHistoryMetrics.NOOP, true);
+        assertTrue(schemaHistory.getConfig().getTableCreate("PostgreSQL").startsWith("CREATE TABLE a.b.c"));
     }
 
     @Test

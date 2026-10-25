@@ -9,23 +9,42 @@ import java.sql.DatabaseMetaData;
 import java.util.Locale;
 
 /**
- * Builds the JDBC schema history {@code CREATE TABLE} statement for the connected database.
+ * Builds the JDBC schema history {@code CREATE TABLE} and table-exists statements for the connected database,
+ * and the table name to look up in the JDBC metadata.
  * <p>
  * JDBC has no portable large-text type, and SQL Server's {@code TIMESTAMP} is {@code ROWVERSION}
- * rather than a temporal type. The statement is therefore chosen from
+ * rather than a temporal type. The create-table statement is therefore chosen from
  * {@link DatabaseMetaData#getDatabaseProductName()}. Insert and select statements stay shared.
+ * <p>
+ * The table-exists statement is chosen from the same product name, because SQL Server, Oracle and Db2
+ * do not accept a {@code LIMIT} clause. SQL Server expects {@code TOP}, Oracle and Db2 expect
+ * {@code FETCH FIRST}.
+ * <p>
+ * The metadata lookup name is folded to upper case for Oracle and Db2, which store an unquoted
+ * identifier in upper case.
  */
 final class SchemaHistoryDialect {
 
     static final String FALLBACK_HISTORY_DATA_TYPE = "VARCHAR(65000)";
     static final String TIMESTAMP_TYPE = "TIMESTAMP";
+    static final String DEFAULT_TABLE_EXISTS_SELECT = "SELECT * FROM %s LIMIT 1";
+    private static final String SQL_SERVER_TABLE_EXISTS_SELECT = "SELECT TOP 1 * FROM %s";
+    private static final String FETCH_FIRST_TABLE_EXISTS_SELECT = "SELECT * FROM %s FETCH FIRST 1 ROWS ONLY";
 
     private final String historyDataType;
     private final String timestampType;
+    private final String tableExistsSelect;
+    private final boolean upperCaseIdentifiers;
 
-    private SchemaHistoryDialect(String historyDataType, String timestampType) {
+    private SchemaHistoryDialect(String historyDataType, String timestampType, String tableExistsSelect) {
+        this(historyDataType, timestampType, tableExistsSelect, false);
+    }
+
+    private SchemaHistoryDialect(String historyDataType, String timestampType, String tableExistsSelect, boolean upperCaseIdentifiers) {
         this.historyDataType = historyDataType;
         this.timestampType = timestampType;
+        this.tableExistsSelect = tableExistsSelect;
+        this.upperCaseIdentifiers = upperCaseIdentifiers;
     }
 
     /**
@@ -40,16 +59,16 @@ final class SchemaHistoryDialect {
             return general();
         }
         if (isMySqlFamily(product)) {
-            return new SchemaHistoryDialect("MEDIUMTEXT", TIMESTAMP_TYPE);
+            return new SchemaHistoryDialect("MEDIUMTEXT", TIMESTAMP_TYPE, DEFAULT_TABLE_EXISTS_SELECT);
         }
         if (product.contains("postgresql") || product.contains("cockroach") || product.contains("sqlite")) {
-            return new SchemaHistoryDialect("TEXT", TIMESTAMP_TYPE);
+            return new SchemaHistoryDialect("TEXT", TIMESTAMP_TYPE, DEFAULT_TABLE_EXISTS_SELECT);
         }
         if (isSqlServer(product)) {
-            return new SchemaHistoryDialect("VARCHAR(MAX)", "DATETIME2");
+            return new SchemaHistoryDialect("NVARCHAR(MAX)", "DATETIME2", SQL_SERVER_TABLE_EXISTS_SELECT);
         }
         if (isOracle(product) || isDb2(product)) {
-            return new SchemaHistoryDialect("CLOB", TIMESTAMP_TYPE);
+            return new SchemaHistoryDialect("CLOB", TIMESTAMP_TYPE, FETCH_FIRST_TABLE_EXISTS_SELECT, true);
         }
         return general();
     }
@@ -91,7 +110,7 @@ final class SchemaHistoryDialect {
     }
 
     private static boolean isDb2(String product) {
-        return product.equals("db2") || product.startsWith("db2/");
+        return product.equals("db2") || product.startsWith("db2/") || product.startsWith("db2 ");
     }
 
     /**
@@ -105,14 +124,40 @@ final class SchemaHistoryDialect {
                 "(" +
                 "id VARCHAR(36) NOT NULL," +
                 "history_data " + historyDataType + "," +
-                "history_data_seq INTEGER," +
+                "history_data_seq INTEGER NOT NULL," +
                 "record_insert_ts " + timestampType + " NOT NULL," +
                 "record_insert_seq INTEGER NOT NULL," +
                 "PRIMARY KEY (id, history_data_seq)" +
                 ")";
     }
 
+    /**
+     * Table-exists statement for this database.
+     *
+     * @param tableName schema history table name
+     * @return table-exists statement, never {@code null}
+     */
+    String tableExistsSelect(String tableName) {
+        return String.format(tableExistsSelect, tableName);
+    }
+
+    /**
+     * Table name to use for the JDBC metadata lookup.
+     * <p>
+     * Oracle and Db2 store an unquoted identifier in upper case, so the name is folded to upper
+     * case for them. Every other product keeps the configured name.
+     *
+     * @param tableName schema history table name
+     * @return table name for the metadata lookup, never {@code null}
+     */
+    String metadataTableName(String tableName) {
+        if (upperCaseIdentifiers) {
+            return tableName.toUpperCase(Locale.ROOT);
+        }
+        return tableName;
+    }
+
     private static SchemaHistoryDialect general() {
-        return new SchemaHistoryDialect(FALLBACK_HISTORY_DATA_TYPE, TIMESTAMP_TYPE);
+        return new SchemaHistoryDialect(FALLBACK_HISTORY_DATA_TYPE, TIMESTAMP_TYPE, DEFAULT_TABLE_EXISTS_SELECT);
     }
 }
