@@ -27,6 +27,7 @@ import org.junit.jupiter.api.Test;
 import org.postgresql.jdbc.PgConnection;
 
 import io.debezium.connector.postgresql.TestHelper;
+import io.debezium.connector.postgresql.TypeRegistry;
 import io.debezium.doc.FixFor;
 import io.debezium.jdbc.JdbcConfiguration;
 import io.debezium.jdbc.JdbcConnection;
@@ -143,12 +144,11 @@ public class PostgresConnectionIT {
 
     @Test
     @FixFor("debezium/dbz#2924")
-    void shouldNotConnectUntilDefaultValueConverterIsRequested() throws Exception {
-        try (PostgresConnection connection = TestHelper.createWithTypeRegistry()) {
+    void shouldNotConnectWhenCreatedWithTypeRegistryAndNoValueConverterBuilder() throws Exception {
+        final TypeRegistry typeRegistry = TestHelper.getTypeRegistry();
+        try (PostgresConnection connection = new PostgresConnection(TestHelper.defaultJdbcConfig(), typeRegistry, null, TestHelper.CONNECTION_TEST)) {
             assertFalse(connection.isConnected());
-
-            assertNotNull(connection.getDefaultValueConverter());
-            assertTrue(connection.isConnected());
+            assertThat(connection.getTypeRegistry()).isSameAs(typeRegistry);
         }
     }
 

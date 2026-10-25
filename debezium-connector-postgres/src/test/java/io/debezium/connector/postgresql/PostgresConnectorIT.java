@@ -27,6 +27,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Random;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
@@ -65,6 +66,9 @@ import org.postgresql.util.PSQLState;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 import io.debezium.DebeziumException;
+import io.debezium.bean.StandardBeanNames;
+import io.debezium.bean.spi.BeanRegistry;
+import io.debezium.bean.spi.BeanRegistryAware;
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.CommonConnectorConfig.SnapshotQueryMode;
 import io.debezium.config.Configuration;
@@ -99,6 +103,7 @@ import io.debezium.junit.SkipWhenKafkaVersion;
 import io.debezium.junit.SkipWhenKafkaVersion.KafkaVersion;
 import io.debezium.junit.logging.LogInterceptor;
 import io.debezium.pipeline.txmetadata.TransactionStructMaker;
+import io.debezium.processors.spi.PostProcessor;
 import io.debezium.relational.RelationalDatabaseConnectorConfig;
 import io.debezium.relational.RelationalDatabaseSchema;
 import io.debezium.relational.RelationalSnapshotChangeEventSource;
@@ -182,19 +187,17 @@ public class PostgresConnectorIT extends AbstractAsyncEngineConnectorTest {
     @FixFor("debezium/dbz#2924")
     void shouldNotOpenBeanRegistryConnectionWhenNotUsed() throws Exception {
         TestHelper.execute(SETUP_TABLES_STMT);
-        start(PostgresConnector.class, TestHelper.defaultConfig().build());
+        BeanConnectionCapturingPostProcessor.connection = null;
+        start(PostgresConnector.class, TestHelper.defaultConfig()
+                .with(PostgresConnectorConfig.CUSTOM_POST_PROCESSORS, "capturing")
+                .with("post.processors.capturing.type", BeanConnectionCapturingPostProcessor.class.getName())
+                .build());
         assertConnectorIsRunning();
         waitForStreamingRunning();
 
-        // Without post processors or a heartbeat query, only the main connection should stay open
-        try (PostgresConnection connection = TestHelper.create()) {
-            Awaitility.await()
-                    .during(3, TimeUnit.SECONDS)
-                    .atMost(TestHelper.waitTimeForRecords() * 10L, TimeUnit.SECONDS)
-                    .until(() -> connection.queryAndMap(
-                            "SELECT count(*) FROM pg_stat_activity WHERE application_name = '" + PostgresConnection.CONNECTION_GENERAL + "'",
-                            connection.singleResultMapper(rs -> rs.getLong(1), "Could not count connections")) == 1L);
-        }
+        final PostgresConnection connection = BeanConnectionCapturingPostProcessor.connection;
+        assertThat(connection).isNotNull();
+        assertThat(connection.isConnected()).isFalse();
     }
 
     @Test
@@ -4914,6 +4917,30 @@ public class PostgresConnectorIT extends AbstractAsyncEngineConnectorTest {
             TestHelper.execute("DROP USER IF EXISTS canarytest;");
             // clean up the pre-created publication
             TestHelper.dropPublication();
+        }
+    }
+
+    /**
+     * Captures the {@code JDBC_CONNECTION} bean so a test can check whether it has been connected.
+     */
+    public static class BeanConnectionCapturingPostProcessor implements PostProcessor, BeanRegistryAware {
+        static volatile PostgresConnection connection;
+
+        @Override
+        public void injectBeanRegistry(BeanRegistry beanRegistry) {
+            connection = beanRegistry.lookupByName(StandardBeanNames.JDBC_CONNECTION, PostgresConnection.class);
+        }
+
+        @Override
+        public void configure(Map<String, ?> properties) {
+        }
+
+        @Override
+        public void apply(Object key, Struct value) {
+        }
+
+        @Override
+        public void close() {
         }
     }
 }
