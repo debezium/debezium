@@ -344,11 +344,11 @@ public class EventDispatcher<P extends Partition, T extends DataCollectionId> im
                     }
 
                     private boolean isSkippedOperation(T dataCollectionId, Operation operation) {
-                        // Connectors that filter operations at the source still deliver signals of skipped operations
-                        if (neverSkip && !connectorConfig.isSignalDataCollection(dataCollectionId)) {
+                        if (!skippedOperations.contains(operation)) {
                             return false;
                         }
-                        return skippedOperations.contains(operation);
+                        // Connectors that filter operations at the source only deliver skipped operations of the signaling data collection
+                        return !neverSkip || connectorConfig.isSignalDataCollection(dataCollectionId);
                     }
                 });
                 handled = true;

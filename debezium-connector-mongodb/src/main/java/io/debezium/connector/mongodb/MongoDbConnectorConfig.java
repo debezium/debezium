@@ -1803,7 +1803,8 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig implements Sha
         if (!(key instanceof Struct keyStruct) || keyStruct.schema().field("id") == null) {
             return Optional.empty();
         }
-        // String ids keep their JSON quotes in the key, see JsonSerialization#getDocumentId
+        // String ids keep their JSON quotes in the key, see JsonSerialization#getDocumentId,
+        // guarded by MongoDbConnectorConfigTest#deleteOfOpenWindowSignalShouldProduceCloseWindowSignal
         final String json = keyStruct.getString("id");
         if (json == null || json.length() < 2 || !json.startsWith("\"") || !json.endsWith("\"")) {
             return Optional.empty();

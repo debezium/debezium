@@ -46,10 +46,6 @@ public class SignalRecord {
         this(signal.id(), signal.type(), signal.data(), signal.additionalData());
     }
 
-    public static Optional<SignalRecord> buildSignalRecordFromChangeEventSource(Struct value, CommonConnectorConfig config) {
-        return buildSignalRecordFromChangeEventSource(null, value, config);
-    }
-
     public static Optional<SignalRecord> buildSignalRecordFromChangeEventSource(Object key, Struct value, CommonConnectorConfig config) {
 
         if (Envelope.Operation.DELETE.code().equals(value.get(Envelope.FieldName.OPERATION))) {

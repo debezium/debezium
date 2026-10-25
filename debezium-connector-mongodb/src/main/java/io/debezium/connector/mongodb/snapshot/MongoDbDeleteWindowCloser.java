@@ -26,8 +26,7 @@ public class MongoDbDeleteWindowCloser implements WatermarkWindowCloser {
     private final MongoDbConnection mongoDbConnection;
     private final CollectionId collectionId;
 
-    public MongoDbDeleteWindowCloser(MongoDbConnection mongoDbConnection, CollectionId collectionId,
-                                     MongoDbIncrementalSnapshotChangeEventSource incrementalSnapshotChangeEventSource) {
+    public MongoDbDeleteWindowCloser(MongoDbConnection mongoDbConnection, CollectionId collectionId) {
         this.mongoDbConnection = mongoDbConnection;
         this.collectionId = collectionId;
     }

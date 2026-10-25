@@ -74,15 +74,6 @@ public class SourceSignalChannel implements SignalChannelReader {
 
     /** Used in streaming flow to add signals from signaling table
      *
-     * @param value Envelope with change from signaling table
-     * @return true if the signal was processed
-     */
-    public boolean process(Struct value) throws InterruptedException {
-        return process(null, value);
-    }
-
-    /** Used in streaming flow to add signals from signaling table
-     *
      * @param key key of the change from signaling table, may be null
      * @param value Envelope with change from signaling table
      * @return true if the signal was processed
