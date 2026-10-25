@@ -9,17 +9,24 @@ import static io.debezium.connector.mongodb.TestHelper.lines;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
+import java.util.List;
 import java.util.Map;
 
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.errors.DataException;
+import org.bson.BsonArray;
 import org.bson.BsonDocument;
+import org.bson.BsonNull;
+import org.bson.BsonRegularExpression;
+import org.bson.BsonString;
 import org.bson.BsonType;
 import org.bson.BsonValue;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.EnumSource;
 
 import io.debezium.DebeziumException;
 import io.debezium.connector.mongodb.transforms.ExtractNewDocumentState.ArrayEncoding;
@@ -145,6 +152,19 @@ public class MongoArrayConverterTest {
               ]
             }""");
 
+    private static final String NESTED_REGULAR_EXPRESSION_ARRAY = lines("""
+            {
+              "patterns": [
+                [
+                  { "$regularExpression": { "pattern": "^foo", "options": "i" } },
+                  { "$regularExpression": { "pattern": "bar$", "options": "m" } }
+                ],
+                [
+                  { "$regularExpression": { "pattern": "", "options": "" } }
+                ]
+              ]
+            }""");
+
     private SchemaBuilder builder;
 
     @BeforeEach
@@ -208,6 +228,101 @@ public class MongoArrayConverterTest {
         final var secondPattern = patterns.getStruct("_1");
         assertThat(secondPattern.getString("regex")).isEqualTo("bar$");
         assertThat(secondPattern.getString("options")).isEqualTo("m");
+    }
+
+    @ParameterizedTest
+    @EnumSource(ArrayEncoding.class)
+    @FixFor("debezium/dbz#2562")
+    void shouldPreserveNestedRegularExpressions(ArrayEncoding encoding) {
+        final var result = convertDocument(BsonDocument.parse(NESTED_REGULAR_EXPRESSION_ARRAY), encoding);
+        assertNestedRegularExpressions(result.get("patterns"), encoding);
+    }
+
+    @ParameterizedTest
+    @EnumSource(ArrayEncoding.class)
+    @FixFor("debezium/dbz#2562")
+    void shouldPreserveNestedRegularExpressionsInDocuments(ArrayEncoding encoding) {
+        final var input = new BsonDocument("items", new BsonArray(List.of(BsonDocument.parse(NESTED_REGULAR_EXPRESSION_ARRAY))));
+        final var result = convertDocument(input, encoding);
+        final List<?> items = arrayElements(result.get("items"), encoding);
+        assertThat(items).hasSize(1);
+        assertNestedRegularExpressions(((Struct) items.get(0)).get("patterns"), encoding);
+    }
+
+    @ParameterizedTest
+    @EnumSource(ArrayEncoding.class)
+    @FixFor("debezium/dbz#2562")
+    void shouldPreserveRepeatedRegularExpressionsAndSpecialPatterns(ArrayEncoding encoding) {
+        final var regex = new BsonRegularExpression("\\d+\\s+한글", "im");
+        final var input = new BsonDocument("patterns", new BsonArray(List.of(regex, regex, new BsonRegularExpression("", ""))));
+        final var result = convertDocument(input, encoding);
+        final List<?> patterns = arrayElements(result.get("patterns"), encoding);
+        assertThat(patterns).hasSize(3);
+        assertRegularExpression(patterns.get(0), "\\d+\\s+한글", "im");
+        assertRegularExpression(patterns.get(1), "\\d+\\s+한글", "im");
+        assertRegularExpression(patterns.get(2), "", "");
+    }
+
+    @ParameterizedTest
+    @EnumSource(ArrayEncoding.class)
+    @FixFor("debezium/dbz#2562")
+    void shouldHandleMixedRegularExpressionArraysAccordingToEncoding(ArrayEncoding encoding) {
+        for (final BsonValue other : List.of(new BsonString("plain"), BsonNull.VALUE)) {
+            final var input = new BsonDocument("patterns", new BsonArray(List.of(new BsonRegularExpression("^foo", "i"), other)));
+            if (encoding == ArrayEncoding.ARRAY) {
+                assertThrows(DebeziumException.class, () -> convertDocument(input, encoding));
+            }
+            else {
+                final var result = convertDocument(input, encoding);
+                final List<?> patterns = arrayElements(result.get("patterns"), encoding);
+                assertThat(patterns).hasSize(2);
+                assertRegularExpression(patterns.get(0), "^foo", "i");
+                assertThat(patterns.get(1)).isEqualTo(other.isNull() ? null : "plain");
+            }
+        }
+    }
+
+    private Struct convertDocument(BsonDocument input, ArrayEncoding encoding) {
+        final var converter = new MongoDataConverter(encoding);
+        final var builder = SchemaBuilder.struct().name("array");
+        converter.buildSchema(converter.parseBsonDocument(input), builder);
+        final var schema = builder.build();
+        final var result = new Struct(schema);
+        for (final Map.Entry<String, BsonValue> entry : input.entrySet()) {
+            converter.buildStruct(entry, schema, result);
+        }
+        result.validate();
+        return result;
+    }
+
+    private static List<?> arrayElements(Object value, ArrayEncoding encoding) {
+        if (encoding == ArrayEncoding.ARRAY) {
+            assertThat(value).isInstanceOf(List.class);
+            return (List<?>) value;
+        }
+        assertThat(value).isInstanceOf(Struct.class);
+        final var document = (Struct) value;
+        return document.schema().fields().stream().map(document::get).toList();
+    }
+
+    private static void assertNestedRegularExpressions(Object value, ArrayEncoding encoding) {
+        final List<?> groups = arrayElements(value, encoding);
+        assertThat(groups).hasSize(2);
+        final List<?> first = arrayElements(groups.get(0), encoding);
+        final List<?> second = arrayElements(groups.get(1), encoding);
+        assertThat(first).hasSize(2);
+        assertThat(second).hasSize(1);
+        assertRegularExpression(first.get(0), "^foo", "i");
+        assertRegularExpression(first.get(1), "bar$", "m");
+        assertRegularExpression(second.get(0), "", "");
+    }
+
+    private static void assertRegularExpression(Object value, String pattern, String options) {
+        assertThat(value).isInstanceOf(Struct.class);
+        final var regex = (Struct) value;
+        assertThat(regex.schema().name()).isEqualTo(MongoDataConverter.SCHEMA_NAME_REGEX);
+        assertThat(regex.getString("regex")).isEqualTo(pattern);
+        assertThat(regex.getString("options")).isEqualTo(options);
     }
 
     @Test
