@@ -28,7 +28,6 @@ import java.util.OptionalInt;
 import java.util.OptionalLong;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicLong;
-import java.util.function.Supplier;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
@@ -102,9 +101,7 @@ public class PostgresConnection extends JdbcConnection {
     private static final Duration PAUSE_BETWEEN_REPLICATION_SLOT_RETRIEVAL_ATTEMPTS = Duration.ofSeconds(2);
 
     private final TypeRegistry typeRegistry;
-    // Built lazily, as it needs an open database connection, so that constructing this object does not connect
-    private final Supplier<PostgresDefaultValueConverter> defaultValueConverterSupplier;
-    private PostgresDefaultValueConverter defaultValueConverter;
+    private final PostgresDefaultValueConverter defaultValueConverter;
 
     /**
      * Creates a Postgres connection using the supplied configuration.
@@ -113,22 +110,22 @@ public class PostgresConnection extends JdbcConnection {
      *
      * @param config {@link Configuration} instance, may not be null.
      * @param typeRegistry an already-primed {@link TypeRegistry} instance
-     * @param valueConverterBuilder supplies a configured {@link PostgresValueConverter} for a given {@link TypeRegistry}
+     * @param valueConverterBuilder supplies a configured {@link PostgresValueConverter} for a given {@link TypeRegistry};
+     *            may be null when no default value converter is needed, in which case the constructor does not connect
      * @param connectionUsage a symbolic name of the connection to be tracked in monitoring tools
      */
     public PostgresConnection(JdbcConfiguration config, TypeRegistry typeRegistry, PostgresValueConverterBuilder valueConverterBuilder, String connectionUsage) {
         super(addDefaultSettings(config, connectionUsage), FACTORY, PostgresConnection::validateServerVersion, "\"", "\"");
 
+        this.typeRegistry = typeRegistry;
         if (Objects.isNull(typeRegistry) || Objects.isNull(valueConverterBuilder)) {
-            this.typeRegistry = null;
-            this.defaultValueConverterSupplier = null;
+            this.defaultValueConverter = null;
         }
         else {
-            this.typeRegistry = typeRegistry;
-            this.defaultValueConverterSupplier = () -> {
-                final PostgresValueConverter valueConverter = valueConverterBuilder.build(typeRegistry);
+            this.defaultValueConverter = initializeAndCloseOnFailure(() -> {
+                final PostgresValueConverter valueConverter = valueConverterBuilder.build(this.typeRegistry);
                 return new PostgresDefaultValueConverter(valueConverter, this.getTimestampUtils(), typeRegistry);
-            };
+            });
         }
     }
 
@@ -167,14 +164,14 @@ public class PostgresConnection extends JdbcConnection {
 
         if (Objects.isNull(typeRegistry)) {
             this.typeRegistry = null;
-            this.defaultValueConverterSupplier = null;
+            this.defaultValueConverter = null;
         }
         else {
             this.typeRegistry = typeRegistry;
-            this.defaultValueConverterSupplier = () -> {
+            this.defaultValueConverter = initializeAndCloseOnFailure(() -> {
                 final PostgresValueConverter valueConverter = PostgresValueConverter.of(config, this.getDatabaseCharset(), typeRegistry);
                 return new PostgresDefaultValueConverter(valueConverter, this.getTimestampUtils(), typeRegistry);
-            };
+            });
         }
     }
 
@@ -808,11 +805,8 @@ public class PostgresConnection extends JdbcConnection {
                 });
     }
 
-    public synchronized PostgresDefaultValueConverter getDefaultValueConverter() {
-        Objects.requireNonNull(defaultValueConverterSupplier, "Connection does not provide default value converter");
-        if (defaultValueConverter == null) {
-            defaultValueConverter = defaultValueConverterSupplier.get();
-        }
+    public PostgresDefaultValueConverter getDefaultValueConverter() {
+        Objects.requireNonNull(defaultValueConverter, "Connection does not provide default value converter");
         return defaultValueConverter;
     }
 
