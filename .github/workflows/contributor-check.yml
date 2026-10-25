@@ -10,17 +10,20 @@ on:
       - 2.*
       - 3.*
       - 4.*
-    types: [ opened ]
+    types: [ opened, reopened, synchronize ]
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      # Checkout so that this contributor check passes if the contributor details are part of the pull request
-      # If we don't do this, then we are only
+      # Checkout the pull request head so that this check passes if the contributor details are part of
+      # the pull request. Without an explicit ref, pull_request_target checks out the base branch and the
+      # names added by the pull request are never seen. Only text files are read from this checkout; no
+      # code from it is executed.
       - name: Checkout Action
         uses: actions/checkout@v7
         with:
-          fetch-depth: 0
+          ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: false
       - name: Check if COPYRIGHT.txt has author name?
         id: check
         env:
