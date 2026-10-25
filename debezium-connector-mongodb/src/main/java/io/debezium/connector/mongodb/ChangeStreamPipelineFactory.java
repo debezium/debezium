@@ -264,7 +264,9 @@ class ChangeStreamPipelineFactory {
         includedOperations.add(OperationType.UPDATE);
         includedOperations.add(OperationType.REPLACE);
         includedOperations.add(OperationType.DELETE);
-        final int supportedOperationCount = includedOperations.size();
+        final List<String> supportedOperationTypes = includedOperations.stream()
+                .map(OperationType::getValue)
+                .collect(toList());
 
         // Next, remove any implied by the configuration
         var skippedOperations = connectorConfig.getSkippedOperations();
@@ -289,8 +291,10 @@ class ChangeStreamPipelineFactory {
                 .collect(toList()));
 
         // Signals of skipped operations must still arrive
-        if (includedOperations.size() < supportedOperationCount) {
-            return orFilters(Optional.of(operationTypeFilter), createSignalCollectionFilter(filterConfig, matchOriginalEvent));
+        if (includedOperations.size() < supportedOperationTypes.size()) {
+            final Optional<Bson> signalCollectionFilter = createSignalCollectionFilter(filterConfig, matchOriginalEvent)
+                    .map(signal -> Filters.and(signal, Filters.in(field, supportedOperationTypes)));
+            return orFilters(Optional.of(operationTypeFilter), signalCollectionFilter);
         }
         return Optional.of(operationTypeFilter);
     }

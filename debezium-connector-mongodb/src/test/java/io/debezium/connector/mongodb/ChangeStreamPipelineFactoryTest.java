@@ -242,12 +242,49 @@ public class ChangeStreamPipelineFactoryTest {
                               }, {
                                 "$or": [
                                   { "event.operationType": { "$in": ["insert", "update", "replace"] } },
-                                  { "namespace": "signal.col" }
+                                  { "$and": [
+                                      { "namespace": "signal.col" },
+                                      { "event.operationType": { "$in": ["insert", "update", "replace", "delete"] } }
+                                  ] }
                                 ]
                               }]
                           }
                         }""",
                 INTERNAL_PIPELINE.get(2)));
+    }
+
+    @Test
+    @FixFor("debezium/dbz#1410")
+    void testCreateLiteralsWithSkippedOperationsKeepsSignalEvents() {
+        var config = TestHelper.getConfiguration().edit()
+                .with(MongoDbConnectorConfig.FILTERS_MATCH_MODE, "literal")
+                .with(MongoDbConnectorConfig.COLLECTION_INCLUDE_LIST, "dbit.col1")
+                .with(MongoDbConnectorConfig.SIGNAL_DATA_COLLECTION, "signal.col")
+                .with(CommonConnectorConfig.SKIPPED_OPERATIONS, "d")
+                .build();
+
+        var pipeline = create(config);
+
+        assertPipelineStagesEquals(pipeline.getStages(), List.of(
+                """
+                        {
+                          "$match": {
+                            "$and": [{
+                                "$or": [
+                                  { "ns": { "$in": [ { "db": "dbit", "coll": "col1" } ] } },
+                                  { "ns": { "db": "signal", "coll": "col" } }
+                                ]
+                              }, {
+                                "$or": [
+                                  { "operationType": { "$in": ["insert", "update", "replace"] } },
+                                  { "$and": [
+                                      { "ns": { "db": "signal", "coll": "col" } },
+                                      { "operationType": { "$in": ["insert", "update", "replace", "delete"] } }
+                                  ] }
+                                ]
+                              }]
+                          }
+                        }"""));
     }
 
     @Test
