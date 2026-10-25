@@ -42,12 +42,7 @@ import io.debezium.schema.SchemaNameAdjuster;
  * @author Anisha Mohanty
  */
 public class MongoDataConverter {
-    public static final String SCHEMA_NAME_REGEX = "io.debezium.mongodb.regex";
-
-    private static final Schema REGULAR_EXPRESSION_SCHEMA = SchemaBuilder.struct().name(SCHEMA_NAME_REGEX).optional()
-            .field("regex", Schema.OPTIONAL_STRING_SCHEMA)
-            .field("options", Schema.OPTIONAL_STRING_SCHEMA)
-            .build();
+    public static final String SCHEMA_NAME_REGEX = MongoDbSchema.SCHEMA_NAME_REGEX;
 
     private final ArrayEncoding arrayEncoding;
     private final FieldNamer<String> fieldNamer;
@@ -355,7 +350,7 @@ public class MongoDataConverter {
                 break;
 
             case REGULAR_EXPRESSION:
-                builder.field(key, REGULAR_EXPRESSION_SCHEMA);
+                builder.field(key, MongoDbSchema.REGULAR_EXPRESSION_SCHEMA);
                 break;
 
             case DOCUMENT:
@@ -672,7 +667,7 @@ public class MongoDataConverter {
                 return Schema.OPTIONAL_BOOLEAN_SCHEMA;
 
             case REGULAR_EXPRESSION:
-                return REGULAR_EXPRESSION_SCHEMA;
+                return MongoDbSchema.REGULAR_EXPRESSION_SCHEMA;
 
             case ARRAY:
                 switch (arrayEncoding) {
@@ -819,7 +814,7 @@ public class MongoDataConverter {
         Object colValue = null;
         switch (type) {
             case REGULAR_EXPRESSION:
-                colValue = buildRegularExpression(value, REGULAR_EXPRESSION_SCHEMA);
+                colValue = buildRegularExpression(value, MongoDbSchema.REGULAR_EXPRESSION_SCHEMA);
                 break;
 
             case STRING:
