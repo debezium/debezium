@@ -25,12 +25,14 @@ import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.data.Timestamp;
 import org.bson.BsonArray;
 import org.bson.BsonDocument;
+import org.bson.BsonRegularExpression;
 import org.bson.BsonTimestamp;
 import org.bson.BsonType;
 import org.bson.BsonValue;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.EnumSource;
 import org.junit.jupiter.params.provider.ValueSource;
 
 import io.debezium.DebeziumException;
@@ -59,6 +61,35 @@ public class MongoDataConverterTest {
         val = BsonDocument.parse(record);
         builder = SchemaBuilder.struct().name("pub");
         converter = new MongoDataConverter(ArrayEncoding.ARRAY);
+    }
+
+    @ParameterizedTest
+    @EnumSource(ArrayEncoding.class)
+    @FixFor("debezium/dbz#2562")
+    void shouldUseVersionedRegularExpressionSchemaForFieldsAndArrays(ArrayEncoding encoding) {
+        final var regex = new BsonRegularExpression("^foo", "i");
+        final var input = new BsonDocument("pattern", regex)
+                .append("patterns", new BsonArray(List.of(regex)))
+                .append("nestedPatterns", new BsonArray(List.of(new BsonArray(List.of(regex)))));
+        final var converter = new MongoDataConverter(encoding);
+        converter.buildSchema(converter.parseBsonDocument(input), builder);
+        final var schema = builder.build();
+        final var regexSchema = schema.field("pattern").schema();
+        assertThat(regexSchema.name()).isEqualTo("io.debezium.mongodb.regex");
+        assertThat(regexSchema.version()).isEqualTo(1);
+        assertThat(regexSchema.isOptional()).isTrue();
+        assertThat(regexSchema.fields()).extracting("name").containsExactly("regex", "options");
+        assertThat(regexSchema.field("regex").schema()).isEqualTo(Schema.OPTIONAL_STRING_SCHEMA);
+        assertThat(regexSchema.field("options").schema()).isEqualTo(Schema.OPTIONAL_STRING_SCHEMA);
+
+        if (encoding == ArrayEncoding.ARRAY) {
+            assertThat(schema.field("patterns").schema().valueSchema()).isEqualTo(regexSchema);
+            assertThat(schema.field("nestedPatterns").schema().valueSchema().valueSchema()).isEqualTo(regexSchema);
+        }
+        else {
+            assertThat(schema.field("patterns").schema().field("_0").schema()).isEqualTo(regexSchema);
+            assertThat(schema.field("nestedPatterns").schema().field("_0").schema().field("_0").schema()).isEqualTo(regexSchema);
+        }
     }
 
     @ParameterizedTest
