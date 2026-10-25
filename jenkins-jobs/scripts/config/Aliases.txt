@@ -298,6 +298,7 @@ Oscar,Oscar Romero
 overwatcheddude,حمود سمبول
 pan3793,Cheng Pan
 pancheng,Cheng Pan
+paolo-cristofanelli,Paolo Cristofanelli
 paul cheung,Paul Cheung
 Paul_Kim,Sundong Kim
 paumr,P. Aum

@@ -30,6 +30,7 @@ import io.debezium.relational.TableId;
 import io.debezium.relational.TableSchemaBuilder;
 import io.debezium.relational.Tables;
 import io.debezium.schema.SchemaChangeEvent;
+import io.debezium.schema.SchemaFactory;
 import io.debezium.schema.SchemaNameAdjuster;
 import io.debezium.spi.topic.TopicNamingStrategy;
 import io.debezium.util.LRUCacheMap;
@@ -71,9 +72,11 @@ public class OracleDatabaseSchema extends HistorizedRelationalDatabaseSchema {
                         schemaNameAdjuster,
                         customConverterRegistry,
                         connectorConfig.getSourceInfoStructMaker().schema(),
+                        SchemaFactory.get().transactionBlockSchema(),
                         connectorConfig.getFieldNamer(),
                         false,
-                        connectorConfig.getEventConvertingFailureHandlingMode()),
+                        connectorConfig.getEventConvertingFailureHandlingMode(),
+                        connectorConfig.isSchemaFieldsForceAllOptional()),
                 TableNameCaseSensitivity.INSENSITIVE.equals(tableNameCaseSensitivity),
                 connectorConfig.getKeyMapper(), taskContext);
 

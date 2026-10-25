@@ -66,6 +66,7 @@ public class TableSchemaBuilder {
     private final CustomConverterRegistry customConverterRegistry;
     private final boolean multiPartitionMode;
     private final EventConvertingFailureHandlingMode eventConvertingFailureHandlingMode;
+    private final boolean forceAllFieldsOptional;
 
     /**
      * Create a new instance of the builder.
@@ -125,6 +126,31 @@ public class TableSchemaBuilder {
                               FieldNamer<Column> fieldNamer,
                               boolean multiPartitionMode,
                               EventConvertingFailureHandlingMode eventConvertingFailureHandlingMode) {
+        this(valueConverterProvider, defaultValueConverter, schemaNameAdjuster, customConverterRegistry, sourceInfoSchema,
+                transactionSchema, fieldNamer, multiPartitionMode, eventConvertingFailureHandlingMode, false);
+    }
+
+    /**
+     * Create a new instance of the builder.
+     *
+     * @param valueConverterProvider the provider for obtaining {@link ValueConverter}s and {@link SchemaBuilder}s; may not be
+     *            null
+     * @param defaultValueConverter is used to convert the default value literal to a Java type
+     *            recognized by value converters for a subset of types. may be null.
+     * @param schemaNameAdjuster the adjuster for schema names; may not be null
+     * @param forceAllFieldsOptional whether all fields of the key and value schemas should be marked as optional,
+     *            regardless of the nullability of the underlying columns; emitted values are not affected
+     */
+    public TableSchemaBuilder(ValueConverterProvider valueConverterProvider,
+                              DefaultValueConverter defaultValueConverter,
+                              SchemaNameAdjuster schemaNameAdjuster,
+                              CustomConverterRegistry customConverterRegistry,
+                              Schema sourceInfoSchema,
+                              Schema transactionSchema,
+                              FieldNamer<Column> fieldNamer,
+                              boolean multiPartitionMode,
+                              EventConvertingFailureHandlingMode eventConvertingFailureHandlingMode,
+                              boolean forceAllFieldsOptional) {
         this.schemaNameAdjuster = schemaNameAdjuster;
         this.valueConverterProvider = valueConverterProvider;
         this.defaultValueConverter = Optional.ofNullable(defaultValueConverter)
@@ -135,6 +161,7 @@ public class TableSchemaBuilder {
         this.customConverterRegistry = customConverterRegistry;
         this.multiPartitionMode = multiPartitionMode;
         this.eventConvertingFailureHandlingMode = eventConvertingFailureHandlingMode;
+        this.forceAllFieldsOptional = forceAllFieldsOptional;
     }
 
     /**
@@ -419,7 +446,7 @@ public class TableSchemaBuilder {
                 // Let the mapper add properties to the schema ...
                 mapper.alterFieldSchema(column, fieldBuilder);
             }
-            if (column.isOptional()) {
+            if (column.isOptional() || forceAllFieldsOptional) {
                 fieldBuilder.optional();
             }
 

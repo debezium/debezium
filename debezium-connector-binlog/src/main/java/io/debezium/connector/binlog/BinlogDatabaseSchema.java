@@ -36,6 +36,7 @@ import io.debezium.relational.ddl.DdlChanges;
 import io.debezium.relational.ddl.DdlParser;
 import io.debezium.relational.ddl.DdlParserListener;
 import io.debezium.schema.SchemaChangeEvent;
+import io.debezium.schema.SchemaFactory;
 import io.debezium.schema.SchemaNameAdjuster;
 import io.debezium.spi.topic.TopicNamingStrategy;
 import io.debezium.text.MultipleParsingExceptions;
@@ -96,9 +97,11 @@ public abstract class BinlogDatabaseSchema<P extends BinlogPartition, O extends 
                         schemaNameAdjuster,
                         converterRegistry,
                         connectorConfig.getSourceInfoStructMaker().schema(),
+                        SchemaFactory.get().transactionBlockSchema(),
                         connectorConfig.getFieldNamer(),
                         false,
-                        connectorConfig.getEventConvertingFailureHandlingMode()),
+                        connectorConfig.getEventConvertingFailureHandlingMode(),
+                        connectorConfig.isSchemaFieldsForceAllOptional()),
                 tableIdCaseInsensitive,
                 connectorConfig.getKeyMapper(), taskContext);
         this.ddlParser = createDdlParser(connectorConfig, valueConverter);
