@@ -89,6 +89,13 @@ public class TableIdTest {
     }
 
     @Test
+    @FixFor("debezium/dbz#125")
+    public void shouldLowercaseCatalogAndTableName() {
+        assertThat(new TableId("MyDb", null, "Member").toLowercase()).isEqualTo(new TableId("mydb", null, "member"));
+        assertThat(new TableId(null, "MySchema", "Member").toLowercase()).isEqualTo(new TableId(null, "MySchema", "member"));
+    }
+
+    @Test
     @FixFor("debezium/dbz#1377")
     public void shouldParseBackDoubleQuotedTableId() {
         for (String tableName : new String[]{ "test''dd", "tab\"le", "a``b" }) {

@@ -400,7 +400,16 @@ public abstract class BinlogConnectorConnection extends JdbcConnection {
      * @return {@code true} if the table identifiers are case-sensitive, {@code false} otherwise
      */
     public boolean isTableIdCaseSensitive() {
-        return !"0".equals(readSystemVariables().get(BinlogSystemVariables.LOWER_CASE_TABLE_NAMES));
+        return lowerCaseTableNames().isCaseInsensitive();
+    }
+
+    /**
+     * Return how the server stores and compares database and table names.
+     *
+     * @return the {@code lower_case_table_names} setting of the server; never null
+     */
+    public LowerCaseTableNames lowerCaseTableNames() {
+        return LowerCaseTableNames.parse(readSystemVariables().get(BinlogSystemVariables.LOWER_CASE_TABLE_NAMES));
     }
 
     /**
