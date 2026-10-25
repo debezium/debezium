@@ -158,7 +158,8 @@ public class PostgresConnectorTask extends BaseSourceTask<PostgresPartition, Pos
         final Clock clock = Clock.system();
 
         // Manual Bean Registration
-        beanRegistryJdbcConnection = connectionFactory.newConnection();
+        // No value converter builder, so the connection is not opened until a consumer such as a post processor uses it
+        beanRegistryJdbcConnection = new PostgresConnection(connectorConfig.getJdbcConfig(), sharedTypeRegistry, null, PostgresConnection.CONNECTION_GENERAL);
         connectorConfig.getBeanRegistry().add(StandardBeanNames.CONFIGURATION, config);
         connectorConfig.getBeanRegistry().add(StandardBeanNames.CONNECTOR_CONFIG, connectorConfig);
         connectorConfig.getBeanRegistry().add(StandardBeanNames.DATABASE_SCHEMA, schema);
