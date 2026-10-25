@@ -21,6 +21,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -964,6 +965,44 @@ public class IncrementalSnapshotIT extends AbstractMongoConnectorIT {
         }
 
         assertCloseEventCount(closeEventCount -> assertThat(closeEventCount).isZero());
+    }
+
+    @Test
+    @FixFor("debezium/dbz#1410")
+    void insertDeleteWatermarkingStrategyWithSkippedDeletes() throws Exception {
+        final String signalTopic = "mongo1." + SIGNAL_COLLECTION_NAME;
+        final List<String> signalOperations = new CopyOnWriteArrayList<>();
+
+        populateDataCollection();
+        final Configuration config = config()
+                .with(CommonConnectorConfig.INCREMENTAL_SNAPSHOT_WATERMARKING_STRATEGY, "insert_delete")
+                .with(CommonConnectorConfig.SKIPPED_OPERATIONS, "d")
+                .with(CommonConnectorConfig.TOMBSTONES_ON_DELETE, false)
+                .build();
+        start(connectorClass(), config, loggingCompletion(), null, record -> {
+            if (signalTopic.equals(record.topic())) {
+                signalOperations.add(((Struct) record.value()).getString(Envelope.FieldName.OPERATION));
+            }
+        }, true);
+        waitForConnectorToStart();
+        waitForAvailableRecords(5, TimeUnit.SECONDS);
+        assertNoRecordsToConsume();
+
+        sendAdHocSnapshotSignal();
+
+        insertAdditionalData();
+
+        final int expectedRecordCount = ROW_COUNT * 2;
+        final Map<Integer, Integer> dbChanges = consumeMixedWithIncrementalSnapshot(expectedRecordCount);
+
+        for (int i = 0; i < expectedRecordCount; i++) {
+            assertThat(dbChanges).contains(entry(i + 1, i));
+        }
+
+        // The deletes of the open window signals close the windows, but are skipped like any other delete
+        assertThat(signalOperations)
+                .contains(Envelope.Operation.CREATE.code())
+                .doesNotContain(Envelope.Operation.DELETE.code());
     }
 
     @Test
