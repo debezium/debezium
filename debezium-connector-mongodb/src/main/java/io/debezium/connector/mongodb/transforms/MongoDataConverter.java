@@ -818,6 +818,10 @@ public class MongoDataConverter {
         BsonType type = value.getBsonType();
         Object colValue = null;
         switch (type) {
+            case REGULAR_EXPRESSION:
+                colValue = buildRegularExpression(value, REGULAR_EXPRESSION_SCHEMA);
+                break;
+
             case STRING:
                 colValue = value.asString().getValue();
                 break;
