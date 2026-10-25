@@ -15,27 +15,27 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      # Checkout the pull request head so that this check passes if the contributor details are part of
-      # the pull request. Without an explicit ref, pull_request_target checks out the base branch and the
-      # names added by the pull request are never seen. Only text files are read from this checkout; no
-      # code from it is executed.
-      - name: Checkout Action
-        uses: actions/checkout@v7
-        with:
-          ref: ${{ github.event.pull_request.head.sha }}
-          persist-credentials: false
+      # No checkout: this workflow runs on pull_request_target with the base repository's token, so the
+      # pull request's code must never be checked out or executed here. The three files are instead fetched
+      # as raw content from both the base branch and the pull request head, so that a pull request which
+      # adds the missing contributor details passes the check.
       - name: Check if COPYRIGHT.txt has author name?
         id: check
         env:
           pull_request_number: ${{ github.event.pull_request.number }}
+          pull_request_head_repo: ${{ github.event.pull_request.head.repo.full_name }}
+          pull_request_head_sha: ${{ github.event.pull_request.head.sha }}
         run: |
           USER_NOT_FOUND=false
           curl -H 'Accept: application/vnd.github.v3.raw' https://raw.githubusercontent.com/debezium/debezium/main/COPYRIGHT.txt >> COPYRIGHT_MAIN.txt
           curl -H 'Accept: application/vnd.github.v3.raw' https://raw.githubusercontent.com/debezium/debezium/main/jenkins-jobs/scripts/config/Aliases.txt >> ALIASES_MAIN.txt
           curl -H 'Accept: application/vnd.github.v3.raw' https://raw.githubusercontent.com/debezium/debezium/main/jenkins-jobs/scripts/config/FilteredNames.txt >> FILTEREDNAMES_MAIN.txt
-          cat COPYRIGHT.txt COPYRIGHT_MAIN.txt | sort -u > COPYRIGHT_CHECK.txt
-          cat ALIASES_MAIN.txt jenkins-jobs/scripts/config/Aliases.txt | sort -u > ALIASES_CHECK.txt
-          cat FILTEREDNAMES_MAIN.txt jenkins-jobs/scripts/config/FilteredNames.txt | sort -u > FILTEREDNAMES_CHECK.txt
+          curl --silent --fail -H 'Accept: application/vnd.github.v3.raw' "https://raw.githubusercontent.com/$pull_request_head_repo/$pull_request_head_sha/COPYRIGHT.txt" >> COPYRIGHT_PR.txt || true
+          curl --silent --fail -H 'Accept: application/vnd.github.v3.raw' "https://raw.githubusercontent.com/$pull_request_head_repo/$pull_request_head_sha/jenkins-jobs/scripts/config/Aliases.txt" >> ALIASES_PR.txt || true
+          curl --silent --fail -H 'Accept: application/vnd.github.v3.raw' "https://raw.githubusercontent.com/$pull_request_head_repo/$pull_request_head_sha/jenkins-jobs/scripts/config/FilteredNames.txt" >> FILTEREDNAMES_PR.txt || true
+          cat COPYRIGHT_PR.txt COPYRIGHT_MAIN.txt | sort -u > COPYRIGHT_CHECK.txt
+          cat ALIASES_MAIN.txt ALIASES_PR.txt | sort -u > ALIASES_CHECK.txt
+          cat FILTEREDNAMES_MAIN.txt FILTEREDNAMES_PR.txt | sort -u > FILTEREDNAMES_CHECK.txt
 
           curl --silent -X "GET" https://api.github.com/repos/debezium/debezium/pulls/$pull_request_number/commits | jq '.[] | {author: .commit.author.name}' | jq -r '.author' | uniq >> AUTHOR_NAME.txt
 
