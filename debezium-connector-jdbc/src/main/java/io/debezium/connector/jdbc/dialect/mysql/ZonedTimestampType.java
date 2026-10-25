@@ -36,21 +36,6 @@ public class ZonedTimestampType extends DebeziumZonedTimestampType {
 
         final ZonedDateTime parsed = ZonedDateTime.parse((String) value, ZonedTimestamp.FORMATTER);
         final ZonedDateTime clamped = clampToDialectBounds(parsed);
-        if (clamped.toInstant().equals(parsed.toInstant())) {
-            return getDialect().getFormattedTimestampWithTimeZone(ZonedTimestamp.toIsoString(parsed, null, null));
-        }
-        return String.format("'%s'", ((MySqlDatabaseDialect) getDialect()).toSessionZoneLiteral(clamped));
-    }
-
-    private ZonedDateTime clampToDialectBounds(ZonedDateTime value) {
-        final ZonedDateTime minimum = ZonedDateTime.parse(getDialect().getTimestampNegativeInfinityValue(), ZonedTimestamp.FORMATTER);
-        if (value.toInstant().isBefore(minimum.toInstant())) {
-            return minimum;
-        }
-        final ZonedDateTime maximum = ZonedDateTime.parse(getDialect().getTimestampPositiveInfinityValue(), ZonedTimestamp.FORMATTER);
-        if (value.toInstant().isAfter(maximum.toInstant())) {
-            return maximum;
-        }
-        return value;
+        return getDialect().getFormattedTimestampWithTimeZone(ZonedTimestamp.toIsoString(clamped, null, null));
     }
 }

@@ -54,8 +54,6 @@ public class MySqlDatabaseDialect extends GeneralDatabaseDialect {
     private static final List<String> NO_DEFAULT_VALUE_TYPES = Arrays.asList(
             "tinytext", "mediumtext", "longtext", "text", "tinyblob", "mediumblob", "longblob");
 
-    private static final DateTimeFormatter UTC_TIMESTAMP_LITERAL = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
-
     private static final DateTimeFormatter ISO_LOCAL_DATE_TIME_WITH_SPACE = new DateTimeFormatterBuilder()
             .parseCaseInsensitive()
             .append(DateTimeFormatter.ISO_LOCAL_DATE)
@@ -92,13 +90,29 @@ public class MySqlDatabaseDialect extends GeneralDatabaseDialect {
         }
     }
 
-    public String toSessionZoneLiteral(ZonedDateTime value) {
+    /**
+     * Renders the given instant as the wall clock of the session time zone of the target database.
+     * <p>
+     * A {@code TIMESTAMP} literal carries no offset, so the server resolves it against the session
+     * time zone of the connection that executes the statement, and the bound-value path ends in the
+     * same place, because the driver converts a bound value into the session time zone before it
+     * sends it. A column default must therefore be the session-zone wall clock of the instant it is
+     * meant to store, and not its UTC wall clock.
+     * <p>
+     * The source zone is the numeric offset {@code '+00:00'} and not the name {@code 'UTC'}, because
+     * a named zone is resolved through the {@code mysql.time_zone_name} table and is unknown on a
+     * server where that table is empty, where {@code CONVERT_TZ} returns {@code null}.
+     *
+     * @param value the instant to render
+     * @return the wall clock of the instant in the session time zone
+     */
+    private String toSessionZoneLiteral(ZonedDateTime value) {
         final LocalDateTime utc = LocalDateTime.ofInstant(value.toInstant(), ZoneOffset.UTC);
         try (StatelessSession session = sessionFactory.openStatelessSession()) {
             return session.doReturningWork((connection) -> {
                 try (PreparedStatement statement = connection.prepareStatement(
-                        "SELECT CONVERT_TZ(?, 'UTC', @@session.time_zone)")) {
-                    statement.setString(1, UTC_TIMESTAMP_LITERAL.format(utc));
+                        "SELECT REPLACE(CONVERT_TZ(?, '+00:00', @@session.time_zone), ' ', 'T')")) {
+                    statement.setString(1, ISO_LOCAL_DATE_TIME_WITH_SPACE.format(utc));
                     try (ResultSet converted = statement.executeQuery()) {
                         if (converted.next() && converted.getString(1) != null) {
                             return converted.getString(1);
@@ -207,7 +221,7 @@ public class MySqlDatabaseDialect extends GeneralDatabaseDialect {
     @Override
     public String getFormattedTimestampWithTimeZone(String value) {
         final ZonedDateTime zonedDateTime = ZonedDateTime.parse(value, ZonedTimestamp.FORMATTER);
-        return String.format("'%s'", DateTimeFormatter.ISO_LOCAL_DATE_TIME.format(zonedDateTime));
+        return String.format("'%s'", toSessionZoneLiteral(zonedDateTime));
     }
 
     @Override
