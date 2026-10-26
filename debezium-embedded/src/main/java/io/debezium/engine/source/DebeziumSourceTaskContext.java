@@ -6,6 +6,7 @@
 package io.debezium.engine.source;
 
 import java.util.Map;
+import java.util.concurrent.locks.Lock;
 
 import io.debezium.common.annotation.Incubating;
 import io.debezium.embedded.Transformations;
@@ -35,6 +36,11 @@ public interface DebeziumSourceTaskContext {
      * Gets the {@link OffsetStorageWriter} for this SourceTask.
      */
     OffsetStorageWriter offsetStorageWriter();
+
+    /**
+     * Gets the lock used to ensure that offset commits on {@link #offsetStorageWriter()} are serialized.
+     */
+    Lock offsetCommitLock();
 
     /**
      * Gets the {@link OffsetCommitPolicy} for this task.
