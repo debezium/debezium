@@ -103,7 +103,7 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig implements Sha
         CUSTOM("custom"),
 
         /**
-         * Combines `when_needed` and `no_data`, which means that if a snapshot is needed, it will be performed without data (schema-only).
+         * Combines `when_needed` and `no_data`.
          */
         WHEN_NEEDED_NO_DATA("when_needed_no_data");
 
