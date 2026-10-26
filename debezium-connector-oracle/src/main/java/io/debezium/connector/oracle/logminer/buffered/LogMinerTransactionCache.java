@@ -204,6 +204,26 @@ public interface LogMinerTransactionCache<T extends Transaction> {
     void clear();
 
     /**
+     * Starts a mining pass. From now on the first event added to a transaction records how many events the
+     * transaction had, so that {@link #discardBatch()} can drop what the pass added.
+     */
+    void beginBatch();
+
+    /**
+     * Ends a mining pass that read every row it was given; the pass can no longer be discarded.
+     */
+    void completeBatch();
+
+    /**
+     * Ends a mining pass that failed part-way, for example with {@code ORA-00310}: the events the pass added
+     * are dropped from every transaction it touched, so that mining the same range again rebuilds them without
+     * duplicates. Partial rollbacks are resolved when a transaction is read, so nothing else has to be undone.
+     * The event ids the touched transactions hand out are rewound with their events; a transaction the pass
+     * created stays in the cache, empty, and is filled again by the re-mine.
+     */
+    void discardBatch();
+
+    /**
      * Resets the transaction state as if it has no transaction events.
      *
      * @param transaction the transaction to reset, should not be {@code null}

@@ -92,6 +92,10 @@ public class BufferedLogMinerStreamingChangeEventSource extends AbstractLogMiner
     private Scn lastProcessedScn = Scn.NULL;
     private Scn lastLoggedWindowAdvanceScn = Scn.NULL;
 
+    private Scn passStartLastProcessedScn = Scn.NULL;
+    private Instant passStartLastProcessedScnChangeTime = null;
+    private boolean miningPassDiscarded = false;
+
     private final Map<String, DeferredTransaction> deferredTransactions = new HashMap<>();
 
     /**
@@ -284,7 +288,14 @@ public class BufferedLogMinerStreamingChangeEventSource extends AbstractLogMiner
 
             getMetrics().setLastMiningFetchRange(startScn, endScn);
 
+            beginMiningPass();
             executeAndProcessQuery(statement);
+
+            if (miningPassDiscarded) {
+                // Nothing of the pass remains, so the next pass reads the same range again
+                LOGGER.debug("The mining pass for SCN [{}, {}] was discarded and is read again.", startScn, endScn);
+                return new ProcessResult(getLogMinerContext().getCurrentSessionStartScn(), startScn);
+            }
 
             logPendingTransactions();
 
@@ -292,8 +303,45 @@ public class BufferedLogMinerStreamingChangeEventSource extends AbstractLogMiner
 
             dispatchHeartbeatEvent();
 
+            completeMiningPass();
+
             return result;
         }
+    }
+
+    /**
+     * Starts a mining pass: the cache records what the pass adds from now on, and the read position bookkeeping
+     * is saved, so that a pass that fails part-way can be discarded as if it had never run.
+     */
+    private void beginMiningPass() {
+        passStartLastProcessedScn = lastProcessedScn;
+        passStartLastProcessedScnChangeTime = lastProcessedScnChangeTime;
+        miningPassDiscarded = false;
+        getTransactionCache().beginBatch();
+    }
+
+    /**
+     * Completes the mining pass after it successfully consumed all the mined events.
+     */
+    private void completeMiningPass() {
+        getTransactionCache().completeBatch();
+    }
+
+    /**
+     * Drops what the failed pass stored and restores the read position bookkeeping, so that the next pass reads
+     * the same range again. What the pass dispatched stays dispatched: the re-mine skips a transaction the pass
+     * committed, as its commit is recorded in the offsets' commit SCN and, with LOB support enabled, in the
+     * processed transactions cache too.
+     */
+    @Override
+    protected void discardMiningPass() {
+        final int eventsBefore = getTransactionCache().getTransactionEvents();
+        getTransactionCache().discardBatch();
+        lastProcessedScn = passStartLastProcessedScn;
+        lastProcessedScnChangeTime = passStartLastProcessedScnChangeTime;
+        miningPassDiscarded = true;
+        getMetrics().setBufferedEventCount(getTransactionCache().getTransactionEvents());
+        LOGGER.debug("Discarded {} events stored by the failed mining pass.", eventsBefore - getTransactionCache().getTransactionEvents());
     }
 
     @VisibleForTesting
@@ -555,6 +603,15 @@ public class BufferedLogMinerStreamingChangeEventSource extends AbstractLogMiner
     protected void handleStartEvent(LogMinerEventRow event) {
         final String transactionId = event.getTransactionId();
         if (!isRecentlyProcessed(transactionId)) {
+            final Transaction transaction = getTransactionCache().getTransaction(transactionId);
+            if (transaction != null) {
+                // A re-mined START, for example after a discarded pass: the transaction is already in the
+                // cache, so it is never deferred again, which would pin the offset on a stale deferred entry
+                LOGGER.trace("Transaction {} is not yet committed and START event detected.", transactionId);
+                getTransactionCache().resetTransactionToStart(transaction);
+                return;
+            }
+
             if (getConfig().isDeferredLogMinerTransactionStartBehaviorEnabled() && !Strings.isNullOrEmpty(transactionId)) {
                 deferredTransactions.computeIfAbsent(transactionId, id -> {
                     LOGGER.trace("Deferring transaction {} start event.", id);
@@ -564,15 +621,8 @@ public class BufferedLogMinerStreamingChangeEventSource extends AbstractLogMiner
                 return;
             }
 
-            final Transaction transaction = getTransactionCache().getTransaction(transactionId);
-            if (transaction == null) {
-                getTransactionCache().addTransaction(transactionFactory.createTransaction(event));
-                getMetrics().setActiveTransactionCount(getTransactionCache().getTransactionCount());
-            }
-            else {
-                LOGGER.trace("Transaction {} is not yet committed and START event detected.", transactionId);
-                getTransactionCache().resetTransactionToStart(transaction);
-            }
+            getTransactionCache().addTransaction(transactionFactory.createTransaction(event));
+            getMetrics().setActiveTransactionCount(getTransactionCache().getTransactionCount());
         }
     }
 

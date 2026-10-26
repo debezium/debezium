@@ -1276,6 +1276,9 @@ The buffer stores each change as LogMiner reported it: the row's metadata togeth
 The connector parses the SQL, and applies any DDL statement that the transaction contains, when the transaction commits, in the order in which the changes occurred within the transaction.
 As a result, the time that the connector spends parsing a transaction is part of its commit, and changes that are rolled back are never parsed.
 
+A mining pass that fails part-way, for example because a redo log became unavailable while the connector was reading it (`ORA-00310`), is discarded from the buffer and read again, so the buffer never holds a change twice.
+The connector stops with the error if five consecutive mining passes fail this way without one completing.
+
 The buffer is transient.
 When the connector starts, it clears whatever a persistent buffer still holds from a previous run and re-mines the in-flight transactions from its offsets, which requires the archive logs back to the SCN in the offsets to be available, as any restart does.
 Whether the persistent state is removed when the connector stops gracefully is controlled by xref:oracle-property-log-mining-buffer-drop-on-stop[`log.mining.buffer.drop.on.stop`].

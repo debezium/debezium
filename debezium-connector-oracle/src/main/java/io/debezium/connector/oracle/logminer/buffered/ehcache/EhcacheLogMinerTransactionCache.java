@@ -148,6 +148,7 @@ public class EhcacheLogMinerTransactionCache extends AbstractLogMinerTransaction
             throw new IllegalArgumentException("Event key " + eventKey + " is not the next position of transaction " + transactionId);
         }
 
+        markBatchStart(transactionId, metadata.count());
         eventCache.put(eventKey(transactionId, eventKey), event);
 
         checkAndThrowIfEviction(CacheProvider.EVENTS_CACHE_NAME);
@@ -163,6 +164,18 @@ public class EhcacheLogMinerTransactionCache extends AbstractLogMinerTransaction
             eventCache.removeAll(eventKeys(transaction.getTransactionId(), 0, metadata.count()));
             transactionEvents -= metadata.count();
         }
+    }
+
+    @Override
+    protected int truncateTransactionEvents(String transactionId, int count) {
+        final EventMetadataColumns metadata = metadataByTransactionId.get(transactionId);
+        if (metadata == null || count >= metadata.count()) {
+            return 0;
+        }
+        final int dropped = metadata.count() - count;
+        eventCache.removeAll(eventKeys(transactionId, count, metadata.count()));
+        metadata.truncateTo(count);
+        return dropped;
     }
 
     @Override

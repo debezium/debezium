@@ -116,6 +116,7 @@ public class MemoryLogMinerTransactionCache extends AbstractLogMinerTransactionC
         if (eventKey > count) {
             throw new IllegalArgumentException("Event key " + eventKey + " is not the next position of transaction " + transaction.getTransactionId());
         }
+        markBatchStart(transaction.getTransactionId(), count);
         events.append(transaction.getTransactionId(), transaction.getStartScn(), event);
         transactionEvents++;
     }
@@ -169,5 +170,10 @@ public class MemoryLogMinerTransactionCache extends AbstractLogMinerTransactionC
     @Override
     public void syncTransaction(MemoryTransaction transaction) {
         // Changing the heap instance is sufficient, therefore this is a no-op
+    }
+
+    @Override
+    protected int truncateTransactionEvents(String transactionId, int count) {
+        return events.truncate(transactionId, count);
     }
 }

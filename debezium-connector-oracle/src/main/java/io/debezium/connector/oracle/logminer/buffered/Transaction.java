@@ -91,4 +91,14 @@ public interface Transaction {
      */
     void start();
 
+    /**
+     * Rewinds the event identifier so that the next event stored takes the given position.
+     * <p>
+     * This is called when a mining pass is discarded: the events the pass stored are dropped from the
+     * cache and the same range is read again, so its rows must land on the positions they had.
+     *
+     * @param numberOfEvents the number of events the transaction keeps
+     */
+    void rewindEvents(int numberOfEvents);
+
 }

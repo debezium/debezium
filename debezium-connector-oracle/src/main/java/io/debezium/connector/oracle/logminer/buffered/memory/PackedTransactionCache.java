@@ -75,6 +75,25 @@ final class PackedTransactionCache {
         }
     }
 
+    /**
+     * Drops the events of a transaction from the given position on, and the transaction's store when nothing
+     * remains, since it is recreated on the next event.
+     *
+     * @return the number of events dropped
+     */
+    int truncate(String transactionId, int count) {
+        final PackedTransaction transaction = transactions.get(transactionId);
+        if (transaction == null) {
+            return 0;
+        }
+        final int dropped = Math.max(0, transaction.count() - count);
+        transaction.truncateTo(count);
+        if (transaction.count() == 0) {
+            transactions.remove(transactionId);
+        }
+        return dropped;
+    }
+
     PackedTransaction remove(String transactionId) {
         return transactions.remove(transactionId);
     }

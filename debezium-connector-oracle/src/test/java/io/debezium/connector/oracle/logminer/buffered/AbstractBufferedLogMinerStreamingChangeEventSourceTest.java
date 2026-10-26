@@ -380,23 +380,15 @@ public abstract class AbstractBufferedLogMinerStreamingChangeEventSourceTest ext
     }
 
     @Test
-    @FixFor("DBZ-6679")
+    @FixFor({ "DBZ-6679", "debezium/dbz#2504" })
     public void testNonEmptyResultSetWithMineRangeAdvancesCorrectly() throws Exception {
         if (!isTransactionAbandonmentSupported()) {
             return;
         }
 
         try (var source = getChangeEventSource(getConfig().build())) {
-            final ResultSet rs = Mockito.mock(ResultSet.class);
+            final ResultSet rs = getInsertResultSet(101);
             Mockito.when(rs.next()).thenReturn(true, false);
-            Mockito.when(rs.getString(1)).thenReturn("101");
-            Mockito.when(rs.getString(2)).thenReturn("insert into \"DEBEZIUM\".\"ABC\"(\"ID\",\"DATA\") values ('1','test');");
-            Mockito.when(rs.getInt(3)).thenReturn(EventType.INSERT.getValue());
-            Mockito.when(rs.getTimestamp(eq(4), any(Calendar.class))).thenReturn(Timestamp.valueOf(LocalDateTime.now()));
-            Mockito.when(rs.getBytes(5)).thenReturn(new byte[]{ 0x0e, 0x00, 0x1c, 0x00, 0x12, 0x34, 0x56, 0x78 });
-            Mockito.when(rs.getString(7)).thenReturn("ABC");
-            Mockito.when(rs.getString(8)).thenReturn("DEBEZIUM");
-            Mockito.when(rs.getString(10)).thenReturn("AAAAAAAAAAAAAAAAAB");
 
             final PreparedStatement ps = Mockito.mock(PreparedStatement.class);
             Mockito.when(ps.executeQuery()).thenReturn(rs);
@@ -422,6 +414,181 @@ public abstract class AbstractBufferedLogMinerStreamingChangeEventSourceTest ext
             final ProcessResult result = mock.process(Scn.valueOf(100), Scn.valueOf(100), Scn.valueOf(200));
             assertThat(result.miningSessionStartScn()).isEqualTo(Scn.valueOf(100));
             assertThat(result.readStartScn()).isEqualTo(Scn.valueOf(101));
+        }
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2504")
+    public void testMiningPassCutByAnUnavailableLogIsDiscardedAndReadAgain() throws Exception {
+        if (!isTransactionAbandonmentSupported()) {
+            return;
+        }
+
+        try (var source = getChangeEventSource(getConfig().build())) {
+            // The first pass reads one row and then loses the log it is reading
+            final ResultSet cut = getInsertResultSet(101);
+            Mockito.when(cut.next()).thenReturn(true).thenThrow(new SQLException("ORA-00310: archived log contains sequence 10; sequence 11 required"));
+            final PreparedStatement cutStatement = Mockito.mock(PreparedStatement.class);
+            Mockito.when(cutStatement.executeQuery()).thenReturn(cut);
+
+            // The second pass reads the same row to the end
+            final ResultSet complete = getInsertResultSet(101);
+            Mockito.when(complete.next()).thenReturn(true, false);
+            final PreparedStatement completeStatement = Mockito.mock(PreparedStatement.class);
+            Mockito.when(completeStatement.executeQuery()).thenReturn(complete);
+
+            final BufferedStreamingChangeEventSource mock = Mockito.spy(source);
+            Mockito.doReturn(cutStatement).doReturn(completeStatement).when(mock).createQueryStatement();
+
+            final ProcessResult cutResult = mock.process(Scn.valueOf(100), Scn.valueOf(100), Scn.valueOf(200));
+            // Nothing of the cut pass remains and the read position did not move
+            assertThat(cutResult.readStartScn()).isEqualTo(Scn.valueOf(100));
+            assertThat(mock.getTransactionCache().getTransactionEvents()).isZero();
+
+            final ProcessResult result = mock.process(Scn.valueOf(100), Scn.valueOf(100), Scn.valueOf(200));
+            assertThat(result.readStartScn()).isEqualTo(Scn.valueOf(101));
+            assertThat(mock.getTransactionCache().getTransactionCount()).isEqualTo(1);
+            assertThat(mock.getTransactionCache().getTransactionEvents()).isEqualTo(1);
+        }
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2504")
+    public void testMiningPassCutRepeatedlyIsGivenUpAfterBoundedRetries() throws Exception {
+        if (!isTransactionAbandonmentSupported()) {
+            return;
+        }
+
+        try (var source = getChangeEventSource(getConfig().build())) {
+            // The first pass reads one row and then loses the log it is reading, every later pass loses it at once
+            final ResultSet cut = getInsertResultSet(101);
+            Mockito.when(cut.next()).thenReturn(true).thenThrow(new SQLException("ORA-00310: archived log contains sequence 10; sequence 11 required"));
+            final PreparedStatement cutStatement = Mockito.mock(PreparedStatement.class);
+            Mockito.when(cutStatement.executeQuery()).thenReturn(cut);
+
+            final BufferedStreamingChangeEventSource mock = Mockito.spy(source);
+            Mockito.doReturn(cutStatement).when(mock).createQueryStatement();
+
+            // Four cut passes are discarded and read again
+            for (int attempt = 1; attempt <= 4; attempt++) {
+                final ProcessResult cutResult = mock.process(Scn.valueOf(100), Scn.valueOf(100), Scn.valueOf(200));
+                assertThat(cutResult.readStartScn()).isEqualTo(Scn.valueOf(100));
+                assertThat(mock.getTransactionCache().getTransactionEvents()).isZero();
+            }
+
+            // The fifth consecutive cut pass is given up, with nothing of it left in the buffer
+            assertThatThrownBy(() -> mock.process(Scn.valueOf(100), Scn.valueOf(100), Scn.valueOf(200)))
+                    .isInstanceOf(SQLException.class)
+                    .hasMessageStartingWith("ORA-00310");
+            assertThat(mock.getTransactionCache().getTransactionEvents()).isZero();
+        }
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2504")
+    public void testMiningPassCutByAnotherErrorIsDiscardedAndThrownAtOnce() throws Exception {
+        if (!isTransactionAbandonmentSupported()) {
+            return;
+        }
+
+        try (var source = getChangeEventSource(getConfig().build())) {
+            // The pass reads one row and then loses its connection, which is not a log switch
+            final ResultSet cut = getInsertResultSet(101);
+            Mockito.when(cut.next()).thenReturn(true).thenThrow(new SQLException("ORA-03113: end-of-file on communication channel"));
+            final PreparedStatement cutStatement = Mockito.mock(PreparedStatement.class);
+            Mockito.when(cutStatement.executeQuery()).thenReturn(cut);
+
+            final BufferedStreamingChangeEventSource mock = Mockito.spy(source);
+            Mockito.doReturn(cutStatement).when(mock).createQueryStatement();
+
+            // The error is thrown on the first failure, with nothing of the pass left in the buffer
+            assertThatThrownBy(() -> mock.process(Scn.valueOf(100), Scn.valueOf(100), Scn.valueOf(200)))
+                    .isInstanceOf(SQLException.class)
+                    .hasMessageStartingWith("ORA-03113");
+            assertThat(mock.getTransactionCache().getTransactionEvents()).isZero();
+        }
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2504")
+    public void testCompletedMiningPassResetsTheCutPassCount() throws Exception {
+        if (!isTransactionAbandonmentSupported()) {
+            return;
+        }
+
+        try (var source = getChangeEventSource(getConfig().build())) {
+            final BufferedStreamingChangeEventSource mock = Mockito.spy(source);
+
+            // Cut and complete passes alternate, so no run of cut passes ever reaches the limit
+            for (int scn = 101; scn <= 110; scn++) {
+                final ResultSet cut = getInsertResultSet(scn);
+                Mockito.when(cut.next()).thenReturn(true).thenThrow(new SQLException("ORA-00310: archived log contains sequence 10; sequence 11 required"));
+                final PreparedStatement cutStatement = Mockito.mock(PreparedStatement.class);
+                Mockito.when(cutStatement.executeQuery()).thenReturn(cut);
+
+                final ResultSet complete = getInsertResultSet(scn);
+                Mockito.when(complete.next()).thenReturn(true, false);
+                final PreparedStatement completeStatement = Mockito.mock(PreparedStatement.class);
+                Mockito.when(completeStatement.executeQuery()).thenReturn(complete);
+
+                Mockito.doReturn(cutStatement).doReturn(completeStatement).when(mock).createQueryStatement();
+
+                final ProcessResult cutResult = mock.process(Scn.valueOf(scn - 1), Scn.valueOf(scn - 1), Scn.valueOf(200));
+                assertThat(cutResult.readStartScn()).isEqualTo(Scn.valueOf(scn - 1));
+
+                final ProcessResult result = mock.process(Scn.valueOf(scn - 1), Scn.valueOf(scn - 1), Scn.valueOf(200));
+                assertThat(result.readStartScn()).isEqualTo(Scn.valueOf(scn));
+            }
+
+            assertThat(mock.getTransactionCache().getTransactionCount()).isEqualTo(1);
+            assertThat(mock.getTransactionCache().getTransactionEvents()).isEqualTo(10);
+        }
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2504")
+    public void testInternalEventFollowingARowlessEventIsStoredAgainAfterADiscardedPass() throws Exception {
+        try (var source = getChangeEventSource(getConfig().build())) {
+            source.processEvent(getStartLogMinerEventRow(1, TRANSACTION_ID_1));
+            source.processEvent(getInsertLogMinerEventRow(2, TRANSACTION_ID_1, Instant.now(), "TEST_TABLE", "AAAAAAAAAAAAAAAAAA", "'lob'"));
+            assertThat(source.getTransactionCache().getTransactionEvents()).isEqualTo(1);
+
+            // The pass stores the INTERNAL row that completes the rowless event, then fails
+            source.getTransactionCache().beginBatch();
+            source.processEvent(getInternalLogMinerEventRow(3, TRANSACTION_ID_1, "AAAAAAAAAAAAAAAAAB"));
+            assertThat(source.getTransactionCache().getTransactionEvents()).isEqualTo(2);
+            source.getTransactionCache().discardBatch();
+            assertThat(source.getTransactionCache().getTransactionEvents()).isEqualTo(1);
+
+            // The re-mine sees the rowless event as the last stored one again and stores the INTERNAL row
+            source.getTransactionCache().beginBatch();
+            source.processEvent(getInternalLogMinerEventRow(3, TRANSACTION_ID_1, "AAAAAAAAAAAAAAAAAB"));
+            assertThat(source.getTransactionCache().getTransactionEvents()).isEqualTo(2);
+            source.getTransactionCache().completeBatch();
+        }
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2504")
+    public void testStartEventOfAPromotedTransactionResetsItInsteadOfDeferringIt() throws Exception {
+        final Configuration config = getConfig()
+                .with(OracleConnectorConfig.LOG_MINING_BUFFER_DEFERRED_TRANSACTION_START, true)
+                .build();
+        try (var source = getChangeEventSource(config)) {
+            source.processEvent(getStartLogMinerEventRow(1, TRANSACTION_ID_1));
+            source.processEvent(getInsertLogMinerEventRow(2, TRANSACTION_ID_1));
+            assertThat(source.getTransactionCache().getTransactionCount()).isEqualTo(1);
+
+            // The START is read again, as after a discarded pass: the transaction is reset, not deferred again
+            source.processEvent(getStartLogMinerEventRow(1, TRANSACTION_ID_1));
+            assertThat(source.getPendingTransactions()).hasSize(1);
+            assertThat(source.getPendingTransactions().get(0).deferred()).isFalse();
+
+            // The re-mined insert lands on its existing position and a new one follows it
+            source.processEvent(getInsertLogMinerEventRow(2, TRANSACTION_ID_1));
+            assertThat(source.getTransactionCache().getTransactionEvents()).isEqualTo(1);
+            source.processEvent(getInsertLogMinerEventRow(3, TRANSACTION_ID_1));
+            assertThat(source.getTransactionCache().getTransactionEvents()).isEqualTo(2);
         }
     }
 
@@ -1289,6 +1456,22 @@ public abstract class AbstractBufferedLogMinerStreamingChangeEventSourceTest ext
 
     private LogMinerEventRow getInsertLogMinerEventRow(long scn, String transactionId) {
         return getInsertLogMinerEventRow(scn, transactionId, Instant.now());
+    }
+
+    /**
+     * A result set whose every row is the same insert at the given SCN; the caller stubs {@code next()}.
+     */
+    private static ResultSet getInsertResultSet(long scn) throws SQLException {
+        final ResultSet rs = Mockito.mock(ResultSet.class);
+        Mockito.when(rs.getString(1)).thenReturn(String.valueOf(scn));
+        Mockito.when(rs.getString(2)).thenReturn("insert into \"DEBEZIUM\".\"ABC\"(\"ID\",\"DATA\") values ('1','test');");
+        Mockito.when(rs.getInt(3)).thenReturn(EventType.INSERT.getValue());
+        Mockito.when(rs.getTimestamp(eq(4), any(Calendar.class))).thenReturn(Timestamp.valueOf(LocalDateTime.now()));
+        Mockito.when(rs.getBytes(5)).thenReturn(new byte[]{ 0x0e, 0x00, 0x1c, 0x00, 0x12, 0x34, 0x56, 0x78 });
+        Mockito.when(rs.getString(7)).thenReturn("ABC");
+        Mockito.when(rs.getString(8)).thenReturn("DEBEZIUM");
+        Mockito.when(rs.getString(10)).thenReturn("AAAAAAAAAAAAAAAAAB");
+        return rs;
     }
 
     private LogMinerEventRow getInsertLogMinerEventRow(long scn, String transactionId, Instant changeTime) {

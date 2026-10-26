@@ -48,6 +48,24 @@ public class PackedTransactionCacheTest {
     }
 
     @Test
+    @FixFor("debezium/dbz#2504")
+    public void shouldDropEventsFromAPositionAndTheStoreWhenEmpty() throws Exception {
+        cache.append("1", ANCHOR, event(EventType.INSERT, false, ROW_B));
+        cache.append("1", ANCHOR, event(EventType.INSERT, false, ROW_C));
+        cache.append("1", ANCHOR, event(EventType.DELETE, true, ROW_C));
+
+        assertThat(cache.truncate("1", 2)).isEqualTo(1);
+        assertThat(cache.count("1")).isEqualTo(2);
+        // Nothing undoes the insert of row C any more
+        assertThat(read("1")).extracting(LogMinerRedoEvent::getRowIdAsString).containsExactly(ROW_B, ROW_C);
+
+        assertThat(cache.truncate("1", 2)).isZero();
+        assertThat(cache.truncate("1", 0)).isEqualTo(2);
+        assertThat(cache.get("1")).isNull();
+        assertThat(cache.truncate("1", 0)).isZero();
+    }
+
+    @Test
     @FixFor("debezium/dbz#2935")
     public void shouldDropTablesWithTheEvents() {
         cache.append("1", ANCHOR, event(EventType.INSERT, false, ROW_B));

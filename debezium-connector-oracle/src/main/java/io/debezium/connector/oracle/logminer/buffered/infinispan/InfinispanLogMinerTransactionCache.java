@@ -135,6 +135,7 @@ public class InfinispanLogMinerTransactionCache extends AbstractLogMinerTransact
             throw new IllegalArgumentException("Event key " + eventKey + " is not the next position of transaction " + transactionId);
         }
 
+        markBatchStart(transactionId, metadata.count());
         eventCache.put(eventKey(transactionId, eventKey), event);
 
         metadata.append(event);
@@ -148,6 +149,18 @@ public class InfinispanLogMinerTransactionCache extends AbstractLogMinerTransact
             removeEvents(transaction.getTransactionId(), 0, metadata.count());
             transactionEvents -= metadata.count();
         }
+    }
+
+    @Override
+    protected int truncateTransactionEvents(String transactionId, int count) {
+        final EventMetadataColumns metadata = metadataByTransactionId.get(transactionId);
+        if (metadata == null || count >= metadata.count()) {
+            return 0;
+        }
+        final int dropped = metadata.count() - count;
+        removeEvents(transactionId, count, metadata.count());
+        metadata.truncateTo(count);
+        return dropped;
     }
 
     @Override
