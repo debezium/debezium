@@ -6035,6 +6035,42 @@ public class OracleConnectorIT extends AbstractAsyncEngineConnectorTest {
         }
     }
 
+    @Test
+    void shouldSnapshotSchemaOnlyWithSnapshotModeWhenNeededNoData() throws Exception {
+        TestHelper.dropTable(connection, "recovery_test");
+        Testing.Files.delete(TestHelper.SCHEMA_HISTORY_PATH);
+        try {
+            connection.execute("CREATE TABLE recovery_test (id numeric(9,0) primary key, data varchar2(50))");
+            TestHelper.streamTable(connection, "recovery_test");
+
+            connection.execute("INSERT INTO recovery_test values (1, 'foo')");
+            connection.execute("INSERT INTO recovery_test values (2, 'bar')");
+
+            Configuration config = defaultConfig()
+                    .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "DEBEZIUM\\.RECOVERY_TEST")
+                    .with(OracleConnectorConfig.SNAPSHOT_MODE, SnapshotMode.WHEN_NEEDED_NO_DATA)
+                    .build();
+
+            start(OracleConnector.class, config);
+            assertConnectorIsRunning();
+            waitForStreamingRunning(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
+
+            assertNoRecordsToConsume();
+
+            // it must be the only thing consumed.
+            connection.execute("INSERT INTO recovery_test values (3, 'baz')");
+
+            final List<SourceRecord> records = consumeRecordsByTopic(1).recordsForTopic("server1.DEBEZIUM.RECOVERY_TEST");
+            assertThat(records).hasSize(1);
+            assertNoRecordsToConsume();
+            VerifyRecord.isValidInsert(records.get(0), "ID", 3);
+            assertThat(getAfter(records.get(0)).get("DATA")).isEqualTo("baz");
+        }
+        finally {
+            TestHelper.dropTable(connection, "recovery_test");
+        }
+    }
+
     private Struct getAfter(SourceRecord record) {
         return ((Struct) record.value()).getStruct(Envelope.FieldName.AFTER);
     }
