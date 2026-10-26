@@ -245,6 +245,7 @@ MarBruhn,Marcel Bruhn
 marian-derias,Marian Derias
 markallanson,Mark Allanson
 markducommun,Mark Ducommun
+marmichalski,Marcin Michalski
 martper2,Martín Pérez
 Martynov Maxim,Maxim Martynov
 matan-cohen,Matan Cohen
