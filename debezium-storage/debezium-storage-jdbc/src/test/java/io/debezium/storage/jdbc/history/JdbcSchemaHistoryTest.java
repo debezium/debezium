@@ -7,6 +7,10 @@ package io.debezium.storage.jdbc.history;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNotSame;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.IOException;
@@ -14,6 +18,7 @@ import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.sql.Connection;
 import java.sql.DriverManager;
+import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.sql.Types;
@@ -249,7 +254,7 @@ public class JdbcSchemaHistoryTest {
                 .with(SchemaHistory.CONFIGURATION_FIELD_PREFIX_STRING + JdbcSchemaHistoryConfig.PROP_TABLE_DDL.name(), override)
                 .build(), null, SchemaHistoryMetrics.NOOP, true);
 
-        String tableDdl = schemaHistory.getConfig().getTableCreate("MySQL");
+        String tableDdl = schemaHistory.getConfig().getTableCreate(SchemaHistoryDialect.resolve("MySQL"));
 
         assertTrue(tableDdl.contains("history_data TEXT"));
         assertFalse(tableDdl.contains("MEDIUMTEXT"));
@@ -259,16 +264,16 @@ public class JdbcSchemaHistoryTest {
     @FixFor("debezium/dbz#70")
     public void shouldUseDialectWhenTableDdlIsNotSet() {
         JdbcSchemaHistory schemaHistory = (JdbcSchemaHistory) history;
-        assertTrue(schemaHistory.getConfig().getTableCreate("MySQL").contains("history_data MEDIUMTEXT"));
-        assertTrue(schemaHistory.getConfig().getTableCreate((String) null).contains("history_data VARCHAR(65000)"));
+        assertTrue(schemaHistory.getConfig().getTableCreate(SchemaHistoryDialect.resolve("MySQL")).contains("history_data MEDIUMTEXT"));
+        assertTrue(schemaHistory.getConfig().getTableCreate(SchemaHistoryDialect.resolve((String) null)).contains("history_data VARCHAR(65000)"));
     }
 
     @Test
     @FixFor("debezium/dbz#70")
     public void shouldUseFormattedDefaultExistsSelectForNullProductName() {
         JdbcSchemaHistory schemaHistory = (JdbcSchemaHistory) history;
-        assertEquals("SELECT * FROM debezium_database_history LIMIT 1", schemaHistory.getConfig().getTableDataExistsSelect((String) null));
-        assertEquals("SELECT * FROM debezium_database_history LIMIT 1", schemaHistory.getConfig().getTableDataExistsSelect("Unknown"));
+        assertEquals("SELECT * FROM debezium_database_history LIMIT 1", schemaHistory.getConfig().getTableDataExistsSelect(SchemaHistoryDialect.resolve((String) null)));
+        assertEquals("SELECT * FROM debezium_database_history LIMIT 1", schemaHistory.getConfig().getTableDataExistsSelect(SchemaHistoryDialect.resolve("Unknown")));
     }
 
     @Test
@@ -281,7 +286,8 @@ public class JdbcSchemaHistoryTest {
                 .with(SchemaHistory.CONFIGURATION_FIELD_PREFIX_STRING + JdbcSchemaHistoryConfig.PROP_TABLE_DATA_EXISTS_SELECT.name(), override)
                 .build(), null, SchemaHistoryMetrics.NOOP, true);
 
-        assertEquals("SELECT TOP 1 id FROM debezium_database_history", schemaHistory.getConfig().getTableDataExistsSelect("Microsoft SQL Server"));
+        assertEquals("SELECT TOP 1 id FROM debezium_database_history",
+                schemaHistory.getConfig().getTableDataExistsSelect(SchemaHistoryDialect.resolve("Microsoft SQL Server")));
     }
 
     @Test
@@ -324,10 +330,73 @@ public class JdbcSchemaHistoryTest {
     @FixFor("debezium/dbz#70")
     public void shouldUseFallbackStatementsForUnknownProduct() {
         JdbcSchemaHistory schemaHistory = (JdbcSchemaHistory) history;
-        assertTrue(schemaHistory.getConfig().getTableCreate("Unknown").contains("history_data VARCHAR(65000)"));
-        assertTrue(schemaHistory.getConfig().getTableCreate("Unknown").contains("history_data_seq INTEGER NOT NULL"));
-        assertEquals("SELECT * FROM debezium_database_history LIMIT 1", schemaHistory.getConfig().getTableDataExistsSelect("Unknown"));
-        assertEquals("debezium_database_history", schemaHistory.getConfig().getTableMetadataName("Unknown"));
+        assertTrue(schemaHistory.getConfig().getTableCreate(SchemaHistoryDialect.resolve("Unknown")).contains("history_data VARCHAR(65000)"));
+        assertTrue(schemaHistory.getConfig().getTableCreate(SchemaHistoryDialect.resolve("Unknown")).contains("history_data_seq INTEGER NOT NULL"));
+        assertEquals("SELECT * FROM debezium_database_history LIMIT 1", schemaHistory.getConfig().getTableDataExistsSelect(SchemaHistoryDialect.resolve("Unknown")));
+        assertEquals("debezium_database_history", schemaHistory.getConfig().getTableMetadataName(SchemaHistoryDialect.resolve("Unknown")));
+    }
+
+    @Test
+    @FixFor("debezium/dbz#70")
+    public void shouldCreateTableWithDialectStatement() throws SQLException {
+        try (Connection connection = DriverManager.getConnection("jdbc:sqlite:" + dbFile);
+                Statement stmt = connection.createStatement();
+                ResultSet rs = stmt.executeQuery("SELECT sql FROM sqlite_master WHERE type = 'table' AND name = 'debezium_database_history'")) {
+            assertTrue(rs.next());
+            String storedDdl = rs.getString(1);
+            assertTrue(storedDdl.contains("history_data TEXT"), storedDdl);
+            assertFalse(storedDdl.contains("VARCHAR(65000)"), storedDdl);
+        }
+    }
+
+    @Test
+    @FixFor("debezium/dbz#70")
+    public void shouldResolveDialectOnce() {
+        JdbcSchemaHistory schemaHistory = (JdbcSchemaHistory) history;
+        SchemaHistoryDialect dialectAfterStart = schemaHistory.getDialect();
+
+        assertNotNull(dialectAfterStart);
+        assertTrue(dialectAfterStart.createTable("history").contains("history_data TEXT"));
+
+        history.record(source, position, databaseName, schemaName, ddl, tableChanges, currentInstant);
+
+        assertTrue(schemaHistory.exists());
+        assertSame(dialectAfterStart, schemaHistory.getDialect());
+    }
+
+    @Test
+    @FixFor("debezium/dbz#70")
+    public void shouldUseCachedDialectAfterConnectionIsReestablished() {
+        JdbcSchemaHistory schemaHistory = (JdbcSchemaHistory) history;
+        SchemaHistoryDialect dialectBeforeReconnect = schemaHistory.getDialect();
+
+        assertNotNull(dialectBeforeReconnect);
+        schemaHistory.stop();
+
+        assertTrue(schemaHistory.storageExists());
+        assertSame(dialectBeforeReconnect, schemaHistory.getDialect());
+    }
+
+    @Test
+    @FixFor("debezium/dbz#70")
+    public void shouldResolveDialectAgainWhenConfiguredAgain() {
+        JdbcSchemaHistory schemaHistory = (JdbcSchemaHistory) history;
+        SchemaHistoryDialect dialectBeforeConfigure = schemaHistory.getDialect();
+
+        assertNotNull(dialectBeforeConfigure);
+        schemaHistory.stop();
+        schemaHistory.configure(Configuration.create()
+                .with(SchemaHistory.CONFIGURATION_FIELD_PREFIX_STRING + JdbcSchemaHistoryConfig.PROP_JDBC_URL.name(), "jdbc:sqlite:" + dbFile)
+                .with(SchemaHistory.CONFIGURATION_FIELD_PREFIX_STRING + JdbcSchemaHistoryConfig.PROP_USER.name(), "user")
+                .with(SchemaHistory.CONFIGURATION_FIELD_PREFIX_STRING + JdbcSchemaHistoryConfig.PROP_PASSWORD.name(), "pass")
+                .build(), null, SchemaHistoryMetrics.NOOP, true);
+
+        assertNull(schemaHistory.getDialect());
+
+        schemaHistory.start();
+
+        assertNotNull(schemaHistory.getDialect());
+        assertNotSame(dialectBeforeConfigure, schemaHistory.getDialect());
     }
 
     @Test
@@ -343,8 +412,8 @@ public class JdbcSchemaHistoryTest {
 
         JdbcSchemaHistory schemaHistory = (JdbcSchemaHistory) history;
         assertTrue(schemaHistory.storageExists());
-        assertEquals("employee", schemaHistory.getConfig().getTableMetadataName("PostgreSQL"));
-        assertEquals("EMPLOYEE", schemaHistory.getConfig().getTableMetadataName("Oracle"));
+        assertEquals("employee", schemaHistory.getConfig().getTableMetadataName(SchemaHistoryDialect.resolve("PostgreSQL")));
+        assertEquals("EMPLOYEE", schemaHistory.getConfig().getTableMetadataName(SchemaHistoryDialect.resolve("Oracle")));
     }
 
     @Test
@@ -359,7 +428,7 @@ public class JdbcSchemaHistoryTest {
                 .build(), null, SchemaHistoryMetrics.NOOP, true);
         assertTrue(schemaHistory.getConfig().getDatabaseName().equalsIgnoreCase("public"));
         assertTrue(schemaHistory.getConfig().getTableName().equalsIgnoreCase("employee"));
-        assertTrue(schemaHistory.getConfig().getTableCreate("PostgreSQL").startsWith("CREATE TABLE employee"));
+        assertTrue(schemaHistory.getConfig().getTableCreate(SchemaHistoryDialect.resolve("PostgreSQL")).startsWith("CREATE TABLE employee"));
         assertTrue(schemaHistory.getConfig().getTableSelect().startsWith("SELECT id, history_data FROM employee"));
         assertTrue(schemaHistory.getConfig().getTableInsert().startsWith("INSERT INTO employee("));
     }
@@ -372,7 +441,7 @@ public class JdbcSchemaHistoryTest {
                 .with(SchemaHistory.CONFIGURATION_FIELD_PREFIX_STRING + JdbcSchemaHistoryConfig.PROP_JDBC_URL.name(), "jdbc:sqlite:" + dbFile)
                 .with(SchemaHistory.CONFIGURATION_FIELD_PREFIX_STRING + JdbcSchemaHistoryConfig.PROP_TABLE_NAME.name(), "a.b.c")
                 .build(), null, SchemaHistoryMetrics.NOOP, true);
-        assertTrue(schemaHistory.getConfig().getTableCreate("PostgreSQL").startsWith("CREATE TABLE a.b.c"));
+        assertTrue(schemaHistory.getConfig().getTableCreate(SchemaHistoryDialect.resolve("PostgreSQL")).startsWith("CREATE TABLE a.b.c"));
     }
 
     @Test

@@ -128,17 +128,16 @@ public class JdbcSchemaHistoryConfig extends JdbcCommonConfig {
      * Returns the create-table statement to use for the connected database.
      * <p>
      * An explicit {@code schema.history.internal.jdbc.table.ddl} value is used as-is.
-     * Otherwise a {@link SchemaHistoryDialect} is resolved from the database product name and
-     * builds the statement. A missing product name uses the configured default statement.
+     * Otherwise the {@link SchemaHistoryDialect} builds the statement.
      *
-     * @param databaseProductName value of {@code DatabaseMetaData.getDatabaseProductName()}; may be {@code null}
+     * @param dialect dialect of the connected database
      * @return create-table statement, never {@code null}
      */
-    public String getTableCreate(String databaseProductName) {
-        if (tableDdlOverridden || databaseProductName == null) {
+    String getTableCreate(SchemaHistoryDialect dialect) {
+        if (tableDdlOverridden) {
             return tableCreate;
         }
-        return SchemaHistoryDialect.resolve(databaseProductName).createTable(tableName);
+        return dialect.createTable(tableName);
     }
 
     public boolean isTableDdlOverridden() {
@@ -167,17 +166,16 @@ public class JdbcSchemaHistoryConfig extends JdbcCommonConfig {
      * Returns the table-exists statement to use for the connected database.
      * <p>
      * An explicit {@code schema.history.internal.jdbc.table.exists} value is used as-is.
-     * Otherwise a {@link SchemaHistoryDialect} is resolved from the database product name and
-     * builds the statement. A missing product name uses the configured default statement.
+     * Otherwise the {@link SchemaHistoryDialect} builds the statement.
      *
-     * @param databaseProductName value of {@code DatabaseMetaData.getDatabaseProductName()}; may be {@code null}
+     * @param dialect dialect of the connected database
      * @return table-exists statement, never {@code null}
      */
-    public String getTableDataExistsSelect(String databaseProductName) {
-        if (tableDataExistsSelectOverridden || databaseProductName == null) {
+    String getTableDataExistsSelect(SchemaHistoryDialect dialect) {
+        if (tableDataExistsSelectOverridden) {
             return tableDataExistsSelect;
         }
-        return SchemaHistoryDialect.resolve(databaseProductName).tableExistsSelect(tableName);
+        return dialect.tableExistsSelect(tableName);
     }
 
     public String getTableInsert() {
@@ -191,11 +189,11 @@ public class JdbcSchemaHistoryConfig extends JdbcCommonConfig {
      * Oracle and Db2 store an unquoted identifier in upper case, so the name is folded to upper case
      * for them. Every other product keeps the configured name.
      *
-     * @param databaseProductName value of {@code DatabaseMetaData.getDatabaseProductName()}; may be {@code null}
+     * @param dialect dialect of the connected database
      * @return table name for the metadata lookup, never {@code null}
      */
-    public String getTableMetadataName(String databaseProductName) {
-        return SchemaHistoryDialect.resolve(databaseProductName).metadataTableName(tableName);
+    String getTableMetadataName(SchemaHistoryDialect dialect) {
+        return dialect.metadataTableName(tableName);
     }
 
     /**
