@@ -18,8 +18,7 @@ import java.util.stream.Stream;
 
 import io.debezium.connector.oracle.logminer.buffered.AbstractLogMinerTransactionCache;
 import io.debezium.connector.oracle.logminer.buffered.LogMinerTransactionCache;
-import io.debezium.connector.oracle.logminer.events.LogMinerEvent;
-import io.debezium.connector.oracle.logminer.events.RollbackToSavepointEvent;
+import io.debezium.connector.oracle.logminer.events.LogMinerRedoEvent;
 
 /**
  * A concrete implementation of the {@link LogMinerTransactionCache} that stores transactions and events
@@ -82,11 +81,11 @@ public class MemoryLogMinerTransactionCache extends AbstractLogMinerTransactionC
     }
 
     @Override
-    public void forEachEvent(MemoryTransaction transaction, InterruptiblePredicate<LogMinerEvent> predicate) throws InterruptedException {
+    public void forEachEvent(MemoryTransaction transaction, InterruptiblePredicate<LogMinerRedoEvent> predicate) throws InterruptedException {
         final var events = eventsByTransactionId.get(transaction.getTransactionId());
         if (events != null) {
             for (LogMinerEventEntry entry : events) {
-                if (!predicate.test(entry.event())) {
+                if (!predicate.test((LogMinerRedoEvent) entry.event())) {
                     break;
                 }
             }
@@ -99,12 +98,12 @@ public class MemoryLogMinerTransactionCache extends AbstractLogMinerTransactionC
     }
 
     @Override
-    public void addTransactionEvent(MemoryTransaction transaction, int eventKey, LogMinerEvent event) {
+    public void addTransactionEvent(MemoryTransaction transaction, int eventKey, LogMinerRedoEvent event) {
         List<LogMinerEventEntry> entries = eventsByTransactionId.computeIfAbsent(transaction.getTransactionId(), (id) -> new ArrayList<>());
         entries.add(new LogMinerEventEntry(eventKey, event));
         transactionEvents++;
 
-        if (event instanceof RollbackToSavepointEvent) {
+        if (event.isRollback()) {
             ListIterator<LogMinerEventEntry> it = entries.listIterator(entries.size());
             LogMinerEventEntryRange range = findRolledBackRange(transaction.getTransactionId(), reverseIterator(it));
             if (range != null) {

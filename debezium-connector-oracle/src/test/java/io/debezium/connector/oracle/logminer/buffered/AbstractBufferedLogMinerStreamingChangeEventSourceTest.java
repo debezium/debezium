@@ -31,9 +31,12 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicReference;
 
+import org.apache.kafka.connect.data.SchemaBuilder;
+import org.apache.kafka.connect.data.Struct;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.InOrder;
 import org.mockito.Mockito;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -60,9 +63,10 @@ import io.debezium.connector.oracle.jdbc.StandardOracleConnectionFactory;
 import io.debezium.connector.oracle.logminer.AbstractLogMinerStreamingChangeEventSource;
 import io.debezium.connector.oracle.logminer.LogMinerStreamingChangeEventSourceMetrics;
 import io.debezium.connector.oracle.logminer.buffered.BufferedLogMinerStreamingChangeEventSource.ProcessResult;
+import io.debezium.connector.oracle.logminer.events.CachedEvent;
 import io.debezium.connector.oracle.logminer.events.EventType;
-import io.debezium.connector.oracle.logminer.events.LogMinerEvent;
 import io.debezium.connector.oracle.logminer.events.LogMinerEventRow;
+import io.debezium.connector.oracle.logminer.parser.DmlParserException;
 import io.debezium.connector.oracle.util.TestHelper;
 import io.debezium.data.Envelope.Operation;
 import io.debezium.doc.FixFor;
@@ -71,6 +75,7 @@ import io.debezium.junit.logging.LogInterceptor;
 import io.debezium.pipeline.DataChangeEvent;
 import io.debezium.pipeline.EventDispatcher;
 import io.debezium.pipeline.source.spi.ChangeEventSource.ChangeEventSourceContext;
+import io.debezium.pipeline.spi.SchemaChangeEventEmitter;
 import io.debezium.relational.Column;
 import io.debezium.relational.CustomConverterRegistry;
 import io.debezium.relational.Table;
@@ -390,6 +395,7 @@ public abstract class AbstractBufferedLogMinerStreamingChangeEventSourceTest ext
             Mockito.when(rs.getString(2)).thenReturn("insert into \"DEBEZIUM\".\"ABC\"(\"ID\",\"DATA\") values ('1','test');");
             Mockito.when(rs.getInt(3)).thenReturn(EventType.INSERT.getValue());
             Mockito.when(rs.getTimestamp(eq(4), any(Calendar.class))).thenReturn(Timestamp.valueOf(LocalDateTime.now()));
+            Mockito.when(rs.getBytes(5)).thenReturn(new byte[]{ 0x0e, 0x00, 0x1c, 0x00, 0x12, 0x34, 0x56, 0x78 });
             Mockito.when(rs.getString(7)).thenReturn("ABC");
             Mockito.when(rs.getString(8)).thenReturn("DEBEZIUM");
             Mockito.when(rs.getString(10)).thenReturn("AAAAAAAAAAAAAAAAAB");
@@ -606,7 +612,7 @@ public abstract class AbstractBufferedLogMinerStreamingChangeEventSourceTest ext
     }
 
     @Test
-    @FixFor("DBZ-1145")
+    @FixFor({ "DBZ-1145", "debezium/dbz#2943" })
     public void testCacheIsEmptyWhenTransactionIsRolledBackWithPartialTransactionId() throws Exception {
         try (var source = getChangeEventSource(getConfig().build())) {
             source.processEvent(getStartLogMinerEventRow(1, PARTIAL_TXN_ID_FULL));
@@ -618,7 +624,8 @@ public abstract class AbstractBufferedLogMinerStreamingChangeEventSourceTest ext
             source.processEvent(getRollbackLogMinerEventRow(3, PARTIAL_TXN_ID_PARTIAL));
 
             assertThat(source.getTransactionCache().containsTransaction(PARTIAL_TXN_ID_FULL)).isFalse();
-            assertThat(metrics.getRolledBackTransactionIds()).contains(PARTIAL_TXN_ID_PARTIAL);
+            // The rollback is attributed to the transaction it resolved to
+            assertThat(metrics.getRolledBackTransactionIds()).contains(PARTIAL_TXN_ID_FULL);
         }
     }
 
@@ -776,9 +783,8 @@ public abstract class AbstractBufferedLogMinerStreamingChangeEventSourceTest ext
     }
 
     @Test
-    @FixFor("debezium/dbz#1960")
-    public void testPartialRollbackIsNotAppliedWhenMultipleTransactionsMatchPrefix() throws Exception {
-        final LogInterceptor logInterceptor = new LogInterceptor(BufferedLogMinerStreamingChangeEventSource.class);
+    @FixFor({ "debezium/dbz#1960", "debezium/dbz#2943" })
+    public void testPartialRollbackFailsWhenMultipleTransactionsMatchPrefix() throws Exception {
         try (var source = getChangeEventSource(getConfig().build())) {
             source.processEvent(getStartLogMinerEventRow(1, PARTIAL_TXN_ID_FULL));
             source.processEvent(getInsertLogMinerEventRow(2, PARTIAL_TXN_ID_FULL, Instant.now(), "TEST_TABLE", "AAAAAAAAAAAAAAAAAB", "'insert'"));
@@ -787,38 +793,19 @@ public abstract class AbstractBufferedLogMinerStreamingChangeEventSourceTest ext
             source.processEvent(getInsertLogMinerEventRow(5, PARTIAL_TXN_ID_SAME_PREFIX, Instant.now(), "TEST_TABLE", "AAAAAAAAAAAAAAAAAC", "'insert'"));
             source.processEvent(getUpdateLogMinerEventRow(6, PARTIAL_TXN_ID_SAME_PREFIX, Instant.now(), "TEST_TABLE", "AAAAAAAAAAAAAAAAAC", "'update'"));
 
-            // Two cached transactions share the undo's prefix, so it cannot be attributed safely
-            source.processEvent(getRollbackToSavepointLogMinerEventRow(7, PARTIAL_TXN_ID_PARTIAL, Instant.now(), "TEST_TABLE", "AAAAAAAAAAAAAAAAAB", "'insert'"));
+            // Two transactions in flight share the undo's segment and slot, which Oracle never allows, so the
+            // undo is refused rather than attributed to a guess
+            assertThatThrownBy(() -> source.processEvent(
+                    getRollbackToSavepointLogMinerEventRow(7, PARTIAL_TXN_ID_PARTIAL, Instant.now(), "TEST_TABLE", "AAAAAAAAAAAAAAAAAB", "'insert'")))
+                    .isInstanceOf(DebeziumException.class)
+                    .hasMessageContaining(PARTIAL_TXN_ID_PARTIAL)
+                    .hasMessageContaining(PARTIAL_TXN_ID_FULL)
+                    .hasMessageContaining(PARTIAL_TXN_ID_SAME_PREFIX);
 
-            assertThat(logInterceptor.containsWarnMessage("Unable to match partial transaction '" + PARTIAL_TXN_ID_PARTIAL + "' to a single cached transaction"))
-                    .isTrue();
             assertThat(source.getTransactionCache().containsTransaction(PARTIAL_TXN_ID_PARTIAL)).isFalse();
             assertThat(source.getTransactionCache().getTransactionEventCount(source.getTransactionCache().getTransaction(PARTIAL_TXN_ID_FULL))).isEqualTo(2);
             assertThat(source.getTransactionCache().getTransactionEventCount(source.getTransactionCache().getTransaction(PARTIAL_TXN_ID_SAME_PREFIX))).isEqualTo(2);
             assertThat(metrics.getNumberOfPartialRollbackCount()).isZero();
-
-            source.processEvent(getCommitLogMinerEventRow(8, PARTIAL_TXN_ID_FULL));
-            source.processEvent(getCommitLogMinerEventRow(9, PARTIAL_TXN_ID_SAME_PREFIX));
-
-            Mockito.verify(dispatcher, Mockito.times(2))
-                    .dispatchDataChangeEvent(any(), any(), argThat(emitter -> emitter.getOperation() == Operation.CREATE));
-            Mockito.verify(dispatcher, Mockito.times(2))
-                    .dispatchDataChangeEvent(any(), any(), argThat(emitter -> emitter.getOperation() == Operation.UPDATE));
-        }
-    }
-
-    @Test
-    @FixFor("debezium/dbz#1960")
-    public void testLastEnqueuedEventIsForgottenWhenTransactionCommits() throws Exception {
-        try (var source = getChangeEventSource(getConfig().build())) {
-            source.processEvent(getStartLogMinerEventRow(1, TRANSACTION_ID_1));
-            source.processEvent(getInsertLogMinerEventRow(2, TRANSACTION_ID_1));
-
-            assertThat(source.getLastEnqueuedEventByTransactionId()).containsOnlyKeys(TRANSACTION_ID_1);
-
-            source.processEvent(getCommitLogMinerEventRow(3, TRANSACTION_ID_1));
-
-            assertThat(source.getLastEnqueuedEventByTransactionId()).isEmpty();
         }
     }
 
@@ -1108,6 +1095,19 @@ public abstract class AbstractBufferedLogMinerStreamingChangeEventSourceTest ext
      * {@code UNKNOWN.OBJ# <id>}. The table identifier is held in a reference so that the mocked row observes
      * the identifier the streaming source resolves for it.
      */
+    /**
+     * A mocked row whose transaction id follows what the source sets, see
+     * {@code BufferedLogMinerStreamingChangeEventSource#resolveTransactionId}.
+     */
+    private static LogMinerEventRow mockLogMinerEventRow() {
+        final LogMinerEventRow row = Mockito.mock(LogMinerEventRow.class);
+        Mockito.doAnswer(invocation -> {
+            Mockito.doReturn(invocation.getArgument(0)).when(row).getTransactionId();
+            return null;
+        }).when(row).setTransactionId(anyString());
+        return row;
+    }
+
     private LogMinerEventRow getUnresolvableInsertLogMinerEventRow(long scn, String transactionId, long objectId) {
         return getUnresolvableInsertLogMinerEventRow(scn, transactionId, objectId, objectId);
     }
@@ -1167,6 +1167,15 @@ public abstract class AbstractBufferedLogMinerStreamingChangeEventSourceTest ext
                 .create();
 
         schema.refresh(secondTable);
+
+        // A table with a LOB column: with LOB support enabled, the commit consumer holds its rows for merging
+        Table lobTable = Table.editor()
+                .tableId(TableId.parse("ORCLPDB1.DEBEZIUM.LOB_TABLE"))
+                .addColumn(Column.editor().name("ID").type("VARCHAR2(50)").create())
+                .addColumn(Column.editor().name("DATA").type("CLOB").create())
+                .create();
+
+        schema.refresh(lobTable);
         return schema;
     }
 
@@ -1229,7 +1238,7 @@ public abstract class AbstractBufferedLogMinerStreamingChangeEventSourceTest ext
     }
 
     private LogMinerEventRow getStartLogMinerEventRow(long scn, String transactionId, Instant changeTime) {
-        LogMinerEventRow row = Mockito.mock(LogMinerEventRow.class);
+        LogMinerEventRow row = mockLogMinerEventRow();
         Mockito.when(row.getEventType()).thenReturn(EventType.START);
         Mockito.when(row.getTransactionId()).thenReturn(transactionId);
         Mockito.when(row.getScn()).thenReturn(Scn.valueOf(scn));
@@ -1238,7 +1247,7 @@ public abstract class AbstractBufferedLogMinerStreamingChangeEventSourceTest ext
     }
 
     private LogMinerEventRow getCommitLogMinerEventRow(long scn, String transactionId) {
-        LogMinerEventRow row = Mockito.mock(LogMinerEventRow.class);
+        LogMinerEventRow row = mockLogMinerEventRow();
         Mockito.when(row.getEventType()).thenReturn(EventType.COMMIT);
         Mockito.when(row.getTransactionId()).thenReturn(transactionId);
         Mockito.when(row.getScn()).thenReturn(Scn.valueOf(scn));
@@ -1247,7 +1256,7 @@ public abstract class AbstractBufferedLogMinerStreamingChangeEventSourceTest ext
     }
 
     private LogMinerEventRow getRollbackLogMinerEventRow(long scn, String transactionId) {
-        LogMinerEventRow row = Mockito.mock(LogMinerEventRow.class);
+        LogMinerEventRow row = mockLogMinerEventRow();
         Mockito.when(row.getEventType()).thenReturn(EventType.ROLLBACK);
         Mockito.when(row.getTransactionId()).thenReturn(transactionId);
         Mockito.when(row.getScn()).thenReturn(Scn.valueOf(scn));
@@ -1264,7 +1273,7 @@ public abstract class AbstractBufferedLogMinerStreamingChangeEventSourceTest ext
     }
 
     private LogMinerEventRow getInsertLogMinerEventRow(long scn, String transactionId, Instant changeTime, String tableName, String rowId, String dataValue) {
-        LogMinerEventRow row = Mockito.mock(LogMinerEventRow.class);
+        LogMinerEventRow row = mockLogMinerEventRow();
         Mockito.when(row.getEventType()).thenReturn(EventType.INSERT);
         Mockito.when(row.getTransactionId()).thenReturn(transactionId);
         Mockito.when(row.getScn()).thenReturn(Scn.valueOf(scn));
@@ -1281,7 +1290,7 @@ public abstract class AbstractBufferedLogMinerStreamingChangeEventSourceTest ext
     }
 
     private LogMinerEventRow getUpdateLogMinerEventRow(long scn, String transactionId, Instant changeTime, String tableName, String rowId, String dataValue) {
-        LogMinerEventRow row = Mockito.mock(LogMinerEventRow.class);
+        LogMinerEventRow row = mockLogMinerEventRow();
         Mockito.when(row.getEventType()).thenReturn(EventType.UPDATE);
         Mockito.when(row.getTransactionId()).thenReturn(transactionId);
         Mockito.when(row.getScn()).thenReturn(Scn.valueOf(scn));
@@ -1300,7 +1309,7 @@ public abstract class AbstractBufferedLogMinerStreamingChangeEventSourceTest ext
 
     private LogMinerEventRow getRollbackToSavepointLogMinerEventRow(long scn, String transactionId, Instant changeTime, String tableName, String rowId,
                                                                     String dataValue) {
-        LogMinerEventRow row = Mockito.mock(LogMinerEventRow.class);
+        LogMinerEventRow row = mockLogMinerEventRow();
         Mockito.when(row.getEventType()).thenReturn(EventType.UPDATE);
         Mockito.when(row.isRollbackFlag()).thenReturn(true);
         Mockito.when(row.getTransactionId()).thenReturn(transactionId);
@@ -1318,6 +1327,361 @@ public abstract class AbstractBufferedLogMinerStreamingChangeEventSourceTest ext
         return row;
     }
 
+    @Test
+    @FixFor("debezium/dbz#2943")
+    public void testParseFailureStopsProcessingByCommitWhenFailureModeIsFail() throws Exception {
+        final Configuration config = getConfig()
+                .with(CommonConnectorConfig.EVENT_PROCESSING_FAILURE_HANDLING_MODE, "fail")
+                .build();
+        try (var source = getChangeEventSource(config)) {
+            final Instant changeTime = Instant.now();
+            // The row is parsed at commit, so the failure surfaces while the commit is being processed
+            assertThatThrownBy(() -> {
+                source.processEvent(getStartLogMinerEventRow(1, TRANSACTION_ID_1));
+                source.processEvent(getUnparsableInsertLogMinerEventRow(2, TRANSACTION_ID_1, changeTime));
+                source.processEvent(getCommitLogMinerEventRow(3, TRANSACTION_ID_1));
+            })
+                    .isInstanceOf(DmlParserException.class)
+                    .hasMessageContaining("DML statement couldn't be parsed");
+
+            Mockito.verify(dispatcher, Mockito.never()).dispatchDataChangeEvent(any(), any(), any());
+        }
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2943")
+    public void testParseFailureSkipsEventWhenFailureModeIsWarn() throws Exception {
+        final Configuration config = getConfig()
+                .with(CommonConnectorConfig.EVENT_PROCESSING_FAILURE_HANDLING_MODE, "warn")
+                .build();
+        final LogInterceptor logInterceptor = new LogInterceptor(AbstractLogMinerStreamingChangeEventSource.class);
+        try (var source = getChangeEventSource(config)) {
+            final Instant changeTime = Instant.now();
+            source.processEvent(getStartLogMinerEventRow(1, TRANSACTION_ID_1));
+            source.processEvent(getUnparsableInsertLogMinerEventRow(2, TRANSACTION_ID_1, changeTime));
+            source.processEvent(getInsertLogMinerEventRow(3, TRANSACTION_ID_1, changeTime));
+            source.processEvent(getCommitLogMinerEventRow(4, TRANSACTION_ID_1));
+
+            assertThat(logInterceptor.containsWarnMessage("cannot be parsed. This event will be ignored and skipped.")).isTrue();
+            Mockito.verify(dispatcher, Mockito.times(1))
+                    .dispatchDataChangeEvent(any(), any(), argThat(emitter -> emitter.getOperation() == Operation.CREATE));
+            assertThat(source.getTransactionCache().isEmpty()).isTrue();
+        }
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2943")
+    public void testIncludedTableUnknownToSchemaIsResolvedByCommit() throws Exception {
+        try (var source = getChangeEventSource(getConfig().build())) {
+            final BufferedStreamingChangeEventSource mock = Mockito.spy(source);
+
+            // Typed columns, as the schema's field-name cache compares columns by type
+            final TableId tableId = TableId.parse("ORCLPDB1.DEBEZIUM.NEW_TABLE");
+            final Table table = Table.editor()
+                    .tableId(tableId)
+                    .addColumn(Column.editor().name("ID").type("VARCHAR2(50)").create())
+                    .addColumn(Column.editor().name("DATA").type("VARCHAR2(50)").create())
+                    .setPrimaryKeyNames("ID")
+                    .create();
+
+            // Stands in for fetching the definition from the database, which also registers it with the schema
+            Mockito.doAnswer(invocation -> {
+                schema.refresh(table);
+                return table;
+            }).when(mock).dispatchSchemaChangeEventAndGetTableForNewConfiguredTable(tableId);
+
+            final Instant changeTime = Instant.now();
+            mock.processEvent(getStartLogMinerEventRow(1, TRANSACTION_ID_1));
+            mock.processEvent(getInsertLogMinerEventRow(2, TRANSACTION_ID_1, changeTime, "NEW_TABLE", "AAAAAAAAAAAAAAAAAA", "'x'"));
+
+            // Nothing about the table is needed until the transaction commits
+            Mockito.verify(mock, Mockito.never()).dispatchSchemaChangeEventAndGetTableForNewConfiguredTable(any());
+
+            mock.processEvent(getCommitLogMinerEventRow(3, TRANSACTION_ID_1));
+
+            Mockito.verify(mock, Mockito.times(1)).dispatchSchemaChangeEventAndGetTableForNewConfiguredTable(tableId);
+            Mockito.verify(dispatcher, Mockito.times(1))
+                    .dispatchDataChangeEvent(any(), eq(tableId), argThat(emitter -> emitter.getOperation() == Operation.CREATE));
+        }
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2943")
+    public void testSchemaChangeIsAppliedInTransactionOrderAtCommit() throws Exception {
+        final TableId tableId = TableId.parse("ORCLPDB1.DEBEZIUM.TEST_TABLE");
+        try (var source = getChangeEventSource(getConfig().build())) {
+            final Instant changeTime = Instant.now();
+            source.processEvent(getStartLogMinerEventRow(1, TRANSACTION_ID_1));
+            source.processEvent(getInsertLogMinerEventRow(2, TRANSACTION_ID_1, changeTime));
+            source.processEvent(getDdlLogMinerEventRow(3, TRANSACTION_ID_1, changeTime, "TEST_TABLE",
+                    "alter table \"DEBEZIUM\".\"TEST_TABLE\" add (\"NAME\" varchar2(50));"));
+            source.processEvent(getInsertLogMinerEventRow(4, TRANSACTION_ID_1, changeTime));
+
+            // The schema change waits in its transaction
+            Mockito.verify(dispatcher, Mockito.never()).dispatchSchemaChangeEvent(any(), any(), any(), any());
+            Mockito.verify(dispatcher, Mockito.never()).dispatchDataChangeEvent(any(), any(), any());
+
+            source.processEvent(getCommitLogMinerEventRow(5, TRANSACTION_ID_1));
+
+            final InOrder inOrder = Mockito.inOrder(dispatcher);
+            // The schema change sits between the two data changes, where the transaction put it
+            inOrder.verify(dispatcher).dispatchDataChangeEvent(any(), eq(tableId), argThat(emitter -> emitter.getOperation() == Operation.CREATE));
+            inOrder.verify(dispatcher).dispatchSchemaChangeEvent(any(), any(), eq(tableId), any());
+            inOrder.verify(dispatcher).dispatchDataChangeEvent(any(), eq(tableId), argThat(emitter -> emitter.getOperation() == Operation.CREATE));
+            Mockito.verify(dispatcher, Mockito.times(1)).dispatchSchemaChangeEvent(any(), any(), any(), any());
+            assertThat(source.getTransactionCache().isEmpty()).isTrue();
+            assertThat(metrics.getBatchMetrics().getSchemaChangeCount()).isEqualTo(1);
+        }
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2943")
+    public void testSchemaChangeIsAppliedWhenCommitHasNoTransactionSequence() throws Exception {
+        final TableId tableId = TableId.parse("ORCLPDB1.DEBEZIUM.TEST_TABLE");
+        try (var source = getChangeEventSource(getConfig().build())) {
+            source.processEvent(getStartLogMinerEventRow(1, PARTIAL_TXN_ID_FULL));
+            source.processEvent(getDdlLogMinerEventRow(2, PARTIAL_TXN_ID_FULL, Instant.now(), "TEST_TABLE",
+                    "alter table \"DEBEZIUM\".\"TEST_TABLE\" add (\"NAME\" varchar2(50));"));
+
+            // The commit was read by a new mining session, which could not resolve the transaction's sequence
+            source.processEvent(getCommitLogMinerEventRow(3, PARTIAL_TXN_ID_PARTIAL));
+
+            Mockito.verify(dispatcher, Mockito.times(1)).dispatchSchemaChangeEvent(any(), any(), eq(tableId), any());
+            assertThat(source.getTransactionCache().isEmpty()).isTrue();
+        }
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2943")
+    public void testSchemaChangeWithDataChangesIsAppliedWhenCommitHasNoTransactionSequence() throws Exception {
+        final TableId tableId = TableId.parse("ORCLPDB1.DEBEZIUM.TEST_TABLE");
+        try (var source = getChangeEventSource(getConfig().build())) {
+            // A schema change followed by data changes in one transaction, as CREATE TABLE AS SELECT produces
+            final Instant changeTime = Instant.now();
+            source.processEvent(getStartLogMinerEventRow(1, PARTIAL_TXN_ID_FULL));
+            source.processEvent(getDdlLogMinerEventRow(2, PARTIAL_TXN_ID_FULL, changeTime, "TEST_TABLE",
+                    "alter table \"DEBEZIUM\".\"TEST_TABLE\" add (\"NAME\" varchar2(50));"));
+            source.processEvent(getInsertLogMinerEventRow(3, PARTIAL_TXN_ID_FULL, changeTime, "TEST_TABLE", "AAAAAAAAAAAAAAAAAB", "'first'"));
+            // The session restarted here, so the rest of the transaction carries no sequence
+            source.processEvent(getInsertLogMinerEventRow(4, PARTIAL_TXN_ID_PARTIAL, changeTime, "TEST_TABLE", "AAAAAAAAAAAAAAAAAC", "'second'"));
+            source.processEvent(getCommitLogMinerEventRow(5, PARTIAL_TXN_ID_PARTIAL));
+
+            final InOrder inOrder = Mockito.inOrder(dispatcher);
+            inOrder.verify(dispatcher).dispatchSchemaChangeEvent(any(), any(), eq(tableId), any());
+            inOrder.verify(dispatcher, Mockito.times(2)).dispatchDataChangeEvent(any(), eq(tableId), argThat(emitter -> emitter.getOperation() == Operation.CREATE));
+            assertThat(source.getTransactionCache().isEmpty()).isTrue();
+        }
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2943")
+    public void testDataChangeWithNoTransactionSequenceJoinsItsTransaction() throws Exception {
+        try (var source = getChangeEventSource(getConfig().build())) {
+            source.processEvent(getStartLogMinerEventRow(1, PARTIAL_TXN_ID_FULL));
+            source.processEvent(getInsertLogMinerEventRow(2, PARTIAL_TXN_ID_FULL));
+            source.processEvent(getInsertLogMinerEventRow(3, PARTIAL_TXN_ID_PARTIAL));
+
+            // The change joins the transaction in flight rather than starting one of its own
+            assertThat(source.getTransactionCache().getTransactionCount()).isEqualTo(1);
+            assertThat(source.getTransactionCache().containsTransaction(PARTIAL_TXN_ID_PARTIAL)).isFalse();
+            assertThat(source.getTransactionCache().getTransactionEventCount(source.getTransactionCache().getTransaction(PARTIAL_TXN_ID_FULL))).isEqualTo(2);
+
+            source.processEvent(getCommitLogMinerEventRow(4, PARTIAL_TXN_ID_PARTIAL));
+
+            Mockito.verify(dispatcher, Mockito.times(2)).dispatchDataChangeEvent(any(), any(), argThat(emitter -> emitter.getOperation() == Operation.CREATE));
+            assertThat(source.getTransactionCache().isEmpty()).isTrue();
+        }
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2943")
+    public void testCommitWithNoTransactionSequenceFailsWhenMultipleTransactionsMatchPrefix() throws Exception {
+        try (var source = getChangeEventSource(getConfig().build())) {
+            source.processEvent(getStartLogMinerEventRow(1, PARTIAL_TXN_ID_FULL));
+            source.processEvent(getInsertLogMinerEventRow(2, PARTIAL_TXN_ID_FULL));
+            source.processEvent(getStartLogMinerEventRow(3, PARTIAL_TXN_ID_SAME_PREFIX));
+            source.processEvent(getInsertLogMinerEventRow(4, PARTIAL_TXN_ID_SAME_PREFIX));
+
+            assertThatThrownBy(() -> source.processEvent(getCommitLogMinerEventRow(5, PARTIAL_TXN_ID_PARTIAL)))
+                    .isInstanceOf(DebeziumException.class)
+                    .hasMessageContaining(PARTIAL_TXN_ID_FULL)
+                    .hasMessageContaining(PARTIAL_TXN_ID_SAME_PREFIX);
+
+            Mockito.verify(dispatcher, Mockito.never()).dispatchDataChangeEvent(any(), any(), any());
+            assertThat(source.getTransactionCache().getTransactionCount()).isEqualTo(2);
+        }
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2943")
+    public void testSchemaChangeInDeferredTransactionIsAppliedAtCommit() throws Exception {
+        final Configuration config = getConfig()
+                .with(OracleConnectorConfig.LOG_MINING_BUFFER_DEFERRED_TRANSACTION_START, true)
+                .build();
+        final TableId tableId = TableId.parse("ORCLPDB1.DEBEZIUM.TEST_TABLE");
+        try (var source = getChangeEventSource(config)) {
+            final Instant changeTime = Instant.now();
+            source.processEvent(getStartLogMinerEventRow(1, TRANSACTION_ID_1));
+            // The START was deferred; the DDL is the transaction's first stored event and promotes it
+            source.processEvent(getDdlLogMinerEventRow(2, TRANSACTION_ID_1, changeTime, "TEST_TABLE",
+                    "alter table \"DEBEZIUM\".\"TEST_TABLE\" add (\"NAME\" varchar2(50));"));
+            assertThat(source.getTransactionCache().getTransactionCount()).isEqualTo(1);
+            Mockito.verify(dispatcher, Mockito.never()).dispatchSchemaChangeEvent(any(), any(), any(), any());
+
+            source.processEvent(getCommitLogMinerEventRow(3, TRANSACTION_ID_1));
+
+            Mockito.verify(dispatcher, Mockito.times(1)).dispatchSchemaChangeEvent(any(), any(), eq(tableId), any());
+            assertThat(source.getTransactionCache().isEmpty()).isTrue();
+        }
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2943")
+    public void testSchemaChangeAlreadySentIsNotReappliedWhenTransactionIsReplayed() throws Exception {
+        // The connector stopped after the schema change was applied and recorded as event 1 of the
+        // transaction, but before the commit reached the offsets: the restart re-mines the transaction
+        Mockito.when(offsetContext.getTransactionId()).thenReturn(TRANSACTION_ID_1);
+        Mockito.when(offsetContext.getTransactionSequence()).thenReturn(1L);
+
+        final TableId tableId = TableId.parse("ORCLPDB1.DEBEZIUM.TEST_TABLE");
+        try (var source = getChangeEventSource(getConfig().build())) {
+            final Instant changeTime = Instant.now();
+            source.processEvent(getStartLogMinerEventRow(1, TRANSACTION_ID_1));
+            source.processEvent(getDdlLogMinerEventRow(2, TRANSACTION_ID_1, changeTime, "TEST_TABLE",
+                    "alter table \"DEBEZIUM\".\"TEST_TABLE\" add (\"NAME\" varchar2(50));"));
+            source.processEvent(getInsertLogMinerEventRow(3, TRANSACTION_ID_1, changeTime));
+            source.processEvent(getCommitLogMinerEventRow(4, TRANSACTION_ID_1));
+
+            Mockito.verify(dispatcher, Mockito.never()).dispatchSchemaChangeEvent(any(), any(), any(), any());
+            Mockito.verify(dispatcher, Mockito.times(1))
+                    .dispatchDataChangeEvent(any(), eq(tableId), argThat(emitter -> emitter.getOperation() == Operation.CREATE));
+            assertThat(source.getTransactionCache().isEmpty()).isTrue();
+        }
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2943")
+    public void testSchemaChangeFlushesRowsHeldForLobMerging() throws Exception {
+        final Configuration config = getConfig().with(OracleConnectorConfig.LOB_ENABLED, true).build();
+        final TableId tableId = TableId.parse("ORCLPDB1.DEBEZIUM.LOB_TABLE");
+        try (var source = getChangeEventSource(config)) {
+            final Instant changeTime = Instant.now();
+            source.processEvent(getStartLogMinerEventRow(1, TRANSACTION_ID_1));
+            // Held by the commit consumer until a LOB chain is merged or the transaction ends
+            source.processEvent(getInsertLogMinerEventRow(2, TRANSACTION_ID_1, changeTime, "LOB_TABLE", "AAAAAAAAAAAAAAAAAB", "'x'"));
+            source.processEvent(getDdlLogMinerEventRow(3, TRANSACTION_ID_1, changeTime, "LOB_TABLE",
+                    "alter table \"DEBEZIUM\".\"LOB_TABLE\" add (\"NAME\" varchar2(50));"));
+            source.processEvent(getInsertLogMinerEventRow(4, TRANSACTION_ID_1, changeTime, "LOB_TABLE", "AAAAAAAAAAAAAAAAAC", "'y'"));
+            source.processEvent(getCommitLogMinerEventRow(5, TRANSACTION_ID_1));
+
+            final InOrder inOrder = Mockito.inOrder(dispatcher);
+            // The held row is dispatched before the schema change; nothing is merged across it
+            inOrder.verify(dispatcher).dispatchDataChangeEvent(any(), eq(tableId), argThat(emitter -> emitter.getOperation() == Operation.CREATE));
+            inOrder.verify(dispatcher).dispatchSchemaChangeEvent(any(), any(), eq(tableId), any());
+            inOrder.verify(dispatcher).dispatchDataChangeEvent(any(), eq(tableId), argThat(emitter -> emitter.getOperation() == Operation.CREATE));
+            Mockito.verify(dispatcher, Mockito.times(1)).dispatchSchemaChangeEvent(any(), any(), any(), any());
+            Mockito.verify(dispatcher, Mockito.times(2)).dispatchDataChangeEvent(any(), any(), any());
+        }
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2943")
+    public void testTruncateIsEmittedAtCommit() throws Exception {
+        applySchemaChangesWhenDispatched();
+        final TableId tableId = TableId.parse("ORCLPDB1.DEBEZIUM.TEST_TABLE");
+        try (var source = getChangeEventSource(getConfig().build())) {
+            final Instant changeTime = Instant.now();
+            source.processEvent(getStartLogMinerEventRow(1, TRANSACTION_ID_1));
+            source.processEvent(getDdlLogMinerEventRow(2, TRANSACTION_ID_1, changeTime, "TEST_TABLE",
+                    "truncate table \"DEBEZIUM\".\"TEST_TABLE\";"));
+
+            // In both modes the truncate's change event belongs to the transaction
+            Mockito.verify(dispatcher, Mockito.never()).dispatchDataChangeEvent(any(), any(), any());
+
+            source.processEvent(getCommitLogMinerEventRow(3, TRANSACTION_ID_1));
+
+            Mockito.verify(dispatcher, Mockito.times(1))
+                    .dispatchDataChangeEvent(any(), eq(tableId), argThat(emitter -> emitter.getOperation() == Operation.TRUNCATE));
+            assertThat(source.getTransactionCache().isEmpty()).isTrue();
+        }
+    }
+
+    @Test
+    @FixFor({ "DBZ-6650", "debezium/dbz#2943" })
+    public void testTruncateOfIncludedTableUnknownToSchemaIsEmittedAtCommit() throws Exception {
+        applySchemaChangesWhenDispatched();
+        final TableId tableId = TableId.parse("ORCLPDB1.DEBEZIUM.NEW_TABLE");
+        final Table table = Table.editor()
+                .tableId(tableId)
+                .addColumn(Column.editor().name("ID").type("VARCHAR2(50)").create())
+                .addColumn(Column.editor().name("DATA").type("VARCHAR2(50)").create())
+                .setPrimaryKeyNames("ID")
+                .create();
+        try (var source = getChangeEventSource(getConfig().build())) {
+            final BufferedStreamingChangeEventSource mock = Mockito.spy(source);
+
+            // The table was not captured before, so the truncate fetches its definition as a data change would
+            Mockito.doAnswer(invocation -> {
+                schema.refresh(table);
+                return table;
+            }).when(mock).dispatchSchemaChangeEventAndGetTableForNewConfiguredTable(tableId);
+
+            final Instant changeTime = Instant.now();
+            mock.processEvent(getStartLogMinerEventRow(1, TRANSACTION_ID_1));
+            mock.processEvent(getDdlLogMinerEventRow(2, TRANSACTION_ID_1, changeTime, "NEW_TABLE",
+                    "truncate table \"DEBEZIUM\".\"NEW_TABLE\";"));
+
+            Mockito.verify(mock, Mockito.never()).dispatchSchemaChangeEventAndGetTableForNewConfiguredTable(any());
+            Mockito.verify(dispatcher, Mockito.never()).dispatchDataChangeEvent(any(), any(), any());
+
+            mock.processEvent(getCommitLogMinerEventRow(3, TRANSACTION_ID_1));
+
+            Mockito.verify(mock, Mockito.times(1)).dispatchSchemaChangeEventAndGetTableForNewConfiguredTable(tableId);
+            Mockito.verify(dispatcher, Mockito.times(1))
+                    .dispatchDataChangeEvent(any(), eq(tableId), argThat(emitter -> emitter.getOperation() == Operation.TRUNCATE));
+            assertThat(mock.getTransactionCache().isEmpty()).isTrue();
+        }
+    }
+
+    /**
+     * Runs each dispatched schema change's emitter, so the parser applies the statement to the schema's tables;
+     * the mocked dispatcher would otherwise leave the schema untouched.
+     */
+    private void applySchemaChangesWhenDispatched() throws InterruptedException {
+        // The emitted schema change events carry the offset's source info, which the mocked offsets lack
+        Mockito.when(offsetContext.getSourceInfo()).thenReturn(new Struct(SchemaBuilder.struct().name("source").build()));
+        Mockito.doAnswer(invocation -> {
+            final SchemaChangeEventEmitter emitter = invocation.getArgument(3);
+            emitter.emitSchemaChangeEvent(event -> {
+            });
+            return null;
+        }).when(dispatcher).dispatchSchemaChangeEvent(any(), any(), any(), any());
+    }
+
+    private LogMinerEventRow getUnparsableInsertLogMinerEventRow(long scn, String transactionId, Instant changeTime) {
+        final LogMinerEventRow row = getInsertLogMinerEventRow(scn, transactionId, changeTime);
+        Mockito.when(row.getRedoSql()).thenReturn("insert into \"DEBEZIUM\".\"TEST_TABLE\" values nonsense");
+        return row;
+    }
+
+    private LogMinerEventRow getDdlLogMinerEventRow(long scn, String transactionId, Instant changeTime, String tableName, String ddl) {
+        LogMinerEventRow row = mockLogMinerEventRow();
+        Mockito.when(row.getEventType()).thenReturn(EventType.DDL);
+        Mockito.when(row.getTransactionId()).thenReturn(transactionId);
+        Mockito.when(row.getScn()).thenReturn(Scn.valueOf(scn));
+        Mockito.when(row.getChangeTime()).thenReturn(changeTime);
+        Mockito.when(row.getRowId()).thenReturn("AAAAAAAAAAAAAAAAAA");
+        Mockito.when(row.getOperation()).thenReturn("DDL");
+        Mockito.when(row.getTableName()).thenReturn(tableName);
+        Mockito.when(row.getTableId()).thenReturn(TableId.parse("ORCLPDB1.DEBEZIUM." + tableName));
+        Mockito.when(row.getRedoSql()).thenReturn(ddl);
+        Mockito.when(row.getRsId()).thenReturn("A.B.C");
+        Mockito.when(row.getTablespaceName()).thenReturn("DEBEZIUM");
+        Mockito.when(row.getUserName()).thenReturn(TestHelper.SCHEMA_USER);
+        Mockito.when(row.getThread()).thenReturn(1);
+        return row;
+    }
+
     protected BufferedStreamingChangeEventSource getChangeEventSource(Configuration config) throws InterruptedException {
         final OracleConnectorConfig connectorConfig = new OracleConnectorConfig(config);
         assertThat(connectorConfig.validateAndRecord(OracleConnectorConfig.ALL_FIELDS, LOGGER::error)).isTrue();
@@ -1329,6 +1693,7 @@ public abstract class AbstractBufferedLogMinerStreamingChangeEventSourceTest ext
                 schema,
                 metrics,
                 context,
+                partition,
                 offsetContext);
 
         source.init(offsetContext);
@@ -1420,6 +1785,7 @@ public abstract class AbstractBufferedLogMinerStreamingChangeEventSourceTest ext
     protected static class BufferedStreamingChangeEventSource extends BufferedLogMinerStreamingChangeEventSource {
 
         private final ChangeEventSourceContext context;
+        private final OraclePartition partition;
 
         public BufferedStreamingChangeEventSource(
                                                   OracleConnectorConfig connectorConfig,
@@ -1428,15 +1794,23 @@ public abstract class AbstractBufferedLogMinerStreamingChangeEventSourceTest ext
                                                   OracleDatabaseSchema schema,
                                                   LogMinerStreamingChangeEventSourceMetrics metrics,
                                                   ChangeEventSourceContext context,
+                                                  OraclePartition partition,
                                                   OracleOffsetContext offsetContext) {
             super(connectorConfig, connectionFactory, dispatcher, null, Clock.SYSTEM, schema, connectorConfig.getJdbcConfig(), metrics);
             this.context = context;
+            this.partition = partition;
         }
 
         @Override
         protected ChangeEventSourceContext getContext() {
             // Necessary for mock purposes only
             return context;
+        }
+
+        @Override
+        protected OraclePartition getPartition() {
+            // Set by execute(), which the tests do not run; the schema change emitters read it
+            return partition;
         }
 
         @Override
@@ -1458,10 +1832,10 @@ public abstract class AbstractBufferedLogMinerStreamingChangeEventSourceTest ext
         }
 
         @SuppressWarnings("unchecked")
-        public Map<String, LogMinerEvent> getLastEnqueuedEventByTransactionId() throws Exception {
+        public Map<String, CachedEvent> getLastEnqueuedEventByTransactionId() throws Exception {
             var field = AbstractLogMinerTransactionCache.class.getDeclaredField("lastEnqueuedEventByTransactionId");
             field.setAccessible(true);
-            return (Map<String, LogMinerEvent>) field.get(this.getTransactionCache());
+            return (Map<String, CachedEvent>) field.get(this.getTransactionCache());
         }
 
         @Override

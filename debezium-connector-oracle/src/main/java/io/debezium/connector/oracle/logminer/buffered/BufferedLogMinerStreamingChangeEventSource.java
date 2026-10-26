@@ -26,16 +26,18 @@ import java.util.stream.Collectors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import io.debezium.DebeziumException;
 import io.debezium.annotation.VisibleForTesting;
 import io.debezium.config.Configuration;
 import io.debezium.connector.oracle.OracleConnection;
 import io.debezium.connector.oracle.OracleConnectorConfig;
 import io.debezium.connector.oracle.OracleDatabaseSchema;
 import io.debezium.connector.oracle.OraclePartition;
+import io.debezium.connector.oracle.OracleSchemaChangeEventEmitter;
 import io.debezium.connector.oracle.Scn;
 import io.debezium.connector.oracle.jdbc.OracleConnectionFactory;
 import io.debezium.connector.oracle.logminer.AbstractLogMinerStreamingChangeEventSource;
-import io.debezium.connector.oracle.logminer.LogFile;
+import io.debezium.connector.oracle.logminer.CommitTimeEventResolver;
 import io.debezium.connector.oracle.logminer.LogMinerChangeRecordEmitter;
 import io.debezium.connector.oracle.logminer.LogMinerStreamingChangeEventSourceMetrics;
 import io.debezium.connector.oracle.logminer.SqlUtils;
@@ -47,15 +49,18 @@ import io.debezium.connector.oracle.logminer.buffered.infinispan.InfinispanTrans
 import io.debezium.connector.oracle.logminer.buffered.infinispan.RemoteInfinispanCacheProvider;
 import io.debezium.connector.oracle.logminer.buffered.memory.MemoryCacheProvider;
 import io.debezium.connector.oracle.logminer.buffered.memory.MemoryTransactionFactory;
+import io.debezium.connector.oracle.logminer.events.CachedEvent;
+import io.debezium.connector.oracle.logminer.events.DdlEvent;
 import io.debezium.connector.oracle.logminer.events.DmlEvent;
 import io.debezium.connector.oracle.logminer.events.EventType;
 import io.debezium.connector.oracle.logminer.events.LogMinerEvent;
 import io.debezium.connector.oracle.logminer.events.LogMinerEventRow;
+import io.debezium.connector.oracle.logminer.events.LogMinerRedoEvent;
 import io.debezium.connector.oracle.logminer.events.RedoSqlDmlEvent;
-import io.debezium.connector.oracle.logminer.events.RollbackToSavepointEvent;
 import io.debezium.connector.oracle.logminer.events.RowIdCodec;
 import io.debezium.connector.oracle.logminer.events.TruncateEvent;
 import io.debezium.connector.oracle.logminer.logwriter.LogWriterFlushStrategy;
+import io.debezium.connector.oracle.logminer.parser.LogMinerDmlEntry;
 import io.debezium.data.Envelope;
 import io.debezium.pipeline.ErrorHandler;
 import io.debezium.pipeline.EventDispatcher;
@@ -96,9 +101,6 @@ public class BufferedLogMinerStreamingChangeEventSource extends AbstractLogMiner
      */
     private record DeferredTransaction(String transactionId, Scn startScn, Instant changeTime,
             String userName, String clientId, int redoThreadId) {
-    }
-
-    private record MatchedTransaction(String transactionId, Scn startScn, Instant changeTime, boolean deferred) {
     }
 
     private Transaction createTransaction(DeferredTransaction deferredTransaction) {
@@ -243,36 +245,6 @@ public class BufferedLogMinerStreamingChangeEventSource extends AbstractLogMiner
         }
     }
 
-    /**
-     * Check whether the log mining starting log position between the previous and last mining steps has
-     * put the connector reading from a new log across all redo threads.
-     *
-     * @param lastSessionStartScn the previous batch's mining session start position
-     * @param lastBatchResult the current batch's mining session start position
-     * @return {@code true} if the two SCNs refer to different sets of logs, or {@code false} if they're identical
-     */
-    private boolean hasLogMiningStartingLogChanged(Scn lastSessionStartScn, ProcessResult lastBatchResult) {
-        // DBZ-9680
-        //
-        // To avoid excessive session restarts when restart connection is enabled, we need to
-        // compare the last iteration and the next iteration logs and to indicate whether the
-        // Start SCN for these two iterations are in the same log or not. If the logs are not
-        // the same, we must enforce a restart.
-        //
-        // In addition, this also adds stability to when session restart is not enabled, as
-        // the connector will attempt to reuse the same session more often.
-        //
-        final List<LogFile> logsWithLastMiningStartPosition = getCurrentLogFiles().stream()
-                .filter(log -> log.isScnInLogFileRange(lastSessionStartScn))
-                .toList();
-
-        final List<LogFile> logsWithNextMiningStartPosition = getCurrentLogFiles().stream()
-                .filter(log -> log.isScnInLogFileRange(lastBatchResult.miningSessionStartScn))
-                .toList();
-
-        return !logsWithLastMiningStartPosition.equals(logsWithNextMiningStartPosition);
-    }
-
     @SuppressWarnings("unchecked")
     private <T extends Transaction> CacheProvider<T> createCacheProvider(OracleConnectorConfig connectorConfig) {
         return (CacheProvider<T>) switch (connectorConfig.getLogMiningBufferType()) {
@@ -336,17 +308,8 @@ public class BufferedLogMinerStreamingChangeEventSource extends AbstractLogMiner
         return cacheProvider.getProcessedTransactionsCache();
     }
 
-    @VisibleForTesting
-    protected LogMinerCache<String, String> getSchemaChangesCache() {
-        return cacheProvider.getSchemaChangesCache();
-    }
-
     private boolean isRecentlyProcessed(String transactionId) {
         return getProcessedTransactionsCache().containsKey(transactionId);
-    }
-
-    private boolean hasSchemaChangeBeenSeen(LogMinerEventRow event) {
-        return getSchemaChangesCache().containsKey(event.getScn().toString());
     }
 
     private int getTransactionEventCount(Transaction transaction) {
@@ -406,7 +369,7 @@ public class BufferedLogMinerStreamingChangeEventSource extends AbstractLogMiner
 
     @Override
     protected void handleInternalEvent(LogMinerEventRow event) throws InterruptedException {
-        final LogMinerEvent lastEvent = getTransactionCache().removeLastEnqueuedEvent(event.getTransactionId());
+        final CachedEvent lastEvent = getTransactionCache().removeLastEnqueuedEvent(event.getTransactionId());
         if (lastEvent != null && (lastEvent.getRowId().equals(RowIdCodec.EMPTY_ROW_ID)
                 || lastEvent.getEventType() == EventType.SELECT_LOB_LOCATOR
                 || lastEvent.getEventType() == EventType.LOB_WRITE
@@ -415,7 +378,163 @@ public class BufferedLogMinerStreamingChangeEventSource extends AbstractLogMiner
             if (event.getTableId() == null) {
                 event.setTableId(lastEvent.getTableId());
             }
-            enqueueEvent(event, new LogMinerEvent(event));
+            storeEvent(event, new LogMinerRedoEvent(event, false));
+        }
+    }
+
+    private LogMinerEvent resolveAtCommit(CommitTimeEventResolver resolver, LogMinerRedoEvent event, String transactionId) throws InterruptedException {
+        try {
+            return resolver.resolve(event, transactionId);
+        }
+        catch (SQLException e) {
+            throw new DebeziumException("Failed to resolve the table of a stored event at commit", e);
+        }
+    }
+
+    @Override
+    protected void handleDataChangeEvent(LogMinerEventRow event) throws SQLException, InterruptedException {
+        if (!isDataChangeEventProcessable(event)) {
+            return;
+        }
+
+        getBatchMetrics().dataChangeEventObserved(event.getEventType());
+
+        executeDataChangeEventPreDispatchSteps(event);
+
+        // The table identity is settled now, while the database describes the row's object as it was, since
+        // the recycle bin and object-id lookups need that; the table definition is resolved at commit
+        final TableId tableId = getTableIdForDataEvent(event);
+        if (tableId == null) {
+            return;
+        }
+        event.setTableId(tableId);
+
+        if (getSchema().tableFor(tableId) == null && !getTableFilter().isIncluded(tableId)) {
+            // Neither known nor captured: never stored
+            return;
+        }
+
+        if (isDispatchAllowedForDataChangeEvent(event)) {
+            // An undo row is never parsed, so its redo text is not stored
+            storeEvent(event, new LogMinerRedoEvent(event, !event.isRollbackFlag()));
+            if (!event.isRollbackFlag()) {
+                getMetrics().incrementTotalChangesCount();
+            }
+        }
+    }
+
+    @Override
+    protected void handleSelectLobLocatorEvent(LogMinerEventRow event) throws InterruptedException {
+        if (isLobEventStored(event)) {
+            storeEvent(event, new LogMinerRedoEvent(event));
+            getMetrics().incrementTotalChangesCount();
+        }
+    }
+
+    @Override
+    protected void handleLobWriteEvent(LogMinerEventRow event) throws InterruptedException {
+        if (isLobEventStored(event) && !Strings.isNullOrEmpty(event.getRedoSql())) {
+            storeEvent(event, new LogMinerRedoEvent(event));
+        }
+    }
+
+    @Override
+    protected void handleLobEraseEvent(LogMinerEventRow event) throws InterruptedException {
+        if (isLobEventStored(event)) {
+            storeEvent(event, new LogMinerRedoEvent(event, false));
+        }
+    }
+
+    @Override
+    protected void handleExtendedStringBeginEvent(LogMinerEventRow event) throws InterruptedException {
+        if (isLobEventStored(event)) {
+            storeEvent(event, new LogMinerRedoEvent(event));
+            getMetrics().incrementTotalChangesCount();
+        }
+    }
+
+    @Override
+    protected void handleExtendedStringWriteEvent(LogMinerEventRow event) throws InterruptedException {
+        if (isLobEventStored(event) && !Strings.isNullOrEmpty(event.getRedoSql())) {
+            storeEvent(event, new LogMinerRedoEvent(event));
+        }
+    }
+
+    @Override
+    protected void handleXmlBeginEvent(LogMinerEventRow event) throws InterruptedException {
+        if (isLobEventStored(event)) {
+            storeEvent(event, new LogMinerRedoEvent(event));
+        }
+    }
+
+    @Override
+    protected void handleXmlWriteEvent(LogMinerEventRow event) throws InterruptedException {
+        if (isLobEventStored(event)) {
+            storeEvent(event, new LogMinerRedoEvent(event));
+        }
+    }
+
+    @Override
+    protected void handleXmlEndEvent(LogMinerEventRow event) throws InterruptedException {
+        if (isLobEventStored(event)) {
+            storeEvent(event, new LogMinerRedoEvent(event, false));
+        }
+    }
+
+    /**
+     * Whether a LOB, XML or extended string row is stored for parsing at commit. Whether its table is known is
+     * decided at commit, because the row's table may be a newly captured one whose definition the preceding
+     * data change row of the same transaction only fetches at commit.
+     */
+    private boolean isLobEventStored(LogMinerEventRow event) {
+        return getConfig().isLobEnabled() && event.getTableId() != null;
+    }
+
+    @Override
+    protected void processEvent(LogMinerEventRow event) throws SQLException, InterruptedException {
+        resolveTransactionId(event);
+        super.processEvent(event);
+    }
+
+    /**
+     * Resolves the transaction of a row whose transaction id carries no sequence.
+     * <p>
+     * LogMiner reports a transaction id as the undo segment, the slot and the sequence of the transaction's
+     * undo entry. When the transaction started before the mining session did, which is the case for a
+     * transaction that spans a session restart, LogMiner does not know the sequence and reports it as
+     * {@code ffffffff}. Oracle reuses an undo slot only after the transaction that occupied it has ended, so
+     * at most one transaction in flight has the row's segment and slot, and that is the row's transaction.
+     * The row is given that transaction's id, so that every lookup that follows, whether the row is a change,
+     * an undo, a {@code COMMIT} or a {@code ROLLBACK}, finds the transaction by its real id.
+     * <p>
+     * The lookup scans the cached and the deferred transactions, which is affordable because such rows only
+     * follow a session restart. More than one match means a transaction in flight whose end was missed,
+     * which is reported as a failure rather than guessed at.
+     *
+     * @param event the row, should not be {@code null}
+     */
+    private void resolveTransactionId(LogMinerEventRow event) {
+        final String transactionId = event.getTransactionId();
+        if (Strings.isNullOrEmpty(transactionId) || !transactionId.endsWith(NO_SEQUENCE_TRX_ID_SUFFIX)) {
+            return;
+        }
+
+        final String prefix = transactionId.substring(0, ORACLE_TRANSACTION_ID_PREFIX_LENGTH);
+        final List<String> matches = new ArrayList<>(getTransactionCache().streamTransactionsAndReturn(
+                stream -> stream.map(Transaction::getTransactionId).filter(id -> id.startsWith(prefix)).toList()));
+        deferredTransactions.keySet().stream().filter(id -> id.startsWith(prefix)).forEach(matches::add);
+
+        if (matches.isEmpty()) {
+            LOGGER.debug("No transaction in flight has the undo segment and slot of transaction {}.", transactionId);
+        }
+        else if (matches.size() > 1) {
+            throw new DebeziumException(String.format("Transaction %s has no sequence and %d transactions in flight have " +
+                    "its undo segment and slot: %s. Oracle reuses an undo slot only after its transaction has ended, so " +
+                    "the end of all but one of them was missed.", transactionId, matches.size(), String.join(", ", matches)));
+        }
+        else {
+            LOGGER.debug("Resolved transaction {} to the transaction in flight {}.", transactionId, matches.get(0));
+            event.setTransactionId(matches.get(0));
         }
     }
 
@@ -459,18 +578,6 @@ public class BufferedLogMinerStreamingChangeEventSource extends AbstractLogMiner
             if (!Strings.isNullOrEmpty(transactionId) && deferredTransactions.remove(transactionId) != null) {
                 LOGGER.debug("Transaction {} was deferred with no DML events, removing on commit.", transactionId);
                 removedDeferredTransaction = true;
-            }
-            else if (!Strings.isNullOrEmpty(transactionId) && transactionId.endsWith(NO_SEQUENCE_TRX_ID_SUFFIX)) {
-                // LogMiner could not resolve the commit's transaction sequence because the transaction
-                // was read in a prior mining session. There is no cached transaction to apply, but
-                // deferred entries with the same undo segment and slot prefix must still be cleaned
-                // up: the most recently started one is the transaction this commit terminates, and
-                // any older one's slot has since been reused, proving it already ended. Leaving them
-                // behind pins the offset SCN low watermark until the deferred transaction retention
-                // expires. Removal is safe because deferred entries hold no events. Cached
-                // transactions are intentionally not resolved by prefix here, since committing a
-                // guessed transaction would emit its events.
-                removedDeferredTransaction = removeDeferredTransactionsByPrefix(transactionId, "commit");
             }
 
             if (!getOffsetContext().getCommitScn().hasEventScnBeenHandled(row)) {
@@ -559,7 +666,7 @@ public class BufferedLogMinerStreamingChangeEventSource extends AbstractLogMiner
                 getOffsetContext().setTableId(event.getTableId());
                 getOffsetContext().setRedoThread(row.getThread());
                 getOffsetContext().setRsId(event.getRsId());
-                getOffsetContext().setRowId(event.getRowIdAsString());
+                getOffsetContext().setRowId(event instanceof DdlEvent ? "" : event.getRowIdAsString());
                 getOffsetContext().setCommitTime(row.getChangeTime().minusSeconds(databaseOffset.getTotalSeconds()));
 
                 if (eventIndex == 1) {
@@ -571,51 +678,38 @@ public class BufferedLogMinerStreamingChangeEventSource extends AbstractLogMiner
                     getOffsetContext().setRedoSql(((RedoSqlDmlEvent) event).getRedoSql());
                 }
 
-                final DmlEvent dmlEvent = (DmlEvent) event;
-                if (!skipEvents) {
-                    LogMinerChangeRecordEmitter logMinerChangeRecordEmitter;
-                    if (dmlEvent instanceof TruncateEvent) {
-                        // a truncate event is seen by logminer as a DDL event type.
-                        // So force this here to be a Truncate Operation.
-                        logMinerChangeRecordEmitter = new LogMinerChangeRecordEmitter(
-                                getConfig(),
-                                getPartition(),
-                                getOffsetContext(),
-                                Envelope.Operation.TRUNCATE,
-                                dmlEvent.getOldValues(),
-                                dmlEvent.getNewValues(),
-                                getSchema().tableFor(event.getTableId()),
-                                getSchema(),
-                                Clock.system());
-                    }
-                    else {
-                        logMinerChangeRecordEmitter = new LogMinerChangeRecordEmitter(
-                                getConfig(),
-                                getPartition(),
-                                getOffsetContext(),
-                                dmlEvent.getEventType(),
-                                dmlEvent.getOldValues(),
-                                dmlEvent.getNewValues(),
-                                getSchema().tableFor(event.getTableId()),
-                                getSchema(),
-                                Clock.system());
-                    }
-                    getEventDispatcher().dispatchDataChangeEvent(getPartition(), event.getTableId(), logMinerChangeRecordEmitter);
+                if (event instanceof DdlEvent ddlEvent) {
+                    // The schema evolves even when the transaction's data changes are skipped
+                    dispatchSchemaChangeEventAtCommit(ddlEvent, commitScn, skipEvents);
+                }
+                else if (!skipEvents) {
+                    dispatchDataChangeEventAtCommit((DmlEvent) event);
                 }
 
                 // Clear redo SQL
                 getOffsetContext().setRedoSql(null);
             };
+            final CommitTimeEventResolver resolver = new CommitTimeEventResolver(this);
             try (TransactionCommitConsumer commitConsumer = new TransactionCommitConsumer(delegate, getConfig(), getSchema())) {
                 getTransactionCache().forEachEvent(transaction, event -> {
                     if (!getContext().isRunning()) {
                         return false;
                     }
-                    if (event.getEventType() == EventType.INTERNAL || event instanceof RollbackToSavepointEvent) {
+                    if (event.getEventType() == EventType.INTERNAL || event.isRollback()) {
                         return true;
                     }
-                    LOGGER.trace("Dispatching event {}", event.getEventType());
-                    commitConsumer.accept(event, null, 0L);
+                    if (event.getEventType() == EventType.DDL) {
+                        // Rows held for merging are flushed first and the schema change takes the next
+                        // dispatch index, so a replay skips it like any other event
+                        final LogMinerEventRow ddlRow = LogMinerEventRow.fromRedoEvent(event, transactionId);
+                        commitConsumer.acceptBarrier(new DdlEvent(ddlRow), null, 0L);
+                        return true;
+                    }
+                    final LogMinerEvent dispatchedEvent = resolveAtCommit(resolver, event, transactionId);
+                    if (dispatchedEvent != null) {
+                        LOGGER.trace("Dispatching event {}", dispatchedEvent.getEventType());
+                        commitConsumer.accept(dispatchedEvent, null, 0L);
+                    }
                     return true;
                 });
             }
@@ -669,65 +763,6 @@ public class BufferedLogMinerStreamingChangeEventSource extends AbstractLogMiner
         else {
             LOGGER.debug("Transaction {} not found in cache, no events to rollback.", transactionId);
 
-            if (!Strings.isNullOrEmpty(transactionId) && transactionId.endsWith(NO_SEQUENCE_TRX_ID_SUFFIX)) {
-                // This means that Oracle LogMiner found a rollback that should be applied but its
-                // corresponding transaction was read in a prior mining session and the transaction's
-                // sequence could not be resolved. We need to search for a matching transaction by prefix.
-                final String prefix = transactionId.substring(0, ORACLE_TRANSACTION_ID_PREFIX_LENGTH);
-                LOGGER.debug("Rollback event refers to a transaction '{}' with no explicit sequence; checking all transactions with prefix '{}'",
-                        transactionId, prefix);
-
-                final List<MatchedTransaction> matchingTransactions = getMatchingTransactionsByPrefix(prefix);
-
-                if (matchingTransactions.isEmpty()) {
-                    LOGGER.debug("No matching transaction found for partial transaction '{}' with prefix '{}'",
-                            transactionId, prefix);
-                }
-                else {
-                    // Oracle reuses an undo slot only after the transaction that previously occupied
-                    // it has ended, so of all same-prefix candidates only the one with the highest
-                    // start SCN can still be in progress, and it is the one this rollback terminates.
-                    final MatchedTransaction matched = matchingTransactions.stream()
-                            .max(Comparator.comparing(MatchedTransaction::startScn))
-                            .orElseThrow();
-
-                    LOGGER.warn("Matched partial transaction '{}' to the most recent of {} transaction(s) with prefix '{}', " +
-                            "the {} transaction '{}' (startScn={}, changeTime={}). Rolling back the matched transaction.",
-                            transactionId,
-                            matchingTransactions.size(),
-                            prefix,
-                            matched.deferred() ? "deferred" : "cached",
-                            matched.transactionId(),
-                            matched.startScn(),
-                            matched.changeTime());
-
-                    if (matched.deferred()) {
-                        removeDeferredTransaction(matched.transactionId());
-                    }
-                    else {
-                        finalizeTransaction(matched.transactionId(), event.getScn(), true);
-                        getMetrics().setActiveTransactionCount(getTransactionCache().getTransactionCount());
-                        getMetrics().setBufferedEventCount(getTransactionCache().getTransactionEvents());
-                    }
-
-                    // Any older candidate's undo slot has since been reused, which proves that its
-                    // transaction already ended and that its terminal event was never matched. Stale
-                    // deferred entries would otherwise pin the offset SCN low watermark until the
-                    // deferred transaction retention expires; removing them is safe because a deferred
-                    // entry holds no events and a later DML event recreates the transaction. Cached
-                    // candidates are intentionally left untouched because they may carry events.
-                    for (MatchedTransaction candidate : matchingTransactions) {
-                        if (candidate != matched && candidate.deferred() && removeDeferredTransaction(candidate.transactionId())) {
-                            LOGGER.warn("Removed stale deferred transaction '{}' (startScn={}, changeTime={}) whose undo " +
-                                    "slot was reused; its terminal event was never matched.",
-                                    candidate.transactionId(),
-                                    candidate.startScn(),
-                                    candidate.changeTime());
-                        }
-                    }
-                }
-            }
-
             // In the event the transaction was prematurely removed due to retention policy, when we do find
             // the transaction's rollback in the logs in the future, we should remove the entry if it exists
             // to avoid any potential memory-leak with the cache.
@@ -743,37 +778,6 @@ public class BufferedLogMinerStreamingChangeEventSource extends AbstractLogMiner
         return !Strings.isNullOrEmpty(transactionId) && deferredTransactions.remove(transactionId) != null;
     }
 
-    private boolean removeDeferredTransactionsByPrefix(String partialTransactionId, String terminalEventName) {
-        final String prefix = partialTransactionId.substring(0, ORACLE_TRANSACTION_ID_PREFIX_LENGTH);
-        final List<DeferredTransaction> matches = deferredTransactions.values().stream()
-                .filter(t -> t.transactionId().startsWith(prefix))
-                .toList();
-        for (DeferredTransaction match : matches) {
-            deferredTransactions.remove(match.transactionId());
-            LOGGER.warn("Matched partial transaction '{}' {} to deferred transaction '{}' (startScn={}, changeTime={}); " +
-                    "removed the deferred entry.",
-                    partialTransactionId,
-                    terminalEventName,
-                    match.transactionId(),
-                    match.startScn(),
-                    match.changeTime());
-        }
-        return !matches.isEmpty();
-    }
-
-    private List<MatchedTransaction> getMatchingTransactionsByPrefix(String prefix) {
-        final List<MatchedTransaction> matches = new ArrayList<>();
-        matches.addAll(getTransactionCache().streamTransactionsAndReturn(
-                stream -> stream.filter(t -> t.getTransactionId().startsWith(prefix))
-                        .map(t -> new MatchedTransaction(t.getTransactionId(), t.getStartScn(), t.getChangeTime(), false))
-                        .toList()));
-        matches.addAll(deferredTransactions.values().stream()
-                .filter(t -> t.transactionId().startsWith(prefix))
-                .map(t -> new MatchedTransaction(t.transactionId(), t.startScn(), t.changeTime(), true))
-                .toList());
-        return matches;
-    }
-
     private Scn getOldestDeferredTransactionStartScn() {
         return deferredTransactions.values().stream()
                 .map(DeferredTransaction::startScn)
@@ -787,45 +791,19 @@ public class BufferedLogMinerStreamingChangeEventSource extends AbstractLogMiner
             return;
         }
 
-        if (hasSchemaChangeBeenSeen(event)) {
-            LOGGER.trace("DDL: Scn {}, SQL '{}' has already been processed, skipped.", event.getScn(), event.getRedoSql());
-            return;
-        }
-
+        // Applied at commit, in transaction order and with the commit SCN; a re-mined DDL is
+        // deduplicated by its position in the transaction like any other stored event
         if (!Strings.isNullOrEmpty(event.getTableName())) {
-            Loggings.logDebugAndTraceRecord(LOGGER, event, "Processing DDL event with SCN {}: {}",
+            Loggings.logDebugAndTraceRecord(LOGGER, event, "Buffering DDL event with SCN {}: {}",
                     event.getScn(), event.getRedoSql());
-
-            if (canAdvanceLowerScnBoundaryOnSchemaChange(event)) {
-                LOGGER.debug("Schema change advanced offset SCN to {}", event.getScn());
-                getOffsetContext().setScn(event.getScn());
-            }
-
-            // Should always advance the commit SCN point with schema changes
-            LOGGER.debug("Schema change advanced offset commit SCN to {} for thread {}", event.getScn(), event.getThread());
-            getOffsetContext().getCommitScn().recordCommit(event);
-
-            if (getConfig().isLobEnabled()) {
-                getSchemaChangesCache().put(event.getScn().toString(), event.getTableId().identifier());
-            }
-
-            dispatchSchemaChangeEventInternal(event);
+            storeEvent(event, new LogMinerRedoEvent(event));
         }
     }
 
     @Override
-    protected void handleTruncateEvent(LogMinerEventRow event) throws InterruptedException {
-        try {
-            final Table table = getTableForDataEvent(event);
-            if (table != null) {
-                LOGGER.debug("Dispatching TRUNCATE event for table '{}' with SCN {}", table.id(), event.getScn());
-                enqueueEvent(event, new TruncateEvent(event, parseTruncateEvent(event)));
-            }
-        }
-        catch (SQLException e) {
-            LOGGER.warn("Failed to process truncate event", e);
-            getMetrics().incrementWarningCount();
-        }
+    protected void handleTruncateEvent(LogMinerEventRow event) {
+        // A TRUNCATE is stored with its transaction and emitted at commit, see dispatchTruncateEventAtCommit
+        throw new IllegalStateException("The buffered adapter emits TRUNCATE when its transaction commits");
     }
 
     @Override
@@ -893,10 +871,6 @@ public class BufferedLogMinerStreamingChangeEventSource extends AbstractLogMiner
 
         if (!minCacheScn.isNull()) {
             getProcessedTransactionsCache().removeIf(entry -> Scn.valueOf(entry.getValue()).compareTo(minCacheScn) < 0);
-            getSchemaChangesCache().removeIf(entry -> Scn.valueOf(entry.getKey()).compareTo(minCacheScn) < 0);
-        }
-        else {
-            getSchemaChangesCache().removeIf(e -> true);
         }
 
         if (!lastProcessedScn.isNull() && lastProcessedScn.compareTo(endScn) < 0) {
@@ -1103,6 +1077,101 @@ public class BufferedLogMinerStreamingChangeEventSource extends AbstractLogMiner
     }
 
     /**
+     * Emits the change event of a data change that the commit consumer dispatched.
+     *
+     * @param dmlEvent the event, should not be {@code null}
+     * @throws InterruptedException if the thread is interrupted
+     */
+    private void dispatchDataChangeEventAtCommit(DmlEvent dmlEvent) throws InterruptedException {
+        final LogMinerChangeRecordEmitter logMinerChangeRecordEmitter;
+        if (dmlEvent instanceof TruncateEvent) {
+            // a truncate event is seen by LogMiner as a DDL event type.
+            // So force this here to be a Truncate Operation.
+            logMinerChangeRecordEmitter = new LogMinerChangeRecordEmitter(
+                    getConfig(),
+                    getPartition(),
+                    getOffsetContext(),
+                    Envelope.Operation.TRUNCATE,
+                    dmlEvent.getOldValues(),
+                    dmlEvent.getNewValues(),
+                    getSchema().tableFor(dmlEvent.getTableId()),
+                    getSchema(),
+                    Clock.system());
+        }
+        else {
+            logMinerChangeRecordEmitter = new LogMinerChangeRecordEmitter(
+                    getConfig(),
+                    getPartition(),
+                    getOffsetContext(),
+                    dmlEvent.getEventType(),
+                    dmlEvent.getOldValues(),
+                    dmlEvent.getNewValues(),
+                    getSchema().tableFor(dmlEvent.getTableId()),
+                    getSchema(),
+                    Clock.system());
+        }
+        getEventDispatcher().dispatchDataChangeEvent(getPartition(), dmlEvent.getTableId(), logMinerChangeRecordEmitter);
+    }
+
+    /**
+     * Applies a schema change stored in the committing transaction, in the dispatch slot the commit consumer
+     * gave it. A {@code TRUNCATE} emits its change event inside that slot through the emitter's callback.
+     *
+     * @param event the schema change, should not be {@code null}
+     * @param commitScn the transaction's commit system change number, should not be {@code null}
+     * @param skipEvents whether the transaction's data changes are skipped
+     * @throws InterruptedException if the thread is interrupted
+     */
+    private void dispatchSchemaChangeEventAtCommit(DdlEvent event, Scn commitScn, boolean skipEvents) throws InterruptedException {
+        final TableId tableId = event.getTableId();
+        LOGGER.debug("Processing DDL event with SCN {} at commit SCN {}: {}", event.getScn(), commitScn,
+                Loggings.maybeRedactSensitiveData(event.getRedoSql()));
+
+        getEventDispatcher().dispatchSchemaChangeEvent(
+                getPartition(),
+                getOffsetContext(),
+                tableId,
+                new OracleSchemaChangeEventEmitter(
+                        getConfig(),
+                        getPartition(),
+                        getOffsetContext(),
+                        tableId,
+                        tableId.catalog(),
+                        tableId.schema(),
+                        event.getObjectId(),
+                        // ALTER TABLE does not populate the data object id, pass object id on purpose
+                        event.getObjectId(),
+                        event.getRedoSql(),
+                        getSchema(),
+                        event.getChangeTime(),
+                        getMetrics(),
+                        () -> dispatchTruncateEventAtCommit(event, skipEvents)));
+
+        onSchemaChangeDispatched(tableId);
+    }
+
+    private void dispatchTruncateEventAtCommit(DdlEvent event, boolean skipEvents) throws InterruptedException {
+        if (skipEvents) {
+            return;
+        }
+        try {
+            // An included table the schema history does not know yet is fetched first, as for a data change
+            final Table table = resolveTableAtCommit(event.getTableId());
+            if (table != null) {
+                LOGGER.debug("Dispatching TRUNCATE event for table '{}' with SCN {}", table.id(), event.getScn());
+                final LogMinerDmlEntry parsedEvent = parseTruncateEvent(event.getTableId());
+                dispatchDataChangeEventAtCommit(new TruncateEvent(EventType.DDL, event.getScn(), event.getTableId(),
+                        event.getRowIdAsString(), event.getRsId(), event.getChangeTime(),
+                        parsedEvent.getOldValues(), parsedEvent.getNewValues()));
+            }
+        }
+        catch (SQLException e) {
+            LOGGER.warn("Failed to process truncate event", e);
+            getMetrics().incrementWarningCount();
+        }
+    }
+
+    /**
      * Checks whether the given transaction should be skipped at commit time by inspecting various
      * criteria that may not have been applied at query time during to the configured query filter
      * mode.
@@ -1139,28 +1208,20 @@ public class BufferedLogMinerStreamingChangeEventSource extends AbstractLogMiner
         }
     }
 
-    /**
-     * Checks whether the lower system change number in the offsets can be advanced on a schema change.
-     *
-     * @param row the event, should not be {@code null}
-     * @return true if the offset scn can be advanced, false otherwise
-     */
-    private boolean canAdvanceLowerScnBoundaryOnSchemaChange(LogMinerEventRow row) {
-        final int cacheSize = getTransactionCache().getTransactionCount();
-        if (cacheSize == 0) {
-            // The DDL isn't wrapped in a transaction, fast-forward the lower boundary
-            return true;
-        }
-        else if (cacheSize == 1) {
-            // The row's transaction is the current and only active transaction.
-            return getTransactionCache().streamTransactionsAndReturn(stream -> stream.map(Transaction::getTransactionId)
-                    .allMatch(trxId -> trxId.equals(row.getTransactionId())));
-        }
-        return false;
+    @Override
+    protected void enqueueEvent(LogMinerEventRow event, LogMinerEvent dispatchedEvent) {
+        // Every row handler stores the row instead; rows are parsed when their transaction commits
+        throw new IllegalStateException("The buffered adapter stores rows and resolves them at commit");
     }
 
-    @Override
-    protected void enqueueEvent(LogMinerEventRow event, LogMinerEvent dispatchedEvent) throws InterruptedException {
+    /**
+     * Adds the stored form of a mined row to its transaction, creating or promoting the transaction first.
+     *
+     * @param event the mined row, should not be {@code null}
+     * @param storedEvent what the transaction buffer keeps for the row, should not be {@code null}
+     * @throws InterruptedException if the thread is interrupted
+     */
+    private void storeEvent(LogMinerEventRow event, LogMinerRedoEvent storedEvent) throws InterruptedException {
         final String transactionId = event.getTransactionId();
 
         Transaction transaction = getTransactionCache().getTransaction(transactionId);
@@ -1175,32 +1236,10 @@ public class BufferedLogMinerStreamingChangeEventSource extends AbstractLogMiner
                     getMetrics().setActiveTransactionCount(getTransactionCache().getTransactionCount());
                 }
                 else if (event.isRollbackFlag() && transactionId.endsWith(NO_SEQUENCE_TRX_ID_SUFFIX)) {
-                    // This means that Oracle LogMiner found an event that should be undone but its corresponding
-                    // undo entry was read in a prior mining session and the transaction's sequence could not be
-                    // resolved.
-                    final String prefix = transactionId.substring(0, ORACLE_TRANSACTION_ID_PREFIX_LENGTH);
-                    LOGGER.debug("Undo change refers to a transaction that has no explicit sequence, '{}'", event.getTransactionId());
-                    LOGGER.debug("Checking all transactions with prefix '{}'", prefix);
-
-                    final List<Transaction> matchingTransactions = getTransactionCache().streamTransactionsAndReturn(
-                            stream -> stream.filter(t -> t.getTransactionId().startsWith(prefix))
-                                    .toList());
-
-                    if (matchingTransactions.isEmpty()) {
-                        LOGGER.debug("No matching transaction found in cache for partial transaction '{}' with prefix '{}'",
-                                transactionId, prefix);
-                        return;
-                    }
-                    else if (matchingTransactions.size() == 1) {
-                        transaction = matchingTransactions.get(0);
-                    }
-                    else {
-                        LOGGER.warn("Unable to match partial transaction '{}' to a single cached transaction. Found {} transactions " +
-                                "with prefix '{}'. Manual investigation required. Transactions: {}",
-                                transactionId, matchingTransactions.size(), prefix,
-                                matchingTransactions.stream().map(Transaction::getTransactionId).collect(Collectors.joining(", ")));
-                        return;
-                    }
+                    // No transaction in flight has the undo's segment and slot, see resolveTransactionId, so the
+                    // change it undoes was never buffered and there is nothing to undo
+                    LOGGER.debug("Undo change of transaction {} matches no transaction in flight, skipped.", transactionId);
+                    return;
                 }
             }
 
@@ -1213,18 +1252,13 @@ public class BufferedLogMinerStreamingChangeEventSource extends AbstractLogMiner
             }
         }
 
-        // Key by the resolved transaction's id rather than the event row's. When the undo above was matched
-        // by the transaction prefix, the row carries the unresolved "ffffffff" id while the transaction it
-        // was attributed to carries its real id. Every removal from this map is keyed by the real id, so an
-        // entry stored under the row's id would never be removed and would be retained for the life of the
-        // task.
-        getTransactionCache().putLastEnqueuedEvent(transaction.getTransactionId(), new LogMinerEvent(event));
+        getTransactionCache().putLastEnqueuedEvent(transaction.getTransactionId(), storedEvent);
 
         final int eventId = transaction.getNextEventId();
         if (!getTransactionCache().containsTransactionEvent(transaction, eventId)) {
             // Add new event at eventId offset
             LOGGER.trace("Transaction {}, adding event reference at key {}", transactionId, transaction.getEventId(eventId));
-            getTransactionCache().addTransactionEvent(transaction, eventId, dispatchedEvent);
+            getTransactionCache().addTransactionEvent(transaction, eventId, storedEvent);
             getMetrics().calculateLagFromSource(event.getChangeTime());
 
             getMetrics().setBufferedEventCount(getTransactionCache().getTransactionEvents());
@@ -1382,7 +1416,7 @@ public class BufferedLogMinerStreamingChangeEventSource extends AbstractLogMiner
             final Set<String> tableNames = new HashSet<>();
             getTransactionCache().forEachEvent(transaction, event -> {
                 // Undo markers and INTERNAL events carry no change of their own, mirror the commit path and skip them
-                if (event.getEventType() != EventType.INTERNAL && !(event instanceof RollbackToSavepointEvent)) {
+                if (event.getEventType() != EventType.INTERNAL && !event.isRollback()) {
                     tableNames.add(event.getTableId().identifier());
                 }
                 return true;

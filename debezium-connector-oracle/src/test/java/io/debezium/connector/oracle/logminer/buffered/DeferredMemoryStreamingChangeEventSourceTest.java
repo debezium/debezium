@@ -9,6 +9,7 @@ import static io.debezium.config.CommonConnectorConfig.DEFAULT_MAX_BATCH_SIZE;
 import static io.debezium.config.CommonConnectorConfig.DEFAULT_MAX_QUEUE_SIZE;
 import static java.util.Collections.emptyList;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
@@ -35,6 +36,7 @@ import org.mockito.Mockito;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import io.debezium.DebeziumException;
 import io.debezium.config.Configuration;
 import io.debezium.connector.base.ChangeEventQueue;
 import io.debezium.connector.base.DefaultQueueProvider;
@@ -287,60 +289,47 @@ public class DeferredMemoryStreamingChangeEventSourceTest extends AbstractAsyncE
     }
 
     @Test
-    @FixFor("debezium/dbz#2531")
-    public void testPartialRollbackWithMultipleDeferredMatchesRollsBackLatestAndPrunesStale() throws Exception {
-        final String staleTransactionId = "12345678aaaaaaaa";
-        final String activeTransactionId = "12345678bbbbbbbb";
+    @FixFor({ "debezium/dbz#2531", "debezium/dbz#2943" })
+    public void testPartialRollbackFailsWhenMultipleDeferredTransactionsMatch() throws Exception {
+        final String firstTransactionId = "12345678aaaaaaaa";
+        final String secondTransactionId = "12345678bbbbbbbb";
 
         try (var source = getChangeEventSource(getConfig().build())) {
-            source.processEvent(getStartLogMinerEventRow(10, staleTransactionId));
-            source.processEvent(getStartLogMinerEventRow(20, activeTransactionId));
+            source.processEvent(getStartLogMinerEventRow(10, firstTransactionId));
+            source.processEvent(getStartLogMinerEventRow(20, secondTransactionId));
 
             assertThat(source.getDeferredTransactionCount()).isEqualTo(2);
 
-            source.processEvent(getRollbackLogMinerEventRow(30, "12345678ffffffff"));
+            // Two transactions in flight with one undo segment and slot means the end of one was missed
+            assertThatThrownBy(() -> source.processEvent(getRollbackLogMinerEventRow(30, "12345678ffffffff")))
+                    .isInstanceOf(DebeziumException.class)
+                    .hasMessageContaining(firstTransactionId)
+                    .hasMessageContaining(secondTransactionId);
 
-            assertThat(source.getDeferredTransactionCount()).isZero();
-            assertThat(source.getOldestDeferredTransactionStartScn()).isEqualTo(Scn.NULL);
-            assertThat(source.getTransactionCache().isEmpty()).isTrue();
+            assertThat(source.getDeferredTransactionCount()).isEqualTo(2);
         }
     }
 
     @Test
-    @FixFor("debezium/dbz#2531")
-    public void testPartialRollbackWithCachedAndDeferredMatchesRollsBackLatestCachedAndPrunesStaleDeferred() throws Exception {
-        final String staleTransactionId = "12345678aaaaaaaa";
-        final String activeTransactionId = "12345678bbbbbbbb";
+    @FixFor({ "debezium/dbz#2531", "debezium/dbz#2943" })
+    public void testPartialRollbackFailsWhenCachedAndDeferredTransactionsMatch() throws Exception {
+        final String deferredTransactionId = "12345678aaaaaaaa";
+        final String cachedTransactionId = "12345678bbbbbbbb";
 
         try (var source = getChangeEventSource(getConfig().build())) {
-            source.processEvent(getStartLogMinerEventRow(10, staleTransactionId));
-            source.processEvent(getStartLogMinerEventRow(20, activeTransactionId));
-            source.processEvent(getInsertLogMinerEventRow(21, activeTransactionId));
+            source.processEvent(getStartLogMinerEventRow(10, deferredTransactionId));
+            source.processEvent(getStartLogMinerEventRow(20, cachedTransactionId));
+            source.processEvent(getInsertLogMinerEventRow(21, cachedTransactionId));
 
             assertThat(source.getDeferredTransactionCount()).isEqualTo(1);
-            assertThat(source.getTransactionCache().containsTransaction(activeTransactionId)).isTrue();
+            assertThat(source.getTransactionCache().containsTransaction(cachedTransactionId)).isTrue();
 
-            source.processEvent(getRollbackLogMinerEventRow(30, "12345678ffffffff"));
+            assertThatThrownBy(() -> source.processEvent(getRollbackLogMinerEventRow(30, "12345678ffffffff")))
+                    .isInstanceOf(DebeziumException.class)
+                    .hasMessageContaining(deferredTransactionId)
+                    .hasMessageContaining(cachedTransactionId);
 
-            assertThat(source.getTransactionCache().isEmpty()).isTrue();
-            assertThat(source.getDeferredTransactionCount()).isZero();
-        }
-    }
-
-    @Test
-    @FixFor("debezium/dbz#2531")
-    public void testPartialRollbackWithLatestDeferredMatchDoesNotTouchOlderCachedTransaction() throws Exception {
-        final String cachedTransactionId = "12345678aaaaaaaa";
-        final String deferredTransactionId = "12345678bbbbbbbb";
-
-        try (var source = getChangeEventSource(getConfig().build())) {
-            source.processEvent(getStartLogMinerEventRow(10, cachedTransactionId));
-            source.processEvent(getInsertLogMinerEventRow(11, cachedTransactionId));
-            source.processEvent(getStartLogMinerEventRow(20, deferredTransactionId));
-
-            source.processEvent(getRollbackLogMinerEventRow(30, "12345678ffffffff"));
-
-            assertThat(source.getDeferredTransactionCount()).isZero();
+            assertThat(source.getDeferredTransactionCount()).isEqualTo(1);
             assertThat(source.getTransactionCache().containsTransaction(cachedTransactionId)).isTrue();
         }
     }
@@ -364,36 +353,41 @@ public class DeferredMemoryStreamingChangeEventSourceTest extends AbstractAsyncE
     }
 
     @Test
-    @FixFor("debezium/dbz#2531")
-    public void testPartialCommitPrunesAllStaleDeferredMatches() throws Exception {
-        final String staleTransactionId = "12345678aaaaaaaa";
-        final String activeTransactionId = "12345678bbbbbbbb";
+    @FixFor({ "debezium/dbz#2531", "debezium/dbz#2943" })
+    public void testPartialCommitFailsWhenMultipleDeferredTransactionsMatch() throws Exception {
+        final String firstTransactionId = "12345678aaaaaaaa";
+        final String secondTransactionId = "12345678bbbbbbbb";
 
         try (var source = getChangeEventSource(getConfig().build())) {
-            source.processEvent(getStartLogMinerEventRow(10, staleTransactionId));
-            source.processEvent(getStartLogMinerEventRow(20, activeTransactionId));
+            source.processEvent(getStartLogMinerEventRow(10, firstTransactionId));
+            source.processEvent(getStartLogMinerEventRow(20, secondTransactionId));
 
             assertThat(source.getDeferredTransactionCount()).isEqualTo(2);
 
-            source.processEvent(getCommitLogMinerEventRow(30, "12345678ffffffff"));
+            assertThatThrownBy(() -> source.processEvent(getCommitLogMinerEventRow(30, "12345678ffffffff")))
+                    .isInstanceOf(DebeziumException.class)
+                    .hasMessageContaining(firstTransactionId)
+                    .hasMessageContaining(secondTransactionId);
 
-            assertThat(source.getDeferredTransactionCount()).isZero();
-            assertThat(source.getOldestDeferredTransactionStartScn()).isEqualTo(Scn.NULL);
+            assertThat(source.getDeferredTransactionCount()).isEqualTo(2);
         }
     }
 
     @Test
-    @FixFor("debezium/dbz#2531")
-    public void testPartialCommitDoesNotTouchCachedTransaction() throws Exception {
+    @FixFor({ "debezium/dbz#2531", "debezium/dbz#2943" })
+    public void testPartialCommitCommitsMatchingCachedTransaction() throws Exception {
         final String cachedTransactionId = "12345678aaaaaaaa";
 
         try (var source = getChangeEventSource(getConfig().build())) {
             source.processEvent(getStartLogMinerEventRow(10, cachedTransactionId));
             source.processEvent(getInsertLogMinerEventRow(11, cachedTransactionId));
 
+            // The commit resolves to the only transaction in flight with its undo segment and slot
             source.processEvent(getCommitLogMinerEventRow(30, "12345678ffffffff"));
 
-            assertThat(source.getTransactionCache().containsTransaction(cachedTransactionId)).isTrue();
+            Mockito.verify(dispatcher, Mockito.times(1)).dispatchDataChangeEvent(any(), any(), any());
+            Mockito.verify(commitScn).recordCommit(any(LogMinerEventRow.class));
+            assertThat(source.getTransactionCache().isEmpty()).isTrue();
         }
     }
 
@@ -687,12 +681,25 @@ public class DeferredMemoryStreamingChangeEventSourceTest extends AbstractAsyncE
         return provider;
     }
 
+    /**
+     * A mocked row whose transaction id follows what the source sets, see
+     * {@code BufferedLogMinerStreamingChangeEventSource#resolveTransactionId}.
+     */
+    private static LogMinerEventRow mockLogMinerEventRow() {
+        final LogMinerEventRow row = Mockito.mock(LogMinerEventRow.class);
+        Mockito.doAnswer(invocation -> {
+            Mockito.doReturn(invocation.getArgument(0)).when(row).getTransactionId();
+            return null;
+        }).when(row).setTransactionId(anyString());
+        return row;
+    }
+
     private LogMinerEventRow getStartLogMinerEventRow(long scn, String transactionId) {
         return getStartLogMinerEventRow(scn, transactionId, Instant.now());
     }
 
     private LogMinerEventRow getStartLogMinerEventRow(long scn, String transactionId, Instant changeTime) {
-        LogMinerEventRow row = Mockito.mock(LogMinerEventRow.class);
+        LogMinerEventRow row = mockLogMinerEventRow();
         Mockito.when(row.getEventType()).thenReturn(EventType.START);
         Mockito.when(row.getTransactionId()).thenReturn(transactionId);
         Mockito.when(row.getScn()).thenReturn(Scn.valueOf(scn));
@@ -704,7 +711,7 @@ public class DeferredMemoryStreamingChangeEventSourceTest extends AbstractAsyncE
     }
 
     private LogMinerEventRow getCommitLogMinerEventRow(long scn, String transactionId) {
-        LogMinerEventRow row = Mockito.mock(LogMinerEventRow.class);
+        LogMinerEventRow row = mockLogMinerEventRow();
         Mockito.when(row.getEventType()).thenReturn(EventType.COMMIT);
         Mockito.when(row.getTransactionId()).thenReturn(transactionId);
         Mockito.when(row.getScn()).thenReturn(Scn.valueOf(scn));
@@ -714,7 +721,7 @@ public class DeferredMemoryStreamingChangeEventSourceTest extends AbstractAsyncE
     }
 
     private LogMinerEventRow getRollbackLogMinerEventRow(long scn, String transactionId) {
-        LogMinerEventRow row = Mockito.mock(LogMinerEventRow.class);
+        LogMinerEventRow row = mockLogMinerEventRow();
         Mockito.when(row.getEventType()).thenReturn(EventType.ROLLBACK);
         Mockito.when(row.getTransactionId()).thenReturn(transactionId);
         Mockito.when(row.getScn()).thenReturn(Scn.valueOf(scn));
@@ -732,7 +739,7 @@ public class DeferredMemoryStreamingChangeEventSourceTest extends AbstractAsyncE
     }
 
     private LogMinerEventRow getInsertLogMinerEventRow(long scn, String transactionId, Instant changeTime, String tableName, String rowId, String dataValue) {
-        LogMinerEventRow row = Mockito.mock(LogMinerEventRow.class);
+        LogMinerEventRow row = mockLogMinerEventRow();
         Mockito.when(row.getEventType()).thenReturn(EventType.INSERT);
         Mockito.when(row.getTransactionId()).thenReturn(transactionId);
         Mockito.when(row.getScn()).thenReturn(Scn.valueOf(scn));

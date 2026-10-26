@@ -1272,6 +1272,17 @@ When the connector first reads the stream of changes, because it cannot immediat
 After a change is committed, the connector writes the change event from the buffer to Kafka.
 The connector drops change events that are discarded by a rollback.
 
+The buffer stores each change as LogMiner reported it: the row's metadata together with its redo SQL.
+The connector parses the SQL, and applies any DDL statement that the transaction contains, when the transaction commits, in the order in which the changes occurred within the transaction.
+As a result, the time that the connector spends parsing a transaction is part of its commit, and changes that are rolled back are never parsed.
+
+[NOTE]
+====
+Earlier connector versions stored parsed events in the buffer.
+A buffer retained from such a version cannot be read; the connector clears it when it starts and re-mines from its offsets.
+The archive logs back to the SCN in the connector's offsets must therefore still be available when you upgrade, as they must be for any restart.
+====
+
 You can configure the buffering mechanism that the connector uses by setting the property xref:oracle-property-log-mining-buffer-type[`log.mining.buffer.type`].
 
 ==== Heap buffering
@@ -1315,7 +1326,8 @@ Additionally, the location where the cache is kept is defined by the `path` attr
 [IMPORTANT]
 ====
 The {prodname} Infinispan buffer implementation requires that you configure a set of distinct cache configurations, each identified by a {prodname}-defined cache name.
-You must configure caches for the following identifiers: `transactions`, `events`, `processed-transactions`, and `schema-changes`.
+You must configure caches for the following identifiers: `transactions`, `events`, and `processed-transactions`.
+Earlier connector versions also used a `schema-changes` cache; the connector now ignores its configuration property.
 
 Each cache name is a hardcoded identifier that you specify in the XML of a {prodname} Oracle connector configuration property in the `log.mining.buffer.infinispan.cache` namespace.
 For example, the property `log.mining.buffer.infinispan.cache.transactions` contains the XML configuration for the cache that must include `name="transactions"` in its XML definition.
@@ -1397,7 +1409,7 @@ Additionally, the following example shows some settings that you might configure
     <disk unit="B">1024000000</disk>
 </resources>
 ----
-The following example shows an Ehcache configuration that includes both a global setting and specific settings for the `transactions`, `processedtransactions`, `schemachanges`, and `events` caches.
+The following example shows an Ehcache configuration that includes both a global setting and specific settings for the `transactions`, `processedtransactions`, and `events` caches.
 
 .Example configuration
 [source,json]
@@ -1407,7 +1419,6 @@ The following example shows an Ehcache configuration that includes both a global
   "log.mining.buffer.ehcache.global.config": "<persistence directory=\"./data\"/>",
   "log.mining.buffer.ehcache.transactions.config": "<resources><heap unit=\"entries\">512</entries><disk unit=\"B\">1024000000</disk></resources>",
   "log.mining.buffer.ehcache.processedtransactions.config": "<resources><heap unit=\"entries\">512</entries><disk unit=\"B\">1024000000</disk></resources>",
-  "log.mining.buffer.ehcache.schemachanges.config": "<resources><heap unit=\"entries\">512</entries><disk unit=\"B\">1024000000</disk></resources>",
   "log.mining.buffer.ehcache.events.config": "<resources><heap unit=\"entries\">512</entries><disk unit=\"B\">1024000000</disk></resources>"
 }
 ----
@@ -4893,10 +4904,6 @@ For more information, see xref:oracle-event-buffering-infinispan[Infinispan even
 |The XML configuration for the Infinispan processed transactions cache.
 For more information, see xref:oracle-event-buffering-infinispan[Infinispan event buffering].
 
-|[[oracle-property-log-mining-buffer-infinispan-cache-schema-changes]]<<oracle-property-log-mining-buffer-infinispan-cache-schema-changes, `+log.mining.buffer.infinispan.cache.schema_changes+`>>
-|No default
-|The XML configuration for the Infinispan schema changes cache.
-
 |[[oracle-property-log-mining-buffer-ehcache-global-config]]<<oracle-property-log-mining-buffer-ehcache-global-config, `+log.mining.buffer.ehcache.global.config+`>>
 |No default
 |The XML configuration for the Ehcache global configuration.
@@ -4910,11 +4917,6 @@ For more information, see xref:oracle-event-buffering-ehcache[Ehcache event buff
 |[[oracle-property-log-mining-buffer-ehcache-processedtransactions-config]]<<oracle-property-log-mining-buffer-ehcache-processedtransactions-config, `+log.mining.buffer.ehcache.processedtransactions.config+`>>
 |No default
 |The XML configuration for the Ehcache processed/emitted transactions configuration.
-For more information, see xref:oracle-event-buffering-ehcache[Ehcache event buffering].
-
-|[[oracle-property-log-mining-buffer-ehcache-schemachanges-config]]<<oracle-property-log-mining-buffer-ehcache-schemachanges-config, `+log.mining.buffer.ehcache.schemachanges.config+`>>
-|No default
-|The XML configuration for the Ehcache schema changes configuration.
 For more information, see xref:oracle-event-buffering-ehcache[Ehcache event buffering].
 
 |[[oracle-property-log-mining-buffer-ehcache-events-config]]<<oracle-property-log-mining-buffer-ehcache-events-config, `+log.mining.buffer.ehcache.events.config+`>>
@@ -5664,7 +5666,7 @@ For more information, see xref:oracle-property-log-mining-transaction-retention-
 
 |[[oracle-streaming-metrics-total-changes-count]]<<oracle-streaming-metrics-total-changes-count, `+TotalChangesCount+`>>
 |`long`
-|The number of changes processed by the connector.
+|The number of changes that the connector has mined into the transaction buffer, including changes of transactions that are later rolled back.
 
 |[[oracle-streaming-metrics-lag-from-source-in-milliseconds]]<<oracle-streaming-metrics-lag-from-source-in-milliseconds, `+LagFromSourceInMilliseconds+`>>
 |`long`

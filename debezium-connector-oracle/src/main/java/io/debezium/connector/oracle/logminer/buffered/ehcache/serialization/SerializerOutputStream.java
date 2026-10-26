@@ -8,18 +8,17 @@ package io.debezium.connector.oracle.logminer.buffered.ehcache.serialization;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
+import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.util.Objects;
 
-import io.debezium.connector.oracle.OracleValueConverters;
 import io.debezium.connector.oracle.Scn;
-import io.debezium.connector.oracle.logminer.parser.LogMinerDmlEntry;
 import io.debezium.relational.TableId;
 
 /**
  * @author Chris Cranford
  */
-public class SerializerOutputStream extends AbstractSerializerStream {
+public class SerializerOutputStream implements AutoCloseable {
 
     private final DataOutputStream delegate;
 
@@ -113,51 +112,22 @@ public class SerializerOutputStream extends AbstractSerializerStream {
     }
 
     /**
-     * Write an object array to the stream.
+     * Writes a string of any length as a length-prefixed UTF-8 byte array.
+     * <p>
+     * {@link #writeString(String)} relies on {@link java.io.DataOutputStream#writeUTF(String)}, which is capped
+     * at 65,535 encoded bytes; a redo statement with its continuation rows joined can exceed that.
      *
-     * @param values the object array to write, should not be {@code null}
+     * @param value the string to write, can be {@code null}
      * @throws IOException when a write operation fails
      */
-    public void writeObjectArray(Object[] values) throws IOException {
-        Objects.requireNonNull(values);
-        writeStringArray(objectArrayToStringArray(values));
-    }
-
-    /**
-     * Writes a string array to the stream.
-     *
-     * @param values the string array to write, should not be {@code null}
-     * @throws IOException when a write operation fails
-     */
-    protected void writeStringArray(String[] values) throws IOException {
-        Objects.requireNonNull(values);
-        writeInt(values.length);
-        for (String value : values) {
-            writeString(value);
+    public void writeLongString(String value) throws IOException {
+        if (value == null) {
+            delegate.writeBoolean(true);
+            return;
         }
-    }
-
-    /**
-     * Convert an array of object values to a string array for serialization. This is typically
-     * used when preparing the {@link LogMinerDmlEntry} values array for serialization.
-     *
-     * @param values the dml entry's new or old object values array
-     * @return string array of values prepared for serialization
-     */
-    protected String[] objectArrayToStringArray(Object[] values) {
-        Objects.requireNonNull(values);
-        String[] results = new String[values.length];
-        for (int i = 0; i < values.length; ++i) {
-            if (values[i] == null) {
-                results[i] = NULL_VALUE_SENTINEL;
-            }
-            else if (values[i] == OracleValueConverters.UNAVAILABLE_VALUE) {
-                results[i] = UNAVAILABLE_VALUE_SENTINEL;
-            }
-            else {
-                results[i] = (String) values[i];
-            }
-        }
-        return results;
+        delegate.writeBoolean(false);
+        final byte[] bytes = value.getBytes(StandardCharsets.UTF_8);
+        delegate.writeInt(bytes.length);
+        delegate.write(bytes);
     }
 }

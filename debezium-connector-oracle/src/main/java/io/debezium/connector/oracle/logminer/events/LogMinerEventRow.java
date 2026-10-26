@@ -103,6 +103,15 @@ public class LogMinerEventRow {
         return transactionId;
     }
 
+    /**
+     * Replaces the transaction id, see {@code BufferedLogMinerStreamingChangeEventSource#resolveTransactionId}.
+     *
+     * @param transactionId the transaction id, should not be {@code null}
+     */
+    public void setTransactionId(String transactionId) {
+        this.transactionId = transactionId;
+    }
+
     public Long getTransactionSequence() {
         return transactionSequence;
     }
@@ -218,6 +227,38 @@ public class LogMinerEventRow {
         }
 
         return resolvers.toArray(new ResultSetValueResolver[0]);
+    }
+
+    /**
+     * Rebuilds the row view of a stored {@link LogMinerRedoEvent}, so that the parsers and event constructors
+     * written for mined rows run unchanged when the event is parsed at commit. Only the columns the stored
+     * event keeps are populated.
+     *
+     * @param event the stored event, should not be {@code null}
+     * @param transactionId the transaction the event belongs to
+     * @return the row view, never {@code null}
+     */
+    public static LogMinerEventRow fromRedoEvent(LogMinerRedoEvent event, String transactionId) {
+        final LogMinerEventRow row = new LogMinerEventRow();
+        row.scn = event.getScn();
+        row.tableId = event.getTableId();
+        if (event.getTableId() != null) {
+            row.tableName = event.getTableId().table();
+            row.tablespaceName = event.getTableId().schema();
+        }
+        row.eventType = event.getEventType();
+        row.changeTime = event.getChangeTime();
+        row.transactionId = transactionId;
+        row.rowId = event.getRowIdAsString();
+        row.rollbackFlag = event.isRollback();
+        row.rsId = event.getRsId();
+        row.redoSql = event.getRedoSql();
+        row.status = event.getStatus();
+        row.info = event.getInfo();
+        row.objectId = event.getObjectId();
+        row.dataObjectId = event.getDataObjectId();
+        row.transactionSequence = event.getTransactionSequence();
+        return row;
     }
 
     /**

@@ -19,8 +19,7 @@ import org.ehcache.Cache;
 
 import io.debezium.connector.oracle.logminer.buffered.AbstractLogMinerTransactionCache;
 import io.debezium.connector.oracle.logminer.buffered.CacheProvider;
-import io.debezium.connector.oracle.logminer.events.LogMinerEvent;
-import io.debezium.connector.oracle.logminer.events.RollbackToSavepointEvent;
+import io.debezium.connector.oracle.logminer.events.LogMinerRedoEvent;
 
 /**
  * A concrete implementation of {@link AbstractLogMinerTransactionCache} for Ehcache.
@@ -30,14 +29,14 @@ import io.debezium.connector.oracle.logminer.events.RollbackToSavepointEvent;
 public class EhcacheLogMinerTransactionCache extends AbstractLogMinerTransactionCache<EhcacheTransaction> {
 
     private final Cache<String, EhcacheTransaction> transactionCache;
-    private final Cache<String, LogMinerEvent> eventCache;
+    private final Cache<String, LogMinerRedoEvent> eventCache;
     private final EhcacheEvictionListener evictionListener;
 
     // Heap-backed caches for quick access to specific metadata to speed up processing
     private final Map<String, TreeSet<Integer>> eventIdsByTransactionId = new HashMap<>();
 
     public EhcacheLogMinerTransactionCache(Cache<String, EhcacheTransaction> transactionCache,
-                                           Cache<String, LogMinerEvent> eventCache,
+                                           Cache<String, LogMinerRedoEvent> eventCache,
                                            EhcacheEvictionListener evictionListener) {
         this.transactionCache = transactionCache;
         this.eventCache = eventCache;
@@ -103,7 +102,7 @@ public class EhcacheLogMinerTransactionCache extends AbstractLogMinerTransaction
     }
 
     @Override
-    public void forEachEvent(EhcacheTransaction transaction, InterruptiblePredicate<LogMinerEvent> predicate) throws InterruptedException {
+    public void forEachEvent(EhcacheTransaction transaction, InterruptiblePredicate<LogMinerRedoEvent> predicate) throws InterruptedException {
         final var events = eventIdsByTransactionId.get(transaction.getTransactionId());
         if (events != null) {
             for (int eventId : events) {
@@ -124,7 +123,7 @@ public class EhcacheLogMinerTransactionCache extends AbstractLogMinerTransaction
     }
 
     @Override
-    public void addTransactionEvent(EhcacheTransaction transaction, int eventKey, LogMinerEvent event) {
+    public void addTransactionEvent(EhcacheTransaction transaction, int eventKey, LogMinerRedoEvent event) {
         eventCache.put(transaction.getEventId(eventKey), event);
         checkAndThrowIfEviction(CacheProvider.EVENTS_CACHE_NAME);
         final TreeSet<Integer> eventIds = eventIdsByTransactionId.get(transaction.getTransactionId());
@@ -132,7 +131,7 @@ public class EhcacheLogMinerTransactionCache extends AbstractLogMinerTransaction
             transactionEvents++;
         }
 
-        if (event instanceof RollbackToSavepointEvent) {
+        if (event.isRollback()) {
             final Iterator<LogMinerEventEntry> reverseIterator = new LogMinerEventEntryIterator(
                     eventIds.descendingIterator(), id -> eventCache.get(transaction.getEventId(id)));
             final LogMinerEventEntryRange range = findRolledBackRange(transaction.getTransactionId(), reverseIterator);

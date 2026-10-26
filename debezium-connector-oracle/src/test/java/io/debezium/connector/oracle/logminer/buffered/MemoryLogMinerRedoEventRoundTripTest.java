@@ -1,0 +1,41 @@
+/*
+ * Copyright Debezium Authors.
+ *
+ * Licensed under the Apache Software License version 2.0, available at http://www.apache.org/licenses/LICENSE-2.0
+ */
+package io.debezium.connector.oracle.logminer.buffered;
+
+import java.util.List;
+
+import io.debezium.config.Configuration;
+import io.debezium.connector.oracle.OracleConnectorConfig;
+import io.debezium.connector.oracle.logminer.buffered.memory.MemoryCacheProvider;
+import io.debezium.connector.oracle.logminer.buffered.memory.MemoryTransaction;
+import io.debezium.connector.oracle.logminer.buffered.memory.MemoryTransactionFactory;
+import io.debezium.connector.oracle.logminer.events.LogMinerRedoEvent;
+
+/**
+ * @author Chris Cranford
+ */
+public class MemoryLogMinerRedoEventRoundTripTest extends AbstractLogMinerEventRoundTripTest<MemoryTransaction> {
+
+    @Override
+    protected CacheProvider<MemoryTransaction> getCacheProvider() {
+        return new MemoryCacheProvider(new OracleConnectorConfig(Configuration.empty()));
+    }
+
+    @Override
+    protected TransactionFactory<MemoryTransaction> getTransactionFactory() {
+        return new MemoryTransactionFactory();
+    }
+
+    @Override
+    protected List<LogMinerRedoEvent> sampleEvents() {
+        return LogMinerRedoEventFixtures.allEvents();
+    }
+
+    @Override
+    protected void assertSameEvent(LogMinerRedoEvent expected, LogMinerRedoEvent actual) {
+        LogMinerRedoEventFixtures.assertSameEvent(expected, actual);
+    }
+}

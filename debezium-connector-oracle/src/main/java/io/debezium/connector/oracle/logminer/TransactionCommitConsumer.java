@@ -102,23 +102,45 @@ public class TransactionCommitConsumer implements AutoCloseable {
 
     @Override
     public void close() throws InterruptedException {
+        flushHeldRows();
+
+        // For situations where the consumer instance is reused, reset internal state
+        totalEvents = 0;
+        enqueueEventIndex = 0;
+        dispatchEventIndex = 0;
+    }
+
+    /**
+     * Dispatches a schema change in its place within the transaction.
+     * <p>
+     * Every row held for merging is dispatched first, in the order it arrived, and the schema change then
+     * takes the next event index. Nothing is merged across a schema change, since the table's shape may
+     * differ on either side of it, and the index lets a replay skip the schema change like any other event.
+     *
+     * @param schemaChange the schema change, should not be {@code null}
+     * @param transactionId the transaction id, can be {@code null}
+     * @param transactionSequence the transaction sequence
+     * @throws InterruptedException if the thread is interrupted
+     */
+    public void acceptBarrier(LogMinerEvent schemaChange, String transactionId, long transactionSequence) throws InterruptedException {
+        totalEvents++;
+        flushHeldRows();
+        dispatchChangeEvent(schemaChange, transactionId, transactionSequence);
+    }
+
+    private void flushHeldRows() throws InterruptedException {
         // Dispatch any of the existing events in the order they were received
-        List<RowState> pending = new ArrayList<>(rows.values());
+        final List<RowState> pending = new ArrayList<>(rows.values());
         pending.sort(Comparator.comparingLong(x -> x.transactionIndex));
 
         for (final RowState rowState : pending) {
             prepareAndDispatch(rowState);
         }
 
-        // For situations where the consumer instance is reused, reset internal state
         rows.clear();
         currentLobDetails.reset();
         currentExtendedStringDetails.reset();
         currentXmlDetails.reset();
-
-        totalEvents = 0;
-        enqueueEventIndex = 0;
-        dispatchEventIndex = 0;
     }
 
     public void accept(LogMinerEvent event, String transactionId, long transactionSequence) throws InterruptedException {

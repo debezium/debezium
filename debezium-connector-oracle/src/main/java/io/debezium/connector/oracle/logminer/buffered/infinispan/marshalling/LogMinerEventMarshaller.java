@@ -15,19 +15,6 @@ import org.infinispan.protostream.annotations.ProtoSchema;
  *
  * @author Chris Cranford
  */
-@ProtoSchema(includeClasses = {
-        LogMinerEventAdapter.class,
-        DmlEventAdapter.class,
-        SelectLobLocatorEventAdapter.class,
-        LobWriteEventAdapter.class,
-        LobEraseEventAdapter.class,
-        TruncateEventAdapter.class,
-        XmlBeginEventAdapter.class,
-        XmlWriteEventAdapter.class,
-        XmlEndEventAdapter.class,
-        RedoSqlDmlEventAdapter.class,
-        ExtendedStringBeginEventAdapter.class,
-        ExtendedStringWriteEventAdapter.class,
-        RollbackToSavepointEventAdapter.class }, schemaFilePath = "/")
+@ProtoSchema(includeClasses = { LogMinerRedoEventAdapter.class }, schemaFilePath = "/")
 public interface LogMinerEventMarshaller extends SerializationContextInitializer {
 }

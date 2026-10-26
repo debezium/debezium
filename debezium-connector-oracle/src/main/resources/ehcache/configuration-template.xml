@@ -5,8 +5,8 @@
         <serializer type="io.debezium.connector.oracle.logminer.buffered.ehcache.EhcacheTransaction">
             io.debezium.connector.oracle.logminer.buffered.ehcache.serialization.EhcacheTransactionSerializer
         </serializer>
-        <serializer type="io.debezium.connector.oracle.logminer.events.LogMinerEvent">
-            io.debezium.connector.oracle.logminer.buffered.ehcache.serialization.LogMinerEventSerializer
+        <serializer type="io.debezium.connector.oracle.logminer.events.LogMinerRedoEvent">
+            io.debezium.connector.oracle.logminer.buffered.ehcache.serialization.LogMinerRedoEventSerializer
         </serializer>
     </default-serializers>
 
@@ -36,19 +36,11 @@
         ${log.mining.buffer.ehcache.processedtransactions.config}
     </cache>
 
-    <!-- Setup schema changes cache -->
-    <cache alias="schema-changes">
-        <!-- Debezium specifically sets the key/value types -->
-        <key-type>java.lang.String</key-type>
-        <value-type>java.lang.String</value-type>
-        ${log.mining.buffer.ehcache.schemachanges.config}
-    </cache>
-
     <!-- Setup events cache -->
     <cache alias="events">
         <!-- Debezium specifically sets the key/value types -->
         <key-type>java.lang.String</key-type>
-        <value-type>io.debezium.connector.oracle.logminer.events.LogMinerEvent</value-type>
+        <value-type>io.debezium.connector.oracle.logminer.events.LogMinerRedoEvent</value-type>
         ${log.mining.buffer.ehcache.events.config}
     </cache>
 

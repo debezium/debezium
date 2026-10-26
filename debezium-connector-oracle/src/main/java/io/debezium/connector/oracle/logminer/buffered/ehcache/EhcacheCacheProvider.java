@@ -8,7 +8,6 @@ package io.debezium.connector.oracle.logminer.buffered.ehcache;
 import static io.debezium.connector.oracle.OracleConnectorConfig.LOG_MINING_BUFFER_EHCACHE_EVENTS_CONFIG;
 import static io.debezium.connector.oracle.OracleConnectorConfig.LOG_MINING_BUFFER_EHCACHE_GLOBAL_CONFIG;
 import static io.debezium.connector.oracle.OracleConnectorConfig.LOG_MINING_BUFFER_EHCACHE_PROCESSED_TRANSACTIONS_CONFIG;
-import static io.debezium.connector.oracle.OracleConnectorConfig.LOG_MINING_BUFFER_EHCACHE_SCHEMA_CHANGES_CONFIG;
 import static io.debezium.connector.oracle.OracleConnectorConfig.LOG_MINING_BUFFER_EHCACHE_TRANSACTIONS_CONFIG;
 
 import java.io.BufferedReader;
@@ -24,6 +23,8 @@ import javax.xml.parsers.ParserConfigurationException;
 
 import org.ehcache.Cache;
 import org.ehcache.CacheManager;
+import org.ehcache.PersistentCacheManager;
+import org.ehcache.StateTransitionException;
 import org.ehcache.config.builders.CacheManagerBuilder;
 import org.ehcache.event.EventFiring;
 import org.ehcache.event.EventOrdering;
@@ -40,7 +41,7 @@ import io.debezium.connector.oracle.OracleConnectorConfig;
 import io.debezium.connector.oracle.logminer.buffered.AbstractCacheProvider;
 import io.debezium.connector.oracle.logminer.buffered.LogMinerCache;
 import io.debezium.connector.oracle.logminer.buffered.LogMinerTransactionCache;
-import io.debezium.connector.oracle.logminer.events.LogMinerEvent;
+import io.debezium.connector.oracle.logminer.events.LogMinerRedoEvent;
 
 /**
  * Provides access to various transaction-focused caches to store transaction details in Ehcache
@@ -61,7 +62,6 @@ public class EhcacheCacheProvider extends AbstractCacheProvider<EhcacheTransacti
     private final CacheManager cacheManager;
     private final EhcacheLogMinerTransactionCache transactionCache;
     private final EhcacheLogMinerCache<String, String> processedTransactionsCache;
-    private final EhcacheLogMinerCache<String, String> schemaChangesCache;
 
     public EhcacheCacheProvider(OracleConnectorConfig connectorConfig) {
         LOGGER.info("Using Ehcache provider to buffer transactions");
@@ -73,17 +73,12 @@ public class EhcacheCacheProvider extends AbstractCacheProvider<EhcacheTransacti
 
         this.transactionCache = createTransactionCache(evictionListener);
         this.processedTransactionsCache = createProcessedTransactionCache(evictionListener);
-        this.schemaChangesCache = createSchemaChangesCache(evictionListener);
+        verifyStoredEventFormat();
     }
 
     @Override
     public LogMinerTransactionCache<EhcacheTransaction> getTransactionCache() {
         return transactionCache;
-    }
-
-    @Override
-    public LogMinerCache<String, String> getSchemaChangesCache() {
-        return schemaChangesCache;
     }
 
     @Override
@@ -99,12 +94,10 @@ public class EhcacheCacheProvider extends AbstractCacheProvider<EhcacheTransacti
                 if (dropBufferOnStop) {
                     LOGGER.info("Clearing Ehcache caches");
                     transactionCache.clear();
-                    schemaChangesCache.clear();
                     processedTransactionsCache.clear();
 
                     cacheManager.removeCache(TRANSACTIONS_CACHE_NAME);
                     cacheManager.removeCache(PROCESSED_TRANSACTIONS_CACHE_NAME);
-                    cacheManager.removeCache(SCHEMA_CHANGES_CACHE_NAME);
                     cacheManager.removeCache(EVENTS_CACHE_NAME);
                 }
 
@@ -143,14 +136,40 @@ public class EhcacheCacheProvider extends AbstractCacheProvider<EhcacheTransacti
 
             final Document xmlDocument = builder.parse(new InputSource(new StringReader(xmlData)));
 
-            final CacheManager cacheManager = CacheManagerBuilder.newCacheManager(new XmlConfiguration(xmlDocument));
-            cacheManager.init();
-
-            return cacheManager;
+            final XmlConfiguration xmlConfiguration = new XmlConfiguration(xmlDocument);
+            final CacheManager cacheManager = CacheManagerBuilder.newCacheManager(xmlConfiguration);
+            try {
+                cacheManager.init();
+                return cacheManager;
+            }
+            catch (StateTransitionException e) {
+                if (!isPersistedEventTypeMismatch(e) || !(cacheManager instanceof PersistentCacheManager persistentCacheManager)) {
+                    throw e;
+                }
+                // Ehcache refuses to open a persistent cache whose stored value type differs from the configured one,
+                // which happens when a retained buffer was written by a version that stored parsed events. Its entries
+                // cannot be read, so the buffer is destroyed as a whole and the connector re-mines from its offsets,
+                // which requires the archive logs back to the offset SCN, as any restart does.
+                LOGGER.warn("The retained Ehcache transaction buffer was written by a version that stored parsed events; destroying it.");
+                persistentCacheManager.destroy();
+                final CacheManager replacement = CacheManagerBuilder.newCacheManager(xmlConfiguration);
+                replacement.init();
+                return replacement;
+            }
         }
         catch (Exception e) {
             throw new DebeziumException("Failed to create Ehcache cache manager", e);
         }
+    }
+
+    private static boolean isPersistedEventTypeMismatch(Throwable failure) {
+        for (Throwable cause = failure; cause != null; cause = cause.getCause()) {
+            if (cause instanceof IllegalArgumentException && cause.getMessage() != null
+                    && cause.getMessage().startsWith("Persisted value type")) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private void enableSecurityFeatures(DocumentBuilderFactory factory) throws ParserConfigurationException {
@@ -168,8 +187,6 @@ public class EhcacheCacheProvider extends AbstractCacheProvider<EhcacheTransacti
                         configuration.getString(LOG_MINING_BUFFER_EHCACHE_TRANSACTIONS_CONFIG, ""))
                 .replace("${log.mining.buffer.ehcache.processedtransactions.config}",
                         configuration.getString(LOG_MINING_BUFFER_EHCACHE_PROCESSED_TRANSACTIONS_CONFIG, ""))
-                .replace("${log.mining.buffer.ehcache.schemachanges.config}",
-                        configuration.getString(LOG_MINING_BUFFER_EHCACHE_SCHEMA_CHANGES_CONFIG, ""))
                 .replace("${log.mining.buffer.ehcache.events.config}",
                         configuration.getString(LOG_MINING_BUFFER_EHCACHE_EVENTS_CONFIG, ""));
     }
@@ -198,7 +215,7 @@ public class EhcacheCacheProvider extends AbstractCacheProvider<EhcacheTransacti
     private EhcacheLogMinerTransactionCache createTransactionCache(EhcacheEvictionListener evictionListener) {
         return new EhcacheLogMinerTransactionCache(
                 getCache(TRANSACTIONS_CACHE_NAME, String.class, EhcacheTransaction.class, evictionListener),
-                getCache(EVENTS_CACHE_NAME, String.class, LogMinerEvent.class, evictionListener),
+                getCache(EVENTS_CACHE_NAME, String.class, LogMinerRedoEvent.class, evictionListener),
                 evictionListener);
     }
 
@@ -206,13 +223,6 @@ public class EhcacheCacheProvider extends AbstractCacheProvider<EhcacheTransacti
         return new EhcacheLogMinerCache<>(
                 getCache(PROCESSED_TRANSACTIONS_CACHE_NAME, String.class, String.class, evictionListener),
                 PROCESSED_TRANSACTIONS_CACHE_NAME,
-                evictionListener);
-    }
-
-    private EhcacheLogMinerCache<String, String> createSchemaChangesCache(EhcacheEvictionListener evictionListener) {
-        return new EhcacheLogMinerCache<>(
-                getCache(SCHEMA_CHANGES_CACHE_NAME, String.class, String.class, evictionListener),
-                SCHEMA_CHANGES_CACHE_NAME,
                 evictionListener);
     }
 }

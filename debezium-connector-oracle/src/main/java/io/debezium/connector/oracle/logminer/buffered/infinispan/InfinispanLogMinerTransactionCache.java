@@ -16,8 +16,7 @@ import java.util.stream.Stream;
 import org.infinispan.commons.api.BasicCache;
 
 import io.debezium.connector.oracle.logminer.buffered.AbstractLogMinerTransactionCache;
-import io.debezium.connector.oracle.logminer.events.LogMinerEvent;
-import io.debezium.connector.oracle.logminer.events.RollbackToSavepointEvent;
+import io.debezium.connector.oracle.logminer.events.LogMinerRedoEvent;
 
 /**
  * A concrete implementation of {@link AbstractLogMinerTransactionCache} for Infinispan.
@@ -27,12 +26,12 @@ import io.debezium.connector.oracle.logminer.events.RollbackToSavepointEvent;
 public class InfinispanLogMinerTransactionCache extends AbstractLogMinerTransactionCache<InfinispanTransaction> {
 
     private final BasicCache<String, InfinispanTransaction> transactionCache;
-    private final BasicCache<String, LogMinerEvent> eventCache;
+    private final BasicCache<String, LogMinerRedoEvent> eventCache;
 
     // Heap-backed caches for quick access to specific metadata to speed up processing
     private final Map<String, TreeSet<Integer>> eventIdsByTransactionId = new HashMap<>();
 
-    public InfinispanLogMinerTransactionCache(BasicCache<String, InfinispanTransaction> transactionCache, BasicCache<String, LogMinerEvent> eventCache) {
+    public InfinispanLogMinerTransactionCache(BasicCache<String, InfinispanTransaction> transactionCache, BasicCache<String, LogMinerRedoEvent> eventCache) {
         this.transactionCache = transactionCache;
         this.eventCache = eventCache;
 
@@ -95,7 +94,7 @@ public class InfinispanLogMinerTransactionCache extends AbstractLogMinerTransact
     }
 
     @Override
-    public void forEachEvent(InfinispanTransaction transaction, InterruptiblePredicate<LogMinerEvent> predicate) throws InterruptedException {
+    public void forEachEvent(InfinispanTransaction transaction, InterruptiblePredicate<LogMinerRedoEvent> predicate) throws InterruptedException {
         final var events = eventIdsByTransactionId.get(transaction.getTransactionId());
         if (events != null) {
             for (int eventId : events) {
@@ -113,14 +112,14 @@ public class InfinispanLogMinerTransactionCache extends AbstractLogMinerTransact
     }
 
     @Override
-    public void addTransactionEvent(InfinispanTransaction transaction, int eventKey, LogMinerEvent event) {
+    public void addTransactionEvent(InfinispanTransaction transaction, int eventKey, LogMinerRedoEvent event) {
         eventCache.put(transaction.getEventId(eventKey), event);
         final TreeSet<Integer> eventIds = eventIdsByTransactionId.get(transaction.getTransactionId());
         if (eventIds.add(eventKey)) {
             transactionEvents++;
         }
 
-        if (event instanceof RollbackToSavepointEvent) {
+        if (event.isRollback()) {
             final Iterator<LogMinerEventEntry> reverseIterator = new LogMinerEventEntryIterator(
                     eventIds.descendingIterator(), id -> eventCache.get(transaction.getEventId(id)));
             final LogMinerEventEntryRange range = findRolledBackRange(transaction.getTransactionId(), reverseIterator);

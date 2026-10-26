@@ -12,7 +12,8 @@ import java.util.function.Function;
 import java.util.stream.Stream;
 
 import io.debezium.connector.oracle.Scn;
-import io.debezium.connector.oracle.logminer.events.LogMinerEvent;
+import io.debezium.connector.oracle.logminer.events.CachedEvent;
+import io.debezium.connector.oracle.logminer.events.LogMinerRedoEvent;
 
 /**
  * A cache implementation that stores transactions and their respective events.
@@ -118,7 +119,7 @@ public interface LogMinerTransactionCache<T extends Transaction> {
      * @param predicate the consumer, should not be {@code null}
      * @throws InterruptedException thrown if the thread is interrupted
      */
-    void forEachEvent(T transaction, InterruptiblePredicate<LogMinerEvent> predicate) throws InterruptedException;
+    void forEachEvent(T transaction, InterruptiblePredicate<LogMinerRedoEvent> predicate) throws InterruptedException;
 
     /**
      * Add a transaction event to the cache.
@@ -127,7 +128,7 @@ public interface LogMinerTransactionCache<T extends Transaction> {
      * @param eventKey the event key, should not be {@code null}
      * @param event the event, should not be {@code null}
      */
-    void addTransactionEvent(T transaction, int eventKey, LogMinerEvent event);
+    void addTransactionEvent(T transaction, int eventKey, LogMinerRedoEvent event);
 
     /**
      * Removes all events for a given transaction.
@@ -191,7 +192,7 @@ public interface LogMinerTransactionCache<T extends Transaction> {
      * @param event the event to track, should not be {@code null}
      * @return the previously tracked event for the transaction, or {@code null} if there was none
      */
-    LogMinerEvent putLastEnqueuedEvent(String transactionId, LogMinerEvent event);
+    CachedEvent putLastEnqueuedEvent(String transactionId, CachedEvent event);
 
     /**
      * Removes the tracked last enqueued event for the specified transaction. This should be done
@@ -200,7 +201,7 @@ public interface LogMinerTransactionCache<T extends Transaction> {
      * @param transactionId the transaction identifier, should not be {@code null}
      * @return the removed event, or {@code null} if none was tracked
      */
-    LogMinerEvent removeLastEnqueuedEvent(String transactionId);
+    CachedEvent removeLastEnqueuedEvent(String transactionId);
 
     /**
      * Clears the contents of the cache.

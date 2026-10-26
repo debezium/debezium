@@ -21,11 +21,6 @@ public interface CacheProvider<T extends Transaction> extends AutoCloseable {
     String PROCESSED_TRANSACTIONS_CACHE_NAME = "processed-transactions";
 
     /**
-     * The name for the schema changes cache
-     */
-    String SCHEMA_CHANGES_CACHE_NAME = "schema-changes";
-
-    /**
      * The name for the LogMiner events cache
      */
     String EVENTS_CACHE_NAME = "events";
@@ -41,18 +36,6 @@ public interface CacheProvider<T extends Transaction> extends AutoCloseable {
      * @return the transaction cache, never {@code null}
      */
     LogMinerTransactionCache<T> getTransactionCache();
-
-    /**
-     * Get the Schema Changes cache
-     *
-     * <ul>
-     *     <li>Key - The system change number of the schema change</li>
-     *     <li>Value - The table the schema change is related to</li>
-     * </ul>
-     *
-     * @return the schema changes cache, never {@code null}
-     */
-    LogMinerCache<String, String> getSchemaChangesCache();
 
     /**
      * Get the processed transactions cache

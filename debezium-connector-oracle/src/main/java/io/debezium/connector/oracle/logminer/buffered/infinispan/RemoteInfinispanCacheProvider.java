@@ -7,7 +7,6 @@ package io.debezium.connector.oracle.logminer.buffered.infinispan;
 
 import static io.debezium.connector.oracle.OracleConnectorConfig.LOG_MINING_BUFFER_INFINISPAN_CACHE_EVENTS;
 import static io.debezium.connector.oracle.OracleConnectorConfig.LOG_MINING_BUFFER_INFINISPAN_CACHE_PROCESSED_TRANSACTIONS;
-import static io.debezium.connector.oracle.OracleConnectorConfig.LOG_MINING_BUFFER_INFINISPAN_CACHE_SCHEMA_CHANGES;
 import static io.debezium.connector.oracle.OracleConnectorConfig.LOG_MINING_BUFFER_INFINISPAN_CACHE_TRANSACTIONS;
 
 import java.util.Map;
@@ -50,9 +49,8 @@ public class RemoteInfinispanCacheProvider extends AbstractCacheProvider<Infinis
 
     private final boolean dropBufferOnStop;
     private final RemoteCacheManager cacheManager;
-    private final LogMinerTransactionCache<InfinispanTransaction> transactionCache;
+    private final InfinispanLogMinerTransactionCache transactionCache;
     private final InfinispanLogMinerCache<String, String> processedTransactionsCache;
-    private final InfinispanLogMinerCache<String, String> schemaChangesCache;
 
     public RemoteInfinispanCacheProvider(OracleConnectorConfig connectorConfig) {
         LOGGER.info("Using Infinispan in Hotrod client mode to buffer transactions");
@@ -62,19 +60,13 @@ public class RemoteInfinispanCacheProvider extends AbstractCacheProvider<Infinis
 
         this.transactionCache = createTransactionCache(connectorConfig);
         this.processedTransactionsCache = createProcessedTransactionCache(connectorConfig);
-        this.schemaChangesCache = createSchemaChangesCache(connectorConfig);
-
+        verifyStoredEventFormat();
         displayCacheStatistics();
     }
 
     @Override
     public LogMinerTransactionCache<InfinispanTransaction> getTransactionCache() {
         return transactionCache;
-    }
-
-    @Override
-    public LogMinerCache<String, String> getSchemaChangesCache() {
-        return schemaChangesCache;
     }
 
     @Override
@@ -89,13 +81,11 @@ public class RemoteInfinispanCacheProvider extends AbstractCacheProvider<Infinis
             if (dropBufferOnStop) {
                 LOGGER.info("Clearing infinispan caches");
                 transactionCache.clear();
-                schemaChangesCache.clear();
                 processedTransactionsCache.clear();
 
                 // this block should only be used by tests, should we wrap this in case admin rights aren't given?
                 cacheManager.administration().removeCache(TRANSACTIONS_CACHE_NAME);
                 cacheManager.administration().removeCache(PROCESSED_TRANSACTIONS_CACHE_NAME);
-                cacheManager.administration().removeCache(SCHEMA_CHANGES_CACHE_NAME);
                 cacheManager.administration().removeCache(EVENTS_CACHE_NAME);
             }
             LOGGER.info("Shutting down infinispan remote caches");
@@ -139,11 +129,6 @@ public class RemoteInfinispanCacheProvider extends AbstractCacheProvider<Infinis
     private InfinispanLogMinerCache<String, String> createProcessedTransactionCache(OracleConnectorConfig connectorConfig) {
         return new InfinispanLogMinerCache<>(
                 createCache(PROCESSED_TRANSACTIONS_CACHE_NAME, connectorConfig, LOG_MINING_BUFFER_INFINISPAN_CACHE_PROCESSED_TRANSACTIONS));
-    }
-
-    private InfinispanLogMinerCache<String, String> createSchemaChangesCache(OracleConnectorConfig connectorConfig) {
-        return new InfinispanLogMinerCache<>(
-                createCache(SCHEMA_CHANGES_CACHE_NAME, connectorConfig, LOG_MINING_BUFFER_INFINISPAN_CACHE_SCHEMA_CHANGES));
     }
 
     private static Configuration createClientConfig(OracleConnectorConfig connectorConfig) {

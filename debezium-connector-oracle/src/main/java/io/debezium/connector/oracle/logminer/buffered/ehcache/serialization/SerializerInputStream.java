@@ -8,11 +8,9 @@ package io.debezium.connector.oracle.logminer.buffered.ehcache.serialization;
 import java.io.DataInputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
 import java.time.Instant;
-import java.util.Arrays;
-import java.util.Objects;
 
-import io.debezium.connector.oracle.OracleValueConverters;
 import io.debezium.connector.oracle.Scn;
 import io.debezium.relational.TableId;
 
@@ -21,7 +19,7 @@ import io.debezium.relational.TableId;
  *
  * @author Chris Cranford
  */
-public class SerializerInputStream extends AbstractSerializerStream {
+public class SerializerInputStream implements AutoCloseable {
 
     private final DataInputStream delegate;
 
@@ -111,48 +109,17 @@ public class SerializerInputStream extends AbstractSerializerStream {
     }
 
     /**
-     * Reads an object array from the stream.
+     * Reads a string written by {@link SerializerOutputStream#writeLongString(String)}.
      *
-     * @return the object array, never {@code null}
+     * @return the string value or {@code null} when null
      * @throws IOException when a read operation fails
      */
-    public Object[] readObjectArray() throws IOException {
-        return stringArrayToObjectArray(readStringArray());
-    }
-
-    /**
-     * Reads a string array from the stream.
-     *
-     * @return the string array, never {@code null}
-     * @throws IOException when a read operation fails
-     */
-    protected String[] readStringArray() throws IOException {
-        final int size = readInt();
-        final String[] data = new String[size];
-        for (int i = 0; i < size; i++) {
-            data[i] = readString();
+    public String readLongString() throws IOException {
+        if (delegate.readBoolean()) {
+            return null;
         }
-        return data;
-    }
-
-    /**
-     * Convert an array of string values, typically from the encoded stream back into their
-     * Java object representations after being deserialized.
-     *
-     * @param values array of string values to convert
-     * @return array of objects after conversion
-     */
-    protected Object[] stringArrayToObjectArray(String[] values) {
-        Objects.requireNonNull(values);
-        Object[] results = Arrays.copyOf(values, values.length, Object[].class);
-        for (int i = 0; i < results.length; ++i) {
-            if (results[i].equals(NULL_VALUE_SENTINEL)) {
-                results[i] = null;
-            }
-            else if (results[i].equals(UNAVAILABLE_VALUE_SENTINEL)) {
-                results[i] = OracleValueConverters.UNAVAILABLE_VALUE;
-            }
-        }
-        return results;
+        final byte[] bytes = new byte[delegate.readInt()];
+        delegate.readFully(bytes);
+        return new String(bytes, StandardCharsets.UTF_8);
     }
 }

@@ -32,7 +32,6 @@ public class EmbeddedInfinispanFindRolledBackRangeTest extends AbstractFindRolle
         final Configuration.Builder configBuilder = Configuration.create()
                 .with(OracleConnectorConfig.LOG_MINING_BUFFER_TYPE, bufferType.getValue())
                 .with(OracleConnectorConfig.LOG_MINING_BUFFER_DROP_ON_STOP, Boolean.TRUE);
-
         return TestHelper.withDefaultInfinispanCacheConfigurations(bufferType, configBuilder).build();
     }
 }

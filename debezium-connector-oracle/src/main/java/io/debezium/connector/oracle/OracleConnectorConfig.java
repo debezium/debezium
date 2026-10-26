@@ -480,14 +480,19 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
             .withValidation(OracleConnectorConfig::validateLogMiningInfinispanCacheConfiguration)
             .withDescription("Specifies the XML configuration for the Infinispan 'events' cache");
 
+    /**
+     * Deprecated. The schema changes cache no longer exists: schema changes are stored in their transaction and
+     * applied when it commits. The option is accepted and ignored so that existing configurations keep working.
+     */
+    @Deprecated
     public static final Field LOG_MINING_BUFFER_INFINISPAN_CACHE_SCHEMA_CHANGES = Field.create("log.mining.buffer.infinispan.cache.schema_changes")
-            .withDisplayName("Infinispan 'schema-changes' cache configuration")
+            .withDisplayName("Infinispan 'schema-changes' cache configuration (deprecated)")
             .withType(Type.STRING)
             .withWidth(Width.LONG)
             .withImportance(Importance.LOW)
             .withGroup(Field.createGroupEntry(Field.Group.CONNECTION_ADVANCED))
-            .withValidation(OracleConnectorConfig::validateLogMiningInfinispanCacheConfiguration)
-            .withDescription("Specifies the XML configuration for the Infinispan 'schema-changes' cache");
+            .withDescription("Deprecated and ignored. The buffer no longer keeps a separate 'schema-changes' cache, as schema " +
+                    "changes are stored with their transaction and applied when it commits.");
 
     public static final Field LOG_MINING_BUFFER_DROP_ON_STOP = Field.create("log.mining.buffer.drop.on.stop")
             .withDisplayName("Controls whether the buffer cache is dropped when connector is stopped")
@@ -689,14 +694,18 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
             .withDescription("Specifies the inner body the Ehcache <cache/> tag for the processed transaction cache, but " +
                     "should not include the <key-type/> nor the <value-type/> attributes as these are managed by Debezium.");
 
+    /**
+     * Deprecated. The schema changes cache no longer exists: schema changes are stored in their transaction and
+     * applied when it commits. The option is accepted and ignored so that existing configurations keep working.
+     */
+    @Deprecated
     public static final Field LOG_MINING_BUFFER_EHCACHE_SCHEMA_CHANGES_CONFIG = Field.create("log.mining.buffer.ehcache.schemachanges.config")
-            .withDisplayName("Defines the partial ehcache configuration for the schema changes cache")
+            .withDisplayName("Defines the partial ehcache configuration for the schema changes cache (deprecated)")
             .withType(Type.STRING)
             .withWidth(Width.LONG)
             .withImportance(Importance.LOW)
-            .withValidation(OracleConnectorConfig::validateEhcacheCacheConfigField)
-            .withDescription("Specifies the inner body the Ehcache <cache/> tag for the schema changes cache, but " +
-                    "should not include the <key-type/> nor the <value-type/> attributes as these are managed by Debezium.");
+            .withDescription("Deprecated and ignored. The buffer no longer keeps a separate schema changes cache, as schema " +
+                    "changes are stored with their transaction and applied when it commits.");
 
     public static final Field LOG_MINING_BUFFER_EHCACHE_EVENTS_CONFIG = Field.create("log.mining.buffer.ehcache.events.config")
             .withDisplayName("Defines the partial ehcache configuration for the events cache")
@@ -998,6 +1007,7 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
         this.logMiningMaxScnDeviation = Duration.ofMillis(config.getLong(LOG_MINING_MAX_SCN_DEVIATION_MS));
         this.logMiningInifispanGlobalConfiguration = config.getString(LOG_MINING_BUFFER_INFINISPAN_CACHE_GLOBAL);
         this.logMiningSchemaChangesUsernameExcludes = Strings.setOf(config.getString(LOG_MINING_SCHEMA_CHANGES_USERNAME_EXCLUDE_LIST), String::new);
+        warnIfSchemaChangesCacheConfigured(config);
         this.logMiningIncludeRedoSql = config.getBoolean(LOG_MINING_INCLUDE_REDO_SQL);
         this.logMiningIncludeInternalEvents = config.getBoolean(LOG_MINING_INCLUDE_INTERNAL_EVENTS);
         this.logMiningUseSqlRelaxedQuoteDetection = config.getBoolean(LOG_MINING_SQL_RELAXED_QUOTE_DETECTION);
@@ -2290,6 +2300,14 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
             }
         }
         return 0;
+    }
+
+    private static void warnIfSchemaChangesCacheConfigured(Configuration config) {
+        for (Field field : List.of(LOG_MINING_BUFFER_INFINISPAN_CACHE_SCHEMA_CHANGES, LOG_MINING_BUFFER_EHCACHE_SCHEMA_CHANGES_CONFIG)) {
+            if (!Strings.isNullOrBlank(config.getString(field))) {
+                LOGGER.warn("The property '{}' is deprecated and ignored; the transaction buffer no longer keeps a schema changes cache.", field.name());
+            }
+        }
     }
 
     public static int validateLogMiningInfinispanCacheConfiguration(Configuration config, Field field, ValidationOutput problems) {

@@ -52,7 +52,6 @@ import io.debezium.connector.oracle.logminer.events.LobWriteEvent;
 import io.debezium.connector.oracle.logminer.events.LogMinerEvent;
 import io.debezium.connector.oracle.logminer.events.LogMinerEventRow;
 import io.debezium.connector.oracle.logminer.events.RedoSqlDmlEvent;
-import io.debezium.connector.oracle.logminer.events.RollbackToSavepointEvent;
 import io.debezium.connector.oracle.logminer.events.SelectLobLocatorEvent;
 import io.debezium.connector.oracle.logminer.events.XmlBeginEvent;
 import io.debezium.connector.oracle.logminer.events.XmlEndEvent;
@@ -63,6 +62,7 @@ import io.debezium.connector.oracle.logminer.logwriter.RacCommitLogWriterFlushSt
 import io.debezium.connector.oracle.logminer.logwriter.ReadOnlyLogWriterFlushStrategy;
 import io.debezium.connector.oracle.logminer.parser.DmlParserException;
 import io.debezium.connector.oracle.logminer.parser.ExtendedStringParser;
+import io.debezium.connector.oracle.logminer.parser.ExtendedStringWriteParser;
 import io.debezium.connector.oracle.logminer.parser.LobWriteParser;
 import io.debezium.connector.oracle.logminer.parser.LobWriteParser.LobWrite;
 import io.debezium.connector.oracle.logminer.parser.LogMinerColumnResolverDmlParser;
@@ -84,13 +84,14 @@ import io.debezium.relational.Column;
 import io.debezium.relational.Table;
 import io.debezium.relational.TableId;
 import io.debezium.relational.Tables;
-import io.debezium.text.ParsingException;
 import io.debezium.util.Clock;
 import io.debezium.util.LRUCacheMap;
 import io.debezium.util.Loggings;
 import io.debezium.util.Metronome;
 import io.debezium.util.Stopwatch;
 import io.debezium.util.Strings;
+
+import oracle.sql.CharacterSet;
 
 /**
  * An abstract implementation of the {@link StreamingChangeEventSource} for Oracle LogMiner, that is the basis
@@ -142,7 +143,6 @@ public abstract class AbstractLogMinerStreamingChangeEventSource
     private OracleOffsetContext effectiveOffset;
     private OraclePartition partition;
     private ChangeEventSourceContext context;
-    private long currentSleepTime;
     private OffsetActivityMonitor<OraclePartition, OracleOffsetContext> offsetActivityMonitor;
 
     public AbstractLogMinerStreamingChangeEventSource(OracleConnectorConfig connectorConfig,
@@ -652,17 +652,18 @@ public abstract class AbstractLogMinerStreamingChangeEventSource
     }
 
     /**
-     * Handles processing {@code INSERT}, {@code UPDATE}, and {@code DELETE} operation events.
+     * The checks a data change row must pass before it is parsed or stored, all answered from the row's own
+     * columns: a non-undo row must carry redo SQL, redo SQL LogMiner could not reconstruct is a failure unless
+     * the column resolver parser can handle it, and a row for a temporary table is dropped.
      *
      * @param event the event, should not be {@code null}
-     * @throws SQLException if a database exception is thrown
-     * @throws InterruptedException if the thread is interrupted
+     * @return true if the row is processed further, false if it is dropped
      */
-    protected void handleDataChangeEvent(LogMinerEventRow event) throws SQLException, InterruptedException {
+    protected boolean isDataChangeEventProcessable(LogMinerEventRow event) {
         if (!event.isRollbackFlag() && Strings.isNullOrBlank(event.getRedoSql())) {
             LOGGER.trace("Data event in transaction {} with SCN {} has empty redo SQL: {}",
                     event.getTransactionId(), event.getScn(), Loggings.maybeRedactSensitiveData(event));
-            return;
+            return false;
         }
 
         Loggings.logDebugAndTraceRecord(LOGGER, event, "DML: {}", event);
@@ -675,7 +676,7 @@ public abstract class AbstractLogMinerStreamingChangeEventSource
             if (!isDictionaryMismatchPossible() || !isTableKnown(event.getTableId())) {
                 // Fail-fast: The SQL_REDO column is not valid and cannot be parsed
                 notifyEventProcessingFailure(event, null);
-                return;
+                return false;
             }
         }
 
@@ -685,6 +686,65 @@ public abstract class AbstractLogMinerStreamingChangeEventSource
         // stream, they should be gracefully discarded.
         if (isNoSqlRedoForTemporaryTable(event)) {
             Loggings.logDebugAndTraceRecord(LOGGER, event, "Skipped a change for a temporary table.");
+            return false;
+        }
+
+        return true;
+    }
+
+    protected SelectLobParser getSelectLobParser() {
+        return selectLobParser;
+    }
+
+    protected ExtendedStringParser getExtendedStringParser() {
+        return extendedStringParser;
+    }
+
+    protected XmlBeginParser getXmlBeginParser() {
+        return xmlBeginParser;
+    }
+
+    protected Tables.TableFilter getTableFilter() {
+        return tableFilter;
+    }
+
+    protected CharacterSet getDatabaseCharacterSet() {
+        return streamingConnection.getDatabaseCharacterSet();
+    }
+
+    /**
+     * Resolves the relational table of a stored event when its transaction commits: the table as the schema
+     * knows it, or, for a captured table the schema does not know yet, its current definition fetched from
+     * the database, which also emits the schema change.
+     *
+     * @param tableId the table identifier, can be {@code null}
+     * @return the table, or {@code null} when the event is for no captured table
+     * @throws SQLException if fetching the table definition fails
+     * @throws InterruptedException if the thread is interrupted
+     */
+    protected Table resolveTableAtCommit(TableId tableId) throws SQLException, InterruptedException {
+        if (tableId == null) {
+            return null;
+        }
+        final Table table = getSchema().tableFor(tableId);
+        if (table != null) {
+            return table;
+        }
+        if (tableFilter.isIncluded(tableId)) {
+            return dispatchSchemaChangeEventAndGetTableForNewConfiguredTable(tableId);
+        }
+        return null;
+    }
+
+    /**
+     * Handles processing {@code INSERT}, {@code UPDATE}, and {@code DELETE} operation events.
+     *
+     * @param event the event, should not be {@code null}
+     * @throws SQLException if a database exception is thrown
+     * @throws InterruptedException if the thread is interrupted
+     */
+    protected void handleDataChangeEvent(LogMinerEventRow event) throws SQLException, InterruptedException {
+        if (!isDataChangeEventProcessable(event)) {
             return;
         }
 
@@ -693,15 +753,8 @@ public abstract class AbstractLogMinerStreamingChangeEventSource
         executeDataChangeEventPreDispatchSteps(event);
 
         final Table table = getTableForDataEvent(event);
-        if (table != null) {
-            if (isDispatchAllowedForDataChangeEvent(event)) {
-                if (event.isRollbackFlag()) {
-                    enqueueEvent(event, new RollbackToSavepointEvent(event));
-                }
-                else {
-                    dispatchDataChangeEventInternal(event, table);
-                }
-            }
+        if (table != null && isDispatchAllowedForDataChangeEvent(event)) {
+            dispatchDataChangeEventInternal(event, table);
         }
     }
 
@@ -808,26 +861,7 @@ public abstract class AbstractLogMinerStreamingChangeEventSource
                 return;
             }
 
-            final String data;
-            try {
-                final String sql = event.getRedoSql();
-                int endIndex = sql.lastIndexOf(";");
-                if (endIndex == -1) {
-                    throw new DebeziumException("Failed to find end index on 32K_WRITE operation");
-                }
-
-                endIndex = sql.lastIndexOf(";", endIndex - 1);
-                if (endIndex == -1) {
-                    throw new DebeziumException("Failed to find end index on 32K_WRITE operation");
-                }
-
-                data = sql.substring(12, endIndex - 1);
-            }
-            catch (Exception e) {
-                throw new ParsingException(null, "Failed to parse 32K_WRITE event", e);
-            }
-
-            enqueueEvent(event, new ExtendedStringWriteEvent(event, data));
+            enqueueEvent(event, new ExtendedStringWriteEvent(event, ExtendedStringWriteParser.parse(event.getRedoSql())));
         }
     }
 
@@ -1341,12 +1375,20 @@ public abstract class AbstractLogMinerStreamingChangeEventSource
                         getMetrics(),
                         () -> handleTruncateEvent(event)));
 
+        onSchemaChangeDispatched(tableId);
+    }
+
+    /**
+     * Completes the dispatch of a schema change, whichever path dispatched it: the table is dropped from the
+     * column-based parser's cache when the dictionary may no longer match, so that the column positions are
+     * refreshed by the next data change that needs them, and the change is counted in the batch metrics.
+     *
+     * @param tableId the table the schema change applies to, should not be {@code null}
+     */
+    protected void onSchemaChangeDispatched(TableId tableId) {
         if (isDictionaryMismatchPossible()) {
-            // Remove table from the column-based parser cache
-            // It will be refreshed on the next DML event that requires special parsing
             reconstructColumnDmlParser.removeTableFromCache(tableId);
         }
-
         getBatchMetrics().schemaChangeObserved();
     }
 
@@ -1522,6 +1564,20 @@ public abstract class AbstractLogMinerStreamingChangeEventSource
         final LogMinerDmlEntry parsedEvent = LogMinerDmlEntryImpl.forValuelessDdl();
         parsedEvent.setObjectName(event.getTableName());
         parsedEvent.setObjectOwner(event.getTablespaceName());
+
+        return parsedEvent;
+    }
+
+    /**
+     * Builds the value-less entry a {@code TRUNCATE} change event carries for the given table.
+     *
+     * @param tableId the truncated table, should not be {@code null}
+     * @return the parsed entry, never {@code null}
+     */
+    protected LogMinerDmlEntry parseTruncateEvent(TableId tableId) {
+        final LogMinerDmlEntry parsedEvent = LogMinerDmlEntryImpl.forValuelessDdl();
+        parsedEvent.setObjectName(tableId.table());
+        parsedEvent.setObjectOwner(tableId.schema());
 
         return parsedEvent;
     }
