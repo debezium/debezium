@@ -16,7 +16,7 @@ import io.debezium.doc.FixFor;
 import io.debezium.pipeline.txmetadata.DefaultTransactionStructMaker;
 
 /**
- * Verifies that {@link PostgresTransactionStructMaker} augments the transaction metadata schemas
+ * Verifies that {@link PostgresTransactionStructMaker} augments the transaction metadata value schema
  * with an optional {@code commit_lsn} field while preserving every field of the base schema (name,
  * type and optionality), and that the shared/core schema is left untouched.
  */
@@ -33,8 +33,10 @@ public class PostgresTransactionStructMakerTest {
 
     @Test
     @FixFor("debezium/dbz#2353")
-    void transactionBlockSchemaAddsOptionalCommitLsn() {
-        assertSchemaAugmentedWithCommitLsn(defaultMaker.getTransactionBlockSchema(), postgresMaker.getTransactionBlockSchema());
+    void transactionBlockSchemaIsUnchanged() {
+        // commit_lsn is exposed on data events via source.commit_lsn, not in the transaction block
+        assertThat(postgresMaker.getTransactionBlockSchema()
+                .field(PostgresTransactionStructMaker.DEBEZIUM_TRANSACTION_COMMIT_LSN_KEY)).isNull();
     }
 
     @Test
@@ -50,7 +52,7 @@ public class PostgresTransactionStructMakerTest {
 
     /**
      * Asserts that the Postgres schema keeps the base schema's name, type and optionality, preserves
-     * every base field (name + type), and appends the optional {@code commit_lsn} field with a bumped
+     * every base field (name + type), and appends the optional {@code commit_lsn} field, keeping the base
      * schema version.
      */
     private static void assertSchemaAugmentedWithCommitLsn(Schema base, Schema pg) {
@@ -58,7 +60,7 @@ public class PostgresTransactionStructMakerTest {
         assertThat(pg.type()).isEqualTo(base.type());
         assertThat(pg.name()).isEqualTo(base.name());
         assertThat(pg.isOptional()).isEqualTo(base.isOptional());
-        assertThat(pg.version()).isEqualTo(2);
+        assertThat(pg.version()).isEqualTo(base.version());
 
         // Every base field is preserved with the same field schema, in order.
         for (Field baseField : base.fields()) {

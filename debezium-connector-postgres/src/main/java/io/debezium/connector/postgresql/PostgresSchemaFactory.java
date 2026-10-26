@@ -5,7 +5,6 @@
  */
 package io.debezium.connector.postgresql;
 
-import org.apache.kafka.connect.data.Field;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
 
@@ -13,15 +12,11 @@ import io.debezium.config.CommonConnectorConfig;
 import io.debezium.connector.postgresql.data.Ltree;
 import io.debezium.connector.postgresql.pipeline.txmetadata.PostgresTransactionStructMaker;
 import io.debezium.data.Envelope;
+import io.debezium.data.SchemaUtil;
 import io.debezium.schema.SchemaFactory;
 import io.debezium.schema.SchemaNameAdjuster;
 
 public class PostgresSchemaFactory extends SchemaFactory {
-
-    // Version of the Postgres transaction metadata schemas. Kept independent of the core
-    // transaction schema version so a future change to the core schema does not implicitly
-    // change the Postgres schema version.
-    private static final int POSTGRES_TRANSACTION_SCHEMA_VERSION = 2;
 
     public PostgresSchemaFactory() {
         super();
@@ -34,32 +29,19 @@ public class PostgresSchemaFactory extends SchemaFactory {
     }
 
     /**
-     * Postgres augments the transaction metadata schemas with an optional {@code commit_lsn} field
-     * (the pgoutput {@code Begin.final_lsn}). The field is added here, in the connector's schema
+     * Postgres augments the transaction (BEGIN/END) value schema with an optional {@code commit_lsn}
+     * field (the pgoutput {@code Begin.final_lsn}). The field is added here, in the connector's schema
      * factory, so the shared/core transaction schema used by other connectors is unaffected.
      */
-    @Override
-    public Schema transactionBlockSchema() {
-        return withCommitLsn(super.transactionBlockSchema());
-    }
-
     @Override
     public Schema transactionValueSchema(SchemaNameAdjuster adjuster) {
         return withCommitLsn(super.transactionValueSchema(adjuster));
     }
 
     private static Schema withCommitLsn(Schema base) {
-        final SchemaBuilder builder = SchemaBuilder.struct()
-                .name(base.name())
-                .version(POSTGRES_TRANSACTION_SCHEMA_VERSION);
-        if (base.isOptional()) {
-            builder.optional();
-        }
-        for (Field field : base.fields()) {
-            builder.field(field.name(), field.schema());
-        }
-        builder.field(PostgresTransactionStructMaker.DEBEZIUM_TRANSACTION_COMMIT_LSN_KEY, Schema.OPTIONAL_INT64_SCHEMA);
-        return builder.build();
+        return SchemaUtil.copySchema(base)
+                .field(PostgresTransactionStructMaker.DEBEZIUM_TRANSACTION_COMMIT_LSN_KEY, Schema.OPTIONAL_INT64_SCHEMA)
+                .build();
     }
 
     /*

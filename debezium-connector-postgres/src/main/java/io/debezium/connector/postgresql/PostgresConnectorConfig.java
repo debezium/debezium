@@ -1574,15 +1574,11 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
         return getSourceInfoStructMaker(SOURCE_INFO_STRUCT_MAKER, Module.name(), Module.version(), this);
     }
 
-    // PostgreSQL defaults the transaction metadata factory to PostgresTransactionMetadataFactory
-    // (which adds the optional commit_lsn field). An explicitly configured factory still wins,
-    // because it is read from the same 'transaction.metadata.factory' property.
-    private static final Field TRANSACTION_METADATA_FACTORY_FIELD = TRANSACTION_METADATA_FACTORY
-            .withDefault(PostgresTransactionMetadataFactory.class.getName());
-
     @Override
     public TransactionMetadataFactory getTransactionMetadataFactory() {
-        return getTransactionMetadataFactory(TRANSACTION_METADATA_FACTORY_FIELD);
+        // PostgreSQL defaults the factory to PostgresTransactionMetadataFactory (adds the optional commit_lsn field);
+        // an explicitly configured 'transaction.metadata.factory' still wins.
+        return getTransactionMetadataFactory(TRANSACTION_METADATA_FACTORY.withDefault(PostgresTransactionMetadataFactory.class.getName()));
     }
 
     private static final ConfigDefinition CONFIG_DEFINITION = RelationalDatabaseConnectorConfig.CONFIG_DEFINITION.edit()

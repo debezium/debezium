@@ -193,8 +193,8 @@ public class TransactionMetadataIT extends AbstractAsyncEngineConnectorTest {
     @SkipWhenDecoderPluginNameIsNot(value = SkipWhenDecoderPluginNameIsNot.DecoderPluginName.PGOUTPUT, reason = "The commit LSN is taken from the pgoutput BEGIN message (final_lsn); other decoders do not provide it")
     void transactionMetadataContainsCommitLsn() throws InterruptedException {
         // The commit LSN (pgoutput Begin.final_lsn) must be exposed on every event of a
-        // transaction: on the BEGIN and END transaction-metadata records, and on both the
-        // "transaction" block and the "source" block of each data change event. It must be
+        // transaction: on the BEGIN and END transaction-metadata records and on the
+        // "source" block of each data change event. It must be
         // identical across all events of the same transaction.
         TestHelper.dropDefaultReplicationSlot();
         TestHelper.execute(SETUP_TABLES_STMT);
@@ -230,12 +230,10 @@ public class TransactionMetadataIT extends AbstractAsyncEngineConnectorTest {
         final Long beginCommitLsn = ((Struct) records.get(0).value()).getInt64("commit_lsn");
         assertThat(beginCommitLsn).as("commit_lsn missing on BEGIN event").isNotNull();
 
-        // Each data event carries the same commit LSN on both the transaction and the source block
+        // Each data event carries the same commit LSN in the source block (and not in the transaction block)
         for (SourceRecord dataRecord : Arrays.asList(records.get(1), records.get(2))) {
             final Struct value = (Struct) dataRecord.value();
-            assertThat(value.getStruct("transaction").getInt64("commit_lsn"))
-                    .as("commit_lsn missing/mismatched on data transaction block")
-                    .isEqualTo(beginCommitLsn);
+            assertThat(value.getStruct("transaction").schema().field("commit_lsn")).isNull();
             assertThat(value.getStruct("source").getInt64("commit_lsn"))
                     .as("commit_lsn missing/mismatched on data source block")
                     .isEqualTo(beginCommitLsn);
@@ -245,6 +243,32 @@ public class TransactionMetadataIT extends AbstractAsyncEngineConnectorTest {
         assertThat(((Struct) records.get(3).value()).getInt64("commit_lsn"))
                 .as("commit_lsn missing/mismatched on END event")
                 .isEqualTo(beginCommitLsn);
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2353")
+    @SkipWhenDecoderPluginNameIsNot(value = SkipWhenDecoderPluginNameIsNot.DecoderPluginName.PGOUTPUT, reason = "The commit LSN is taken from the pgoutput BEGIN message (final_lsn); other decoders do not provide it")
+    void sourceCommitLsnIsPopulatedWithoutTransactionMetadata() throws InterruptedException {
+        TestHelper.dropDefaultReplicationSlot();
+        TestHelper.execute(SETUP_TABLES_STMT);
+        Configuration config = TestHelper.defaultConfig()
+                .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NO_DATA.getValue())
+                .with(PostgresConnectorConfig.DROP_SLOT_ON_STOP, Boolean.TRUE)
+                .with(PostgresConnectorConfig.PROVIDE_TRANSACTION_METADATA, false)
+                .build();
+        start(PostgresConnector.class, config);
+        assertConnectorIsRunning();
+        TestHelper.waitForDefaultReplicationSlotBeActive();
+
+        TestHelper.execute(INSERT_STMT);
+
+        // INSERT_STMT inserts into two tables in one transaction
+        final List<SourceRecord> records = consumeRecordsByTopic(2).allRecordsInOrder();
+        assertThat(records).hasSize(2);
+
+        final Long commitLsn = ((Struct) records.get(0).value()).getStruct("source").getInt64("commit_lsn");
+        assertThat(commitLsn).as("source.commit_lsn missing on data event").isNotNull();
+        assertThat(((Struct) records.get(1).value()).getStruct("source").getInt64("commit_lsn")).isEqualTo(commitLsn);
     }
 
     @Test

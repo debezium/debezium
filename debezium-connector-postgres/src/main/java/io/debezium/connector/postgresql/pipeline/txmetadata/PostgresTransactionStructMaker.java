@@ -17,33 +17,26 @@ import io.debezium.schema.SchemaNameAdjuster;
 
 /**
  * Postgres-specific {@link io.debezium.pipeline.txmetadata.TransactionStructMaker} that augments the
- * transaction-metadata schemas with an optional {@code commit_lsn} field.
+ * transaction-metadata (BEGIN/END) value schema with an optional {@code commit_lsn} field.
  *
  * <p>The value is the transaction's commit LSN (pgoutput {@code Begin.final_lsn}): constant across
  * every event of a transaction and strictly increasing in commit order, which makes it usable as a
  * single-scalar ordering/dedup watermark downstream (unlike the per-row {@code source.lsn}).
  *
- * <p>The augmented schemas are produced by {@link PostgresSchemaFactory}, so the shared/core
+ * <p>The augmented schema is produced by {@link PostgresSchemaFactory}, so the shared/core
  * transaction schema used by other connectors is unaffected.
  */
 public class PostgresTransactionStructMaker extends DefaultTransactionStructMaker {
 
     public static final String DEBEZIUM_TRANSACTION_COMMIT_LSN_KEY = "commit_lsn";
 
-    private final Schema postgresTransactionBlockSchema;
     private final Schema postgresTransactionValueSchema;
 
     public PostgresTransactionStructMaker(Configuration config) {
         super(config);
         final SchemaNameAdjuster adjuster = CommonConnectorConfig.SchemaNameAdjustmentMode
                 .parse(config.getString(SCHEMA_NAME_ADJUSTMENT_MODE)).createAdjuster();
-        this.postgresTransactionBlockSchema = PostgresSchemaFactory.get().transactionBlockSchema();
         this.postgresTransactionValueSchema = PostgresSchemaFactory.get().transactionValueSchema(adjuster);
-    }
-
-    @Override
-    public Schema getTransactionBlockSchema() {
-        return postgresTransactionBlockSchema;
     }
 
     @Override
