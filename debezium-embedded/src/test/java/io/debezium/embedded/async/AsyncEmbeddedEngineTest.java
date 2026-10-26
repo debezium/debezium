@@ -553,10 +553,10 @@ public class AsyncEmbeddedEngineTest {
     void testTaskIsStoppedEvenWhenConsumerIsBlockedDuringShutdown() throws Exception {
         final Properties props = new Properties();
 
+        props.put(SimpleSourceConnector.BATCH_COUNT, 1);
         props.setProperty(ConnectorConfig.NAME_CONFIG, "debezium-engine");
         props.setProperty(ConnectorConfig.CONNECTOR_CLASS_CONFIG, DebeziumAsyncEngineTestUtils.StopTrackingConnector.class.getName());
         props.setProperty(StandaloneConfig.OFFSET_STORAGE_FILE_FILENAME_CONFIG, OFFSET_STORE_PATH.toAbsolutePath().toString());
-        props.put(SimpleSourceConnector.BATCH_COUNT, 1);
 
         // short timeout so the engine gives up on the starved stop callable quickly
         props.setProperty(AsyncEngineConfig.TASK_MANAGEMENT_TIMEOUT_MS.name(), "1000");
