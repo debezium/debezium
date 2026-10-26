@@ -6,6 +6,7 @@
 package io.debezium.engine.source;
 
 import java.util.Map;
+import java.util.concurrent.locks.Lock;
 
 import io.debezium.embedded.Transformations;
 import io.debezium.engine.spi.OffsetCommitPolicy;
@@ -22,6 +23,7 @@ public class EngineSourceTaskContext implements DebeziumSourceTaskContext {
     private final Map<String, String> config;
     private final OffsetStorageReader offsetReader;
     private final OffsetStorageWriter offsetWriter;
+    private final Lock offsetCommitLock;
     private final OffsetCommitPolicy offsetCommitPolicy;
     private final io.debezium.util.Clock clock;
     private final Transformations transformations;
@@ -31,6 +33,7 @@ public class EngineSourceTaskContext implements DebeziumSourceTaskContext {
                                    final Map<String, String> config,
                                    final OffsetStorageReader offsetReader,
                                    final OffsetStorageWriter offsetWriter,
+                                   final Lock offsetCommitLock,
                                    final OffsetCommitPolicy offsetCommitPolicy,
                                    final io.debezium.util.Clock clock,
                                    final Transformations transformations,
@@ -38,6 +41,7 @@ public class EngineSourceTaskContext implements DebeziumSourceTaskContext {
         this.config = config;
         this.offsetReader = offsetReader;
         this.offsetWriter = offsetWriter;
+        this.offsetCommitLock = offsetCommitLock;
         this.offsetCommitPolicy = offsetCommitPolicy;
         this.clock = clock;
         this.transformations = transformations;
@@ -57,6 +61,11 @@ public class EngineSourceTaskContext implements DebeziumSourceTaskContext {
     @Override
     public OffsetStorageWriter offsetStorageWriter() {
         return offsetWriter;
+    }
+
+    @Override
+    public Lock offsetCommitLock() {
+        return offsetCommitLock;
     }
 
     @Override
