@@ -781,7 +781,7 @@ public abstract class AbstractOracleDatatypesTest extends AbstractAsyncEngineCon
             assertThat(timestamp.getInt8(StructuredTemporal.SECOND_FIELD)).isEqualTo((byte) 59);
             assertThat(timestamp.getInt64(StructuredTemporal.PICOSECONDS_FIELD)).isEqualTo(999_999_999_000L);
 
-            assertThat(after.schema().field("VAL_TSTZ_EDGE").schema().name()).isEqualTo(StructuredZonedTimestamp.schemaName(6));
+            assertThat(after.schema().field("VAL_TSTZ_EDGE").schema().name()).isEqualTo(StructuredZonedTimestamp.schemaName(9));
             final Struct zonedTimestamp = after.getStruct("VAL_TSTZ_EDGE");
             assertThat(zonedTimestamp.getString(StructuredTemporal.SPECIAL_VALUE_FIELD)).isNull();
             assertThat(zonedTimestamp.getInt32(StructuredTemporal.YEAR_FIELD)).isEqualTo(9999);
