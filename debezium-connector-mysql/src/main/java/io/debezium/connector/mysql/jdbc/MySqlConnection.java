@@ -199,7 +199,7 @@ public class MySqlConnection extends BinlogConnectorConnection {
      * Warns about each GTID source the server has but the offset does not track, with the number of its
      * retained transactions that will be read again from the earliest available position.
      */
-    private static void logUntrackedSources(MySqlGtidSet availableGtidSet, MySqlGtidSet knownGtidSet, MySqlGtidSet purgedGtidSet) {
+    private void logUntrackedSources(MySqlGtidSet availableGtidSet, MySqlGtidSet knownGtidSet, MySqlGtidSet purgedGtidSet) {
         for (MySqlGtidSet.UUIDSet available : availableGtidSet.getUUIDSets()) {
             if (knownGtidSet.forServerWithIdAndTag(available.getUUID(), available.getTag()) != null) {
                 continue;
