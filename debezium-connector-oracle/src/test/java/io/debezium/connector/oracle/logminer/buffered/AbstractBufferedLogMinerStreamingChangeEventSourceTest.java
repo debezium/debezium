@@ -28,7 +28,6 @@ import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
 import java.util.Calendar;
 import java.util.List;
-import java.util.Map;
 import java.util.concurrent.atomic.AtomicReference;
 
 import org.apache.kafka.connect.data.SchemaBuilder;
@@ -63,7 +62,6 @@ import io.debezium.connector.oracle.jdbc.StandardOracleConnectionFactory;
 import io.debezium.connector.oracle.logminer.AbstractLogMinerStreamingChangeEventSource;
 import io.debezium.connector.oracle.logminer.LogMinerStreamingChangeEventSourceMetrics;
 import io.debezium.connector.oracle.logminer.buffered.BufferedLogMinerStreamingChangeEventSource.ProcessResult;
-import io.debezium.connector.oracle.logminer.events.CachedEvent;
 import io.debezium.connector.oracle.logminer.events.EventType;
 import io.debezium.connector.oracle.logminer.events.LogMinerEventRow;
 import io.debezium.connector.oracle.logminer.parser.DmlParserException;
@@ -810,17 +808,42 @@ public abstract class AbstractBufferedLogMinerStreamingChangeEventSourceTest ext
     }
 
     @Test
-    @FixFor("debezium/dbz#1960")
-    public void testLastEnqueuedEventIsForgottenWhenPartialRollbackIsAppliedByPrefixAndTransactionCommits() throws Exception {
+    @FixFor({ "debezium/dbz#1960", "debezium/dbz#2935" })
+    public void testPartialRollbackAppliedByPrefixLeavesNothingBehindWhenTransactionCommits() throws Exception {
         try (var source = getChangeEventSource(getConfig().build())) {
             source.processEvent(getStartLogMinerEventRow(1, PARTIAL_TXN_ID_FULL));
             source.processEvent(getInsertLogMinerEventRow(2, PARTIAL_TXN_ID_FULL, Instant.now(), "TEST_TABLE", "AAAAAAAAAAAAAAAAAB", "'insert'"));
             source.processEvent(getUpdateLogMinerEventRow(3, PARTIAL_TXN_ID_FULL, Instant.now(), "TEST_TABLE", "AAAAAAAAAAAAAAAAAB", "'update'"));
             source.processEvent(getRollbackToSavepointLogMinerEventRow(4, PARTIAL_TXN_ID_PARTIAL, Instant.now(), "TEST_TABLE", "AAAAAAAAAAAAAAAAAB", "'insert'"));
+            assertThat(source.getTransactionCache().getTransactionCount()).isEqualTo(1);
+
             source.processEvent(getCommitLogMinerEventRow(5, PARTIAL_TXN_ID_FULL));
 
             // The undo was attributed to PARTIAL_TXN_ID_FULL, so committing it must leave nothing behind
-            assertThat(source.getLastEnqueuedEventByTransactionId()).isEmpty();
+            assertThat(source.getTransactionCache().isEmpty()).isTrue();
+            assertThat(source.getTransactionCache().getTransactionEvents()).isZero();
+        }
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2935")
+    public void testInternalEventIsStoredOnlyAfterARowlessEvent() throws Exception {
+        try (var source = getChangeEventSource(getConfig().build())) {
+            source.processEvent(getStartLogMinerEventRow(1, TRANSACTION_ID_1));
+
+            // An INTERNAL row completes a stored event without a row id, as LogMiner reports LOB operations
+            source.processEvent(getInsertLogMinerEventRow(2, TRANSACTION_ID_1, Instant.now(), "TEST_TABLE", "AAAAAAAAAAAAAAAAAA", "'lob'"));
+            source.processEvent(getInternalLogMinerEventRow(3, TRANSACTION_ID_1, "AAAAAAAAAAAAAAAAAB"));
+            assertThat(source.getTransactionCache().getTransactionEvents()).isEqualTo(2);
+
+            // The stored INTERNAL row has a row id of its own, so the next one is not stored
+            source.processEvent(getInternalLogMinerEventRow(4, TRANSACTION_ID_1, "AAAAAAAAAAAAAAAAAB"));
+            assertThat(source.getTransactionCache().getTransactionEvents()).isEqualTo(2);
+
+            // Nor is one that follows an ordinary row
+            source.processEvent(getInsertLogMinerEventRow(5, TRANSACTION_ID_1, Instant.now(), "TEST_TABLE", "AAAAAAAAAAAAAAAAAC", "'row'"));
+            source.processEvent(getInternalLogMinerEventRow(6, TRANSACTION_ID_1, "AAAAAAAAAAAAAAAAAC"));
+            assertThat(source.getTransactionCache().getTransactionEvents()).isEqualTo(3);
         }
     }
 
@@ -919,7 +942,7 @@ public abstract class AbstractBufferedLogMinerStreamingChangeEventSourceTest ext
     }
 
     @Test
-    @FixFor("dbz#2777")
+    @FixFor({ "dbz#2777", "debezium/dbz#2935" })
     void testTransactionEventsCountTracksCachedEvents() throws Exception {
         try (var source = getChangeEventSource(getConfig().build())) {
             final LogMinerTransactionCache<Transaction> cache = source.getTransactionCache();
@@ -932,9 +955,9 @@ public abstract class AbstractBufferedLogMinerStreamingChangeEventSourceTest ext
             source.processEvent(getInsertLogMinerEventRow(5, TRANSACTION_ID_2));
             assertTransactionEvents(cache, 3);
 
-            // The undo of the update removes the update and keeps the rollback event itself
+            // The undone update stays in the buffer next to the rollback event until the commit resolves the undo
             source.processEvent(getRollbackToSavepointLogMinerEventRow(6, TRANSACTION_ID_1, Instant.now(), "TEST_TABLE", "AAAAAAAAAAAAAAAAAB", "'insert'"));
-            assertTransactionEvents(cache, 3);
+            assertTransactionEvents(cache, 4);
 
             source.processEvent(getCommitLogMinerEventRow(7, TRANSACTION_ID_1));
             assertTransactionEvents(cache, 1);
@@ -1270,6 +1293,21 @@ public abstract class AbstractBufferedLogMinerStreamingChangeEventSourceTest ext
 
     private LogMinerEventRow getInsertLogMinerEventRow(long scn, String transactionId, Instant changeTime) {
         return getInsertLogMinerEventRow(scn, transactionId, changeTime, "TEST_TABLE", "AAAAAAAAAAAAAAAAAB", "'Test'");
+    }
+
+    private LogMinerEventRow getInternalLogMinerEventRow(long scn, String transactionId, String rowId) {
+        LogMinerEventRow row = Mockito.mock(LogMinerEventRow.class);
+        Mockito.when(row.getEventType()).thenReturn(EventType.INTERNAL);
+        Mockito.when(row.getTransactionId()).thenReturn(transactionId);
+        Mockito.when(row.getScn()).thenReturn(Scn.valueOf(scn));
+        Mockito.when(row.getChangeTime()).thenReturn(Instant.now());
+        Mockito.when(row.getRowId()).thenReturn(rowId);
+        Mockito.when(row.getOperation()).thenReturn("INTERNAL");
+        Mockito.when(row.getTableName()).thenReturn("TEST_TABLE");
+        Mockito.when(row.getTableId()).thenReturn(TableId.parse("ORCLPDB1.DEBEZIUM.TEST_TABLE"));
+        Mockito.when(row.getRsId()).thenReturn("A.B.C");
+        Mockito.when(row.getTablespaceName()).thenReturn("DEBEZIUM");
+        return row;
     }
 
     private LogMinerEventRow getInsertLogMinerEventRow(long scn, String transactionId, Instant changeTime, String tableName, String rowId, String dataValue) {
@@ -1904,13 +1942,6 @@ public abstract class AbstractBufferedLogMinerStreamingChangeEventSourceTest ext
             var field = AbstractLogMinerStreamingChangeEventSource.class.getDeclaredField("currentRedoThreadState");
             field.setAccessible(true);
             field.set(this, state);
-        }
-
-        @SuppressWarnings("unchecked")
-        public Map<String, CachedEvent> getLastEnqueuedEventByTransactionId() throws Exception {
-            var field = AbstractLogMinerTransactionCache.class.getDeclaredField("lastEnqueuedEventByTransactionId");
-            field.setAccessible(true);
-            return (Map<String, CachedEvent>) field.get(this.getTransactionCache());
         }
 
         @Override

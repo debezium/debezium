@@ -67,13 +67,25 @@ public final class LogMinerRedoEvent implements CachedEvent {
 
     public LogMinerRedoEvent(EventType eventType, boolean rollback, Scn scn, TableId tableId, String rowId, String rsId, Instant changeTime,
                              String redoSql, int status, String info, long transactionSequence, long objectId, long dataObjectId) {
+        this(eventType, rollback, scn, tableId, RowIdCodec.encode(rowId), rsId, changeTime.toEpochMilli(), redoSql, status, info,
+                transactionSequence, objectId, dataObjectId);
+    }
+
+    /**
+     * Rebuilds an event from fields a store keeps in their packed form.
+     *
+     * @param rowId the packed row id, should not be {@code null}
+     * @param changeTime the change time in milliseconds since the epoch
+     */
+    public LogMinerRedoEvent(EventType eventType, boolean rollback, Scn scn, TableId tableId, RowIdCodec.Packed rowId, String rsId, long changeTime,
+                             String redoSql, int status, String info, long transactionSequence, long objectId, long dataObjectId) {
         this.eventType = eventType;
         this.rollback = rollback;
         this.scn = scn;
         this.tableId = tableId;
-        this.rowId = RowIdCodec.encode(rowId);
+        this.rowId = rowId;
         this.rsId = rsId;
-        this.changeTime = changeTime.toEpochMilli();
+        this.changeTime = changeTime;
         this.redoSql = redoSql;
         this.status = status;
         this.info = info;
@@ -114,6 +126,13 @@ public final class LogMinerRedoEvent implements CachedEvent {
 
     public Instant getChangeTime() {
         return Instant.ofEpochMilli(changeTime);
+    }
+
+    /**
+     * @return the change time in milliseconds since the epoch, the form the event keeps it in
+     */
+    public long getChangeTimeMillis() {
+        return changeTime;
     }
 
     /**

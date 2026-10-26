@@ -60,7 +60,7 @@ public class RemoteInfinispanCacheProvider extends AbstractCacheProvider<Infinis
 
         this.transactionCache = createTransactionCache(connectorConfig);
         this.processedTransactionsCache = createProcessedTransactionCache(connectorConfig);
-        verifyStoredEventFormat();
+        clearRetainedState();
         displayCacheStatistics();
     }
 
@@ -123,7 +123,8 @@ public class RemoteInfinispanCacheProvider extends AbstractCacheProvider<Infinis
     private InfinispanLogMinerTransactionCache createTransactionCache(OracleConnectorConfig connectorConfig) {
         return new InfinispanLogMinerTransactionCache(
                 createCache(TRANSACTIONS_CACHE_NAME, connectorConfig, LOG_MINING_BUFFER_INFINISPAN_CACHE_TRANSACTIONS),
-                createCache(EVENTS_CACHE_NAME, connectorConfig, LOG_MINING_BUFFER_INFINISPAN_CACHE_EVENTS));
+                createCache(EVENTS_CACHE_NAME, connectorConfig, LOG_MINING_BUFFER_INFINISPAN_CACHE_EVENTS),
+                connectorConfig.getLogMiningBufferGrowthMax());
     }
 
     private InfinispanLogMinerCache<String, String> createProcessedTransactionCache(OracleConnectorConfig connectorConfig) {

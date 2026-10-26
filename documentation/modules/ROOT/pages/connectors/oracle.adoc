@@ -1276,12 +1276,9 @@ The buffer stores each change as LogMiner reported it: the row's metadata togeth
 The connector parses the SQL, and applies any DDL statement that the transaction contains, when the transaction commits, in the order in which the changes occurred within the transaction.
 As a result, the time that the connector spends parsing a transaction is part of its commit, and changes that are rolled back are never parsed.
 
-[NOTE]
-====
-Earlier connector versions stored parsed events in the buffer.
-A buffer retained from such a version cannot be read; the connector clears it when it starts and re-mines from its offsets.
-The archive logs back to the SCN in the connector's offsets must therefore still be available when you upgrade, as they must be for any restart.
-====
+The buffer is transient.
+When the connector starts, it clears whatever a persistent buffer still holds from a previous run and re-mines the in-flight transactions from its offsets, which requires the archive logs back to the SCN in the offsets to be available, as any restart does.
+Whether the persistent state is removed when the connector stops gracefully is controlled by xref:oracle-property-log-mining-buffer-drop-on-stop[`log.mining.buffer.drop.on.stop`].
 
 You can configure the buffering mechanism that the connector uses by setting the property xref:oracle-property-log-mining-buffer-type[`log.mining.buffer.type`].
 
@@ -1291,6 +1288,14 @@ The heap buffer stores in-progress transaction data in the JVM process memory, m
 The default buffer type is configured using `memory`.
 Under the default `memory` setting, the connector uses the heap memory of the JVM process to allocate and manage buffered event records.
 If you use the `memory` buffer setting, be sure that the amount of memory that you allocate to the Java process can accommodate long-running and large transactions in your environment.
+
+The heap buffer keeps the events of a transaction in a compact form rather than as one object per event.
+The fields that the connector reads while a transaction is open, such as the event type, the SCN, the change time, the row id and the table, are held in primitive arrays that are indexed by the event's position in the transaction.
+The redo SQL of consecutive events is written into shared chunks of xref:oracle-property-log-mining-buffer-memory-chunk-size[`log.mining.buffer.memory.chunk.size`] bytes.
+When xref:oracle-property-log-mining-buffer-memory-compression[`log.mining.buffer.memory.compression`] is enabled, the connector compresses a chunk with LZ4 as soon as it is full, and decompresses it when the transaction commits.
+
+Every buffer type keeps the per-event fields that the connector reads while a transaction is open on the heap, in arrays that grow by doubling until a growth step reaches xref:oracle-property-log-mining-buffer-growth-max[`log.mining.buffer.growth.max`] events, and by that many events at a time from then on, so that a very large transaction holds few unused slots.
+A change that a `ROLLBACK TO SAVEPOINT` undoes keeps its position in the transaction and is counted as an event in the buffer until the transaction commits; the connector resolves the undo when it reads the transaction at commit and never reads the undone change.
 
 When you set xref:oracle-property-log-mining-buffer-deferred-transaction-start[`log.mining.buffer.deferred.transaction.start`] to `true`, the connector retains lightweight metadata for transactions that emit only a `START` event until a DML event promotes the transaction into the main cache.
 To limit how long the connector retains metadata for transactions that never emit DML, set xref:oracle-property-log-mining-buffer-deferred-transaction-retention-ms[`log.mining.buffer.deferred.transaction.retention.ms`].
@@ -4895,7 +4900,27 @@ When disabled, the transaction buffer will not store the information, reducing t
 |`0`
 |The maximum number of events a transaction is capable of having in the transaction buffer.
 Transactions with event counts that exceed this threshold not be emitted and will be abandoned.
+The count includes changes that a `ROLLBACK TO SAVEPOINT` undid, because the connector resolves the undo when the transaction commits, so a transaction that rolls back to a savepoint reaches the threshold sooner than the number of changes it commits suggests.
 The default behavior is there is no transaction event threshold.
+
+|[[oracle-property-log-mining-buffer-memory-chunk-size]]<<oracle-property-log-mining-buffer-memory-chunk-size, `+log.mining.buffer.memory.chunk.size+`>>
+|`65536`
+|The size in bytes of the chunks in which the heap transaction buffer stores the redo SQL of the consecutive events of a transaction.
+A full chunk is compressed when xref:oracle-property-log-mining-buffer-memory-compression[`log.mining.buffer.memory.compression`] is enabled.
+Applies when xref:oracle-property-log-mining-buffer-type[`log.mining.buffer.type`] is `memory`.
+
+|[[oracle-property-log-mining-buffer-memory-compression]]<<oracle-property-log-mining-buffer-memory-compression, `+log.mining.buffer.memory.compression+`>>
+|`true`
+|Specifies whether the heap transaction buffer compresses a payload chunk with LZ4 once it is full.
+Compression reduces the heap that the redo SQL of a transaction occupies, at the cost of compressing each chunk while mining and decompressing it when the transaction commits.
+Disable it where heap is plentiful or the stored data does not compress well.
+Applies when xref:oracle-property-log-mining-buffer-type[`log.mining.buffer.type`] is `memory`.
+
+|[[oracle-property-log-mining-buffer-growth-max]]<<oracle-property-log-mining-buffer-growth-max, `+log.mining.buffer.growth.max+`>>
+|`65536`
+|The most event slots by which the transaction buffer grows the per-event metadata arrays of a transaction at a time.
+The arrays double until a growth step reaches this value, and grow by this value from then on, which bounds the unused slots of a large transaction.
+Every buffer type keeps these arrays on the heap.
 
 ifdef::community[]
 |[[oracle-property-log-mining-buffer-infinispan-cache-global]]<<oracle-property-log-mining-buffer-infinispan-cache-global, `+log.mining.buffer.infinispan.cache.global+`>>
@@ -4939,13 +4964,12 @@ For more information, see xref:oracle-event-buffering-ehcache[Ehcache event buff
 For more information, see xref:oracle-event-buffering-ehcache[Ehcache event buffering].
 
 |[[oracle-property-log-mining-buffer-drop-on-stop]]<<oracle-property-log-mining-buffer-drop-on-stop, `+log.mining.buffer.drop.on.stop+`>>
-|`false`
-|Specifies whether the buffer state is deleted after the connector stops in a graceful, expected way.
+|`true`
+|Specifies whether the persistent state of an `infinispan` or `ehcache` buffer is removed when the connector stops in a graceful, expected way.
 
-This setting only impacts buffer implementations that persist state across restarts, such as `infinispan`.
-The default behavior is that the buffer state is always retained between restarts.
-
-Set to `true` only in testing or development environments.
+The connector never resumes from a retained buffer.
+It clears the buffer when it starts and re-mines the in-flight transactions from its offsets.
+Set to `false` only to inspect the buffer after a stop.
 endif::community[]
 
 |[[oracle-property-log-mining-session-max-ms]]<<oracle-property-log-mining-session-max-ms, `+log.mining.session.max.ms+`>>
@@ -5653,6 +5677,7 @@ For more information, see xref:oracle-property-log-mining-transaction-retention-
 |[[oracle-streaming-metrics-number-of-events-in-buffer]]<<oracle-streaming-metrics-number-of-events-in-buffer, `+NumberOfEventsInBuffer+`>>
 |`long`
 |The number of events in the transaction buffer.
+This includes changes that a `ROLLBACK TO SAVEPOINT` undid, because the connector resolves the undo when the transaction commits.
 
 |[[oracle-streaming-metrics-number-of-active-transactions]]<<oracle-streaming-metrics-number-of-active-transactions, `+NumberOfActiveTransactions+`>>
 |`long`

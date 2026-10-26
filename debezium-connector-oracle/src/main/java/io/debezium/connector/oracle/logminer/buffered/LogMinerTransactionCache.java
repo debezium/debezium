@@ -12,7 +12,6 @@ import java.util.function.Function;
 import java.util.stream.Stream;
 
 import io.debezium.connector.oracle.Scn;
-import io.debezium.connector.oracle.logminer.events.CachedEvent;
 import io.debezium.connector.oracle.logminer.events.LogMinerRedoEvent;
 
 /**
@@ -123,9 +122,13 @@ public interface LogMinerTransactionCache<T extends Transaction> {
 
     /**
      * Add a transaction event to the cache.
+     * <p>
+     * Events are positional: the key is the number of events the transaction has, as its next event id reports
+     * it, and a position is never reused while the transaction is open. Adding an event under a key the
+     * transaction already has is ignored, since {@link #containsTransactionEvent} is checked first.
      *
      * @param transaction the transaction, should not be {@code null}
-     * @param eventKey the event key, should not be {@code null}
+     * @param eventKey the event's position, the transaction's next event id
      * @param event the event, should not be {@code null}
      */
     void addTransactionEvent(T transaction, int eventKey, LogMinerRedoEvent event);
@@ -186,22 +189,14 @@ public interface LogMinerTransactionCache<T extends Transaction> {
     boolean isAbandoned(String transactionId);
 
     /**
-     * Records the given event as the most recently enqueued event for the specified transaction.
+     * Returns the metadata columns of the transaction's stored events. Every cache keeps these on the heap,
+     * so reading them never touches the event store; they describe the events in storage order, including
+     * the ones a rollback to a savepoint undid.
      *
-     * @param transactionId the transaction identifier, should not be {@code null}
-     * @param event the event to track, should not be {@code null}
-     * @return the previously tracked event for the transaction, or {@code null} if there was none
+     * @param transaction the transaction, should not be {@code null}
+     * @return the metadata columns, or {@code null} when the transaction has no stored events
      */
-    CachedEvent putLastEnqueuedEvent(String transactionId, CachedEvent event);
-
-    /**
-     * Removes the tracked last enqueued event for the specified transaction. This should be done
-     * whenever the transaction is removed from the cache, e.g. on commit, rollback, or abandonment.
-     *
-     * @param transactionId the transaction identifier, should not be {@code null}
-     * @return the removed event, or {@code null} if none was tracked
-     */
-    CachedEvent removeLastEnqueuedEvent(String transactionId);
+    EventMetadataColumns getEventMetadata(T transaction);
 
     /**
      * Clears the contents of the cache.

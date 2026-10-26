@@ -27,9 +27,15 @@ public class MemoryCacheProvider extends AbstractCacheProvider<MemoryTransaction
     private final MemoryBasedLogMinerCache<String, String> processedTransactionsCache;
 
     public MemoryCacheProvider(OracleConnectorConfig connectorConfig) {
-        LOGGER.info("Using Java heap to buffer transactions");
+        LOGGER.info("Using Java heap to buffer transactions (chunk size {} bytes, compression {}, growth cap {} events)",
+                connectorConfig.getLogMiningBufferMemoryChunkSize(),
+                connectorConfig.isLogMiningBufferMemoryCompression() ? "on" : "off",
+                connectorConfig.getLogMiningBufferGrowthMax());
 
-        this.transactionCache = new MemoryLogMinerTransactionCache();
+        this.transactionCache = new MemoryLogMinerTransactionCache(
+                connectorConfig.getLogMiningBufferMemoryChunkSize(),
+                connectorConfig.getLogMiningBufferGrowthMax(),
+                connectorConfig.isLogMiningBufferMemoryCompression());
         this.processedTransactionsCache = new MemoryBasedLogMinerCache<>();
     }
 

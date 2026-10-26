@@ -68,6 +68,9 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
 
     protected final static long DEFAULT_RESUME_POSITION_INTERVAL = 10_000L;
 
+    public static final int DEFAULT_LOG_MINING_BUFFER_MEMORY_CHUNK_SIZE = 64 * 1024;
+    public static final int DEFAULT_LOG_MINING_BUFFER_GROWTH_MAX = 64 * 1024;
+
     public static final Field PORT = RelationalDatabaseConnectorConfig.PORT
             .withDefault(DEFAULT_PORT);
 
@@ -497,11 +500,13 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
     public static final Field LOG_MINING_BUFFER_DROP_ON_STOP = Field.create("log.mining.buffer.drop.on.stop")
             .withDisplayName("Controls whether the buffer cache is dropped when connector is stopped")
             .withType(Type.BOOLEAN)
-            .withDefault(false)
+            .withDefault(true)
             .withWidth(Width.SHORT)
             .withImportance(Importance.LOW)
-            .withDescription("When set to true the underlying buffer cache is not retained when the connector is stopped. " +
-                    "When set to false (the default), the buffer cache is retained across restarts.");
+            .withDescription("Whether the persistent state of an Infinispan or Ehcache transaction buffer is removed when the " +
+                    "connector stops gracefully. The connector never resumes from a retained buffer: it clears the buffer when it " +
+                    "starts and re-mines the in-flight transactions from its offsets. Set to false only to inspect the buffer " +
+                    "after a stop.");
 
     public static final Field LOG_MINING_LOG_QUERY_MAX_RETRIES = Field.createInternal("log.mining.log.query.max.retries")
             .withDisplayName("Maximum number of retries before failing to locate redo logs")
@@ -786,6 +791,39 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
                     "emit a DML event. By default, deferred transaction metadata is retained for 24 hours. " +
                     "This is independent of log.mining.transaction.retention.ms which governs cached transactions with events.");
 
+    public static final Field LOG_MINING_BUFFER_MEMORY_CHUNK_SIZE = Field.create("log.mining.buffer.memory.chunk.size")
+            .withDisplayName("Heap buffer payload chunk size")
+            .withType(Type.INT)
+            .withWidth(Width.SHORT)
+            .withImportance(Importance.LOW)
+            .withDefault(DEFAULT_LOG_MINING_BUFFER_MEMORY_CHUNK_SIZE)
+            .withValidation(Field::isPositiveInteger)
+            .withDescription("The size in bytes of the chunks in which the heap transaction buffer stores the redo SQL of the " +
+                    "consecutive events of a transaction. A full chunk is compressed when log.mining.buffer.memory.compression " +
+                    "is enabled. Applies when log.mining.buffer.type is memory.");
+
+    public static final Field LOG_MINING_BUFFER_MEMORY_COMPRESSION = Field.create("log.mining.buffer.memory.compression")
+            .withDisplayName("Heap buffer chunk compression")
+            .withType(Type.BOOLEAN)
+            .withWidth(Width.SHORT)
+            .withImportance(Importance.LOW)
+            .withDefault(true)
+            .withDescription("Whether the heap transaction buffer compresses a payload chunk with LZ4 once it is full. " +
+                    "Compression reduces the heap that a transaction's redo SQL occupies at the cost of compressing each " +
+                    "chunk while mining and decompressing it when the transaction commits. Disable it where heap is " +
+                    "plentiful or the stored data does not compress well. Applies when log.mining.buffer.type is memory.");
+
+    public static final Field LOG_MINING_BUFFER_GROWTH_MAX = Field.create("log.mining.buffer.growth.max")
+            .withDisplayName("Transaction buffer growth cap")
+            .withType(Type.INT)
+            .withWidth(Width.SHORT)
+            .withImportance(Importance.LOW)
+            .withDefault(DEFAULT_LOG_MINING_BUFFER_GROWTH_MAX)
+            .withValidation(Field::isPositiveInteger)
+            .withDescription("The most event slots by which the transaction buffer grows the per-event metadata arrays of a " +
+                    "transaction at a time. The arrays double until a step reaches this value and grow by this value from then " +
+                    "on, which bounds the unused slots of a large transaction. Every buffer type keeps these arrays on the heap.");
+
     public static final Field LEGACY_DECIMAL_HANDLING_STRATEGY = Field.create("legacy.decimal.handling.strategy")
             .withDisplayName("Use legacy decimal handling strategy")
             .withType(Type.BOOLEAN)
@@ -857,6 +895,7 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
                     LOG_MINING_BUFFER_EHCACHE_SCHEMA_CHANGES_CONFIG, LOG_MINING_BUFFER_EHCACHE_EVENTS_CONFIG,
                     LOG_MINING_SQL_RELAXED_QUOTE_DETECTION, LOG_MINING_CLIENTID_INCLUDE_LIST, LOG_MINING_CLIENTID_EXCLUDE_LIST, LOG_MINING_RESUME_POSITION_INTERVAL_MS,
                     LOG_MINING_BUFFER_DEFERRED_TRANSACTION_START, LOG_MINING_BUFFER_DEFERRED_TRANSACTION_RETENTION_MS, LOG_MINING_PATH_DICTIONARY,
+                    LOG_MINING_BUFFER_MEMORY_CHUNK_SIZE, LOG_MINING_BUFFER_MEMORY_COMPRESSION, LOG_MINING_BUFFER_GROWTH_MAX,
                     LOG_MINING_USE_CTE_QUERY,
                     LOG_MINING_REDO_THREAD_SCN_ADJUSTMENT, LOG_MINING_HASH_AREA_SIZE, LOG_MINING_SORT_AREA_SIZE, LOG_MINING_LOG_COUNT_MIN,
                     LOG_MINING_LOG_COUNT_GROWTH_MAX)
@@ -910,6 +949,9 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
     private final LogMiningBufferType logMiningBufferType;
     private final long logMiningBufferTransactionEventsThreshold;
     private final boolean logMiningBufferDropOnStop;
+    private final int logMiningBufferMemoryChunkSize;
+    private final boolean logMiningBufferMemoryCompression;
+    private final int logMiningBufferGrowthMax;
     private final int logMiningLogFileQueryMaxRetries;
     private final Duration logMiningInitialDelay;
     private final Duration logMiningMaxDelay;
@@ -994,6 +1036,9 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
         this.logMiningBufferType = LogMiningBufferType.parse(config.getString(LOG_MINING_BUFFER_TYPE));
         this.logMiningBufferTransactionEventsThreshold = config.getLong(LOG_MINING_BUFFER_TRANSACTION_EVENTS_THRESHOLD);
         this.logMiningBufferDropOnStop = config.getBoolean(LOG_MINING_BUFFER_DROP_ON_STOP);
+        this.logMiningBufferMemoryChunkSize = config.getInteger(LOG_MINING_BUFFER_MEMORY_CHUNK_SIZE);
+        this.logMiningBufferMemoryCompression = config.getBoolean(LOG_MINING_BUFFER_MEMORY_COMPRESSION);
+        this.logMiningBufferGrowthMax = config.getInteger(LOG_MINING_BUFFER_GROWTH_MAX);
         this.archiveLogOnlyScnPollTime = Duration.ofMillis(config.getInteger(LOG_MINING_ARCHIVE_LOG_ONLY_SCN_POLL_INTERVAL_MS));
         this.logMiningLogFileQueryMaxRetries = config.getInteger(LOG_MINING_LOG_QUERY_MAX_RETRIES);
         this.logMiningInitialDelay = Duration.ofMillis(config.getLong(LOG_MINING_LOG_BACKOFF_INITIAL_DELAY_MS));
@@ -1955,6 +2000,27 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
      */
     public boolean isLogMiningBufferDropOnStop() {
         return logMiningBufferDropOnStop;
+    }
+
+    /**
+     * @return the capacity in bytes of a payload chunk of the heap transaction buffer
+     */
+    public int getLogMiningBufferMemoryChunkSize() {
+        return logMiningBufferMemoryChunkSize;
+    }
+
+    /**
+     * @return whether the heap transaction buffer compresses a payload chunk once it is full
+     */
+    public boolean isLogMiningBufferMemoryCompression() {
+        return logMiningBufferMemoryCompression;
+    }
+
+    /**
+     * @return the most event slots the transaction buffer grows a transaction's metadata arrays by at a time
+     */
+    public int getLogMiningBufferGrowthMax() {
+        return logMiningBufferGrowthMax;
     }
 
     /**

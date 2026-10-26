@@ -5,7 +5,6 @@
  */
 package io.debezium.connector.oracle.logminer.buffered;
 
-import static io.debezium.connector.oracle.logminer.buffered.AbstractCacheProvider.REDO_EVENT_FORMAT_MARK;
 import static io.debezium.connector.oracle.logminer.buffered.LogMinerRedoEventFixtures.CHANGE_TIME;
 import static io.debezium.connector.oracle.logminer.buffered.LogMinerRedoEventFixtures.SCN;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -20,13 +19,12 @@ import io.debezium.connector.oracle.logminer.events.LogMinerRedoEvent;
 import io.debezium.doc.FixFor;
 
 /**
- * A retained buffer is read only when it carries the stored format mark. A buffer written by a version that
- * stored parsed events carries none and must be cleared on reopening, while a marked buffer must be kept.
+ * The buffer is transient: whatever a persistent buffer still holds when the connector starts is cleared,
+ * and the in-flight transactions are re-mined from the offsets instead.
  *
- * @param <T> the transaction type
  * @author Chris Cranford
  */
-public abstract class AbstractStoredEventFormatTest<T extends Transaction> {
+public abstract class AbstractTransientBufferTest<T extends Transaction> {
 
     private static final String TRANSACTION_ID = "0a000b0000c40000";
 
@@ -38,46 +36,37 @@ public abstract class AbstractStoredEventFormatTest<T extends Transaction> {
     }
 
     @Test
-    @FixFor("debezium/dbz#2943")
-    public void shouldClearRetainedBufferWithoutFormatMark() throws Exception {
+    @FixFor("debezium/dbz#2935")
+    public void shouldStartEmptyWhenAPreviousRunLeftStateBehind() throws Exception {
         try (CacheProvider<T> provider = provider(false)) {
             store(provider, LogMinerRedoEventFixtures.insert());
             provider.getProcessedTransactionsCache().put(TRANSACTION_ID, "100");
-            // What a buffer retained by a version that stored parsed events looks like
-            provider.getProcessedTransactionsCache().removeIf(entry -> REDO_EVENT_FORMAT_MARK.equals(entry.getKey()));
         }
-
         try (CacheProvider<T> provider = provider(false)) {
             assertThat(provider.getTransactionCache().isEmpty()).isTrue();
             assertThat(provider.getTransactionCache().getTransactionEvents()).isZero();
-            // Only the format mark remains, and the connector never asks for it as a transaction
-            assertThat(provider.getProcessedTransactionsCache().size()).isEqualTo(1);
+            assertThat(provider.getTransactionCache().getTransaction("1")).isNull();
+            assertThat(provider.getProcessedTransactionsCache().size()).isZero();
             assertThat(provider.getProcessedTransactionsCache().containsKey(TRANSACTION_ID)).isFalse();
+            provider.getTransactionCache().eventKeys(keys -> assertThat(keys.count()).isZero());
         }
     }
 
     @Test
-    @FixFor("debezium/dbz#2943")
-    public void shouldKeepRetainedBufferWithFormatMark() throws Exception {
+    @FixFor("debezium/dbz#2935")
+    public void shouldStoreAndReadWithinARun() throws Exception {
         try (CacheProvider<T> provider = provider(false)) {
-            store(provider, LogMinerRedoEventFixtures.insert());
-            provider.getProcessedTransactionsCache().put(TRANSACTION_ID, "100");
-        }
-
-        try (CacheProvider<T> provider = provider(false)) {
-            final T transaction = provider.getTransactionCache().getTransaction("1");
-            assertThat(transaction).isNotNull();
+            final T transaction = store(provider, LogMinerRedoEventFixtures.insert());
             assertThat(events(provider, transaction)).containsExactly(LogMinerRedoEventFixtures.insert());
-            assertThat(provider.getProcessedTransactionsCache().size()).isEqualTo(2);
-            assertThat(provider.getProcessedTransactionsCache().containsKey(TRANSACTION_ID)).isTrue();
         }
     }
 
-    private void store(CacheProvider<T> provider, LogMinerRedoEvent event) {
+    private T store(CacheProvider<T> provider, LogMinerRedoEvent event) {
         final T transaction = getTransactionFactory().createTransaction("1", SCN, CHANGE_TIME, "DEBEZIUM", 1, "client");
         provider.getTransactionCache().addTransaction(transaction);
         provider.getTransactionCache().addTransactionEvent(transaction, transaction.getNextEventId(), event);
         provider.getTransactionCache().syncTransaction(transaction);
+        return transaction;
     }
 
     private List<LogMinerRedoEvent> events(CacheProvider<T> provider, T transaction) throws InterruptedException {

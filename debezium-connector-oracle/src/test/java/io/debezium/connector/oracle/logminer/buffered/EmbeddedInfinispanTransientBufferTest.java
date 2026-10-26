@@ -16,7 +16,7 @@ import io.debezium.connector.oracle.util.TestHelper;
 /**
  * @author Chris Cranford
  */
-public class EmbeddedInfinispanStoredEventFormatTest extends AbstractStoredEventFormatTest<InfinispanTransaction> {
+public class EmbeddedInfinispanTransientBufferTest extends AbstractTransientBufferTest<InfinispanTransaction> {
 
     @Override
     protected CacheProvider<InfinispanTransaction> provider(boolean dropOnStop) {

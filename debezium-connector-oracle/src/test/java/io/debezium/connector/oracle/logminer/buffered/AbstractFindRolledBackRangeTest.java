@@ -48,14 +48,14 @@ public abstract class AbstractFindRolledBackRangeTest<T extends Transaction> {
     // INSERT
 
     @Test
-    @FixFor({ "debezium/dbz#1960", "debezium/dbz#2943" })
+    @FixFor({ "debezium/dbz#1960", "debezium/dbz#2943", "debezium/dbz#2935" })
     public void testRollbackInsertScalar() throws Exception {
         // CREATE TABLE DBZ1960_01(ID NUMERIC(9,0) PRIMARY KEY, STR0 VARCHAR(50));
         // SAVEPOINT s1;
         // INSERT INTO DBZ1960_01 (ID, STR0) VALUES (1, 'STR0-1-0');
         // ROLLBACK TO SAVEPOINT s1;
         // Version: 26ai Free Release 23.26.2.0.0
-        LogInterceptor logInterceptor = new LogInterceptor(AbstractLogMinerTransactionCache.class);
+        LogInterceptor logInterceptor = new LogInterceptor(RollbackWarnings.class);
         LogMinerRedoEvent[] events = new LogMinerRedoEvent[]{
                 event(EventType.INSERT, 0, "BBBBBBBBBBBBBBBBBB", "1"),
                 event(EventType.DELETE, 1, "BBBBBBBBBBBBBBBBBB", "2"), };
@@ -67,14 +67,14 @@ public abstract class AbstractFindRolledBackRangeTest<T extends Transaction> {
     }
 
     @Test
-    @FixFor({ "debezium/dbz#1960", "debezium/dbz#2943" })
+    @FixFor({ "debezium/dbz#1960", "debezium/dbz#2943", "debezium/dbz#2935" })
     public void testRollbackInsertEmpty() throws Exception {
         // CREATE TABLE DBZ1960_02(ID NUMERIC(9,0) PRIMARY KEY, LOB0 CLOB);
         // SAVEPOINT s1;
         // INSERT INTO DBZ1960_02 (ID, LOB0) VALUES (1, EMPTY_CLOB());
         // ROLLBACK TO SAVEPOINT s1;
         // Version: 26ai Free Release 23.26.2.0.0
-        LogInterceptor logInterceptor = new LogInterceptor(AbstractLogMinerTransactionCache.class);
+        LogInterceptor logInterceptor = new LogInterceptor(RollbackWarnings.class);
         LogMinerRedoEvent[] events = new LogMinerRedoEvent[]{
                 event(EventType.INSERT, 0, "AAAAAAAAAAAAAAAAAA", "1"),
                 event(EventType.INTERNAL, 0, "BBBBBBBBBBBBBBBBBB", "2"),
@@ -87,14 +87,14 @@ public abstract class AbstractFindRolledBackRangeTest<T extends Transaction> {
     }
 
     @Test
-    @FixFor({ "debezium/dbz#1960", "debezium/dbz#2943" })
+    @FixFor({ "debezium/dbz#1960", "debezium/dbz#2943", "debezium/dbz#2935" })
     public void testRollbackInsertInline() throws Exception {
         // CREATE TABLE DBZ1960_03(ID NUMERIC(9,0) PRIMARY KEY, LOB0 CLOB);
         // SAVEPOINT s1;
         // INSERT INTO DBZ1960_03 (ID, LOB0) VALUES (1, 'LOB0-1-0');
         // ROLLBACK TO SAVEPOINT s1;
         // Version: 26ai Free Release 23.26.2.0.0
-        LogInterceptor logInterceptor = new LogInterceptor(AbstractLogMinerTransactionCache.class);
+        LogInterceptor logInterceptor = new LogInterceptor(RollbackWarnings.class);
         LogMinerRedoEvent[] events = new LogMinerRedoEvent[]{
                 event(EventType.INSERT, 0, "AAAAAAAAAAAAAAAAAA", "1"),
                 event(EventType.UPDATE, 0, "BBBBBBBBBBBBBBBBBB", "2"),
@@ -107,14 +107,14 @@ public abstract class AbstractFindRolledBackRangeTest<T extends Transaction> {
     }
 
     @Test
-    @FixFor({ "debezium/dbz#1960", "debezium/dbz#2943" })
+    @FixFor({ "debezium/dbz#1960", "debezium/dbz#2943", "debezium/dbz#2935" })
     public void testRollbackInsertOutOfLine() throws Exception {
         // CREATE TABLE DBZ1960_04(ID NUMERIC(9,0) PRIMARY KEY, XML0 XMLTYPE, LOB0 CLOB, EXT0 VARCHAR2(8000));
         // SAVEPOINT s1;
         // INSERT INTO DBZ1960_04 (ID, XML0, LOB0, EXT0) VALUES (1, XMLTYPE('<XML0><ID>1</ID><V>0</V></XML0>'), RPAD('LOB0-1-', 1985, '0'), RPAD('EXT0-1-', 4000, '0'));
         // ROLLBACK TO SAVEPOINT s1;
         // Version: 26ai Free Release 23.26.2.0.0
-        LogInterceptor logInterceptor = new LogInterceptor(AbstractLogMinerTransactionCache.class);
+        LogInterceptor logInterceptor = new LogInterceptor(RollbackWarnings.class);
         LogMinerRedoEvent[] events = new LogMinerRedoEvent[]{
                 event(EventType.INSERT, 0, "AAAAAAAAAAAAAAAAAA", "1"),
                 event(EventType.SELECT_LOB_LOCATOR, 0, "AAAAAAAAAAAAAAAAAA", "1"),
@@ -134,14 +134,14 @@ public abstract class AbstractFindRolledBackRangeTest<T extends Transaction> {
     }
 
     @Test
-    @FixFor({ "debezium/dbz#1960", "debezium/dbz#2943" })
+    @FixFor({ "debezium/dbz#1960", "debezium/dbz#2943", "debezium/dbz#2935" })
     public void testRollbackInsertInlineAndOutOfLine() throws Exception {
         // CREATE TABLE DBZ1960_05(ID NUMERIC(9,0) PRIMARY KEY, EXT0 VARCHAR2(8000), XML0 XMLTYPE, LOB0 CLOB, LOB1 CLOB);
         // SAVEPOINT s1;
         // INSERT INTO DBZ1960_05 (ID, EXT0, XML0, LOB0, LOB1) VALUES (1, RPAD('EXT0-1-', 4000, '0'), XMLTYPE('<XML0><ID>1</ID><V>0</V></XML0>'), RPAD('LOB0-1-', 1985, '0'), 'LOB1-1-0');
         // ROLLBACK TO SAVEPOINT s1;
         // Version: 26ai Free Release 23.26.2.0.0
-        LogInterceptor logInterceptor = new LogInterceptor(AbstractLogMinerTransactionCache.class);
+        LogInterceptor logInterceptor = new LogInterceptor(RollbackWarnings.class);
         LogMinerRedoEvent[] events = new LogMinerRedoEvent[]{
                 event(EventType.INSERT, 0, "AAAAAAAAAAAAAAAAAA", "1"),
                 event(EventType.EXTENDED_STRING_BEGIN, 0, "AAAAAAAAAAAAAAAAAA", "1"),
@@ -163,7 +163,7 @@ public abstract class AbstractFindRolledBackRangeTest<T extends Transaction> {
     // UPDATE
 
     @Test
-    @FixFor({ "debezium/dbz#1960", "debezium/dbz#2943" })
+    @FixFor({ "debezium/dbz#1960", "debezium/dbz#2943", "debezium/dbz#2935" })
     public void testRollbackUpdateScalar() throws Exception {
         // CREATE TABLE DBZ1960_06(ID NUMERIC(9,0) PRIMARY KEY, STR0 VARCHAR(50));
         // INSERT INTO DBZ1960_06 (ID, STR0) VALUES (1, 'STR0-1-0');
@@ -171,7 +171,7 @@ public abstract class AbstractFindRolledBackRangeTest<T extends Transaction> {
         // UPDATE DBZ1960_06 SET STR0 = 'STR0-1-1' WHERE ID = 1;
         // ROLLBACK TO SAVEPOINT s1;
         // Version: 26ai Free Release 23.26.2.0.0
-        LogInterceptor logInterceptor = new LogInterceptor(AbstractLogMinerTransactionCache.class);
+        LogInterceptor logInterceptor = new LogInterceptor(RollbackWarnings.class);
         LogMinerRedoEvent[] events = new LogMinerRedoEvent[]{
                 event(EventType.INSERT, 0, "BBBBBBBBBBBBBBBBBB", "1"),
                 event(EventType.UPDATE, 0, "BBBBBBBBBBBBBBBBBB", "2"),
@@ -185,7 +185,7 @@ public abstract class AbstractFindRolledBackRangeTest<T extends Transaction> {
     }
 
     @Test
-    @FixFor({ "debezium/dbz#1960", "debezium/dbz#2943" })
+    @FixFor({ "debezium/dbz#1960", "debezium/dbz#2943", "debezium/dbz#2935" })
     public void testRollbackUpdateEmpty() throws Exception {
         // CREATE TABLE DBZ1960_07(ID NUMERIC(9,0) PRIMARY KEY, LOB0 CLOB);
         // INSERT INTO DBZ1960_07 (ID, LOB0) VALUES (1, NULL);
@@ -193,7 +193,7 @@ public abstract class AbstractFindRolledBackRangeTest<T extends Transaction> {
         // UPDATE DBZ1960_07 SET LOB0 = EMPTY_CLOB() WHERE ID = 1;
         // ROLLBACK TO SAVEPOINT s1;
         // Version: 26ai Free Release 23.26.2.0.0
-        LogInterceptor logInterceptor = new LogInterceptor(AbstractLogMinerTransactionCache.class);
+        LogInterceptor logInterceptor = new LogInterceptor(RollbackWarnings.class);
         LogMinerRedoEvent[] events = new LogMinerRedoEvent[]{
                 event(EventType.INSERT, 0, "AAAAAAAAAAAAAAAAAA", "1"),
                 event(EventType.UPDATE, 0, "BBBBBBBBBBBBBBBBBB", "2"),
@@ -210,7 +210,7 @@ public abstract class AbstractFindRolledBackRangeTest<T extends Transaction> {
     }
 
     @Test
-    @FixFor({ "debezium/dbz#1960", "debezium/dbz#2943" })
+    @FixFor({ "debezium/dbz#1960", "debezium/dbz#2943", "debezium/dbz#2935" })
     public void testRollbackUpdateInline() throws Exception {
         // CREATE TABLE DBZ1960_08(ID NUMERIC(9,0) PRIMARY KEY, LOB0 CLOB);
         // INSERT INTO DBZ1960_08 (ID, LOB0) VALUES (1, 'LOB0-1-0');
@@ -218,7 +218,7 @@ public abstract class AbstractFindRolledBackRangeTest<T extends Transaction> {
         // UPDATE DBZ1960_08 SET LOB0 = 'LOB0-1-1' WHERE ID = 1;
         // ROLLBACK TO SAVEPOINT s1;
         // Version: 26ai Free Release 23.26.2.0.0
-        LogInterceptor logInterceptor = new LogInterceptor(AbstractLogMinerTransactionCache.class);
+        LogInterceptor logInterceptor = new LogInterceptor(RollbackWarnings.class);
         LogMinerRedoEvent[] events = new LogMinerRedoEvent[]{
                 event(EventType.INSERT, 0, "AAAAAAAAAAAAAAAAAA", "1"),
                 event(EventType.UPDATE, 0, "BBBBBBBBBBBBBBBBBB", "2"),
@@ -235,7 +235,7 @@ public abstract class AbstractFindRolledBackRangeTest<T extends Transaction> {
     }
 
     @Test
-    @FixFor({ "debezium/dbz#1960", "debezium/dbz#2943" })
+    @FixFor({ "debezium/dbz#1960", "debezium/dbz#2943", "debezium/dbz#2935" })
     public void testRollbackUpdateOutOfLine() throws Exception {
         // CREATE TABLE DBZ1960_09(ID NUMERIC(9,0) PRIMARY KEY, XML0 XMLTYPE, LOB0 CLOB, EXT0 VARCHAR2(8000));
         // INSERT INTO DBZ1960_09 (ID, XML0, LOB0, EXT0) VALUES (1, XMLTYPE('<XML0><ID>1</ID><V>0</V></XML0>'), 'LOB0-1-0', 'EXT0-1-0');
@@ -243,7 +243,7 @@ public abstract class AbstractFindRolledBackRangeTest<T extends Transaction> {
         // UPDATE DBZ1960_09 SET XML0 = XMLTYPE('<XML0><ID>1</ID><V>1</V></XML0>'), LOB0 = RPAD('LOB0-1-', 1985, '1'), EXT0 = RPAD('EXT0-1-', 4000, '1') WHERE ID = 1;
         // ROLLBACK TO SAVEPOINT s1;
         // Version: 26ai Free Release 23.26.2.0.0
-        LogInterceptor logInterceptor = new LogInterceptor(AbstractLogMinerTransactionCache.class);
+        LogInterceptor logInterceptor = new LogInterceptor(RollbackWarnings.class);
         LogMinerRedoEvent[] events = new LogMinerRedoEvent[]{
                 event(EventType.INSERT, 0, "AAAAAAAAAAAAAAAAAA", "1"),
                 event(EventType.XML_BEGIN, 0, "AAAAAAAAAAAAAAAAAA", "2"),
@@ -272,7 +272,7 @@ public abstract class AbstractFindRolledBackRangeTest<T extends Transaction> {
     }
 
     @Test
-    @FixFor({ "debezium/dbz#1960", "debezium/dbz#2943" })
+    @FixFor({ "debezium/dbz#1960", "debezium/dbz#2943", "debezium/dbz#2935" })
     public void testRollbackUpdateXml() throws Exception {
         // CREATE TABLE DBZ1960_10(ID NUMERIC(9,0) PRIMARY KEY, XML0 XMLTYPE);
         // INSERT INTO DBZ1960_10 (ID, XML0) VALUES (1, XMLTYPE('<XML0><ID>1</ID><V>0</V></XML0>'));
@@ -280,7 +280,7 @@ public abstract class AbstractFindRolledBackRangeTest<T extends Transaction> {
         // UPDATE DBZ1960_10 SET XML0 = XMLTYPE('<XML0><ID>1</ID><V>1</V></XML0>') WHERE ID = 1;
         // ROLLBACK TO SAVEPOINT s1;
         // Version: 26ai Free Release 23.26.2.0.0
-        LogInterceptor logInterceptor = new LogInterceptor(AbstractLogMinerTransactionCache.class);
+        LogInterceptor logInterceptor = new LogInterceptor(RollbackWarnings.class);
         LogMinerRedoEvent[] events = new LogMinerRedoEvent[]{
                 event(EventType.INSERT, 0, "AAAAAAAAAAAAAAAAAA", "1"),
                 event(EventType.XML_BEGIN, 0, "AAAAAAAAAAAAAAAAAA", "2"),
@@ -305,7 +305,7 @@ public abstract class AbstractFindRolledBackRangeTest<T extends Transaction> {
     }
 
     @Test
-    @FixFor({ "debezium/dbz#1960", "debezium/dbz#2943" })
+    @FixFor({ "debezium/dbz#1960", "debezium/dbz#2943", "debezium/dbz#2935" })
     public void testRollbackUpdateScalarAndOutOfLine() throws Exception {
         // CREATE TABLE DBZ1960_11(ID NUMERIC(9,0) PRIMARY KEY, STR0 VARCHAR2(50), XML0 XMLTYPE, LOB0 CLOB, EXT0 VARCHAR2(8000));
         // INSERT INTO DBZ1960_11 (ID, STR0, EXT0, LOB0) VALUES (1, 'STR0-1-0', 'EXT0-1-0', 'LOB0-1-0');
@@ -313,7 +313,7 @@ public abstract class AbstractFindRolledBackRangeTest<T extends Transaction> {
         // UPDATE DBZ1960_11 SET STR0 = 'STR0-1-1', XML0 = XMLTYPE('<XML0><ID>1</ID><V>1</V></XML0>'), EXT0 = RPAD('EXT0-1-', 4000, '1'), LOB0 = RPAD('LOB0-1-', 1985, '1') WHERE ID = 1;
         // ROLLBACK TO SAVEPOINT s1;
         // Version: 26ai Free Release 23.26.2.0.0
-        LogInterceptor logInterceptor = new LogInterceptor(AbstractLogMinerTransactionCache.class);
+        LogInterceptor logInterceptor = new LogInterceptor(RollbackWarnings.class);
         LogMinerRedoEvent[] events = new LogMinerRedoEvent[]{
                 event(EventType.INSERT, 0, "AAAAAAAAAAAAAAAAAA", "1"),
                 event(EventType.UPDATE, 0, "BBBBBBBBBBBBBBBBBB", "2"),
@@ -337,7 +337,7 @@ public abstract class AbstractFindRolledBackRangeTest<T extends Transaction> {
     }
 
     @Test
-    @FixFor({ "debezium/dbz#1960", "debezium/dbz#2943" })
+    @FixFor({ "debezium/dbz#1960", "debezium/dbz#2943", "debezium/dbz#2935" })
     public void testRollbackUpdateScalarAndXml() throws Exception {
         // CREATE TABLE DBZ1960_12(ID NUMERIC(9,0) PRIMARY KEY, STR0 VARCHAR2(50), XML0 XMLTYPE);
         // INSERT INTO DBZ1960_12 (ID, STR0, XML0) VALUES (1, 'STR0-1-0', XMLTYPE('<XML0><ID>1</ID><V>0</V></XML0>'));
@@ -345,7 +345,7 @@ public abstract class AbstractFindRolledBackRangeTest<T extends Transaction> {
         // UPDATE DBZ1960_12 SET STR0 = 'STR0-1-1', XML0 = XMLTYPE('<XML0><ID>1</ID><V>1</V></XML0>') WHERE ID = 1;
         // ROLLBACK TO SAVEPOINT s1;
         // Version: 26ai Free Release 23.26.2.0.0
-        LogInterceptor logInterceptor = new LogInterceptor(AbstractLogMinerTransactionCache.class);
+        LogInterceptor logInterceptor = new LogInterceptor(RollbackWarnings.class);
         LogMinerRedoEvent[] events = new LogMinerRedoEvent[]{
                 event(EventType.INSERT, 0, "AAAAAAAAAAAAAAAAAA", "1"),
                 event(EventType.XML_BEGIN, 0, "AAAAAAAAAAAAAAAAAA", "2"),
@@ -371,7 +371,7 @@ public abstract class AbstractFindRolledBackRangeTest<T extends Transaction> {
     }
 
     @Test
-    @FixFor({ "debezium/dbz#1960", "debezium/dbz#2943" })
+    @FixFor({ "debezium/dbz#1960", "debezium/dbz#2943", "debezium/dbz#2935" })
     public void testRollbackUpdateInlineAndOutOfLine() throws Exception {
         // CREATE TABLE DBZ1960_13(ID NUMERIC(9,0) PRIMARY KEY, LOB0 CLOB, XML0 XMLTYPE, LOB1 CLOB, EXT0 VARCHAR2(8000));
         // INSERT INTO DBZ1960_13 (ID, LOB0, XML0, EXT0, LOB1) VALUES (1, 'LOB0-1-0', XMLTYPE('<XML0><ID>1</ID><V>0</V></XML0>'), 'EXT0-1-0', 'LOB1-1-0');
@@ -379,7 +379,7 @@ public abstract class AbstractFindRolledBackRangeTest<T extends Transaction> {
         // UPDATE DBZ1960_13 SET LOB0 = RPAD('LOB0-1-', 1985, '1'), XML0 = XMLTYPE('<XML0><ID>1</ID><V>1</V></XML0>'), EXT0 = RPAD('EXT0-1-', 4000, '1'), LOB1 = 'LOB1-1-1' WHERE ID = 1;
         // ROLLBACK TO SAVEPOINT s1;
         // Version: 26ai Free Release 23.26.2.0.0
-        LogInterceptor logInterceptor = new LogInterceptor(AbstractLogMinerTransactionCache.class);
+        LogInterceptor logInterceptor = new LogInterceptor(RollbackWarnings.class);
         LogMinerRedoEvent[] events = new LogMinerRedoEvent[]{
                 event(EventType.INSERT, 0, "AAAAAAAAAAAAAAAAAA", "1"),
                 event(EventType.XML_BEGIN, 0, "AAAAAAAAAAAAAAAAAA", "2"),
@@ -408,7 +408,7 @@ public abstract class AbstractFindRolledBackRangeTest<T extends Transaction> {
     }
 
     @Test
-    @FixFor({ "debezium/dbz#1960", "debezium/dbz#2943" })
+    @FixFor({ "debezium/dbz#1960", "debezium/dbz#2943", "debezium/dbz#2935" })
     public void testRollbackUpdateScalarAndInlineAndOutOfLine() throws Exception {
         // CREATE TABLE DBZ1960_14(ID NUMERIC(9,0) PRIMARY KEY, STR0 VARCHAR2(50), LOB0 CLOB, XML0 XMLTYPE, LOB1 CLOB, EXT0 VARCHAR2(8000));
         // INSERT INTO DBZ1960_14 (ID, STR0, LOB0, EXT0, LOB1) VALUES (1, 'STR0-1-0', 'LOB0-1-0', 'EXT0-1-0', 'LOB1-1-0');
@@ -416,7 +416,7 @@ public abstract class AbstractFindRolledBackRangeTest<T extends Transaction> {
         // UPDATE DBZ1960_14 SET STR0 = 'STR0-1-1', EXT0 = RPAD('EXT0-1-', 4000, '1'), XML0 = XMLTYPE('<XML0><ID>1</ID><V>1</V></XML0>'), LOB0 = RPAD('LOB0-1-', 1985, '1'), LOB1 = 'LOB1-1-1' WHERE ID = 1;
         // ROLLBACK TO SAVEPOINT s1;
         // Version: 26ai Free Release 23.26.2.0.0
-        LogInterceptor logInterceptor = new LogInterceptor(AbstractLogMinerTransactionCache.class);
+        LogInterceptor logInterceptor = new LogInterceptor(RollbackWarnings.class);
         LogMinerRedoEvent[] events = new LogMinerRedoEvent[]{
                 event(EventType.INSERT, 0, "AAAAAAAAAAAAAAAAAA", "1"),
                 event(EventType.UPDATE, 0, "BBBBBBBBBBBBBBBBBB", "2"),
@@ -440,7 +440,7 @@ public abstract class AbstractFindRolledBackRangeTest<T extends Transaction> {
     }
 
     @Test
-    @FixFor({ "debezium/dbz#1960", "debezium/dbz#2943" })
+    @FixFor({ "debezium/dbz#1960", "debezium/dbz#2943", "debezium/dbz#2935" })
     public void testRollbackLobWrite() throws Exception {
         // CREATE TABLE DBZ1960_15(ID NUMERIC(9,0) PRIMARY KEY, LOB0 CLOB);
         // INSERT INTO DBZ1960_15 (ID, LOB0) VALUES (1, 'LOB0-1-0');
@@ -453,7 +453,7 @@ public abstract class AbstractFindRolledBackRangeTest<T extends Transaction> {
         // END;
         // ROLLBACK TO SAVEPOINT s1;
         // Version: 26ai Free Release 23.26.2.0.0
-        LogInterceptor logInterceptor = new LogInterceptor(AbstractLogMinerTransactionCache.class);
+        LogInterceptor logInterceptor = new LogInterceptor(RollbackWarnings.class);
         LogMinerRedoEvent[] events = new LogMinerRedoEvent[]{
                 event(EventType.INSERT, 0, "AAAAAAAAAAAAAAAAAA", "1"),
                 event(EventType.UPDATE, 0, "BBBBBBBBBBBBBBBBBB", "2"),
@@ -471,7 +471,7 @@ public abstract class AbstractFindRolledBackRangeTest<T extends Transaction> {
     }
 
     @Test
-    @FixFor({ "debezium/dbz#1960", "debezium/dbz#2943" })
+    @FixFor({ "debezium/dbz#1960", "debezium/dbz#2943", "debezium/dbz#2935" })
     public void testRollbackLobTrim() throws Exception {
         // CREATE TABLE DBZ1960_16(ID NUMERIC(9,0) PRIMARY KEY, LOB0 CLOB);
         // INSERT INTO DBZ1960_16 (ID, LOB0) VALUES (1, 'LOB0-1-00');
@@ -484,7 +484,7 @@ public abstract class AbstractFindRolledBackRangeTest<T extends Transaction> {
         // END;
         // ROLLBACK TO SAVEPOINT s1;
         // Version: 26ai Free Release 23.26.2.0.0
-        LogInterceptor logInterceptor = new LogInterceptor(AbstractLogMinerTransactionCache.class);
+        LogInterceptor logInterceptor = new LogInterceptor(RollbackWarnings.class);
         LogMinerRedoEvent[] events = new LogMinerRedoEvent[]{
                 event(EventType.INSERT, 0, "AAAAAAAAAAAAAAAAAA", "1"),
                 event(EventType.UPDATE, 0, "BBBBBBBBBBBBBBBBBB", "2"),
@@ -504,7 +504,7 @@ public abstract class AbstractFindRolledBackRangeTest<T extends Transaction> {
     // DELETE
 
     @Test
-    @FixFor({ "debezium/dbz#1960", "debezium/dbz#2943" })
+    @FixFor({ "debezium/dbz#1960", "debezium/dbz#2943", "debezium/dbz#2935" })
     public void testRollbackDelete() throws Exception {
         // CREATE TABLE DBZ1960_17(ID NUMERIC(9,0) PRIMARY KEY, STR0 VARCHAR2(50), LOB0 CLOB, XML0 XMLTYPE, LOB1 CLOB, EXT0 VARCHAR2(8000));
         // INSERT INTO DBZ1960_17 (ID, STR0, LOB0, XML0, EXT0, LOB1) VALUES (1, 'STR0-1-0', RPAD('LOB0-1-', 1985, '0'), XMLTYPE('<XML0><ID>1</ID><V>0</V></XML0>'), RPAD('EXT0-1-', 4000, '0'), 'LOB1-1-0');
@@ -512,7 +512,7 @@ public abstract class AbstractFindRolledBackRangeTest<T extends Transaction> {
         // DELETE FROM DBZ1960_17 WHERE ID = 1;
         // ROLLBACK TO SAVEPOINT s1;
         // Version: 26ai Free Release 23.26.2.0.0
-        LogInterceptor logInterceptor = new LogInterceptor(AbstractLogMinerTransactionCache.class);
+        LogInterceptor logInterceptor = new LogInterceptor(RollbackWarnings.class);
         LogMinerRedoEvent[] events = new LogMinerRedoEvent[]{
                 event(EventType.INSERT, 0, "AAAAAAAAAAAAAAAAAA", "1"),
                 event(EventType.SELECT_LOB_LOCATOR, 0, "AAAAAAAAAAAAAAAAAA", "1"),
@@ -544,7 +544,7 @@ public abstract class AbstractFindRolledBackRangeTest<T extends Transaction> {
     // Rollback multiple operations
 
     @Test
-    @FixFor({ "debezium/dbz#1960", "debezium/dbz#2943" })
+    @FixFor({ "debezium/dbz#1960", "debezium/dbz#2943", "debezium/dbz#2935" })
     public void testRollbacks() throws Exception {
         // CREATE TABLE DBZ1960_18(ID NUMERIC(9,0) PRIMARY KEY, STR0 VARCHAR2(50));
         // INSERT INTO DBZ1960_18 (ID, STR0) VALUES (1, 'STR0-1-0');
@@ -555,7 +555,7 @@ public abstract class AbstractFindRolledBackRangeTest<T extends Transaction> {
         // DELETE FROM DBZ1960_18 WHERE ID = 1;
         // ROLLBACK TO SAVEPOINT s1;
         // Version: 26ai Free Release 23.26.2.0.0
-        LogInterceptor logInterceptor = new LogInterceptor(AbstractLogMinerTransactionCache.class);
+        LogInterceptor logInterceptor = new LogInterceptor(RollbackWarnings.class);
         LogMinerRedoEvent[] events = new LogMinerRedoEvent[]{
                 event(EventType.INSERT, 0, "BBBBBBBBBBBBBBBBBB", "1"),
                 event(EventType.INSERT, 0, "CCCCCCCCCCCCCCCCCC", "2"),
@@ -577,9 +577,9 @@ public abstract class AbstractFindRolledBackRangeTest<T extends Transaction> {
     }
 
     @Test
-    @FixFor({ "debezium/dbz#1960", "debezium/dbz#2943" })
+    @FixFor({ "debezium/dbz#1960", "debezium/dbz#2943", "debezium/dbz#2935" })
     public void testRollbacksAreScopedToTheirOwnTransaction() throws Exception {
-        LogInterceptor logInterceptor = new LogInterceptor(AbstractLogMinerTransactionCache.class);
+        LogInterceptor logInterceptor = new LogInterceptor(RollbackWarnings.class);
         LogMinerTransactionCache<T> cache = cacheProvider.getTransactionCache();
         T first = transaction("1");
         T second = transaction("2");
@@ -609,7 +609,7 @@ public abstract class AbstractFindRolledBackRangeTest<T extends Transaction> {
     // Supported without INTERNAL
 
     @Test
-    @FixFor({ "debezium/dbz#1960", "debezium/dbz#2943" })
+    @FixFor({ "debezium/dbz#1960", "debezium/dbz#2943", "debezium/dbz#2935" })
     public void testRollbackUpdateOutOfLineWithoutInternal() throws Exception {
         // CREATE TABLE DBZ1960_19(ID NUMERIC(9,0) PRIMARY KEY, LOB0 CLOB);
         // INSERT INTO DBZ1960_19 (ID, LOB0) VALUES (1, 'LOB0-1-0');
@@ -617,7 +617,7 @@ public abstract class AbstractFindRolledBackRangeTest<T extends Transaction> {
         // UPDATE DBZ1960_19 SET LOB0 = RPAD('LOB0-1-', 1985, '0') WHERE ID = 1;
         // ROLLBACK TO SAVEPOINT s1;
         // Version: 26ai Free Release 23.26.2.0.0
-        LogInterceptor logInterceptor = new LogInterceptor(AbstractLogMinerTransactionCache.class);
+        LogInterceptor logInterceptor = new LogInterceptor(RollbackWarnings.class);
         LogMinerRedoEvent[] events = new LogMinerRedoEvent[]{
                 event(EventType.INSERT, 0, "AAAAAAAAAAAAAAAAAA", "1"),
                 event(EventType.UPDATE, 0, "BBBBBBBBBBBBBBBBBB", "2"),
@@ -635,7 +635,7 @@ public abstract class AbstractFindRolledBackRangeTest<T extends Transaction> {
     }
 
     @Test
-    @FixFor({ "debezium/dbz#1960", "debezium/dbz#2943" })
+    @FixFor({ "debezium/dbz#1960", "debezium/dbz#2943", "debezium/dbz#2935" })
     public void testInsertEmptyWithoutInternalAndRollbackUpdateScalar() throws Exception {
         // CREATE TABLE DBZ1960_20(ID NUMERIC(9,0) PRIMARY KEY, STR0 VARCHAR2(50), LOB0 CLOB);
         // INSERT INTO DBZ1960_20 (ID, STR0, LOB0) VALUES (1, 'STR0-1-0', EMPTY_CLOB());
@@ -643,7 +643,7 @@ public abstract class AbstractFindRolledBackRangeTest<T extends Transaction> {
         // UPDATE DBZ1960_20 SET STR0 = 'STR0-1-1' WHERE ID = 1;
         // ROLLBACK TO SAVEPOINT s1;
         // Version: 26ai Free Release 23.26.2.0.0
-        LogInterceptor logInterceptor = new LogInterceptor(AbstractLogMinerTransactionCache.class);
+        LogInterceptor logInterceptor = new LogInterceptor(RollbackWarnings.class);
         LogMinerRedoEvent[] events = new LogMinerRedoEvent[]{
                 event(EventType.INSERT, 0, "AAAAAAAAAAAAAAAAAA", "1"),
                 // event(EventType.INTERNAL, 0, "BBBBBBBBBBBBBBBBBB", "2"),
@@ -658,7 +658,7 @@ public abstract class AbstractFindRolledBackRangeTest<T extends Transaction> {
     }
 
     @Test
-    @FixFor({ "debezium/dbz#1960", "debezium/dbz#2943" })
+    @FixFor({ "debezium/dbz#1960", "debezium/dbz#2943", "debezium/dbz#2935" })
     public void testUpdateEmptyWithoutInternalAndRollbackUpdateInlineAndOutOfLine() throws Exception {
         // CREATE TABLE DBZ1960_21(ID NUMERIC(9,0) PRIMARY KEY, LOB0 CLOB, LOB1 CLOB);
         // INSERT INTO DBZ1960_21 (ID, LOB0, LOB1) VALUES (1, NULL, NULL);
@@ -667,7 +667,7 @@ public abstract class AbstractFindRolledBackRangeTest<T extends Transaction> {
         // UPDATE DBZ1960_21 SET LOB0 = RPAD('LOB0-1-', 1985, '2'), LOB1 = 'LOB1-1-2' WHERE ID = 1;
         // ROLLBACK TO SAVEPOINT s1;
         // Version: 26ai Free Release 23.26.2.0.0
-        LogInterceptor logInterceptor = new LogInterceptor(AbstractLogMinerTransactionCache.class);
+        LogInterceptor logInterceptor = new LogInterceptor(RollbackWarnings.class);
         LogMinerRedoEvent[] events = new LogMinerRedoEvent[]{
                 event(EventType.INSERT, 0, "AAAAAAAAAAAAAAAAAA", "1"),
                 event(EventType.UPDATE, 0, "BBBBBBBBBBBBBBBBBB", "2"),
@@ -688,7 +688,7 @@ public abstract class AbstractFindRolledBackRangeTest<T extends Transaction> {
     }
 
     @Test
-    @FixFor({ "debezium/dbz#1960", "debezium/dbz#2943" })
+    @FixFor({ "debezium/dbz#1960", "debezium/dbz#2943", "debezium/dbz#2935" })
     public void testUpdateOutOfLineWithoutInternalAndRollbackUpdateInlineAndOutOfLine() throws Exception {
         // CREATE TABLE DBZ1960_22(ID NUMERIC(9,0) PRIMARY KEY, LOB0 CLOB, EXT0 VARCHAR2(8000));
         // INSERT INTO DBZ1960_22 (ID, LOB0, EXT0) VALUES (1, 'LOB0-1-0', 'EXT0-1-0');
@@ -697,7 +697,7 @@ public abstract class AbstractFindRolledBackRangeTest<T extends Transaction> {
         // UPDATE DBZ1960_22 SET LOB0 = 'LOB0-1-2', EXT0 = RPAD('EXT0-1-', 4000, '2') WHERE ID = 1;
         // ROLLBACK TO SAVEPOINT s1;
         // Version: 26ai Free Release 23.26.2.0.0
-        LogInterceptor logInterceptor = new LogInterceptor(AbstractLogMinerTransactionCache.class);
+        LogInterceptor logInterceptor = new LogInterceptor(RollbackWarnings.class);
         LogMinerRedoEvent[] events = new LogMinerRedoEvent[]{
                 event(EventType.INSERT, 0, "AAAAAAAAAAAAAAAAAA", "1"),
                 event(EventType.UPDATE, 0, "BBBBBBBBBBBBBBBBBB", "2"),
@@ -720,7 +720,7 @@ public abstract class AbstractFindRolledBackRangeTest<T extends Transaction> {
     }
 
     @Test
-    @FixFor({ "debezium/dbz#1960", "debezium/dbz#2943" })
+    @FixFor({ "debezium/dbz#1960", "debezium/dbz#2943", "debezium/dbz#2935" })
     public void testInsertOutOfLineWithoutInternalAndRollbackUpdateScalar() throws Exception {
         // CREATE TABLE DBZ1960_23(ID NUMERIC(9,0) PRIMARY KEY, STR0 VARCHAR2(50), LOB0 CLOB);
         // INSERT INTO DBZ1960_23 (ID, STR0, LOB0) VALUES (1, 'STR0-1-0', RPAD('LOB0-1-', 1985, '0'));
@@ -728,7 +728,7 @@ public abstract class AbstractFindRolledBackRangeTest<T extends Transaction> {
         // UPDATE DBZ1960_23 SET STR0 = 'STR0-1-1' WHERE ID = 1;
         // ROLLBACK TO SAVEPOINT s1;
         // Version: 26ai Free Release 23.26.2.0.0
-        LogInterceptor logInterceptor = new LogInterceptor(AbstractLogMinerTransactionCache.class);
+        LogInterceptor logInterceptor = new LogInterceptor(RollbackWarnings.class);
         LogMinerRedoEvent[] events = new LogMinerRedoEvent[]{
                 event(EventType.INSERT, 0, "AAAAAAAAAAAAAAAAAA", "1"),
                 event(EventType.SELECT_LOB_LOCATOR, 0, "AAAAAAAAAAAAAAAAAA", "1"),
@@ -747,7 +747,7 @@ public abstract class AbstractFindRolledBackRangeTest<T extends Transaction> {
     }
 
     @Test
-    @FixFor({ "debezium/dbz#1960", "debezium/dbz#2943" })
+    @FixFor({ "debezium/dbz#1960", "debezium/dbz#2943", "debezium/dbz#2935" })
     public void testUpdateXmlWithoutInternalAndRollbackUpdateInlineAndOutOfLine() throws Exception {
         // CREATE TABLE DBZ1960_24(ID NUMERIC(9,0) PRIMARY KEY, XML0 XMLTYPE, EXT0 VARCHAR2(8000), LOB0 CLOB);
         // INSERT INTO DBZ1960_24 (ID, XML0, EXT0, LOB0) VALUES (1, XMLTYPE('<XML0><ID>1</ID><V>0</V></XML0>'), 'EXT0-1-0', 'LOB0-1-0');
@@ -756,7 +756,7 @@ public abstract class AbstractFindRolledBackRangeTest<T extends Transaction> {
         // UPDATE DBZ1960_24 SET EXT0 = 'EXT0-1-2', LOB0 = RPAD('LOB0-1-', 1985, '2') WHERE ID = 1;
         // ROLLBACK TO SAVEPOINT s1;
         // Version: 26ai Free Release 23.26.2.0.0
-        LogInterceptor logInterceptor = new LogInterceptor(AbstractLogMinerTransactionCache.class);
+        LogInterceptor logInterceptor = new LogInterceptor(RollbackWarnings.class);
         LogMinerRedoEvent[] events = new LogMinerRedoEvent[]{
                 event(EventType.INSERT, 0, "AAAAAAAAAAAAAAAAAA", "1"),
                 event(EventType.XML_BEGIN, 0, "AAAAAAAAAAAAAAAAAA", "2"),
@@ -787,7 +787,7 @@ public abstract class AbstractFindRolledBackRangeTest<T extends Transaction> {
     }
 
     @Test
-    @FixFor({ "debezium/dbz#1960", "debezium/dbz#2943" })
+    @FixFor({ "debezium/dbz#1960", "debezium/dbz#2943", "debezium/dbz#2935" })
     public void testUpdateOutOfLineAndXmlWithoutInternalAndRollbackUpdateInlineAndXml() throws Exception {
         // CREATE TABLE DBZ1960_25(ID NUMERIC(9,0) PRIMARY KEY, EXT0 VARCHAR2(8000), XML0 XMLTYPE);
         // INSERT INTO DBZ1960_25 (ID, EXT0, XML0) VALUES (1, 'EXT0-1-0', XMLTYPE('<XML0><ID>1</ID><V>0</V></XML0>'));
@@ -796,7 +796,7 @@ public abstract class AbstractFindRolledBackRangeTest<T extends Transaction> {
         // UPDATE DBZ1960_25 SET EXT0 = 'EXT0-1-2', XML0 = XMLTYPE('<XML0><ID>1</ID><V>2</V></XML0>') WHERE ID = 1;
         // ROLLBACK TO SAVEPOINT s1;
         // Version: 26ai Free Release 23.26.2.0.0
-        LogInterceptor logInterceptor = new LogInterceptor(AbstractLogMinerTransactionCache.class);
+        LogInterceptor logInterceptor = new LogInterceptor(RollbackWarnings.class);
         LogMinerRedoEvent[] events = new LogMinerRedoEvent[]{
                 event(EventType.INSERT, 0, "AAAAAAAAAAAAAAAAAA", "1", 1L),
                 event(EventType.XML_BEGIN, 0, "AAAAAAAAAAAAAAAAAA", "2", 2L),
@@ -832,7 +832,7 @@ public abstract class AbstractFindRolledBackRangeTest<T extends Transaction> {
     }
 
     @Test
-    @FixFor({ "debezium/dbz#1960", "debezium/dbz#2943" })
+    @FixFor({ "debezium/dbz#1960", "debezium/dbz#2943", "debezium/dbz#2935" })
     public void testRollbackLobWriteWithoutInternal() throws Exception {
         // CREATE TABLE DBZ1960_26(ID NUMERIC(9,0) PRIMARY KEY, LOB0 CLOB);
         // INSERT INTO DBZ1960_26 (ID, LOB0) VALUES (1, 'LOB0-1-0');
@@ -845,7 +845,7 @@ public abstract class AbstractFindRolledBackRangeTest<T extends Transaction> {
         // END;
         // ROLLBACK TO SAVEPOINT s1;
         // Version: 26ai Free Release 23.26.2.0.0
-        LogInterceptor logInterceptor = new LogInterceptor(AbstractLogMinerTransactionCache.class);
+        LogInterceptor logInterceptor = new LogInterceptor(RollbackWarnings.class);
         LogMinerRedoEvent[] events = new LogMinerRedoEvent[]{
                 event(EventType.INSERT, 0, "AAAAAAAAAAAAAAAAAA", "1"),
                 event(EventType.UPDATE, 0, "BBBBBBBBBBBBBBBBBB", "2"),
@@ -863,7 +863,7 @@ public abstract class AbstractFindRolledBackRangeTest<T extends Transaction> {
     }
 
     @Test
-    @FixFor({ "debezium/dbz#1960", "debezium/dbz#2943" })
+    @FixFor({ "debezium/dbz#1960", "debezium/dbz#2943", "debezium/dbz#2935" })
     public void testRollbackLobTrimWithoutInternal() throws Exception {
         // CREATE TABLE DBZ1960_27(ID NUMERIC(9,0) PRIMARY KEY, LOB0 CLOB);
         // INSERT INTO DBZ1960_27 (ID, LOB0) VALUES (1, 'LOB0-1-00');
@@ -876,7 +876,7 @@ public abstract class AbstractFindRolledBackRangeTest<T extends Transaction> {
         // END;
         // ROLLBACK TO SAVEPOINT s1;
         // Version: 26ai Free Release 23.26.2.0.0
-        LogInterceptor logInterceptor = new LogInterceptor(AbstractLogMinerTransactionCache.class);
+        LogInterceptor logInterceptor = new LogInterceptor(RollbackWarnings.class);
         LogMinerRedoEvent[] events = new LogMinerRedoEvent[]{
                 event(EventType.INSERT, 0, "AAAAAAAAAAAAAAAAAA", "1"),
                 event(EventType.UPDATE, 0, "BBBBBBBBBBBBBBBBBB", "2"),
@@ -896,7 +896,7 @@ public abstract class AbstractFindRolledBackRangeTest<T extends Transaction> {
     // Not supported without INTERNAL: silently remove valid events because the event sequence is ambiguous
 
     @Test
-    @FixFor({ "debezium/dbz#1960", "debezium/dbz#2943" })
+    @FixFor({ "debezium/dbz#1960", "debezium/dbz#2943", "debezium/dbz#2935" })
     public void testUpdateEmptyWithoutInternalAndRollbackUpdateScalar() throws Exception {
         // CREATE TABLE DBZ1960_28(ID NUMERIC(9,0) PRIMARY KEY, STR0 VARCHAR2(50), LOB0 CLOB);
         // INSERT INTO DBZ1960_28 (ID, STR0) VALUES (1, 'STR0-1-0');
@@ -912,7 +912,7 @@ public abstract class AbstractFindRolledBackRangeTest<T extends Transaction> {
         // UPDATE DBZ1960_28 SET STR0 = 'STR0-1-1', LOB0 = 'LOB0-1-1' WHERE ID = 1;
         // ROLLBACK TO SAVEPOINT s1;
         // Version: 26ai Free Release 23.26.2.0.0
-        LogInterceptor logInterceptor = new LogInterceptor(AbstractLogMinerTransactionCache.class);
+        LogInterceptor logInterceptor = new LogInterceptor(RollbackWarnings.class);
         LogMinerRedoEvent[] events = new LogMinerRedoEvent[]{
                 event(EventType.UPDATE, 0, "AAAAAAAAAAAAAAAAAA", "1"),
                 // event(EventType.INTERNAL, 0, "BBBBBBBBBBBBBBBBBB", "2"),
@@ -927,7 +927,7 @@ public abstract class AbstractFindRolledBackRangeTest<T extends Transaction> {
     }
 
     @Test
-    @FixFor({ "debezium/dbz#1960", "debezium/dbz#2943" })
+    @FixFor({ "debezium/dbz#1960", "debezium/dbz#2943", "debezium/dbz#2935" })
     public void testUpdateOutOfLineWithoutInternalAndRollbackUpdateScalar() throws Exception {
         // CREATE TABLE DBZ1960_29(ID NUMERIC(9,0) PRIMARY KEY, STR0 VARCHAR2(50), LOB0 CLOB, EXT0 VARCHAR2(8000));
         // INSERT INTO DBZ1960_29 (ID, STR0, LOB0) VALUES (1, 'STR0-1-0', EMPTY_CLOB());
@@ -943,7 +943,7 @@ public abstract class AbstractFindRolledBackRangeTest<T extends Transaction> {
         // UPDATE DBZ1960_29 SET LOB0 = 'LOB0-1-1', EXT0 = RPAD('EXT0-1-', 4000, '1') WHERE ID = 1;
         // ROLLBACK TO SAVEPOINT s1;
         // Version: 26ai Free Release 23.26.2.0.0
-        LogInterceptor logInterceptor = new LogInterceptor(AbstractLogMinerTransactionCache.class);
+        LogInterceptor logInterceptor = new LogInterceptor(RollbackWarnings.class);
         LogMinerRedoEvent[] events = new LogMinerRedoEvent[]{
                 event(EventType.EXTENDED_STRING_BEGIN, 0, "AAAAAAAAAAAAAAAAAA", "1"),
                 event(EventType.EXTENDED_STRING_WRITE, 0, "AAAAAAAAAAAAAAAAAA", "2"),
@@ -960,7 +960,7 @@ public abstract class AbstractFindRolledBackRangeTest<T extends Transaction> {
     }
 
     @Test
-    @FixFor({ "debezium/dbz#1960", "debezium/dbz#2943" })
+    @FixFor({ "debezium/dbz#1960", "debezium/dbz#2943", "debezium/dbz#2935" })
     public void testUpdateEmptyWithoutInternalAndRollbackUpdateInlineAndXml() throws Exception {
         // CREATE TABLE DBZ1960_30(ID NUMERIC(9,0) PRIMARY KEY, STR0 VARCHAR2(50), LOB0 CLOB, XML0 XMLTYPE);
         // INSERT INTO DBZ1960_30 (ID, STR0, XML0) VALUES (1, 'STR0-1-0', XMLTYPE('<XML0><ID>1</ID><V>0</V></XML0>'));
@@ -976,7 +976,7 @@ public abstract class AbstractFindRolledBackRangeTest<T extends Transaction> {
         // UPDATE DBZ1960_30 SET STR0 = 'STR0-1-1', LOB0 = 'LOB0-1-1', XML0 = XMLTYPE('<XML0><ID>1</ID><V>1</V></XML0>') WHERE ID = 1;
         // ROLLBACK TO SAVEPOINT s1;
         // Version: 26ai Free Release 23.26.2.0.0
-        LogInterceptor logInterceptor = new LogInterceptor(AbstractLogMinerTransactionCache.class);
+        LogInterceptor logInterceptor = new LogInterceptor(RollbackWarnings.class);
         LogMinerRedoEvent[] events = new LogMinerRedoEvent[]{
                 event(EventType.UPDATE, 0, "AAAAAAAAAAAAAAAAAA", "1"),
                 // event(EventType.INTERNAL, 0, "BBBBBBBBBBBBBBBBBB", "2"),
@@ -994,7 +994,7 @@ public abstract class AbstractFindRolledBackRangeTest<T extends Transaction> {
     }
 
     @Test
-    @FixFor({ "debezium/dbz#1960", "debezium/dbz#2943" })
+    @FixFor({ "debezium/dbz#1960", "debezium/dbz#2943", "debezium/dbz#2935" })
     public void testUpdateXmlWithoutInternalAndRollbackUpdateInlineAndXml() throws Exception {
         // CREATE TABLE DBZ1960_31(ID NUMERIC(9,0) PRIMARY KEY, XML0 XMLTYPE, XML1 XMLTYPE, LOB0 CLOB);
         // INSERT INTO DBZ1960_31 (ID, XML0, XML1, LOB0) VALUES (1, XMLTYPE('<XML0><ID>1</ID><V>0</V></XML0>'), XMLTYPE('<XML1><ID>1</ID><V>0</V></XML1>'), 'LOB0-1-0');
@@ -1010,7 +1010,7 @@ public abstract class AbstractFindRolledBackRangeTest<T extends Transaction> {
         // UPDATE DBZ1960_31 SET XML0 = XMLTYPE('<XML0><ID>1</ID><V>1</V></XML0>'), XML1 = XMLTYPE('<XML1><ID>1</ID><V>1</V></XML1>'), LOB0 = 'LOB0-1-1' WHERE ID = 1;
         // ROLLBACK TO SAVEPOINT s1;
         // Version: 26ai Free Release 23.26.2.0.0
-        LogInterceptor logInterceptor = new LogInterceptor(AbstractLogMinerTransactionCache.class);
+        LogInterceptor logInterceptor = new LogInterceptor(RollbackWarnings.class);
         LogMinerRedoEvent[] events = new LogMinerRedoEvent[]{
                 event(EventType.XML_BEGIN, 0, "AAAAAAAAAAAAAAAAAA", "1"),
                 event(EventType.XML_WRITE, 0, "AAAAAAAAAAAAAAAAAA", "1"),
@@ -1034,9 +1034,9 @@ public abstract class AbstractFindRolledBackRangeTest<T extends Transaction> {
     // Manual investigation is required
 
     @Test
-    @FixFor({ "debezium/dbz#1960", "debezium/dbz#2943" })
+    @FixFor({ "debezium/dbz#1960", "debezium/dbz#2943", "debezium/dbz#2935" })
     public void testRollbackInsertScalarWithUnexpectedOperation() throws Exception {
-        LogInterceptor logInterceptor = new LogInterceptor(AbstractLogMinerTransactionCache.class);
+        LogInterceptor logInterceptor = new LogInterceptor(RollbackWarnings.class);
         LogMinerRedoEvent[] events = new LogMinerRedoEvent[]{
                 event(EventType.DELETE, 0, "BBBBBBBBBBBBBBBBBB", "1"),
                 event(EventType.INSERT, 0, "BBBBBBBBBBBBBBBBBB", "2"),
@@ -1051,9 +1051,9 @@ public abstract class AbstractFindRolledBackRangeTest<T extends Transaction> {
     }
 
     @Test
-    @FixFor({ "debezium/dbz#1960", "debezium/dbz#2943" })
+    @FixFor({ "debezium/dbz#1960", "debezium/dbz#2943", "debezium/dbz#2935" })
     public void testRollbackInsertEmptyWithUnexpectedOperation() throws Exception {
-        LogInterceptor logInterceptor = new LogInterceptor(AbstractLogMinerTransactionCache.class);
+        LogInterceptor logInterceptor = new LogInterceptor(RollbackWarnings.class);
         LogMinerRedoEvent[] events = new LogMinerRedoEvent[]{
                 event(EventType.DELETE, 0, "BBBBBBBBBBBBBBBBBB", "1"),
                 event(EventType.INSERT, 0, "AAAAAAAAAAAAAAAAAA", "2"),
@@ -1069,9 +1069,9 @@ public abstract class AbstractFindRolledBackRangeTest<T extends Transaction> {
     }
 
     @Test
-    @FixFor({ "debezium/dbz#1960", "debezium/dbz#2943" })
+    @FixFor({ "debezium/dbz#1960", "debezium/dbz#2943", "debezium/dbz#2935" })
     public void testRollbackUpdateScalarWithUnexpectedOperation() throws Exception {
-        LogInterceptor logInterceptor = new LogInterceptor(AbstractLogMinerTransactionCache.class);
+        LogInterceptor logInterceptor = new LogInterceptor(RollbackWarnings.class);
         LogMinerRedoEvent[] events = new LogMinerRedoEvent[]{
                 event(EventType.INSERT, 0, "BBBBBBBBBBBBBBBBBB", "1"),
                 event(EventType.UPDATE, 0, "BBBBBBBBBBBBBBBBBB", "2"),
@@ -1086,9 +1086,9 @@ public abstract class AbstractFindRolledBackRangeTest<T extends Transaction> {
     }
 
     @Test
-    @FixFor({ "debezium/dbz#1960", "debezium/dbz#2943" })
+    @FixFor({ "debezium/dbz#1960", "debezium/dbz#2943", "debezium/dbz#2935" })
     public void testRollbackUpdateEmptyWithUnexpectedOperation() throws Exception {
-        LogInterceptor logInterceptor = new LogInterceptor(AbstractLogMinerTransactionCache.class);
+        LogInterceptor logInterceptor = new LogInterceptor(RollbackWarnings.class);
         LogMinerRedoEvent[] events = new LogMinerRedoEvent[]{
                 event(EventType.DELETE, 0, "BBBBBBBBBBBBBBBBBB", "1"),
                 event(EventType.UPDATE, 0, "AAAAAAAAAAAAAAAAAA", "2"),
@@ -1104,9 +1104,9 @@ public abstract class AbstractFindRolledBackRangeTest<T extends Transaction> {
     }
 
     @Test
-    @FixFor({ "debezium/dbz#1960", "debezium/dbz#2943" })
+    @FixFor({ "debezium/dbz#1960", "debezium/dbz#2943", "debezium/dbz#2935" })
     public void testRollbackUpdateInlineWithUnexpectedOperation() throws Exception {
-        LogInterceptor logInterceptor = new LogInterceptor(AbstractLogMinerTransactionCache.class);
+        LogInterceptor logInterceptor = new LogInterceptor(RollbackWarnings.class);
         LogMinerRedoEvent[] events = new LogMinerRedoEvent[]{
                 event(EventType.UPDATE, 0, "AAAAAAAAAAAAAAAAAA", "1"),
                 event(EventType.UPDATE, 0, "BBBBBBBBBBBBBBBBBB", "2"),
@@ -1121,9 +1121,9 @@ public abstract class AbstractFindRolledBackRangeTest<T extends Transaction> {
     }
 
     @Test
-    @FixFor({ "debezium/dbz#1960", "debezium/dbz#2943" })
+    @FixFor({ "debezium/dbz#1960", "debezium/dbz#2943", "debezium/dbz#2935" })
     public void testRollbackUpdateOutOfLineWithUnexpectedOperation() throws Exception {
-        LogInterceptor logInterceptor = new LogInterceptor(AbstractLogMinerTransactionCache.class);
+        LogInterceptor logInterceptor = new LogInterceptor(RollbackWarnings.class);
         LogMinerRedoEvent[] events = new LogMinerRedoEvent[]{
                 event(EventType.SELECT_LOB_LOCATOR, 0, "AAAAAAAAAAAAAAAAAA", "1"),
                 event(EventType.LOB_WRITE, 0, "AAAAAAAAAAAAAAAAAA", "2"),
@@ -1140,9 +1140,9 @@ public abstract class AbstractFindRolledBackRangeTest<T extends Transaction> {
     }
 
     @Test
-    @FixFor({ "debezium/dbz#1960", "debezium/dbz#2943" })
+    @FixFor({ "debezium/dbz#1960", "debezium/dbz#2943", "debezium/dbz#2935" })
     public void testRollbackInsertScalarWithUnexpectedRowId() throws Exception {
-        LogInterceptor logInterceptor = new LogInterceptor(AbstractLogMinerTransactionCache.class);
+        LogInterceptor logInterceptor = new LogInterceptor(RollbackWarnings.class);
         LogMinerRedoEvent[] events = new LogMinerRedoEvent[]{
                 event(EventType.DELETE, 0, "BBBBBBBBBBBBBBBBBB", "1"),
                 event(EventType.INSERT, 0, "CCCCCCCCCCCCCCCCCC", "2"),
@@ -1157,9 +1157,9 @@ public abstract class AbstractFindRolledBackRangeTest<T extends Transaction> {
     }
 
     @Test
-    @FixFor({ "debezium/dbz#1960", "debezium/dbz#2943" })
+    @FixFor({ "debezium/dbz#1960", "debezium/dbz#2943", "debezium/dbz#2935" })
     public void testRollbackInsertScalarWithUnexpectedTable() throws Exception {
-        LogInterceptor logInterceptor = new LogInterceptor(AbstractLogMinerTransactionCache.class);
+        LogInterceptor logInterceptor = new LogInterceptor(RollbackWarnings.class);
         // The event immediately preceding the undo belongs to another table, so the undo cannot be attributed
         LogMinerRedoEvent[] events = new LogMinerRedoEvent[]{
                 event(EventType.INSERT, 0, "BBBBBBBBBBBBBBBBBB", "1"),
@@ -1176,9 +1176,9 @@ public abstract class AbstractFindRolledBackRangeTest<T extends Transaction> {
     }
 
     @Test
-    @FixFor({ "debezium/dbz#1960", "debezium/dbz#2943" })
+    @FixFor({ "debezium/dbz#1960", "debezium/dbz#2943", "debezium/dbz#2935" })
     public void testRollbackUpdateOutOfLineWithUnexpectedTable() throws Exception {
-        LogInterceptor logInterceptor = new LogInterceptor(AbstractLogMinerTransactionCache.class);
+        LogInterceptor logInterceptor = new LogInterceptor(RollbackWarnings.class);
         // The INTERNAL event is matched, but the empty-ROW_ID event before it belongs to another table. Without the
         // guard it would be taken as the inline part of the same statement and removed along with the INTERNAL event.
         LogMinerRedoEvent[] events = new LogMinerRedoEvent[]{

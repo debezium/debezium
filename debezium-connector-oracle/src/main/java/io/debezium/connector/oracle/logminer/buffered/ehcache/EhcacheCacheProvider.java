@@ -71,9 +71,9 @@ public class EhcacheCacheProvider extends AbstractCacheProvider<EhcacheTransacti
 
         final EhcacheEvictionListener evictionListener = new EhcacheEvictionListener();
 
-        this.transactionCache = createTransactionCache(evictionListener);
+        this.transactionCache = createTransactionCache(evictionListener, connectorConfig.getLogMiningBufferGrowthMax());
         this.processedTransactionsCache = createProcessedTransactionCache(evictionListener);
-        verifyStoredEventFormat();
+        clearRetainedState();
     }
 
     @Override
@@ -147,10 +147,9 @@ public class EhcacheCacheProvider extends AbstractCacheProvider<EhcacheTransacti
                     throw e;
                 }
                 // Ehcache refuses to open a persistent cache whose stored value type differs from the configured one,
-                // which happens when a retained buffer was written by a version that stored parsed events. Its entries
-                // cannot be read, so the buffer is destroyed as a whole and the connector re-mines from its offsets,
-                // which requires the archive logs back to the offset SCN, as any restart does.
-                LOGGER.warn("The retained Ehcache transaction buffer was written by a version that stored parsed events; destroying it.");
+                // which happens when a buffer left behind was written by a version that stored parsed events. The buffer
+                // is transient and would be cleared anyway, so it is destroyed as a whole and recreated.
+                LOGGER.warn("The Ehcache transaction buffer left by a previous run was written by a version that stored parsed events; destroying it.");
                 persistentCacheManager.destroy();
                 final CacheManager replacement = CacheManagerBuilder.newCacheManager(xmlConfiguration);
                 replacement.init();
@@ -212,11 +211,12 @@ public class EhcacheCacheProvider extends AbstractCacheProvider<EhcacheTransacti
         return cache;
     }
 
-    private EhcacheLogMinerTransactionCache createTransactionCache(EhcacheEvictionListener evictionListener) {
+    private EhcacheLogMinerTransactionCache createTransactionCache(EhcacheEvictionListener evictionListener, int growthMax) {
         return new EhcacheLogMinerTransactionCache(
                 getCache(TRANSACTIONS_CACHE_NAME, String.class, EhcacheTransaction.class, evictionListener),
                 getCache(EVENTS_CACHE_NAME, String.class, LogMinerRedoEvent.class, evictionListener),
-                evictionListener);
+                evictionListener,
+                growthMax);
     }
 
     private EhcacheLogMinerCache<String, String> createProcessedTransactionCache(EhcacheEvictionListener evictionListener) {

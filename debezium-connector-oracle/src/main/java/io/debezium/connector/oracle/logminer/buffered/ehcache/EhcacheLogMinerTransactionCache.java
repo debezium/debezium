@@ -5,13 +5,13 @@
  */
 package io.debezium.connector.oracle.logminer.buffered.ehcache;
 
+import java.util.BitSet;
 import java.util.HashMap;
-import java.util.Iterator;
+import java.util.HashSet;
 import java.util.Map;
-import java.util.TreeSet;
+import java.util.Set;
 import java.util.function.Consumer;
 import java.util.function.Function;
-import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 
@@ -19,10 +19,17 @@ import org.ehcache.Cache;
 
 import io.debezium.connector.oracle.logminer.buffered.AbstractLogMinerTransactionCache;
 import io.debezium.connector.oracle.logminer.buffered.CacheProvider;
+import io.debezium.connector.oracle.logminer.buffered.EventMetadataColumns;
+import io.debezium.connector.oracle.logminer.buffered.SavepointRollbacks;
+import io.debezium.connector.oracle.logminer.buffered.TableDictionary;
 import io.debezium.connector.oracle.logminer.events.LogMinerRedoEvent;
 
 /**
- * A concrete implementation of {@link AbstractLogMinerTransactionCache} for Ehcache.
+ * A concrete implementation of the {@link AbstractLogMinerTransactionCache} for Ehcache.
+ * <p>
+ * Each event is one entry of the events cache, keyed by transaction id and position. The fields the partial
+ * rollback logic reads are kept on the heap in {@link EventMetadataColumns}, one per transaction, so an undo
+ * is resolved when the transaction is read without reading any entry, and only the surviving entries are read.
  *
  * @author Chris Cranford
  */
@@ -31,18 +38,20 @@ public class EhcacheLogMinerTransactionCache extends AbstractLogMinerTransaction
     private final Cache<String, EhcacheTransaction> transactionCache;
     private final Cache<String, LogMinerRedoEvent> eventCache;
     private final EhcacheEvictionListener evictionListener;
+    private final int growthMax;
 
-    // Heap-backed caches for quick access to specific metadata to speed up processing
-    private final Map<String, TreeSet<Integer>> eventIdsByTransactionId = new HashMap<>();
+    // Heap-backed metadata for quick access to what the rollback logic reads
+    private final Map<String, EventMetadataColumns> metadataByTransactionId = new HashMap<>();
+    private final TableDictionary tables = new TableDictionary();
 
     public EhcacheLogMinerTransactionCache(Cache<String, EhcacheTransaction> transactionCache,
                                            Cache<String, LogMinerRedoEvent> eventCache,
-                                           EhcacheEvictionListener evictionListener) {
+                                           EhcacheEvictionListener evictionListener,
+                                           int growthMax) {
         this.transactionCache = transactionCache;
         this.eventCache = eventCache;
         this.evictionListener = evictionListener;
-
-        primeHeapCacheFromOffHeapCaches();
+        this.growthMax = growthMax;
     }
 
     @Override
@@ -54,9 +63,9 @@ public class EhcacheLogMinerTransactionCache extends AbstractLogMinerTransaction
     public void addTransaction(EhcacheTransaction transaction) {
         transactionCache.put(transaction.getTransactionId(), transaction);
         checkAndThrowIfEviction(CacheProvider.TRANSACTIONS_CACHE_NAME);
-        final TreeSet<Integer> previousEventIds = eventIdsByTransactionId.put(transaction.getTransactionId(), new TreeSet<>());
-        if (previousEventIds != null) {
-            transactionEvents -= previousEventIds.size();
+        final EventMetadataColumns previous = metadataByTransactionId.put(transaction.getTransactionId(), new EventMetadataColumns(tables, growthMax));
+        if (previous != null) {
+            transactionEvents -= previous.count();
         }
     }
 
@@ -67,17 +76,17 @@ public class EhcacheLogMinerTransactionCache extends AbstractLogMinerTransaction
 
     @Override
     public boolean containsTransaction(String transactionId) {
-        return eventIdsByTransactionId.containsKey(transactionId);
+        return metadataByTransactionId.containsKey(transactionId);
     }
 
     @Override
     public boolean isEmpty() {
-        return eventIdsByTransactionId.isEmpty();
+        return metadataByTransactionId.isEmpty();
     }
 
     @Override
     public int getTransactionCount() {
-        return eventIdsByTransactionId.size();
+        return metadataByTransactionId.size();
     }
 
     @Override
@@ -103,10 +112,12 @@ public class EhcacheLogMinerTransactionCache extends AbstractLogMinerTransaction
 
     @Override
     public void forEachEvent(EhcacheTransaction transaction, InterruptiblePredicate<LogMinerRedoEvent> predicate) throws InterruptedException {
-        final var events = eventIdsByTransactionId.get(transaction.getTransactionId());
-        if (events != null) {
-            for (int eventId : events) {
-                if (!predicate.test(eventCache.get(transaction.getEventId(eventId)))) {
+        final String transactionId = transaction.getTransactionId();
+        final EventMetadataColumns metadata = metadataByTransactionId.get(transactionId);
+        if (metadata != null) {
+            final BitSet skipped = SavepointRollbacks.resolve(transactionId, metadata, id -> eventCache.get(eventKey(transactionId, id)));
+            for (int id = skipped.nextClearBit(0); id < metadata.count(); id = skipped.nextClearBit(id + 1)) {
+                if (!predicate.test(eventCache.get(eventKey(transactionId, id)))) {
                     break;
                 }
             }
@@ -124,62 +135,60 @@ public class EhcacheLogMinerTransactionCache extends AbstractLogMinerTransaction
 
     @Override
     public void addTransactionEvent(EhcacheTransaction transaction, int eventKey, LogMinerRedoEvent event) {
-        eventCache.put(transaction.getEventId(eventKey), event);
-        checkAndThrowIfEviction(CacheProvider.EVENTS_CACHE_NAME);
-        final TreeSet<Integer> eventIds = eventIdsByTransactionId.get(transaction.getTransactionId());
-        if (eventIds.add(eventKey)) {
-            transactionEvents++;
+        final String transactionId = transaction.getTransactionId();
+        final EventMetadataColumns metadata = metadataByTransactionId.get(transactionId);
+        if (eventKey < metadata.count()) {
+            // Already stored, as containsTransactionEvent reports by position; the entry is refreshed
+            eventCache.put(eventKey(transactionId, eventKey), event);
+            checkAndThrowIfEviction(CacheProvider.EVENTS_CACHE_NAME);
+            return;
         }
 
-        if (event.isRollback()) {
-            final Iterator<LogMinerEventEntry> reverseIterator = new LogMinerEventEntryIterator(
-                    eventIds.descendingIterator(), id -> eventCache.get(transaction.getEventId(id)));
-            final LogMinerEventEntryRange range = findRolledBackRange(transaction.getTransactionId(), reverseIterator);
-            if (range != null) {
-                final Iterator<Integer> forwardIterator = eventIds.subSet(range.start().eventId(), range.end().eventId()).iterator();
-                while (forwardIterator.hasNext()) {
-                    eventCache.remove(transaction.getEventId(forwardIterator.next()));
-                    forwardIterator.remove();
-                    transactionEvents--;
-                }
-            }
+        if (eventKey > metadata.count()) {
+            throw new IllegalArgumentException("Event key " + eventKey + " is not the next position of transaction " + transactionId);
         }
+
+        eventCache.put(eventKey(transactionId, eventKey), event);
+
+        checkAndThrowIfEviction(CacheProvider.EVENTS_CACHE_NAME);
+
+        metadata.append(event);
+        transactionEvents++;
     }
 
     @Override
     public void removeTransactionEvents(EhcacheTransaction transaction) {
-        final var events = eventIdsByTransactionId.remove(transaction.getTransactionId());
-        if (events != null) {
-            eventCache.removeAll(events
-                    .stream()
-                    .map(transaction::getEventId)
-                    .collect(Collectors.toSet()));
-            transactionEvents -= events.size();
+        final EventMetadataColumns metadata = metadataByTransactionId.remove(transaction.getTransactionId());
+        if (metadata != null) {
+            eventCache.removeAll(eventKeys(transaction.getTransactionId(), 0, metadata.count()));
+            transactionEvents -= metadata.count();
         }
     }
 
     @Override
     public boolean containsTransactionEvent(EhcacheTransaction transaction, int eventKey) {
-        // Uses the highest event key ever assigned rather than checking for presence directly
-        // since a partial rollback may have removed the event's entry from the cache.
-        final var events = eventIdsByTransactionId.get(transaction.getTransactionId());
-        return events != null && !events.isEmpty() && events.last() >= eventKey;
+        // Positions are never reused, so an event is present when its position was assigned
+        final EventMetadataColumns metadata = metadataByTransactionId.get(transaction.getTransactionId());
+        return metadata != null && metadata.count() > eventKey;
+    }
+
+    @Override
+    public EventMetadataColumns getEventMetadata(EhcacheTransaction transaction) {
+        return metadataByTransactionId.get(transaction.getTransactionId());
     }
 
     @Override
     public int getTransactionEventCount(EhcacheTransaction transaction) {
-        final var events = eventIdsByTransactionId.get(transaction.getTransactionId());
-        if (events != null) {
-            return events.size();
-        }
-        return 0;
+        final EventMetadataColumns metadata = metadataByTransactionId.get(transaction.getTransactionId());
+        return metadata == null ? 0 : metadata.count();
     }
 
     @Override
     public void clear() {
         transactionCache.clear();
         eventCache.clear();
-        eventIdsByTransactionId.clear();
+        metadataByTransactionId.clear();
+        tables.clear();
         transactionEvents = 0;
     }
 
@@ -200,20 +209,12 @@ public class EhcacheLogMinerTransactionCache extends AbstractLogMinerTransaction
         checkAndThrowIfEviction(CacheProvider.TRANSACTIONS_CACHE_NAME);
     }
 
-    private void primeHeapCacheFromOffHeapCaches() {
-        // Primes the heap-based cache if the Ehcache persistence caches contained data on start-up
-        eventKeys(keyStream -> {
-            keyStream.map(k -> k.split("-", 2))
-                    .filter(parts -> parts.length == 2)
-                    .forEach(parts -> {
-                        final String transactionId = parts[0];
-                        final int eventId = Integer.parseInt(parts[1]);
-                        if (transactionCache.containsKey(transactionId)
-                                && eventIdsByTransactionId.computeIfAbsent(transactionId, k -> new TreeSet<>()).add(eventId)) {
-                            transactionEvents++;
-                        }
-                    });
-        });
+    private static Set<String> eventKeys(String transactionId, int from, int toExclusive) {
+        final Set<String> keys = new HashSet<>();
+        for (int id = from; id < toExclusive; id++) {
+            keys.add(eventKey(transactionId, id));
+        }
+        return keys;
     }
 
     private void checkAndThrowIfEviction(String cacheName) {

@@ -49,7 +49,6 @@ import io.debezium.connector.oracle.logminer.buffered.infinispan.InfinispanTrans
 import io.debezium.connector.oracle.logminer.buffered.infinispan.RemoteInfinispanCacheProvider;
 import io.debezium.connector.oracle.logminer.buffered.memory.MemoryCacheProvider;
 import io.debezium.connector.oracle.logminer.buffered.memory.MemoryTransactionFactory;
-import io.debezium.connector.oracle.logminer.events.CachedEvent;
 import io.debezium.connector.oracle.logminer.events.DdlEvent;
 import io.debezium.connector.oracle.logminer.events.DmlEvent;
 import io.debezium.connector.oracle.logminer.events.EventType;
@@ -57,7 +56,6 @@ import io.debezium.connector.oracle.logminer.events.LogMinerEvent;
 import io.debezium.connector.oracle.logminer.events.LogMinerEventRow;
 import io.debezium.connector.oracle.logminer.events.LogMinerRedoEvent;
 import io.debezium.connector.oracle.logminer.events.RedoSqlDmlEvent;
-import io.debezium.connector.oracle.logminer.events.RowIdCodec;
 import io.debezium.connector.oracle.logminer.events.TruncateEvent;
 import io.debezium.connector.oracle.logminer.logwriter.LogWriterFlushStrategy;
 import io.debezium.connector.oracle.logminer.parser.LogMinerDmlEntry;
@@ -367,16 +365,31 @@ public class BufferedLogMinerStreamingChangeEventSource extends AbstractLogMiner
         return false;
     }
 
+    /**
+     * Stores an {@code INTERNAL} row when it completes the transaction's last stored event, a LOB operation or
+     * a row without a row id, so that a later undo of that row finds it. The last stored event is read from the
+     * metadata every cache keeps on the heap; a stored {@code INTERNAL} row carries a row id of its own, so a
+     * second one in a row is not stored.
+     */
     @Override
     protected void handleInternalEvent(LogMinerEventRow event) throws InterruptedException {
-        final CachedEvent lastEvent = getTransactionCache().removeLastEnqueuedEvent(event.getTransactionId());
-        if (lastEvent != null && (lastEvent.getRowId().equals(RowIdCodec.EMPTY_ROW_ID)
-                || lastEvent.getEventType() == EventType.SELECT_LOB_LOCATOR
-                || lastEvent.getEventType() == EventType.LOB_WRITE
-                || lastEvent.getEventType() == EventType.LOB_TRIM
-                || lastEvent.getEventType() == EventType.LOB_ERASE)) {
+        final Transaction transaction = getTransactionCache().getTransaction(event.getTransactionId());
+        if (transaction == null) {
+            return;
+        }
+        final EventMetadataColumns metadata = getTransactionCache().getEventMetadata(transaction);
+        if (metadata == null || metadata.count() == 0) {
+            return;
+        }
+        final int last = metadata.count() - 1;
+        final EventType lastType = metadata.eventType(last);
+        if (metadata.hasEmptyRowId(last)
+                || lastType == EventType.SELECT_LOB_LOCATOR
+                || lastType == EventType.LOB_WRITE
+                || lastType == EventType.LOB_TRIM
+                || lastType == EventType.LOB_ERASE) {
             if (event.getTableId() == null) {
-                event.setTableId(lastEvent.getTableId());
+                event.setTableId(metadata.tableId(last));
             }
             storeEvent(event, new LogMinerRedoEvent(event, false));
         }
@@ -816,7 +829,6 @@ public class BufferedLogMinerStreamingChangeEventSource extends AbstractLogMiner
         final Transaction transaction = getTransactionCache().getTransaction(transactionId);
         if (transaction != null) {
             LOGGER.debug("Skipping GoldenGate replication marker for transaction {} with SCN {}", transactionId, event.getScn());
-            getTransactionCache().removeLastEnqueuedEvent(transaction.getTransactionId());
             getTransactionCache().removeTransactionEvents(transaction);
             getTransactionCache().removeTransaction(transaction);
         }
@@ -1057,7 +1069,6 @@ public class BufferedLogMinerStreamingChangeEventSource extends AbstractLogMiner
         else {
             getTransactionCache().removeAbandonedTransaction(transaction.getTransactionId());
         }
-        getTransactionCache().removeLastEnqueuedEvent(transaction.getTransactionId());
         getTransactionCache().removeTransactionEvents(transaction);
     }
 
@@ -1197,7 +1208,6 @@ public class BufferedLogMinerStreamingChangeEventSource extends AbstractLogMiner
         if (rollbackEvent) {
             final Transaction transaction = getTransactionCache().getTransaction(transactionId);
             if (transaction != null) {
-                getTransactionCache().removeLastEnqueuedEvent(transaction.getTransactionId());
                 getTransactionCache().removeTransactionEvents(transaction);
                 getTransactionCache().removeTransaction(transaction);
             }
@@ -1253,8 +1263,6 @@ public class BufferedLogMinerStreamingChangeEventSource extends AbstractLogMiner
                 getMetrics().setActiveTransactionCount(getTransactionCache().getTransactionCount());
             }
         }
-
-        getTransactionCache().putLastEnqueuedEvent(transaction.getTransactionId(), storedEvent);
 
         final int eventId = transaction.getNextEventId();
         if (!getTransactionCache().containsTransactionEvent(transaction, eventId)) {

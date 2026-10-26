@@ -40,9 +40,9 @@ import io.debezium.relational.TableId;
  * builds. Run both builds with the same arguments and JVM settings:
  *
  * <pre>
- * true
+ * java -Xms2g -Xmx2g -XX:+UseSerialGC -cp target/debezium-microbenchmark-oracle.jar \
  *     io.debezium.performance.connector.oracle.buffer.MemoryTransactionCacheFootprint \
- *     --transactions 100 --events 1000 --columns 10 --rounds 5
+ *     --transactions 100 --events 1000 --columns 10 --rounds 5 --compression true
  * </pre>
  *
  * The average redo statement length is reported too, since a build that stores the statement text instead of
@@ -63,6 +63,7 @@ public class MemoryTransactionCacheFootprint {
     private final int eventsPerTransaction;
     private final int columns;
     private final int rounds;
+    private final boolean compression;
     private final Table table;
     private final LogMinerDmlParser parser;
 
@@ -73,24 +74,26 @@ public class MemoryTransactionCacheFootprint {
         int events = 1000;
         int columns = 10;
         int rounds = 5;
+        boolean compression = true;
         for (int i = 0; i + 1 < args.length; i += 2) {
-            final int value = Integer.parseInt(args[i + 1]);
             switch (args[i]) {
-                case "--transactions" -> transactions = value;
-                case "--events" -> events = value;
-                case "--columns" -> columns = value;
-                case "--rounds" -> rounds = value;
+                case "--transactions" -> transactions = Integer.parseInt(args[i + 1]);
+                case "--events" -> events = Integer.parseInt(args[i + 1]);
+                case "--columns" -> columns = Integer.parseInt(args[i + 1]);
+                case "--rounds" -> rounds = Integer.parseInt(args[i + 1]);
+                case "--compression" -> compression = Boolean.parseBoolean(args[i + 1]);
                 default -> throw new IllegalArgumentException("Unknown argument: " + args[i]);
             }
         }
-        new MemoryTransactionCacheFootprint(transactions, events, columns, rounds).run();
+        new MemoryTransactionCacheFootprint(transactions, events, columns, rounds, compression).run();
     }
 
-    public MemoryTransactionCacheFootprint(int transactions, int eventsPerTransaction, int columns, int rounds) {
+    public MemoryTransactionCacheFootprint(int transactions, int eventsPerTransaction, int columns, int rounds, boolean compression) {
         this.transactions = transactions;
         this.eventsPerTransaction = eventsPerTransaction;
         this.columns = columns;
         this.rounds = rounds;
+        this.compression = compression;
         this.table = createTable();
         this.parser = new LogMinerDmlParser(new OracleConnectorConfig(Configuration.empty()));
     }
@@ -122,8 +125,8 @@ public class MemoryTransactionCacheFootprint {
 
         Arrays.sort(bytesPerEvent);
         print(String.format(Locale.ROOT,
-                "footprint transactions=%d events=%d columns=%d rounds=%d baseline=%d statementChars/event=%d bytes/event min=%d median=%d max=%d",
-                transactions, eventsPerTransaction, columns, rounds, baseline, statementChars / totalEvents,
+                "footprint transactions=%d events=%d columns=%d rounds=%d compression=%s baseline=%d statementChars/event=%d bytes/event min=%d median=%d max=%d",
+                transactions, eventsPerTransaction, columns, rounds, compression, baseline, statementChars / totalEvents,
                 bytesPerEvent[0], bytesPerEvent[rounds / 2], bytesPerEvent[rounds - 1]));
 
         measureParseTime(totalEvents);
@@ -151,7 +154,9 @@ public class MemoryTransactionCacheFootprint {
     }
 
     private MemoryCacheProvider fill() {
-        final MemoryCacheProvider provider = new MemoryCacheProvider(new OracleConnectorConfig(Configuration.empty()));
+        final MemoryCacheProvider provider = new MemoryCacheProvider(new OracleConnectorConfig(Configuration.create()
+                .with(OracleConnectorConfig.LOG_MINING_BUFFER_MEMORY_COMPRESSION, compression)
+                .build()));
         final LogMinerTransactionCache<MemoryTransaction> cache = provider.getTransactionCache();
         final MemoryTransactionFactory factory = new MemoryTransactionFactory();
         final Random random = new Random(SEED);

@@ -19,7 +19,7 @@ import io.debezium.util.IoUtil;
 /**
  * @author Chris Cranford
  */
-public class EhcacheStoredEventFormatTest extends AbstractStoredEventFormatTest<EhcacheTransaction> {
+public class EhcacheTransientBufferTest extends AbstractTransientBufferTest<EhcacheTransaction> {
 
     // A persistent tier outlives its cache manager, so this test keeps its own directory, away from the
     // non-persistent tiers the other tests open under target/data, and removes it after each test
