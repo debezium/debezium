@@ -700,7 +700,7 @@ You can configure key and value formats independently by using either the defaul
 
 |[[debezium-format-header]]<<debezium-format-header, `debezium.format.header`>>
 |`json`
-|The name of the output format for value, one of `json`/`jsonbytearray`.
+|The name of the output format for header, one of `json`/`jsonbytearray`/`simplestring`.
 
 |[[debezium-format-header-props]]<<debezium-format-header-props, `debezium.format.header.*`>>
 |
