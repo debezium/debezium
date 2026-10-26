@@ -238,6 +238,9 @@ Use this snapshot mode only when you know that all data of interest is still ref
 * It cannot detect any topic offsets.
 * A previously recorded offset specifies a log position that is not available on the server.
 
+|`when_needed_no_data`
+|Combines `when_needed` and `no_data`, which means that if a snapshot is needed, it will be performed without data (schema-only).
+
 ifdef::community[]
 |`configuration_based`
 |Set the snapshot mode to `configuration_based` to control snapshot behavior through the set of connector properties that have the prefix 'snapshot.mode.configuration.based'.
@@ -4139,6 +4142,8 @@ Use this snapshot mode only when you know all data of interest is still reflecte
 
 * It cannot detect any topic offsets.
 * A previously recorded offset specifies a log position that is not available on the server.
+
+`when_needed_no_data`:: Combines `when_needed` and `no_data`, which means that if a snapshot is needed, it will be performed without data (schema-only).
 
 ifdef::community[]
 `configuration_based`:: With this option, you control snapshot behavior through a set of connector properties that have the prefix 'snapshot.mode.configuration.based'.
