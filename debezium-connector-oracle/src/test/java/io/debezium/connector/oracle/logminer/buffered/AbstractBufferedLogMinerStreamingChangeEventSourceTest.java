@@ -1643,6 +1643,76 @@ public abstract class AbstractBufferedLogMinerStreamingChangeEventSourceTest ext
         }
     }
 
+    @Test
+    @FixFor("debezium/dbz#801")
+    public void testCreateTableAsSelectIsResolvedAsOfCommit() throws Exception {
+        applySchemaChangesWhenDispatched();
+        final TableId tableId = TableId.parse("ORCLPDB1.DEBEZIUM.NEW_TABLE");
+        try (var source = getChangeEventSource(getConfig().build())) {
+            final BufferedStreamingChangeEventSource mock = Mockito.spy(source);
+
+            // Stands in for reading the definition through DBMS_FLASHBACK at the commit SCN
+            Mockito.doReturn("CREATE TABLE \"DEBEZIUM\".\"NEW_TABLE\" (\"ID\" VARCHAR2(50), \"DATA\" VARCHAR2(50));")
+                    .when(mock).getTableDdlAtScn(eq(tableId), any());
+
+            final Instant changeTime = Instant.now();
+            mock.processEvent(getStartLogMinerEventRow(1, TRANSACTION_ID_1));
+            mock.processEvent(getDdlLogMinerEventRow(2, TRANSACTION_ID_1, changeTime, "NEW_TABLE",
+                    "create table \"DEBEZIUM\".\"NEW_TABLE\" as select \"ID\", \"DATA\" from \"DEBEZIUM\".\"TEST_TABLE\";"));
+            mock.processEvent(getInsertLogMinerEventRow(3, TRANSACTION_ID_1, changeTime, "NEW_TABLE", "AAAAAAAAAAAAAAAAAB", "'x'"));
+
+            Mockito.verify(mock, Mockito.never()).getTableDdlAtScn(any(), any());
+            assertThat(schema.tableFor(tableId)).isNull();
+
+            mock.processEvent(getCommitLogMinerEventRow(4, TRANSACTION_ID_1));
+
+            Mockito.verify(mock, Mockito.times(1)).getTableDdlAtScn(tableId, Scn.valueOf(4));
+            Mockito.verify(mock, Mockito.never()).dispatchSchemaChangeEventAndGetTableForNewConfiguredTable(any());
+            Mockito.verify(dispatcher, Mockito.times(1)).dispatchSchemaChangeEvent(any(), any(), eq(tableId), any());
+            Mockito.verify(dispatcher, Mockito.times(1))
+                    .dispatchDataChangeEvent(any(), eq(tableId), argThat(emitter -> emitter.getOperation() == Operation.CREATE));
+
+            final Table table = schema.tableFor(tableId);
+            assertThat(table).isNotNull();
+            assertThat(table.retrieveColumnNames()).containsExactly("ID", "DATA");
+        }
+    }
+
+    @Test
+    @FixFor("debezium/dbz#801")
+    public void testCreateTableAsSelectFallsBackToCurrentDefinitionWhenUnresolved() throws Exception {
+        applySchemaChangesWhenDispatched();
+        final TableId tableId = TableId.parse("ORCLPDB1.DEBEZIUM.NEW_TABLE");
+        final Table table = Table.editor()
+                .tableId(tableId)
+                .addColumn(Column.editor().name("ID").type("VARCHAR2(50)").create())
+                .addColumn(Column.editor().name("DATA").type("VARCHAR2(50)").create())
+                .create();
+        try (var source = getChangeEventSource(getConfig().build())) {
+            final BufferedStreamingChangeEventSource mock = Mockito.spy(source);
+
+            // The definition could not be read as of the commit and the failure handling mode skipped the schema change
+            Mockito.doReturn(null).when(mock).getTableDdlAtScn(eq(tableId), any());
+            // The transaction's rows then fetch the current definition, as any included but unknown table does
+            Mockito.doAnswer(invocation -> {
+                schema.refresh(table);
+                return table;
+            }).when(mock).dispatchSchemaChangeEventAndGetTableForNewConfiguredTable(tableId);
+
+            final Instant changeTime = Instant.now();
+            mock.processEvent(getStartLogMinerEventRow(1, TRANSACTION_ID_1));
+            mock.processEvent(getDdlLogMinerEventRow(2, TRANSACTION_ID_1, changeTime, "NEW_TABLE",
+                    "create table \"DEBEZIUM\".\"NEW_TABLE\" as select \"ID\", \"DATA\" from \"DEBEZIUM\".\"TEST_TABLE\";"));
+            mock.processEvent(getInsertLogMinerEventRow(3, TRANSACTION_ID_1, changeTime, "NEW_TABLE", "AAAAAAAAAAAAAAAAAB", "'x'"));
+            mock.processEvent(getCommitLogMinerEventRow(4, TRANSACTION_ID_1));
+
+            Mockito.verify(mock, Mockito.times(1)).getTableDdlAtScn(tableId, Scn.valueOf(4));
+            Mockito.verify(mock, Mockito.times(1)).dispatchSchemaChangeEventAndGetTableForNewConfiguredTable(tableId);
+            Mockito.verify(dispatcher, Mockito.times(1))
+                    .dispatchDataChangeEvent(any(), eq(tableId), argThat(emitter -> emitter.getOperation() == Operation.CREATE));
+        }
+    }
+
     /**
      * Runs each dispatched schema change's emitter, so the parser applies the statement to the schema's tables;
      * the mocked dispatcher would otherwise leave the schema untouched.
@@ -1817,6 +1887,11 @@ public abstract class AbstractBufferedLogMinerStreamingChangeEventSourceTest ext
         public Table dispatchSchemaChangeEventAndGetTableForNewConfiguredTable(TableId tableId) throws SQLException, InterruptedException {
             // Necessary for mock purposes only
             return super.dispatchSchemaChangeEventAndGetTableForNewConfiguredTable(tableId);
+        }
+
+        @Override
+        public String getTableDdlAtScn(TableId tableId, Scn scn) {
+            return super.getTableDdlAtScn(tableId, scn);
         }
 
         @Override

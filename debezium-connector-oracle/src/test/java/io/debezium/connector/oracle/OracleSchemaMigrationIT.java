@@ -13,6 +13,7 @@ import java.sql.SQLException;
 import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicReference;
 
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.Struct;
@@ -23,6 +24,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 
+import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
 import io.debezium.connector.SnapshotType;
 import io.debezium.connector.oracle.antlr.listener.AlterTableParserListener;
@@ -1622,6 +1624,165 @@ public class OracleSchemaMigrationIT extends AbstractAsyncEngineConnectorTest {
             stopConnector();
             TestHelper.dropTable(connection, "dbz8089");
         }
+    }
+
+    @Test
+    @FixFor("debezium/dbz#801")
+    public void shouldStreamCreateTableAsSelectWhenFlashbackIsGranted() throws Exception {
+        TestHelper.grantRole("EXECUTE", "DBMS_FLASHBACK", TestHelper.getConnectorUserName());
+        try {
+            createCreateTableAsSelectSources();
+
+            Configuration config = TestHelper.defaultConfig()
+                    .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "DEBEZIUM\\.DBZ801_BAK")
+                    .with(OracleConnectorConfig.INCLUDE_SCHEMA_CHANGES, true)
+                    .with(SchemaHistory.STORE_ONLY_CAPTURED_TABLES_DDL, true)
+                    .build();
+
+            start(OracleConnector.class, config);
+            assertConnectorIsRunning();
+            waitForStreamingRunning(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
+
+            // The statement names none of the table's columns; two come from expressions over a join
+            connection.execute("CREATE TABLE debezium.dbz801_bak AS " +
+                    "SELECT s.id, s.name, t.extra, t.created, UPPER(s.name) || t.extra AS label, t.extra * 2 AS doubled " +
+                    "FROM debezium.dbz801_src s JOIN debezium.dbz801_src2 t ON s.id = t.id");
+
+            // The schema change carries the definition read as of the commit, not the statement
+            SourceRecords records = consumeRecordsByTopic(1);
+            assertThat(records.recordsForTopic(TestHelper.SERVER_NAME)).hasSize(1);
+            SourceRecord record = records.recordsForTopic(TestHelper.SERVER_NAME).get(0);
+            assertStreamingSchemaChange(record);
+            assertSourceTableInfo(record, "DEBEZIUM", "DBZ801_BAK");
+            assertThat(((Struct) record.value()).getString("ddl")).contains("CREATE TABLE \"DEBEZIUM\".\"DBZ801_BAK\"");
+            assertThat(((Struct) record.value()).getString("ddl")).doesNotContainIgnoringCase("as select");
+
+            List<Struct> tableChanges = ((Struct) record.value()).getArray("tableChanges");
+            assertThat(tableChanges).hasSize(1);
+            assertTableChange(tableChanges.get(0), "CREATE", "DEBEZIUM", "DBZ801_BAK");
+            assertTableChangeColumn(tableChanges.get(0), 0, "ID");
+            assertTableChangeColumn(tableChanges.get(0), 1, "NAME");
+            assertTableChangeColumn(tableChanges.get(0), 2, "EXTRA");
+            assertTableChangeColumn(tableChanges.get(0), 3, "CREATED");
+            assertTableChangeColumn(tableChanges.get(0), 4, "LABEL");
+            assertTableChangeColumn(tableChanges.get(0), 5, "DOUBLED");
+
+            // Changes after the create are captured with the resolved columns
+            TestHelper.streamTable(connection, "debezium.dbz801_bak");
+            connection.execute("INSERT INTO debezium.dbz801_bak (id, name, extra, label) VALUES (3, 'c', 1.5, 'manual')");
+
+            // Whether the rows copied by the CREATE TABLE AS SELECT are reported as inserts depends on how the
+            // database logs the direct-path load, so only the explicit insert is required
+            final String topic = topicName("DEBEZIUM", "DBZ801_BAK");
+            final SourceRecords bakRecords = consumeRecordsByTopicUntil((count, r) -> topic.equals(r.topic())
+                    && ((Struct) r.value()).getStruct(FieldName.AFTER).get("ID").equals(3));
+            final List<SourceRecord> inserts = bakRecords.recordsForTopic(topic);
+            assertThat(inserts).isNotEmpty();
+            final Struct after = ((Struct) inserts.get(inserts.size() - 1).value()).getStruct(FieldName.AFTER);
+            assertThat(after.schema().fields().stream().map(f -> f.name()).toList())
+                    .containsExactly("ID", "NAME", "EXTRA", "CREATED", "LABEL", "DOUBLED");
+            assertThat(after.get("ID")).isEqualTo(3);
+            assertThat(after.get("NAME")).isEqualTo("c");
+            assertThat(after.get("LABEL")).isEqualTo("manual");
+            assertThat(after.get("CREATED")).isNull();
+            assertThat(after.get("DOUBLED")).isNull();
+        }
+        finally {
+            stopConnector();
+            TestHelper.revokeRole("EXECUTE", "DBMS_FLASHBACK", TestHelper.getConnectorUserName());
+        }
+    }
+
+    @Test
+    @FixFor("debezium/dbz#801")
+    public void shouldFailOnCreateTableAsSelectWithoutFlashbackWhenHandlingModeIsFail() throws Exception {
+        createCreateTableAsSelectSources();
+
+        Configuration config = TestHelper.defaultConfig()
+                .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "DEBEZIUM\\.DBZ801_BAK")
+                .with(OracleConnectorConfig.INCLUDE_SCHEMA_CHANGES, true)
+                .with(SchemaHistory.STORE_ONLY_CAPTURED_TABLES_DDL, true)
+                .with(CommonConnectorConfig.EVENT_PROCESSING_FAILURE_HANDLING_MODE, "fail")
+                .build();
+
+        final AtomicReference<Throwable> failure = new AtomicReference<>();
+        start(OracleConnector.class, config, (success, message, error) -> failure.set(error));
+        assertConnectorIsRunning();
+        waitForStreamingRunning(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
+
+        connection.execute("CREATE TABLE debezium.dbz801_bak AS SELECT id, name FROM debezium.dbz801_src");
+
+        Awaitility.await().atMost(TestHelper.defaultMessageConsumerPollTimeout(), TimeUnit.SECONDS).untilAsserted(() -> {
+            assertConnectorNotRunning();
+            assertThat(failure.get()).isNotNull();
+        });
+
+        Throwable cause = failure.get();
+        boolean found = false;
+        while (cause != null && !found) {
+            found = cause.getMessage() != null && cause.getMessage().contains("DBMS_FLASHBACK");
+            cause = cause.getCause();
+        }
+        assertThat(found).as("failure names the missing DBMS_FLASHBACK privilege: " + failure.get()).isTrue();
+        assertNoRecordsToConsume();
+    }
+
+    @Test
+    @FixFor("debezium/dbz#801")
+    public void shouldWarnOnCreateTableAsSelectWithoutFlashbackWhenHandlingModeIsWarn() throws Exception {
+        shouldSkipCreateTableAsSelectWithoutFlashback("warn", true);
+    }
+
+    @Test
+    @FixFor("debezium/dbz#801")
+    public void shouldSkipOnCreateTableAsSelectWithoutFlashbackWhenHandlingModeIsSkip() throws Exception {
+        shouldSkipCreateTableAsSelectWithoutFlashback("skip", false);
+    }
+
+    private void shouldSkipCreateTableAsSelectWithoutFlashback(String handlingMode, boolean warningExpected) throws Exception {
+        final LogInterceptor logInterceptor = new LogInterceptor(FlashbackCreateTableAsSelectResolver.class);
+        createCreateTableAsSelectSources();
+
+        Configuration config = TestHelper.defaultConfig()
+                .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "DEBEZIUM\\.DBZ801_BAK")
+                .with(OracleConnectorConfig.INCLUDE_SCHEMA_CHANGES, true)
+                .with(SchemaHistory.STORE_ONLY_CAPTURED_TABLES_DDL, true)
+                .with(CommonConnectorConfig.EVENT_PROCESSING_FAILURE_HANDLING_MODE, handlingMode)
+                .build();
+
+        start(OracleConnector.class, config);
+        assertConnectorIsRunning();
+        waitForStreamingRunning(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
+
+        connection.execute("CREATE TABLE debezium.dbz801_bak AS SELECT id, name FROM debezium.dbz801_src");
+
+        // The schema change is skipped; the table's definition is read from the current dictionary when its
+        // first change is resolved, so the changes are still captured
+        TestHelper.streamTable(connection, "debezium.dbz801_bak");
+        connection.execute("INSERT INTO debezium.dbz801_bak (id, name) VALUES (3, 'c')");
+
+        // Only the explicit insert is required, as above
+        final String topic = topicName("DEBEZIUM", "DBZ801_BAK");
+        final SourceRecords bakRecords = consumeRecordsByTopicUntil((count, r) -> topic.equals(r.topic())
+                && ((Struct) r.value()).getStruct(FieldName.AFTER).get("ID").equals(3));
+        final List<SourceRecord> inserts = bakRecords.recordsForTopic(topic);
+        assertThat(inserts).isNotEmpty();
+        final Struct after = ((Struct) inserts.get(inserts.size() - 1).value()).getStruct(FieldName.AFTER);
+        assertThat(after.schema().fields().stream().map(f -> f.name()).toList()).containsExactly("ID", "NAME");
+        assertThat(after.get("ID")).isEqualTo(3);
+        assertThat(after.get("NAME")).isEqualTo("c");
+
+        assertThat(logInterceptor.containsWarnMessage("requires the EXECUTE privilege on DBMS_FLASHBACK")).isEqualTo(warningExpected);
+        assertConnectorIsRunning();
+    }
+
+    private void createCreateTableAsSelectSources() throws SQLException {
+        connection.execute("CREATE TABLE debezium.dbz801_src (id numeric(9,0) primary key, name varchar2(50), val numeric(5,2))",
+                "CREATE TABLE debezium.dbz801_src2 (id numeric(9,0) primary key, extra numeric(5,2), created date)",
+                "INSERT INTO debezium.dbz801_src VALUES (1, 'a', 1.5)",
+                "INSERT INTO debezium.dbz801_src VALUES (2, 'b', 2.5)",
+                "INSERT INTO debezium.dbz801_src2 VALUES (1, 10.5, DATE '2026-01-01')",
+                "INSERT INTO debezium.dbz801_src2 VALUES (2, 20.25, DATE '2026-02-02')");
     }
 
     private static String getTableIdString(String schemaName, String tableName) {

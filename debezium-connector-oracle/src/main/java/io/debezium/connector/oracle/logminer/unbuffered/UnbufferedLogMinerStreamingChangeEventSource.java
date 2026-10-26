@@ -12,6 +12,7 @@ import java.time.Duration;
 import java.time.Instant;
 import java.time.ZoneOffset;
 import java.util.ArrayList;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Objects;
 
@@ -227,14 +228,16 @@ public class UnbufferedLogMinerStreamingChangeEventSource extends AbstractLogMin
     @Override
     protected void executeDataChangeEventPreDispatchSteps(LogMinerEventRow event) throws InterruptedException {
         // If we receive a DML event within a transaction that contains DDL events, flush the DDL
-        // events before processing the DML event.
-        if (!ddlQueue.isEmpty()) {
+        // events before processing the DML event. Only the DML's own transaction qualifies: the
+        // START and DDL rows of a CREATE TABLE AS SELECT are reported at their own position, ahead
+        // of transactions that committed during its data load, and those must not supply its commit.
+        if (hasQueuedSchemaChanges(event.getTransactionId())) {
             if (!event.getCommitScn().equals(getOffsetContext().getEventCommitScn())) {
                 // Given that DDL events do not carry a COMMIT_SCN, overlay the DML's COMMIT_SCN
                 // since its part of the same transaction.
                 getOffsetContext().setEventCommitScn(event.getCommitScn());
             }
-            dispatchSchemaChanges();
+            dispatchSchemaChanges(event.getTransactionId());
         }
     }
 
@@ -420,8 +423,8 @@ public class UnbufferedLogMinerStreamingChangeEventSource extends AbstractLogMin
         getOffsetContext().setEventScn(event.getScn());
         getOffsetContext().setEventCommitScn(event.getScn());
 
-        if (!ddlQueue.isEmpty()) {
-            dispatchSchemaChanges();
+        if (hasQueuedSchemaChanges(event.getTransactionId())) {
+            dispatchSchemaChanges(event.getTransactionId());
         }
 
         final int numEvents = accumulator.getTotalEvents();
@@ -583,16 +586,32 @@ public class UnbufferedLogMinerStreamingChangeEventSource extends AbstractLogMin
         getOffsetContext().setRedoSql(null);
     }
 
+    @Override
+    protected Scn getSchemaChangeCommitScn() {
+        // Queued schema changes are dispatched at the COMMIT, or before the first DML of their transaction
+        // with that DML's COMMIT_SCN; both set the event commit SCN first
+        return getOffsetContext().getEventCommitScn();
+    }
+
+    private boolean hasQueuedSchemaChanges(String transactionId) {
+        return ddlQueue.stream().anyMatch(event -> Objects.equals(event.getTransactionId(), transactionId));
+    }
+
     /**
-     * Handles dispatching any queue schema changes.
+     * Handles dispatching the queued schema changes of the given transaction, in the order they were queued.
      *
+     * @param transactionId the transaction whose schema changes are dispatched, should not be {@code null}
      * @throws InterruptedException if the thread is interrupted
      */
-    private void dispatchSchemaChanges() throws InterruptedException {
-        for (LogMinerEventRow event : ddlQueue) {
-            dispatchSchemaChangeEventInternal(event);
+    private void dispatchSchemaChanges(String transactionId) throws InterruptedException {
+        final Iterator<LogMinerEventRow> iterator = ddlQueue.iterator();
+        while (iterator.hasNext()) {
+            final LogMinerEventRow event = iterator.next();
+            if (Objects.equals(event.getTransactionId(), transactionId)) {
+                iterator.remove();
+                dispatchSchemaChangeEventInternal(event);
+            }
         }
-        ddlQueue.clear();
     }
 
     /**

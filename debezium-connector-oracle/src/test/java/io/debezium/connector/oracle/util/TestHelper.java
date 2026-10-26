@@ -589,13 +589,30 @@ public class TestHelper {
      * @throws RuntimeException if the role cannot be revoked
      */
     public static void revokeRole(String roleName) {
+        revokeRole(roleName, null, testJdbcConfig().getString(JdbcConfiguration.USER));
+    }
+
+    /**
+     * Revokes the specified role from the given user on the specified object, undoing
+     * {@link #grantRole(String, String, String)}.
+     *
+     * @param roleName role to be revoked
+     * @param objectName the object the role was granted against, can be {@code null}
+     * @param userName the user from whom the role is revoked
+     * @throws RuntimeException if the role cannot be revoked
+     */
+    public static void revokeRole(String roleName, String objectName, String userName) {
         final String pdbName = defaultConfig().build().getString(OracleConnectorConfig.PDB_NAME);
-        final String userName = testJdbcConfig().getString(JdbcConfiguration.USER);
         try (OracleConnection connection = adminConnection()) {
             if (pdbName != null) {
                 connection.setSessionToPdb(pdbName);
             }
-            connection.execute("REVOKE " + roleName + " FROM " + userName);
+            final StringBuilder sql = new StringBuilder("REVOKE ").append(roleName);
+            if (!Strings.isNullOrEmpty(objectName)) {
+                sql.append(" ON ").append(objectName);
+            }
+            sql.append(" FROM ").append(userName);
+            connection.execute(sql.toString());
         }
         catch (SQLException e) {
             throw new RuntimeException("Failed to revoke role '" + roleName + "' for user " + userName, e);

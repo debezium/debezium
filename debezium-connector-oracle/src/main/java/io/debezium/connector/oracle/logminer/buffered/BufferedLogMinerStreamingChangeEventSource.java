@@ -1115,7 +1115,8 @@ public class BufferedLogMinerStreamingChangeEventSource extends AbstractLogMiner
 
     /**
      * Applies a schema change stored in the committing transaction, in the dispatch slot the commit consumer
-     * gave it. A {@code TRUNCATE} emits its change event inside that slot through the emitter's callback.
+     * gave it. A {@code TRUNCATE} emits its change event inside that slot through the emitter's callback, and
+     * the definition of a table created by {@code CREATE TABLE AS SELECT} is read as of the commit.
      *
      * @param event the schema change, should not be {@code null}
      * @param commitScn the transaction's commit system change number, should not be {@code null}
@@ -1145,7 +1146,8 @@ public class BufferedLogMinerStreamingChangeEventSource extends AbstractLogMiner
                         getSchema(),
                         event.getChangeTime(),
                         getMetrics(),
-                        () -> dispatchTruncateEventAtCommit(event, skipEvents)));
+                        () -> dispatchTruncateEventAtCommit(event, skipEvents),
+                        createTableAsSelectResolver(commitScn)));
 
         onSchemaChangeDispatched(tableId);
     }

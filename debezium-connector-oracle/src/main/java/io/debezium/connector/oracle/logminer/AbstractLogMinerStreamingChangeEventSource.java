@@ -28,6 +28,8 @@ import io.debezium.DebeziumException;
 import io.debezium.annotation.VisibleForTesting;
 import io.debezium.config.Configuration;
 import io.debezium.connector.oracle.CommitScn;
+import io.debezium.connector.oracle.CreateTableAsSelectResolver;
+import io.debezium.connector.oracle.FlashbackCreateTableAsSelectResolver;
 import io.debezium.connector.oracle.OracleConnection;
 import io.debezium.connector.oracle.OracleConnection.NonRelationalTableException;
 import io.debezium.connector.oracle.OracleConnectorConfig;
@@ -1373,7 +1375,8 @@ public abstract class AbstractLogMinerStreamingChangeEventSource
                         getSchema(),
                         event.getChangeTime(),
                         getMetrics(),
-                        () -> handleTruncateEvent(event)));
+                        () -> handleTruncateEvent(event),
+                        createTableAsSelectResolver(getSchemaChangeCommitScn())));
 
         onSchemaChangeDispatched(tableId);
     }
@@ -1860,6 +1863,46 @@ public abstract class AbstractLogMinerStreamingChangeEventSource
             return true;
         }
         return false;
+    }
+
+    /**
+     * The system change number at which the schema change being dispatched committed, when the adapter
+     * dispatches schema changes at commit, or {@code null} when it dispatches them as they are mined and
+     * the commit is not yet known.
+     *
+     * @return the commit system change number, or {@code null}
+     */
+    protected Scn getSchemaChangeCommitScn() {
+        return null;
+    }
+
+    /**
+     * Creates the resolver for tables created by {@code CREATE TABLE AS SELECT}, which reads the table's
+     * definition as of the given commit.
+     *
+     * @param commitScn the commit system change number, can be {@code null}
+     * @return the resolver, or {@code null} when the commit is unknown
+     */
+    protected CreateTableAsSelectResolver createTableAsSelectResolver(Scn commitScn) {
+        if (commitScn == null || commitScn.isNull()) {
+            return null;
+        }
+        return tableId -> getTableDdlAtScn(tableId, commitScn);
+    }
+
+    /**
+     * Reads the {@code CREATE TABLE} statement of a table as the database described it at the given system
+     * change number, see {@link FlashbackCreateTableAsSelectResolver}. The read uses a connection of its
+     * own, as the mining session is busy with the mining query's result set.
+     *
+     * @param tableId the table identifier, should not be {@code null}
+     * @param scn the system change number to read the definition at, should not be {@code null}
+     * @return the statement, or {@code null} when the schema change is to be skipped
+     */
+    @VisibleForTesting
+    protected String getTableDdlAtScn(TableId tableId, Scn scn) {
+        getBatchMetrics().tableMetadataQueryObserved();
+        return new FlashbackCreateTableAsSelectResolver(getConfig(), connectionFactory, getMetrics(), scn).resolveCreateTableDdl(tableId);
     }
 
     /**

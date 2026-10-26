@@ -3475,6 +3475,20 @@ Without these grants, the connector cannot operate.
 
 |===
 
+.Optional grant for tables created with `CREATE TABLE AS SELECT`
+A `CREATE TABLE ... AS SELECT` statement does not list the columns of the table that it creates.
+When such a statement creates a captured table, the connector reads the table's definition from the data dictionary as it existed when the statement's transaction committed, which requires the `EXECUTE` privilege on the `DBMS_FLASHBACK` package:
+
+[source,sql]
+----
+  GRANT EXECUTE ON DBMS_FLASHBACK TO c##dbzuser CONTAINER=ALL;
+----
+
+Without this grant, the connector applies the xref:oracle-property-event-processing-failure-handling-mode[`event.processing.failure.handling.mode`] property when it encounters such a statement for a captured table.
+The same applies when the read fails for another reason, for example when the undo data for the commit is no longer available (`ORA-01555` or `ORA-08181`) because the connector fell behind the database's `UNDO_RETENTION`.
+By default the connector stops with an error that reports the cause, and names the missing privilege when that is the cause.
+When the mode is `warn` or `skip`, the connector skips the schema change and reads the table's current definition when it captures the first change for the table, which may not be accurate if there have been other schema changes to the table since it was created.
+
 // Type: assembly
 // Title: Running the connector with an Oracle standby database
 // ModuleID: running-the-connector-with-an-oracle-standby-database
@@ -6431,6 +6445,17 @@ sqlplus sys/top_secret@//localhost:1521/ORCLCDB as sysdba
   GRANT EXECUTE_CATALOG_ROLE TO c##dbzuser CONTAINER=ALL;
   exit;
 ----
+
+.Optional grant for tables created with `CREATE TABLE AS SELECT`
+A `CREATE TABLE ... AS SELECT` statement does not list the columns of the table that it creates.
+When such a statement creates a captured table, the connector reads the table's definition from the data dictionary as it existed when the statement's transaction committed, which requires the `EXECUTE` privilege on the `DBMS_FLASHBACK` package:
+
+[source,sql]
+----
+  GRANT EXECUTE ON DBMS_FLASHBACK TO c##dbzuser CONTAINER=ALL;
+----
+
+Without this grant, the connector applies the xref:oracle-property-event-processing-failure-handling-mode[`event.processing.failure.handling.mode`] property when it encounters such a statement for a captured table, as described for the LogMiner user in xref:creating-users-for-the-connector[Creating a user account for the connector].
 
 // Type: procedure
 // ModuleID: creating-an-xstream-outbound-server

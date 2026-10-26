@@ -189,6 +189,13 @@ public class XstreamStreamingChangeEventSource implements StreamingChangeEventSo
     }
 
     /**
+     * Returns the connection factory, whose connections reach the primary database.
+     */
+    OracleConnectionFactory getConnectionFactory() {
+        return connectionFactory;
+    }
+
+    /**
      * Returns the shared out-of-bands JDBC connection used by the LCR handler for DDL fetches
      * and LOB re-selection. It must always target the primary/source database: in downstream
      * and standby capture modes the streaming factory's main connection points at the mining
