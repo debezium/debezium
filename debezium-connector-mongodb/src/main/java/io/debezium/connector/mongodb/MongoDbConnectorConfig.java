@@ -100,7 +100,12 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig implements Sha
         /**
          * Inject a custom snapshotter, which allows for more control over snapshots.
          */
-        CUSTOM("custom");
+        CUSTOM("custom"),
+
+        /**
+         * Combines `when_needed` and `no_data`, which means that if a snapshot is needed, it will be performed without data (schema-only).
+         */
+        WHEN_NEEDED_NO_DATA("when_needed_no_data");
 
         private final String value;
 
