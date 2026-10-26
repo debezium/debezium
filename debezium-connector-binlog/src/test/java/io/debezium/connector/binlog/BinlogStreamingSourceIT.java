@@ -11,6 +11,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.sql.Connection;
 import java.sql.SQLException;
@@ -24,6 +25,8 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 
 import org.apache.kafka.connect.data.Struct;
@@ -35,6 +38,7 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
+import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.CommonConnectorConfig.EventProcessingFailureHandlingMode;
 import io.debezium.config.Configuration;
 import io.debezium.connector.binlog.junit.SkipWhenDatabaseIs;
@@ -55,6 +59,7 @@ import io.debezium.heartbeat.Heartbeat;
 import io.debezium.jdbc.JdbcConnection;
 import io.debezium.junit.SkipWhenDatabaseVersion;
 import io.debezium.junit.logging.LogInterceptor;
+import io.debezium.pipeline.signal.channels.FileSignalChannel;
 import io.debezium.relational.history.SchemaHistory;
 import io.debezium.schema.AbstractTopicNamingStrategy;
 import io.debezium.time.ZonedTimestamp;
@@ -70,6 +75,9 @@ import io.debezium.util.Testing;
 public abstract class BinlogStreamingSourceIT<C extends SourceConnector> extends AbstractBinlogConnectorIT<C> {
 
     protected static final Path SCHEMA_HISTORY_PATH = Files.createTestingPath("file-schema-history-binlog.txt").toAbsolutePath();
+    private static final String HEARTBEAT_TABLE = "test_heartbeat_table";
+    private static final String HEARTBEAT_TOPIC_PREFIX = "myheartbeat";
+    private static final long PAUSE_DETECTION_MILLIS = 3000;
     protected final UniqueDatabase DATABASE = TestHelper.getUniqueDatabase("logical_server_name", "connector_test_ro")
             .withBinlogMetadataKeyColumns("$DBNAME$\\.test_heartbeat_table:text;regression_test_.*\\.(dbz_85_fractest|dbz_342_timetest):c1")
             .withDbHistoryPath(SCHEMA_HISTORY_PATH);
@@ -577,6 +585,347 @@ public abstract class BinlogStreamingSourceIT<C extends SourceConnector> extends
                         return numOfHeartbeatActions > 0;
                     }
                 });
+    }
+
+    /**
+     * The {@code heartbeat.action.query} must be executed with every heartbeat, i.e. on every
+     * {@code heartbeat.interval.ms}, even when the captured tables are completely idle.
+     */
+    @Test
+    @FixFor("debezium/dbz#1328")
+    void shouldExecuteHeartbeatActionQueryOnIdleDatabase() throws Exception {
+        createHeartbeatTable();
+
+        config = heartbeatConfig("1000").build();
+
+        // Start the connector ...
+        start(getConnectorClass(), config);
+        waitForStreamingRunning(getConnectorName(), DATABASE.getServerName(), getStreamingNamespace());
+
+        // Only the heartbeat action query writes to the captured tables, so it has to be executed by
+        // the heartbeat itself, over and over again, on every heartbeat interval.
+        Awaitility.await()
+                .alias("Awaiting heartbeat action query insert on an idle database")
+                .pollInterval(100, TimeUnit.MILLISECONDS)
+                .atMost(60, TimeUnit.SECONDS)
+                .untilAsserted(() -> assertThat(heartbeatActionQueryCount())
+                        .as("Heartbeat action query executions within 60 heartbeat intervals")
+                        .isGreaterThanOrEqualTo(5));
+    }
+
+    /**
+     * The very same connector does execute the {@code heartbeat.action.query} once a captured table
+     * receives a write, so only the idle case is broken.
+     */
+    @Test
+    @FixFor("debezium/dbz#1328")
+    void shouldExecuteHeartbeatActionQueryAfterCapturedTableWrite() throws Exception {
+        createHeartbeatTable();
+        try (BinlogTestConnection connection = getTestDatabaseConnection(DATABASE.getDatabaseName())) {
+            connection.execute("CREATE TABLE customers (id INT NOT NULL AUTO_INCREMENT PRIMARY KEY, name VARCHAR(255));");
+        }
+
+        config = heartbeatConfig("1000").build();
+
+        // Start the connector ...
+        start(getConnectorClass(), config);
+        waitForStreamingRunning(getConnectorName(), DATABASE.getServerName(), getStreamingNamespace());
+
+        // A write to a captured table produces a binlog event, which makes the connector dispatch
+        // the heartbeat, which in turn executes the heartbeat action query.
+        Awaitility.await()
+                .alias("Awaiting heartbeat action query insert after a captured table write")
+                .pollInterval(100, TimeUnit.MILLISECONDS)
+                .atMost(60, TimeUnit.SECONDS)
+                .until(() -> {
+                    try (BinlogTestConnection connection = getTestDatabaseConnection(DATABASE.getDatabaseName())) {
+                        connection.execute("INSERT INTO customers (name) VALUES ('test_heartbeat');");
+                    }
+                    return heartbeatActionQueryCount() > 0;
+                });
+    }
+
+    /**
+     * With the heartbeat disabled the {@code heartbeat.action.query} must never be executed.
+     */
+    @Test
+    @FixFor("debezium/dbz#1328")
+    void shouldNotExecuteHeartbeatActionQueryWhenHeartbeatIsDisabled() throws Exception {
+        createHeartbeatTable();
+
+        config = heartbeatConfig("0").build();
+
+        // Start the connector ...
+        start(getConnectorClass(), config);
+        waitForStreamingRunning(getConnectorName(), DATABASE.getServerName(), getStreamingNamespace());
+
+        // The heartbeat is disabled, so the action query must never be executed.
+        Awaitility.await()
+                .alias("Awaiting the heartbeat action query not being executed")
+                .pollInterval(100, TimeUnit.MILLISECONDS)
+                .atMost(15, TimeUnit.SECONDS)
+                .during(5, TimeUnit.SECONDS)
+                .until(() -> heartbeatActionQueryCount() == 0);
+    }
+
+    /**
+     * A failing {@code heartbeat.action.query} must not stop the connector; the heartbeat records are
+     * still produced.
+     */
+    @Test
+    @FixFor("debezium/dbz#1328")
+    void shouldKeepStreamingWhenHeartbeatActionQueryFails() throws Exception {
+        config = simpleConfig()
+                .with(BinlogConnectorConfig.USER, "snapper")
+                .with(BinlogConnectorConfig.PASSWORD, "snapperpass")
+                .with(Heartbeat.HEARTBEAT_INTERVAL, "1000")
+                .with(AbstractTopicNamingStrategy.TOPIC_HEARTBEAT_PREFIX, HEARTBEAT_TOPIC_PREFIX)
+                .with(DatabaseHeartbeatImpl.HEARTBEAT_ACTION_QUERY_PROPERTY_NAME,
+                        String.format("INSERT INTO %s.no_such_table (text) VALUES ('test_heartbeat');", DATABASE.getDatabaseName()))
+                .build();
+
+        // Start the connector ...
+        start(getConnectorClass(), config);
+        waitForStreamingRunning(getConnectorName(), DATABASE.getServerName(), getStreamingNamespace());
+
+        // The action query fails, but the connector keeps streaming and the heartbeat records are still produced.
+        final SourceRecords records = consumeRecordsByTopicUntil((recordsConsumed, record) -> record.topic().startsWith(HEARTBEAT_TOPIC_PREFIX));
+
+        assertThat(heartbeatRecords(records)).isNotEmpty();
+        assertConnectorIsRunning();
+    }
+
+    /**
+     * The heartbeat records have to be produced on the interval even when the captured tables are idle.
+     */
+    @Test
+    @FixFor("debezium/dbz#1328")
+    void shouldEmitHeartbeatRecordsOnIdleDatabase() throws Exception {
+        config = simpleConfig()
+                .with(Heartbeat.HEARTBEAT_INTERVAL, "1000")
+                .with(AbstractTopicNamingStrategy.TOPIC_HEARTBEAT_PREFIX, HEARTBEAT_TOPIC_PREFIX)
+                .build();
+
+        // Start the connector ...
+        start(getConnectorClass(), config);
+        waitForStreamingRunning(getConnectorName(), DATABASE.getServerName(), getStreamingNamespace());
+
+        // The captured tables are idle, so the heartbeat records have to be produced by the heartbeat itself.
+        final AtomicInteger heartbeatRecordCount = new AtomicInteger();
+        final SourceRecords records = consumeRecordsByTopicUntil((recordsConsumed, record) -> {
+            if (record.topic().startsWith(HEARTBEAT_TOPIC_PREFIX)) {
+                heartbeatRecordCount.incrementAndGet();
+            }
+            return heartbeatRecordCount.get() >= 3;
+        });
+
+        final List<SourceRecord> heartbeats = heartbeatRecords(records);
+        assertThat(heartbeats).hasSizeGreaterThanOrEqualTo(3);
+        heartbeats.forEach(record -> {
+            assertThat(record.sourceOffset()).isNotEmpty();
+            assertThat(record.sourceOffset().get(BinlogSourceInfo.BINLOG_FILENAME_OFFSET_KEY)).isNotNull();
+            assertThat(record.sourceOffset().get(BinlogSourceInfo.BINLOG_POSITION_OFFSET_KEY)).isNotNull();
+        });
+    }
+
+    /**
+     * The two threads that dispatch the heartbeat are mutually exclusive, so the action query is executed
+     * about once per interval and not once per received binlog event.
+     */
+    @Test
+    @FixFor("debezium/dbz#1328")
+    void shouldExecuteHeartbeatActionQueryOncePerIntervalWhileCapturedTableIsWrittenTo() throws Exception {
+        createHeartbeatTable();
+
+        config = heartbeatConfig("1000").build();
+
+        // Start the connector ...
+        start(getConnectorClass(), config);
+        waitForStreamingRunning(getConnectorName(), DATABASE.getServerName(), getStreamingNamespace());
+
+        // Create the captured tables and their content ...
+        DATABASE.initialize();
+        consumeAtLeast(28);
+
+        final int executionsBefore = heartbeatActionQueryCount();
+        final long windowMillis = 10_000;
+        final long deadline = System.currentTimeMillis() + windowMillis;
+        int insert = 0;
+
+        // Write to a captured table continuously, so that the binlog client thread keeps handling events ...
+        try (BinlogTestConnection connection = getTestDatabaseConnection(DATABASE.getDatabaseName())) {
+            while (System.currentTimeMillis() < deadline) {
+                connection.execute(String.format("INSERT INTO customers (first_name, last_name, email) VALUES ('John', 'Doe', 'doe%d@acme.com');", insert++));
+                // Pace the writes, so that the connector is not flooded with binlog events.
+                Thread.sleep(100);
+            }
+        }
+
+        final int executions = heartbeatActionQueryCount() - executionsBefore;
+
+        // The action query has to be executed about once per heartbeat interval, not twice ...
+        assertThat(executions)
+                .as("Heartbeat action query executions within %s heartbeat intervals", windowMillis / 1000)
+                .isLessThanOrEqualTo((int) (windowMillis / 1000) + 2);
+    }
+
+    /**
+     * While the streaming source is paused, neither the heartbeat record nor the heartbeat action
+     * query may be produced; both have to be produced again once the streaming is resumed.
+     * <p>
+     * The pause is reached end to end: the {@code execute-snapshot} signal of type {@code BLOCKING} is
+     * delivered through the file signal channel, which pauses the streaming, and the blocking snapshot
+     * is held up by a {@code LOCK TABLES ... WRITE} on the snapshotted table.
+     * <p>
+     * The heartbeat action query is read-only, so it produces no binlog event of its own and the
+     * database stays completely idle while the heartbeat is measured. The heartbeat record and the
+     * heartbeat action query are emitted in the same guarded block, so the number of heartbeat records
+     * is the number of action query executions.
+     */
+    @Test
+    @FixFor("debezium/dbz#1328")
+    void shouldNotProduceHeartbeatWhileStreamingIsPaused() throws Exception {
+        final String snapshotTable = "test_pause_snapshot_table";
+        try (BinlogTestConnection connection = getTestDatabaseConnection(DATABASE.getDatabaseName())) {
+            connection.execute("CREATE TABLE " + snapshotTable + " (id INT NOT NULL AUTO_INCREMENT PRIMARY KEY, name VARCHAR(255));");
+            connection.execute("INSERT INTO " + snapshotTable + " (name) VALUES ('a'), ('b'), ('c');");
+        }
+
+        final Path signalsFile = Files.createTestingPath("binlog-streaming-source-signals.txt");
+        Files.delete(signalsFile);
+
+        config = pausedHeartbeatConfig("1000")
+                .with(CommonConnectorConfig.SIGNAL_ENABLED_CHANNELS, "file")
+                .with(FileSignalChannel.SIGNAL_FILE, signalsFile.toString())
+                .with(CommonConnectorConfig.SIGNAL_POLL_INTERVAL_MS, 200)
+                .build();
+
+        // Start the connector ...
+        start(getConnectorClass(), config);
+        waitForStreamingRunning(getConnectorName(), DATABASE.getServerName(), getStreamingNamespace());
+
+        final AtomicInteger heartbeatCount = new AtomicInteger();
+
+        // The heartbeat has to run before the pause, so that there is something to compare against.
+        Awaitility.await()
+                .alias("Awaiting the heartbeat to run before the pause")
+                .pollInterval(200, TimeUnit.MILLISECONDS)
+                .atMost(20, TimeUnit.SECONDS)
+                .until(() -> consumeHeartbeatRecords(heartbeatCount) >= 3);
+
+        final AtomicLong lastChangeAt = new AtomicLong(System.currentTimeMillis());
+
+        try (BinlogTestConnection lockConnection = getTestDatabaseConnection(DATABASE.getDatabaseName())) {
+            // Hold the snapshotted table, so that the blocking snapshot cannot complete.
+            lockConnection.execute("LOCK TABLES " + snapshotTable + " WRITE");
+
+            // Request the blocking snapshot through the file signal channel.
+            java.nio.file.Files.write(signalsFile, blockingSnapshotSignal(snapshotTable).getBytes(StandardCharsets.UTF_8));
+
+            // The heartbeat stops while the streaming source is paused, so no heartbeat record may be
+            // produced for a while.
+            Awaitility.await()
+                    .alias("Awaiting the streaming source to be paused")
+                    .pollInterval(200, TimeUnit.MILLISECONDS)
+                    .atMost(60, TimeUnit.SECONDS)
+                    .until(() -> {
+                        final int heartbeatsBefore = heartbeatCount.get();
+                        if (consumeHeartbeatRecords(heartbeatCount) > heartbeatsBefore) {
+                            lastChangeAt.set(System.currentTimeMillis());
+                        }
+                        return System.currentTimeMillis() - lastChangeAt.get() >= PAUSE_DETECTION_MILLIS;
+                    });
+
+            final int heartbeatsBeforePause = heartbeatCount.get();
+            final long pauseDetectedAt = System.currentTimeMillis();
+
+            // Keep the pause alive for a while and check that nothing is produced during it.
+            Thread.sleep(2000);
+            final int heartbeatsAfterPause = consumeHeartbeatRecords(heartbeatCount);
+
+            // Releasing the lock lets the blocking snapshot finish, which resumes the streaming.
+            lockConnection.execute("UNLOCK TABLES");
+            final long pauseDurationMillis = System.currentTimeMillis() - pauseDetectedAt;
+
+            // The heartbeat record, and with it the heartbeat action query, has to be produced again
+            // once the streaming is resumed.
+            Awaitility.await()
+                    .alias("Awaiting the heartbeat to resume after the blocking snapshot")
+                    .pollInterval(200, TimeUnit.MILLISECONDS)
+                    .atMost(60, TimeUnit.SECONDS)
+                    .untilAsserted(() -> assertThat(consumeHeartbeatRecords(heartbeatCount))
+                            .as("Heartbeat records produced after the streaming source was resumed")
+                            .isGreaterThan(heartbeatsAfterPause));
+
+            final int heartbeatsAfterResume = heartbeatCount.get();
+
+            Testing.print(String.format(
+                    "Heartbeat while the streaming source is paused: pauseDurationMillis=%d heartbeats=%d/%d/%d",
+                    pauseDurationMillis, heartbeatsBeforePause, heartbeatsAfterPause, heartbeatsAfterResume));
+
+            // Neither the heartbeat record nor the heartbeat action query may be produced while the
+            // streaming source is paused ...
+            assertThat(heartbeatsAfterPause)
+                    .as("Heartbeat records produced while the streaming source was paused")
+                    .isEqualTo(heartbeatsBeforePause);
+        }
+    }
+
+    private Configuration.Builder heartbeatConfig(String heartbeatIntervalMs) {
+        return simpleConfig()
+                .with(BinlogConnectorConfig.USER, "snapper")
+                .with(BinlogConnectorConfig.PASSWORD, "snapperpass")
+                .with(Heartbeat.HEARTBEAT_INTERVAL, heartbeatIntervalMs)
+                .with(DatabaseHeartbeatImpl.HEARTBEAT_ACTION_QUERY_PROPERTY_NAME,
+                        String.format("INSERT INTO %s.%s (text) VALUES ('test_heartbeat');", DATABASE.getDatabaseName(), HEARTBEAT_TABLE));
+    }
+
+    private void createHeartbeatTable() throws SQLException {
+        try (BinlogTestConnection connection = getTestDatabaseConnection(DATABASE.getDatabaseName())) {
+            connection.execute("CREATE TABLE " + HEARTBEAT_TABLE + " (text TEXT);");
+        }
+    }
+
+    private int heartbeatActionQueryCount() {
+        final String countQuery = String.format("SELECT COUNT(*) FROM %s.%s;", DATABASE.getDatabaseName(), HEARTBEAT_TABLE);
+        final JdbcConnection.ResultSetMapper<Integer> countMapper = rs -> {
+            rs.next();
+            return rs.getInt(1);
+        };
+        try (BinlogTestConnection connection = getTestDatabaseConnection(DATABASE.getDatabaseName())) {
+            return connection.queryAndMap(countQuery, countMapper);
+        }
+        catch (SQLException e) {
+            throw new IllegalStateException(e);
+        }
+    }
+
+    private List<SourceRecord> heartbeatRecords(SourceRecords records) {
+        return records.allRecordsInOrder().stream()
+                .filter(record -> record.topic().startsWith(HEARTBEAT_TOPIC_PREFIX))
+                .toList();
+    }
+
+    private int consumeHeartbeatRecords(AtomicInteger heartbeatCount) throws InterruptedException {
+        heartbeatCount.addAndGet(heartbeatRecords(consumeAvailableRecordsByTopic()).size());
+        return heartbeatCount.get();
+    }
+
+    private Configuration.Builder pausedHeartbeatConfig(String heartbeatIntervalMs) {
+        return simpleConfig()
+                .with(BinlogConnectorConfig.USER, "snapper")
+                .with(BinlogConnectorConfig.PASSWORD, "snapperpass")
+                .with(Heartbeat.HEARTBEAT_INTERVAL, heartbeatIntervalMs)
+                .with(AbstractTopicNamingStrategy.TOPIC_HEARTBEAT_PREFIX, HEARTBEAT_TOPIC_PREFIX)
+                // The action query is read-only, so that it produces no binlog event of its own and the
+                // database stays completely idle while the heartbeat is measured.
+                .with(DatabaseHeartbeatImpl.HEARTBEAT_ACTION_QUERY_PROPERTY_NAME, "SELECT 1");
+    }
+
+    private String blockingSnapshotSignal(String tableName) {
+        return String.format(
+                "{\"id\":\"binlog-streaming-source-1\",\"type\":\"execute-snapshot\",\"data\":{\"data-collections\":[\"%s\"],\"type\":\"BLOCKING\"}}",
+                DATABASE.qualifiedTableName(tableName));
     }
 
     private void inconsistentSchema(EventProcessingFailureHandlingMode mode) throws InterruptedException, SQLException {
