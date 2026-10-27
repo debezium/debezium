@@ -9,6 +9,8 @@ env:
   # Space-separated list of debezium org repositories to skip (without the org prefix).
   IGNORED_REPOS: >-
     debezium-design-documents
+  # How far back to look for unlinked PRs (any value accepted by `date -d`, e.g. "30 days", "2 weeks").
+  PR_MAX_AGE: "30 days"
 
 jobs:
   check-unlinked-prs:
@@ -20,6 +22,9 @@ jobs:
       - name: Find PRs without a linked issue
         id: find-prs
         run: |
+          CUTOFF=$(date -u -d "${PR_MAX_AGE} ago" '+%Y-%m-%dT%H:%M:%SZ')
+          echo "Reporting PRs created after: ${CUTOFF}"
+
           PR_LIST=""
 
           # Build ignored repos array from the IGNORED_REPOS env var (space-separated names)
@@ -56,8 +61,9 @@ jobs:
               --repo "$REPO" \
               --state open \
               --limit 500 \
-              --json number,title,url,closingIssuesReferences \
-              --jq '.[] | select((.closingIssuesReferences | length) == 0) | "- [\(.number)](\(.url)): \(.title)"' \
+              --json number,title,url,createdAt,closingIssuesReferences \
+              --jq --arg cutoff "$CUTOFF" \
+              '.[] | select(.createdAt >= $cutoff) | select((.closingIssuesReferences | length) == 0) | "- [\(.number)](\(.url)): \(.title)"' \
               2>&1) || { echo "  Warning: failed to fetch PRs for ${REPO}: ${REPO_LIST}"; continue; }
 
             if [ -z "$REPO_LIST" ]; then
