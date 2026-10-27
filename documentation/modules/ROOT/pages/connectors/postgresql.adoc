@@ -4564,6 +4564,24 @@ Continues processing and ignores the timeout.
 |The maximum time, in milliseconds, that the connector waits for an LSN flush operation to complete.
 If the operation does not complete within the specified interval, the connector takes the action configured in the xref:postgresql-property-lsn-flush-timeout-action[`lsn.flush.timeout.action`] property.
 
+|[[postgresql-property-server-shutdown-drain-timeout-ms]]<<postgresql-property-server-shutdown-drain-timeout-ms, `+server.shutdown.drain.timeout.ms+`>>
+|`0`
+|The maximum time, in milliseconds, that the connector continues to read the replication stream after the database server terminates the connector's regular JDBC connection with SQLSTATE `57P01` (`admin_shutdown`), for example, during a fast shutdown.
+During a fast shutdown, PostgreSQL terminates regular connections first, but keeps logical replication connections open so that clients can receive the remaining changes and confirm them before the server writes its shutdown checkpoint.
+While the connector drains the stream, it confirms an LSN to the server only after the records for that LSN are delivered.
+When the stream is quiet and all its records are delivered, the connector also confirms the commit LSN of the last delivered transaction.
+On PostgreSQL 17 and later, when all changes are confirmed before the server stops, `pg_upgrade` can migrate the replication slot.
+
+The drain ends, and the connector then fails with the original error, when one of the following occurs:
+
+* All delivered changes are confirmed, and no new changes arrive during the interval that is set by xref:postgresql-property-status-update-interval-ms[`status.update.interval.ms`].
+* The replication stream ends.
+* An operation requires the regular connection, for example, a schema refresh, a xref:postgresql-property-heartbeat-action-query[`heartbeat.action.query`], or an incremental snapshot.
+* The timeout expires.
+
+The connector ignores this property if xref:postgresql-property-lsn-flush-mode[`lsn.flush.mode`] is `manual`.
+The default value of `0` disables draining.
+
 |[[postgresql-property-retriable-restart-connector-wait-ms]]<<postgresql-property-retriable-restart-connector-wait-ms, `+retriable.restart.connector.wait.ms+`>>
 |10000 (10 seconds)
 |The number of milliseconds to wait before restarting a connector after a retriable error occurs.
