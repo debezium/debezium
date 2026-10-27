@@ -433,7 +433,7 @@ public class EventDispatcher<P extends Partition, T extends DataCollectionId> im
                 return;
             }
         }
-        schemaChangeEventEmitter.emitSchemaChangeEvent(new SchemaChangeEventReceiver());
+        schemaChangeEventEmitter.emitSchemaChangeEvent(new SchemaChangeEventReceiver(offsetContext));
 
         if (incrementalSnapshotChangeEventSource != null) {
             incrementalSnapshotChangeEventSource.processSchemaChange(partition, offsetContext, dataCollectionId);
@@ -460,7 +460,7 @@ public class EventDispatcher<P extends Partition, T extends DataCollectionId> im
             }
         }
 
-        schemaChangeEventEmitter.emitSchemaChangeEvent(new SchemaChangeEventReceiver());
+        schemaChangeEventEmitter.emitSchemaChangeEvent(new SchemaChangeEventReceiver(null));
     }
 
     public void alwaysDispatchHeartbeatEvent(P partition, OffsetContext offset) throws InterruptedException {
@@ -587,6 +587,9 @@ public class EventDispatcher<P extends Partition, T extends DataCollectionId> im
                     extendedHeaders);
 
             queue.enqueue(changeEventCreator.createDataChangeEvent(record));
+            if (recordCompletesSourceEvent) {
+                offsetContext.markOffsetEmitted(recordOffset);
+            }
 
             if (emitTombstonesOnDelete && operation == Operation.DELETE) {
                 final Map<String, ?> tombstoneOffset = sourceEventComplete
@@ -605,6 +608,9 @@ public class EventDispatcher<P extends Partition, T extends DataCollectionId> im
                         extendedHeaders);
 
                 queue.enqueue(changeEventCreator.createDataChangeEvent(tombStone));
+                if (sourceEventComplete) {
+                    offsetContext.markOffsetEmitted(tombstoneOffset);
+                }
             }
         }
     }
@@ -729,15 +735,17 @@ public class EventDispatcher<P extends Partition, T extends DataCollectionId> im
 
             doPostProcessing(key, value);
 
+            final Map<String, ?> recordOffset = offsetContext.getOffset();
             SourceRecord record = new SourceRecord(
                     partition.getSourcePartition(),
-                    offsetContext.getOffset(),
+                    recordOffset,
                     topicName, null,
                     keySchema, key,
                     dataCollectionSchema.getEnvelopeSchema().schema(), value,
                     null, headers);
             dataListener.onEvent(partition, dataCollectionSchema.id(), offsetContext, keySchema, value, operation);
             queue.enqueue(changeEventCreator.createDataChangeEvent(record));
+            offsetContext.markOffsetEmitted(recordOffset);
         }
 
         @Override
@@ -746,6 +754,15 @@ public class EventDispatcher<P extends Partition, T extends DataCollectionId> im
     }
 
     private final class SchemaChangeEventReceiver implements SchemaChangeEventEmitter.Receiver {
+
+        private final OffsetContext offsetContext;
+
+        /**
+         * @param offsetContext the offset context of the schema change events, or null if it is not known
+         */
+        SchemaChangeEventReceiver(OffsetContext offsetContext) {
+            this.offsetContext = offsetContext;
+        }
 
         private Struct schemaChangeRecordKey(SchemaChangeEvent event) {
             Struct result = new Struct(schemaChangeKeySchema);
@@ -781,6 +798,9 @@ public class EventDispatcher<P extends Partition, T extends DataCollectionId> im
                 final SourceRecord record = new SourceRecord(event.getPartition(), event.getOffset(), topicName, partition,
                         schemaChangeKeySchema, key, schemaChangeValueSchema, value, null, extendedHeaders);
                 enqueueSchemaChangeMessage(record);
+                if (offsetContext != null) {
+                    offsetContext.markOffsetEmitted(event.getOffset());
+                }
             }
         }
     }

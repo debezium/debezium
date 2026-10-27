@@ -59,31 +59,38 @@ public interface OffsetContext {
     Map<String, ?> getOffset();
 
     /**
-     * Captures the offset immediately before processing the next source event.
+     * Records the offset of a record that has been emitted with the current offset, such as the last record produced
+     * for a source event or a heartbeat, or the offset from which streaming starts. A restart from such an offset does
+     * not lose any later record, so it is used for the records that do not complete the processing of a later source
+     * event.
      * <p>
-     * Connectors should invoke this before advancing their offset context to a source event that is about to be
-     * dispatched. The captured offset can then be used for records that do not complete processing of that source
-     * event, such as the delete and tombstone records produced for a primary key update.
+     * The event dispatcher, the transaction monitor, the heartbeat and the change event source coordinator invoke this
+     * method, connectors do not need to.
+     * The offset belongs to a record that may still be queued, so implementations must not modify it.
+     *
+     * @param offset the offset of the emitted record; never null
      */
-    default void markSourceEventStarted() {
+    default void markOffsetEmitted(Map<String, ?> offset) {
     }
 
     /**
-     * Returns an offset from which the current source event will be replayed after a restart.
+     * Returns an offset from which the current source event will be replayed after a restart, for the records that do
+     * not complete the processing of that event, such as the delete and tombstone records produced for a primary key
+     * update.
      *
-     * @return the offset captured before the current source event, or the current offset if the connector does not
-     *         provide one
+     * @return the offset last recorded by {@link #markOffsetEmitted(Map)}, or the current offset if the connector does
+     *         not record one
      */
     default Map<String, ?> getOffsetForIncompleteEvent() {
         return getOffset();
     }
 
     /**
-     * Updates the transaction state in the offset captured for the current source event without advancing its source
-     * position.
+     * Updates the transaction state in the offset returned by {@link #getOffsetForIncompleteEvent()} without changing
+     * its source position.
      * <p>
-     * This is used when an implicit transaction boundary is emitted while processing a source event. It ensures that
-     * the transaction boundary can be restored after a restart while the source event itself is still replayed.
+     * This is used when a transaction boundary is emitted while processing a source event. It ensures that the
+     * transaction boundary can be restored after a restart while the source event itself is still replayed.
      */
     default void updateTransactionContextForIncompleteEvent() {
     }

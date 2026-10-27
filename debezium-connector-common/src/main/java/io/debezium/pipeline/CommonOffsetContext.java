@@ -5,6 +5,7 @@
  */
 package io.debezium.pipeline;
 
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
@@ -46,7 +47,10 @@ public abstract class CommonOffsetContext<T extends BaseSourceInfo> implements O
      */
     protected boolean snapshotCompleted;
 
-    private Map<String, Object> offsetBeforeEvent;
+    /**
+     * The offset of the last record emitted with the current offset, which belongs to a record that may still be queued
+     */
+    private Map<String, ?> lastEmittedOffset;
 
     public CommonOffsetContext(T sourceInfo) {
         this.sourceInfo = sourceInfo;
@@ -58,19 +62,19 @@ public abstract class CommonOffsetContext<T extends BaseSourceInfo> implements O
     }
 
     @Override
-    public void markSourceEventStarted() {
-        offsetBeforeEvent = new HashMap<>(getOffset());
+    public void markOffsetEmitted(Map<String, ?> offset) {
+        lastEmittedOffset = offset;
     }
 
     @Override
     public Map<String, ?> getOffsetForIncompleteEvent() {
-        return offsetBeforeEvent == null ? getOffset() : new HashMap<>(offsetBeforeEvent);
+        return lastEmittedOffset == null ? getOffset() : Collections.unmodifiableMap(lastEmittedOffset);
     }
 
     @Override
     public void updateTransactionContextForIncompleteEvent() {
-        if (offsetBeforeEvent != null) {
-            getTransactionContext().store(offsetBeforeEvent);
+        if (lastEmittedOffset != null) {
+            lastEmittedOffset = getTransactionContext().store(new HashMap<>(lastEmittedOffset));
         }
     }
 

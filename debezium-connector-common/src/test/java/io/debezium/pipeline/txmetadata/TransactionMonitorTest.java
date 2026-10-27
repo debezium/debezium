@@ -16,7 +16,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceRecord;
@@ -28,17 +27,15 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
-import io.debezium.connector.common.BaseSourceInfo;
 import io.debezium.data.Envelope;
 import io.debezium.doc.FixFor;
-import io.debezium.pipeline.CommonOffsetContext;
+import io.debezium.pipeline.PositionOffsetContext;
 import io.debezium.pipeline.source.spi.EventMetadataProvider;
 import io.debezium.pipeline.spi.OffsetContext;
 import io.debezium.pipeline.spi.Partition;
 import io.debezium.pipeline.txmetadata.spi.TransactionMetadataFactory;
 import io.debezium.relational.TableId;
 import io.debezium.schema.SchemaNameAdjuster;
-import io.debezium.spi.schema.DataCollectionId;
 
 @ExtendWith(MockitoExtension.class)
 public class TransactionMonitorTest {
@@ -164,8 +161,9 @@ public class TransactionMonitorTest {
         when(partition.getSourcePartition()).thenReturn(Map.of());
 
         final TransactionContext transactionContext = new TransactionContext();
-        final TestOffsetContext eventOffsetContext = new TestOffsetContext(1L, transactionContext);
-        eventOffsetContext.markSourceEventStarted();
+        final PositionOffsetContext eventOffsetContext = new PositionOffsetContext(1L, transactionContext);
+        // The connector emitted a record at position 1 and advances to the next source event
+        eventOffsetContext.markOffsetEmitted(eventOffsetContext.getOffset());
         eventOffsetContext.setPosition(2L);
         final Struct value = new Struct(SchemaBuilder.struct()
                 .field(Envelope.FieldName.TRANSACTION, DefaultTransactionStructMaker.TRANSACTION_BLOCK_SCHEMA)
@@ -200,8 +198,9 @@ public class TransactionMonitorTest {
         transactionContext.event(TABLE_A);
         transactionContext.event(TABLE_A);
         transactionContext.event(TABLE_B);
-        final TestOffsetContext eventOffsetContext = new TestOffsetContext(1L, transactionContext);
-        eventOffsetContext.markSourceEventStarted();
+        final PositionOffsetContext eventOffsetContext = new PositionOffsetContext(1L, transactionContext);
+        // The connector emitted a record at position 1 and advances to the next source event
+        eventOffsetContext.markOffsetEmitted(eventOffsetContext.getOffset());
         eventOffsetContext.setPosition(2L);
         final Struct value = new Struct(SchemaBuilder.struct()
                 .field(Envelope.FieldName.TRANSACTION, DefaultTransactionStructMaker.TRANSACTION_BLOCK_SCHEMA)
@@ -233,40 +232,30 @@ public class TransactionMonitorTest {
         assertThat(currentOffsetTransaction.getPerTableEventCount()).containsExactlyInAnyOrderEntriesOf(Map.of(TABLE_A.toString(), 1L));
     }
 
-    private static class TestOffsetContext extends CommonOffsetContext<BaseSourceInfo> {
+    @Test
+    @FixFor("debezium/dbz#2549")
+    public void shouldUseOffsetOfTransactionBoundaryForIncompleteEvent() throws Exception {
+        when(connectorConfig.shouldProvideTransactionMetadata()).thenReturn(true);
+        when(partition.getSourcePartition()).thenReturn(Map.of());
+        final PositionOffsetContext eventOffsetContext = new PositionOffsetContext(1L);
 
-        private long position;
-        private final TransactionContext transactionContext;
+        monitor.transactionStartedEvent(partition, new DefaultTransactionInfo("tx-1"), eventOffsetContext, Instant.ofEpochMilli(1_000));
+        eventOffsetContext.setPosition(2L);
 
-        private TestOffsetContext(long position, TransactionContext transactionContext) {
-            super(null);
-            this.position = position;
-            this.transactionContext = transactionContext;
-        }
+        assertThat(sentRecords).hasSize(1);
+        assertThat(sentRecords.get(0).sourceOffset()).isEqualTo(Map.of(
+                "position", 1L,
+                TransactionContext.OFFSET_TRANSACTION_ID, "tx-1"));
+        assertThat(eventOffsetContext.getOffsetForIncompleteEvent()).isEqualTo(sentRecords.get(0).sourceOffset());
 
-        @Override
-        public Map<String, ?> getOffset() {
-            final Map<String, Object> offset = new HashMap<>();
-            offset.put("position", position);
-            return transactionContext.store(offset);
-        }
+        monitor.transactionCommittedEvent(partition, eventOffsetContext, Instant.ofEpochMilli(2_000));
+        eventOffsetContext.setPosition(3L);
 
-        @Override
-        public Schema getSourceInfoSchema() {
-            return null;
-        }
-
-        @Override
-        public void event(DataCollectionId collectionId, Instant timestamp) {
-        }
-
-        @Override
-        public TransactionContext getTransactionContext() {
-            return transactionContext;
-        }
-
-        private void setPosition(long position) {
-            this.position = position;
-        }
+        // The END record keeps the ended transaction, a record of the next event resumes after the transaction
+        assertThat(sentRecords).hasSize(2);
+        assertThat(sentRecords.get(1).sourceOffset()).isEqualTo(Map.of(
+                "position", 2L,
+                TransactionContext.OFFSET_TRANSACTION_ID, "tx-1"));
+        assertThat(eventOffsetContext.getOffsetForIncompleteEvent()).isEqualTo(Map.of("position", 2L));
     }
 }

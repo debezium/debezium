@@ -550,7 +550,6 @@ public class BufferedLogMinerStreamingChangeEventSource extends AbstractLogMiner
                     }
                 }
 
-                getOffsetContext().markSourceEventStarted();
                 getOffsetContext().setEventScn(event.getScn());
                 getOffsetContext().setEventCommitScn(row.getScn());
                 getOffsetContext().setTransactionId(transactionId);

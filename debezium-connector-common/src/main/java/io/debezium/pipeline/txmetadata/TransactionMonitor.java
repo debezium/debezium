@@ -118,9 +118,13 @@ public class TransactionMonitor {
             return;
         }
         if (offset.getTransactionContext().isTransactionInProgress()) {
-            endTransaction(partition, offset, offset.getOffset(), timestamp);
+            final Map<String, ?> sourceOffset = offset.getOffset();
+            endTransaction(partition, offset, sourceOffset, timestamp);
+            offset.markOffsetEmitted(sourceOffset);
         }
         offset.getTransactionContext().endTransaction();
+        // The records that do not complete the next source event resume after the ended transaction
+        offset.updateTransactionContextForIncompleteEvent();
     }
 
     public void transactionStartedEvent(Partition partition, TransactionInfo transactionInfo, OffsetContext offset, Instant timestamp) throws InterruptedException {
@@ -135,7 +139,9 @@ public class TransactionMonitor {
             return;
         }
         transactionContext.beginTransaction(transactionInfo);
-        beginTransaction(partition, offset, offset.getOffset(), timestamp);
+        final Map<String, ?> sourceOffset = offset.getOffset();
+        beginTransaction(partition, offset, sourceOffset, timestamp);
+        offset.markOffsetEmitted(sourceOffset);
     }
 
     protected Struct prepareTxKey(OffsetContext offsetContext) {
