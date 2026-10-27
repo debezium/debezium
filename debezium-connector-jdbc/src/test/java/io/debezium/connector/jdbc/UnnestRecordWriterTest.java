@@ -36,6 +36,7 @@ import io.debezium.connector.jdbc.dialect.DatabaseDialect;
 import io.debezium.connector.jdbc.field.JdbcFieldDescriptor;
 import io.debezium.connector.jdbc.relational.TableDescriptor;
 import io.debezium.connector.jdbc.type.JdbcType;
+import io.debezium.connector.jdbc.util.BinaryHandling;
 import io.debezium.sink.spi.SinkProgressListener;
 import io.debezium.sink.valuebinding.ValueBindDescriptor;
 
@@ -141,6 +142,8 @@ class UnnestRecordWriterTest extends AbstractBaseJdbcSinkTest {
 
         when(dialect.getSchemaType(timestampSchema)).thenReturn(tsType);
         when(dialect.getSchemaType(dateSchema)).thenReturn(dateType);
+        when(dialect.resolveBinaryHandling(any(), any(), any()))
+                .thenReturn(BinaryHandling.Resolution.bytes(null));
 
         LocalDateTime transformedTs = LocalDateTime.of(2024, 1, 15, 10, 30, 0);
         when(dialect.bindValue(any(JdbcFieldDescriptor.class), anyInt(), any()))
@@ -171,7 +174,8 @@ class UnnestRecordWriterTest extends AbstractBaseJdbcSinkTest {
         when(record.getPayload()).thenReturn(payload);
         when(record.jdbcFields()).thenReturn(Map.of("ts_col", tsField, "date_col", dateField));
 
-        writer.performUnnestBatch(conn, "INSERT INTO t SELECT * FROM UNNEST(?::timestamp[],?::date[])", List.of(record));
+        writer.performUnnestBatch(conn, TableDescriptor.builder().tableName("t").build(),
+                "INSERT INTO t SELECT * FROM UNNEST(?::timestamp[],?::date[])", List.of(record));
 
         // Verify dialect.bindValue was called for value transformation
         verify(dialect).bindValue(tsField, 1, 1705312200000L);
@@ -207,6 +211,8 @@ class UnnestRecordWriterTest extends AbstractBaseJdbcSinkTest {
         JdbcType geoType = mock(JdbcType.class);
         when(geoType.getTypeName(any(), any(Boolean.class))).thenReturn("geometry");
         when(dialect.getSchemaType(geometrySchema)).thenReturn(geoType);
+        when(dialect.resolveBinaryHandling(any(), any(), any()))
+                .thenReturn(BinaryHandling.Resolution.bytes(null));
 
         // Geometry returns TWO ValueBindDescriptors (wkb bytes + srid)
         when(dialect.bindValue(any(JdbcFieldDescriptor.class), anyInt(), any()))
@@ -227,7 +233,8 @@ class UnnestRecordWriterTest extends AbstractBaseJdbcSinkTest {
         when(record.getPayload()).thenReturn(payload);
         when(record.jdbcFields()).thenReturn(Map.of("geom", geoField));
 
-        assertThatThrownBy(() -> writer.performUnnestBatch(conn, "INSERT INTO t SELECT * FROM UNNEST(?::geometry[])", List.of(record)))
+        assertThatThrownBy(() -> writer.performUnnestBatch(conn, TableDescriptor.builder().tableName("t").build(),
+                "INSERT INTO t SELECT * FROM UNNEST(?::geometry[])", List.of(record)))
                 .isInstanceOf(ConnectException.class)
                 .hasMessageContaining("UNNEST does not support types that expand to multiple bind parameters")
                 .hasMessageContaining("geom");
