@@ -4,22 +4,32 @@ on:
   schedule:
     - cron: "0 6 * * *"
   workflow_dispatch:
+    inputs:
+      force:
+        description: "Run even outside the debezium/debezium repository (for testing)"
+        type: boolean
+        default: false
 
 env:
   # Space-separated list of debezium org repositories to skip (without the org prefix).
   IGNORED_REPOS: >-
     debezium-design-documents
+  # How far back to look for unlinked PRs (any value accepted by `date -d`, e.g. "30 days", "2 weeks").
+  PR_MAX_AGE: "30 days"
 
 jobs:
   check-unlinked-prs:
     name: "Find open PRs not linked to a GitHub issue"
     runs-on: ubuntu-latest
-    if: github.repository == 'debezium/debezium'
+    if: github.repository == 'debezium/debezium' || inputs.force == true
 
     steps:
       - name: Find PRs without a linked issue
         id: find-prs
         run: |
+          CUTOFF=$(date -u -d "${PR_MAX_AGE} ago" '+%Y-%m-%dT%H:%M:%SZ')
+          echo "Reporting PRs created after: ${CUTOFF}"
+
           PR_LIST=""
 
           # Build ignored repos array from the IGNORED_REPOS env var (space-separated names)
@@ -56,8 +66,8 @@ jobs:
               --repo "$REPO" \
               --state open \
               --limit 500 \
-              --json number,title,url,closingIssuesReferences \
-              --jq '.[] | select((.closingIssuesReferences | length) == 0) | "- [\(.number)](\(.url)): \(.title)"' \
+              --json number,title,url,createdAt,closingIssuesReferences \
+              --jq '.[] | select(.createdAt >= "'"${CUTOFF}"'") | select(.title | test("^\\[(docs|ci|jenkins-jobs|release)\\]"; "i") | not) | select((.closingIssuesReferences | length) == 0) | "- [\(.number)](\(.url)): \(.title)"' \
               2>&1) || { echo "  Warning: failed to fetch PRs for ${REPO}: ${REPO_LIST}"; continue; }
 
             if [ -z "$REPO_LIST" ]; then
@@ -65,10 +75,7 @@ jobs:
             fi
 
             echo "  Found unlinked PR(s) in ${REPO}"
-            PR_LIST="${PR_LIST}
-**${REPO}**
-${REPO_LIST}
-"
+            PR_LIST="${PR_LIST}$(printf '\n**%s**\n%s\n' "${REPO}" "${REPO_LIST}")"
           done
 
           if [ -n "$PR_LIST" ]; then
