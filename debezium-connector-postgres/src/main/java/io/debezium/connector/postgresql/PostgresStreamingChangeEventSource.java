@@ -239,10 +239,15 @@ public class PostgresStreamingChangeEventSource implements StreamingChangeEventS
             // replicationStream.close();
             // close the connection - this should also disconnect the current stream even if it's blocking
             if (offsetContext != null) {
-                try {
-                    if (!isInPreSnapshotCatchUpStreaming(offsetContext)) {
+                if (!isInPreSnapshotCatchUpStreaming(offsetContext)) {
+                    try {
                         connection.commit();
                     }
+                    catch (Exception e) {
+                        LOGGER.debug("Exception while committing the regular connection", e);
+                    }
+                }
+                try {
                     replicationConnection.close();
                 }
                 catch (Exception e) {
