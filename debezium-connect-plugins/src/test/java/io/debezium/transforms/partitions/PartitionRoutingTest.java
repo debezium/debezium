@@ -270,8 +270,7 @@ public class PartitionRoutingTest {
     public void keyFieldRoutesCreateDeleteAndTombstoneToSamePartition() {
 
         partitionRoutingTransformation.configure(Map.of(
-                "partition.payload.fields", "id",
-                "partition.payload.fields.from.key", true,
+                "partition.payload.fields", "key.id",
                 "partition.topic.num", 3));
 
         final SourceRecord create = buildSourceRecord(productKey(7L, 1L), productRow(1L, 1.0F, "APPLE"), CREATE);
@@ -289,8 +288,7 @@ public class PartitionRoutingTest {
     public void keyFieldOnPartOfCompositeKeyRoutesAllRowsOfTenantTogether() {
 
         partitionRoutingTransformation.configure(Map.of(
-                "partition.payload.fields", "tenant_id",
-                "partition.payload.fields.from.key", true,
+                "partition.payload.fields", "key.tenant_id",
                 "partition.topic.num", 3));
 
         final SourceRecord delete1 = buildSourceRecord(productKey(7L, 1L), productRow(1L, 1.0F, "APPLE"), DELETE);
@@ -302,6 +300,19 @@ public class PartitionRoutingTest {
         assertThat(partitionRoutingTransformation.apply(tombstoneOf(delete1)).kafkaPartition()).isEqualTo(partition);
         assertThat(partitionRoutingTransformation.apply(delete2).kafkaPartition()).isEqualTo(partition);
         assertThat(partitionRoutingTransformation.apply(tombstoneOf(delete2)).kafkaPartition()).isEqualTo(partition);
+    }
+
+    @Test
+    @FixFor("debezium/dbz#990")
+    public void keyAndValueFieldsAreBothUsedForPartitionComputation() {
+
+        partitionRoutingTransformation.configure(Map.of(
+                "partition.payload.fields", "key.tenant_id,change.id",
+                "partition.topic.num", 3));
+
+        final SourceRecord create = buildSourceRecord(productKey(7L, 1L), productRow(1L, 1.0F, "APPLE"), CREATE);
+
+        assertThat(partitionRoutingTransformation.apply(create).kafkaPartition()).isEqualTo(2);
     }
 
     @Test

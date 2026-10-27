@@ -36,7 +36,6 @@ The configuration specifies the following parameters:
  You can use dot notation to specify nested payload fields.
 `partition.topic.num`:: Specifies the number of partitions in the destination topic.
 `partition.hash.function`:: Specifies hash function to be used hash of the fields which would determine number of the destination partition.
-`partition.payload.fields.from.key`:: Specifies whether the SMT reads the fields from the record key instead of the record value.
 
 By default, {prodname} routes all change event records for a configured data collection to a single Apache Kafka topic.
 Connectors do not direct event records to specific partitions in the topic.
@@ -162,11 +161,12 @@ For information about how to send events to topics other than their default dest
 A tombstone event has the same key as its delete event, but a `null` value.
 The SMT cannot read value fields from a tombstone, so the tombstone might be sent to a different partition than its delete event.
 
-To route tombstones to the same partition as their delete events, set `partition.payload.fields.from.key` to `true`.
-The SMT then reads the fields in `partition.payload.fields` from the record key, so specify key field names without the `change`, `before`, or `after` prefix.
+To route tombstones to the same partition as their delete events, read the fields from the record key by using the `key` prefix, for example, `key.id`.
 To route by a column that is not part of the primary key, add it to the key by setting the `message.key.columns` connector property.
 
-If you also use the `ExtractNewRecordState` SMT, place it after `PartitionRouting` when `partition.payload.fields.from.key` is `true`.
+If you combine `key` fields with value fields, for example, `key.id,change.name`, the SMT can read only the `key` fields from a tombstone, so the tombstone might be sent to a different partition than its delete event.
+
+If you also use the `ExtractNewRecordState` SMT, place it after `PartitionRouting` when you use `key` fields.
 Otherwise, the flattened records are not routed and can end up in a different partition than their tombstones.
 
 // Type: concept
@@ -280,6 +280,8 @@ The following table lists the configuration options that you can set for the par
 Use dot notation if you want the SMT to add fields from the original payload to specific levels in the output data structure.
 To access fields related to data collections, you can use: `after`, `before`, or `change`.
 The 'change' field is a special field that results in the SMT automatically populating content in the 'after' or 'before' elements, depending on type of operation.
+To read a field from the record key, use the `key` prefix, for example, `key.id`.
+For more information, see xref:partition-routing-tombstones[Routing tombstone events].
 If a specified field is not present in a record, the SMT skips it.
 For example, `after.name,source.table,change.name`
 
@@ -299,13 +301,5 @@ Set one of the following values:
 
 This property is optional.
 If you do not specify a value, or if you specify an invalid value, the default value is used.
-
-|[[partition-routing-payload-fields-from-key]]<<partition-routing-payload-fields-from-key, `partition.payload.fields.from.key`>>
-|`false`
-|Specifies whether the SMT reads the fields that are listed in `partition.payload.fields` from the record key instead of the record value.
-Set this property to `true` to route tombstone events to the same partition as their delete events.
-When `true`, specify the names of key fields, for example, `id`.
-The `change`, `before`, and `after` keywords do not apply.
-For more information, see xref:partition-routing-tombstones[Routing tombstone events].
 
 |===
