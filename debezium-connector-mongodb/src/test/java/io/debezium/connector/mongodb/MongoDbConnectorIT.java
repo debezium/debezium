@@ -217,6 +217,7 @@ public class MongoDbConnectorIT extends AbstractMongoConnectorIT {
     }
 
     @Test
+    @FixFor("debezium/dbz#2728")
     void shouldSnapshotFromTaggedSecondaryWhilePrimaryIsUnavailable() throws InterruptedException {
         var replicaSet = requireThreeMemberReplicaSet();
         var primary = replicaSet.tryPrimary().orElseThrow();
