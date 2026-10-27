@@ -158,6 +158,160 @@ public class RetryingRunnableTest {
         Assertions.assertThat(endTime - startTime).isGreaterThanOrEqualTo(Duration.ofMillis(300).toMillis());
     }
 
+    @FixFor("debezium/dbz#2498")
+    @Test
+    void shouldNotRetryWhenRetriableWhenPredicateRejectsException() throws InterruptedException, SQLException {
+        try {
+            RetryingRunnable.<SQLException> builder()
+                    .retries(5)
+                    .retriableWhen(e -> false)
+                    .doRun(() -> {
+                        runs.incrementAndGet();
+                        throw new SQLRecoverableException("Good try, but I always fail");
+                    })
+                    .doAutoHeal(heals::incrementAndGet)
+                    .delayStrategy(DelayStrategy.linear(Duration.ofMillis(100)))
+                    .build()
+                    .run();
+        }
+        catch (SQLRecoverableException e) {
+            // Good
+        }
+
+        // Should be called only 1 time: the predicate rejects the exception, and with a predicate configured
+        // the empty default type list no longer means "retry all".
+        assertThat(runs.get()).isEqualTo(1);
+        Assertions.assertThat(heals.get()).isEqualTo(0);
+    }
+
+    @FixFor("debezium/dbz#2498")
+    @Test
+    void shouldRetryAsManyTimesAsRequestedWhenRetriableWhenPredicateAcceptsException() throws InterruptedException, SQLException {
+        RetryingRunnable.<SQLException> builder()
+                .retries(10)
+                .retriableWhen(e -> true)
+                .doRun(() -> {
+                    if (runs.incrementAndGet() <= 2) {
+                        throw new SQLException("Good try, but I fail this time");
+                    }
+                })
+                .doAutoHeal(heals::incrementAndGet)
+                .delayStrategy(DelayStrategy.linear(Duration.ofMillis(100)))
+                .build()
+                .run();
+
+        // Runnable should fail 2 times and 3rd time it should succeed.
+        assertThat(runs.get()).isEqualTo(3);
+        Assertions.assertThat(heals.get()).isEqualTo(2);
+    }
+
+    @FixFor("debezium/dbz#2498")
+    @Test
+    void shouldRetryOnlySubsetOfExceptionsAcceptedByRetriableWhenPredicate() throws InterruptedException {
+        // Fails with a retriable SQLRecoverableException first, then with a non-retriable SQLException.
+        try {
+            RetryingRunnable.<SQLException> builder()
+                    .retries(10)
+                    .retriableWhen(e -> e instanceof SQLRecoverableException)
+                    .doRun(() -> {
+                        if (runs.incrementAndGet() == 1) {
+                            throw new SQLRecoverableException("Good try, but I fail this time");
+                        }
+                        throw new SQLException("Not retriable this time");
+                    })
+                    .doAutoHeal(heals::incrementAndGet)
+                    .delayStrategy(DelayStrategy.linear(Duration.ofMillis(100)))
+                    .build()
+                    .run();
+        }
+        catch (SQLException e) {
+            // Good
+        }
+
+        // First failure retried, second propagated immediately by the predicate.
+        assertThat(runs.get()).isEqualTo(2);
+        Assertions.assertThat(heals.get()).isEqualTo(1);
+    }
+
+    @FixFor("debezium/dbz#2498")
+    @Test
+    void shouldRetryWhenRetriableExceptionsMatchEvenIfRetriableWhenPredicateRejectsException() throws InterruptedException, SQLException {
+        try {
+            RetryingRunnable.<SQLException> builder()
+                    .retries(5)
+                    .retriableExceptions(SQLRecoverableException.class)
+                    .retriableWhen(e -> false)
+                    .doRun(() -> {
+                        runs.incrementAndGet();
+                        throw new SQLRecoverableException("Good try, but I always fail");
+                    })
+                    .doAutoHeal(heals::incrementAndGet)
+                    .delayStrategy(DelayStrategy.linear(Duration.ofMillis(100)))
+                    .build()
+                    .run();
+        }
+        catch (SQLRecoverableException e) {
+            // Good
+        }
+
+        // The predicate rejects the exception, but the type list accepts it: the conditions are OR-ed, so it is retried.
+        assertThat(runs.get()).isEqualTo(6);
+        Assertions.assertThat(heals.get()).isEqualTo(5);
+    }
+
+    @FixFor("debezium/dbz#2498")
+    @Test
+    void shouldRetryWhenRetriableExceptionsMatchCauseEvenIfRetriableWhenPredicateRejectsWrapperException() throws InterruptedException {
+        try {
+            RetryingRunnable.<SQLException> builder()
+                    .retries(5)
+                    .retriableExceptions(SQLRecoverableException.class)
+                    .retriableWhen(e -> e instanceof SQLRecoverableException)
+                    .doRun(() -> {
+                        runs.incrementAndGet();
+                        throw new SQLException("wrapped", new SQLRecoverableException("retriable cause"));
+                    })
+                    .doAutoHeal(heals::incrementAndGet)
+                    .delayStrategy(DelayStrategy.linear(Duration.ofMillis(100)))
+                    .build()
+                    .run();
+        }
+        catch (SQLException e) {
+            // Good
+        }
+
+        // The predicate sees only the outer SQLException and rejects it, but the type list descends the cause
+        // chain and matches the SQLRecoverableException cause: the conditions are OR-ed, so it is retried.
+        assertThat(runs.get()).isEqualTo(6);
+        Assertions.assertThat(heals.get()).isEqualTo(5);
+    }
+
+    @FixFor("debezium/dbz#2498")
+    @Test
+    void shouldNotUnwrapCauseChainWhenTestingRetriableWhenPredicate() throws InterruptedException {
+        try {
+            RetryingRunnable.<SQLException> builder()
+                    .retries(10)
+                    .retriableWhen(e -> e instanceof SQLRecoverableException)
+                    .doRun(() -> {
+                        runs.incrementAndGet();
+                        throw new SQLException("wrapped", new SQLRecoverableException("retriable cause"));
+                    })
+                    .doAutoHeal(heals::incrementAndGet)
+                    .delayStrategy(DelayStrategy.linear(Duration.ofMillis(100)))
+                    .build()
+                    .run();
+        }
+        catch (SQLException e) {
+            // Good
+        }
+
+        // The outer SQLException is not an SQLRecoverableException and the predicate must not
+        // look at the cause chain, unlike the retriableExceptions type matching.
+        assertThat(runs.get()).isEqualTo(1);
+        Assertions.assertThat(heals.get()).isEqualTo(0);
+    }
+
     private RetryingRunnable<SQLException> getNeverFailing(int retries) {
         return RetryingRunnable.<SQLException> builder()
                 .retries(retries)
