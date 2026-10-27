@@ -462,7 +462,9 @@ public abstract class RelationalDatabaseConnectorConfig extends CommonConnectorC
                     + "failed table or chunk read fails the snapshot immediately. Note: on a connector whose snapshot consistency is bound "
                     + "to a transaction or connection (for example SQL Server, or MySQL without the global read lock), a retry reconnects "
                     + "and resumes against a fresh read view, so snapshot retries there are eventually consistent — the same guarantee "
-                    + "those connectors already provide for a multi-threaded snapshot without a global lock (snapshot.max.threads > 1).");
+                    + "those connectors already provide for a multi-threaded snapshot without a global lock (snapshot.max.threads > 1). "
+                    + "Enabling retry also makes each non-chunked table scan resumable by ordering it by the key columns, which can add "
+                    + "a sort and make the snapshot heavier when those columns are not suitably indexed.");
 
     public static final Field SNAPSHOT_RETRY_TOTAL_MAX = Field.create("snapshot.retry.total.max")
             .withDisplayName("Snapshot retry total maximum")
