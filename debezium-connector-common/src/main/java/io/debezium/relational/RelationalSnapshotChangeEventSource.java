@@ -54,12 +54,12 @@ import io.debezium.pipeline.signal.actions.snapshotting.AdditionalCondition;
 import io.debezium.pipeline.signal.actions.snapshotting.SnapshotConfiguration;
 import io.debezium.pipeline.source.AbstractSnapshotChangeEventSource;
 import io.debezium.pipeline.source.SnapshottingTask;
+import io.debezium.pipeline.source.snapshot.SnapshotKeyColumns;
 import io.debezium.pipeline.source.snapshot.chunked.ChunkBoundaryCalculator;
 import io.debezium.pipeline.source.snapshot.chunked.SnapshotChunk;
 import io.debezium.pipeline.source.snapshot.chunked.SnapshotChunkQueryBuilder;
 import io.debezium.pipeline.source.snapshot.chunked.SnapshotProgress;
 import io.debezium.pipeline.source.snapshot.chunked.TableChunkProgress;
-import io.debezium.pipeline.source.snapshot.incremental.AbstractIncrementalSnapshotChangeEventSource;
 import io.debezium.pipeline.source.spi.SnapshotChangeEventSource;
 import io.debezium.pipeline.source.spi.SnapshotProgressListener;
 import io.debezium.pipeline.source.spi.StreamingChangeEventSource;
@@ -1088,7 +1088,7 @@ public abstract class RelationalSnapshotChangeEventSource<P extends Partition, O
     private static Object[] keyFromRow(List<Column> keyColumns, Object[] row) {
         final Object[] key = new Object[keyColumns.size()];
         for (int i = 0; i < keyColumns.size(); i++) {
-            key[i] = AbstractIncrementalSnapshotChangeEventSource.unwrapKeyValue(row[keyColumns.get(i).position() - 1]);
+            key[i] = SnapshotKeyColumns.unwrapKeyValue(row[keyColumns.get(i).position() - 1]);
         }
         return key;
     }
@@ -1143,7 +1143,11 @@ public abstract class RelationalSnapshotChangeEventSource<P extends Partition, O
                         : resultSetForDataEvents(effectiveSelect, statement)) {
 
             ColumnUtils.ColumnArray columnArray = ColumnUtils.toArray(rs, table);
-            long rows = retryState != null ? retryState.getRowsEmitted() : 0;
+            // emitted counts rows across all attempts (it drives the single first-record marker and the resume
+            // state); rows is the number reported for this scan and restarts on a full re-read (no resume key),
+            // so a keyless table or a select override does not report more rows than the table actually has.
+            long emitted = retryState != null ? retryState.getRowsEmitted() : 0;
+            long rows = resumeKey != null ? retryState.getRowsEmitted() : 0;
             Timer logTimer = getTableScanLogTimer();
             boolean hasNext = rs.next();
 
@@ -1154,6 +1158,7 @@ public abstract class RelationalSnapshotChangeEventSource<P extends Partition, O
                     }
 
                     rows++;
+                    emitted++;
                     final Object[] row = jdbcConnection.rowToArray(table, rs, columnArray);
 
                     if (logTimer.expired()) {
@@ -1171,7 +1176,7 @@ public abstract class RelationalSnapshotChangeEventSource<P extends Partition, O
                     }
 
                     hasNext = rs.next();
-                    setSnapshotMarker(offset, firstTable, lastTable, rows == 1, !hasNext);
+                    setSnapshotMarker(offset, firstTable, lastTable, emitted == 1, !hasNext);
 
                     dispatcher.dispatchSnapshotEvent(snapshotContext.partition, table.id(),
                             getChangeRecordEmitter(snapshotContext.partition, offset, table.id(), row, sourceTableSnapshotTimestamp), snapshotReceiver);
@@ -1275,7 +1280,10 @@ public abstract class RelationalSnapshotChangeEventSource<P extends Partition, O
             else {
                 queryBuilder.prepareChunkStatement(statement, chunk, keyColumns);
             }
-            long rows = retryState != null ? retryState.getRowsEmitted() : 0;
+            // See the table path: emitted carries across attempts (first-record marker + resume state); rows is
+            // the reported count and restarts on a full re-read so a non-resumable chunk does not over-report.
+            long emitted = retryState != null ? retryState.getRowsEmitted() : 0;
+            long rows = resumeKey != null ? retryState.getRowsEmitted() : 0;
             Timer logTimer = getTableScanLogTimer();
 
             try (ResultSet rs = statement.executeQuery()) {
@@ -1289,6 +1297,7 @@ public abstract class RelationalSnapshotChangeEventSource<P extends Partition, O
                         }
 
                         rows++;
+                        emitted++;
                         final Object[] row = jdbcConnection.rowToArray(table, rs, columnArray);
 
                         if (logTimer.expired()) {
@@ -1302,7 +1311,7 @@ public abstract class RelationalSnapshotChangeEventSource<P extends Partition, O
 
                         hasNext = rs.next();
 
-                        final boolean isFirstRecord = (rows == 1);
+                        final boolean isFirstRecord = (emitted == 1);
                         final boolean isLastRecord = !hasNext;
 
                         // Coordinate emission based on marker type
