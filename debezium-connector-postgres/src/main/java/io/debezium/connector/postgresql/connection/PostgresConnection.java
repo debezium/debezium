@@ -344,6 +344,12 @@ public class PostgresConnection extends JdbcConnection {
         final ServerInfo.ReplicationSlot slot = queryForSlot(slotName, database, pluginName,
                 rs -> {
                     if (rs.next()) {
+                        if (isSlotInvalidated(rs)) {
+                            throw new DebeziumException(String.format(
+                                    "Replication slot '%s' has been invalidated by PostgreSQL and cannot be used for streaming. "
+                                            + "Drop the slot and run a new snapshot to resume.",
+                                    slotName));
+                        }
                         boolean active = rs.getBoolean("active");
                         final Lsn confirmedFlushedLsn = parseConfirmedFlushLsn(slotName, pluginName, database, rs);
                         if (confirmedFlushedLsn == null) {
@@ -363,6 +369,24 @@ public class PostgresConnection extends JdbcConnection {
                     }
                 });
         return slot;
+    }
+
+    private static boolean isSlotInvalidated(ResultSet rs) throws SQLException {
+        // wal_status exists from PostgreSQL 13, invalidation_reason from 17; older servers have neither column
+        if (hasColumn(rs, "wal_status") && "lost".equals(rs.getString("wal_status"))) {
+            return true;
+        }
+        return hasColumn(rs, "invalidation_reason") && rs.getString("invalidation_reason") != null;
+    }
+
+    private static boolean hasColumn(ResultSet rs, String column) {
+        try {
+            rs.findColumn(column);
+            return true;
+        }
+        catch (SQLException e) {
+            return false;
+        }
     }
 
     /**

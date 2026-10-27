@@ -44,6 +44,7 @@ import org.slf4j.LoggerFactory;
 import io.debezium.DebeziumException;
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.connector.postgresql.PostgresConnectorConfig;
+import io.debezium.connector.postgresql.PostgresErrorHandler;
 import io.debezium.connector.postgresql.PostgresSchema;
 import io.debezium.connector.postgresql.ReplicaIdentityMapper;
 import io.debezium.connector.postgresql.TypeRegistry;
@@ -741,6 +742,14 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
                 return createReplicationStream(lsn, walPosition);
             }
             catch (Exception e) {
+                // dbz#2430: neither an invalidated slot nor a permanent error can succeed on retry, so fail fast
+                if (PostgresErrorHandler.isSlotInvalidated(e)) {
+                    throw new DebeziumException(String.format("Replication slot '%s' has been invalidated and cannot be used for streaming.", slotName), e);
+                }
+                if (PostgresErrorHandler.isPermanentError(e)) {
+                    throw new DebeziumException("Failed to start replication stream due to a non-retriable error", e);
+                }
+
                 String message = "Failed to start replication stream at " + lsn;
                 if (++tryCount > maxRetries) {
                     if (e.getMessage().matches(".*replication slot .* is active.*")) {
