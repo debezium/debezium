@@ -12,6 +12,8 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import java.io.ByteArrayOutputStream;
 import java.io.PrintStream;
+import java.math.BigDecimal;
+import java.math.BigInteger;
 import java.time.Duration;
 import java.util.Arrays;
 import java.util.List;
@@ -628,5 +630,53 @@ public class StringsTest {
         assertThat(Strings.mask("test", "***", (String) null)).isEqualTo("test");
         assertThat(Strings.mask("test", "***", "")).isEqualTo("test");
         assertThat(Strings.mask("test", null, "test")).isEqualTo("***");
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2953")
+    public void asNumberShouldParseIntegralValuesFittingInPrimitives() {
+        assertThat(Strings.asNumber("123")).isEqualTo((short) 123);
+        assertThat(Strings.asNumber("-123")).isEqualTo((short) -123);
+        assertThat(Strings.asNumber("100000")).isEqualTo(100000);
+        assertThat(Strings.asNumber("-100000")).isEqualTo(-100000);
+        assertThat(Strings.asNumber("10000000000")).isEqualTo(10000000000L);
+        assertThat(Strings.asNumber(Long.toString(Long.MAX_VALUE))).isEqualTo(Long.MAX_VALUE);
+        assertThat(Strings.asNumber(Long.toString(Long.MIN_VALUE))).isEqualTo(Long.MIN_VALUE);
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2953")
+    public void asNumberShouldParseLargeIntegersAsBigIntegerWithoutPrecisionLoss() {
+        final BigInteger longMaxPlusOne = BigInteger.valueOf(Long.MAX_VALUE).add(BigInteger.ONE);
+        final BigInteger longMinMinusOne = BigInteger.valueOf(Long.MIN_VALUE).subtract(BigInteger.ONE);
+        assertThat(Strings.asNumber(longMaxPlusOne.toString())).isEqualTo(longMaxPlusOne);
+        assertThat(Strings.asNumber(longMinMinusOne.toString())).isEqualTo(longMinMinusOne);
+
+        final BigInteger largeInt = new BigInteger("123456789012345678901234567890");
+        assertThat(Strings.asNumber(largeInt.toString())).isEqualTo(largeInt);
+
+        final BigInteger veryLargeInt = new BigInteger("1" + "0".repeat(50));
+        assertThat(Strings.asNumber(veryLargeInt.toString())).isEqualTo(veryLargeInt);
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2953")
+    public void asNumberShouldParseFloatingPointAndDecimalValues() {
+        assertThat(Strings.asNumber("1.5")).isEqualTo(1.5f);
+        assertThat(Strings.asNumber("1e39")).isEqualTo(1e39d);
+        assertThat(Strings.asNumber("1e400")).isEqualTo(new BigDecimal("1e400"));
+        assertThat(Strings.asNumber("Infinity")).isEqualTo(Float.POSITIVE_INFINITY);
+        assertThat(Strings.asNumber("-Infinity")).isEqualTo(Float.NEGATIVE_INFINITY);
+        assertThat(Strings.asNumber("NaN")).isEqualTo(Float.NaN);
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2953")
+    public void asNumberShouldHandleNullAndInvalidValuesWithDefault() {
+        assertThat(Strings.asNumber(null)).isNull();
+        assertThat(Strings.asNumber("")).isNull();
+        assertThat(Strings.asNumber("not-a-number")).isNull();
+        assertThat(Strings.asNumber(null, () -> 42)).isEqualTo(42);
+        assertThat(Strings.asNumber("invalid", () -> 42)).isEqualTo(42);
     }
 }
