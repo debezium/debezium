@@ -706,23 +706,29 @@ public final class Strings {
                     }
                     catch (NumberFormatException e3) {
                         try {
-                            return Float.valueOf(value);
+                            return new BigInteger(value);
                         }
                         catch (NumberFormatException e4) {
                             try {
-                                return Double.valueOf(value);
+                                Float f = Float.valueOf(value);
+                                if (!f.isInfinite() || "Infinity".equals(value) || "-Infinity".equals(value) || "+Infinity".equals(value)) {
+                                    return f;
+                                }
                             }
-                            catch (NumberFormatException e5) {
-                                try {
-                                    return new BigInteger(value);
+                            catch (NumberFormatException ignored) {
+                            }
+                            try {
+                                Double d = Double.valueOf(value);
+                                if (!d.isInfinite() || "Infinity".equals(value) || "-Infinity".equals(value) || "+Infinity".equals(value)) {
+                                    return d;
                                 }
-                                catch (NumberFormatException e6) {
-                                    try {
-                                        return new BigDecimal(value);
-                                    }
-                                    catch (NumberFormatException e7) {
-                                    }
-                                }
+                            }
+                            catch (NumberFormatException ignored) {
+                            }
+                            try {
+                                return new BigDecimal(value);
+                            }
+                            catch (NumberFormatException ignored) {
                             }
                         }
                     }
