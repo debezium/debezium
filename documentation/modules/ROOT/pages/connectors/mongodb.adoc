@@ -794,6 +794,9 @@ The `legacy` and `strict` modes use Extended JSON v1 strict representation, `ext
 Binary values within the token use the binary representation of the selected Extended JSON mode.
 The token document itself is not Base64-encoded in the event payload.
 The connector continues to store its internal resume offset as Base64-encoded BSON, and change event keys are unchanged.
+The offset that the connector records for an event contains the same token as `source.resume_token`, except when a delete event is followed by a tombstone, as configured by xref:mongodb-property-tombstones-on-delete[`tombstones.on.delete`].
+In that case, the offset of the delete event still refers to a position before the event, and the offset of the tombstone contains the event's token.
+If the connector restarts from the offset of the delete event, it processes the event again, so that the tombstone is not lost.
 
 Initial, blocking, and incremental snapshot read events have a null `source.resume_token`, because each read represents a document copied from a collection rather than a change stream event.
 The snapshot's starting resume position is not a token for an individual read event.
