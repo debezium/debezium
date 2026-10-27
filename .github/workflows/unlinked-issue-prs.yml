@@ -65,10 +65,7 @@ jobs:
             fi
 
             echo "  Found unlinked PR(s) in ${REPO}"
-            PR_LIST="${PR_LIST}
-**${REPO}**
-${REPO_LIST}
-"
+            PR_LIST="${PR_LIST}$(printf '\n**%s**\n%s\n' "${REPO}" "${REPO_LIST}")"
           done
 
           if [ -n "$PR_LIST" ]; then
