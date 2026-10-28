@@ -9,6 +9,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.fail;
 
+import java.time.Duration;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
@@ -231,6 +232,27 @@ public class JdbcSinkConnectorConfigTest {
         assertThat(ormProperties.get(AvailableSettings.JAKARTA_JDBC_URL)).isEqualTo("jdbc://url");
         assertThat(ormProperties.get(AvailableSettings.JAKARTA_JDBC_USER)).isEqualTo("user");
         assertThat(ormProperties.get(AvailableSettings.JAKARTA_JDBC_PASSWORD)).isNull(); // Password should be null
+    }
+
+    @Test
+    public void testDefaultConnectionPoolTimeoutIsInSeconds() {
+        final JdbcSinkConnectorConfig config = getConfig(connectionProperties());
+
+        final String timeout = config.getHibernateConfiguration().getProperty(AvailableSettings.AGROAL_IDLE_TIMEOUT);
+
+        assertThat(Duration.parse(timeout)).isEqualTo(Duration.ofSeconds(1800));
+    }
+
+    @Test
+    public void testConfiguredConnectionPoolTimeoutIsInSeconds() {
+        final Map<String, String> properties = connectionProperties();
+        properties.put(JdbcSinkConnectorConfig.CONNECTION_POOL_TIMEOUT, "60");
+
+        final JdbcSinkConnectorConfig config = getConfig(properties);
+
+        final String timeout = config.getHibernateConfiguration().getProperty(AvailableSettings.AGROAL_IDLE_TIMEOUT);
+
+        assertThat(Duration.parse(timeout)).isEqualTo(Duration.ofSeconds(60));
     }
 
     // @Test
