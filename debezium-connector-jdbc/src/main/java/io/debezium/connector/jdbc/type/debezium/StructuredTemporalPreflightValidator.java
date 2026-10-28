@@ -8,6 +8,7 @@ package io.debezium.connector.jdbc.type.debezium;
 import java.time.DateTimeException;
 import java.time.ZoneId;
 import java.time.ZoneOffset;
+import java.util.Optional;
 
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.Struct;
@@ -73,18 +74,42 @@ public final class StructuredTemporalPreflightValidator {
         return Math.abs(picoseconds) % factor != 0;
     }
 
+    /**
+     * Returns the kind of a structured duration: the kind that its schema declares, or else the kind of the value.
+     *
+     * @param schema the duration schema; may be null
+     * @param value the duration value; may be null to resolve the kind of the schema alone
+     * @return the kind; never null
+     * @see #declaredDurationKind(Schema)
+     */
     public static StructuredDuration.Kind durationKind(Schema schema, Struct value) {
-        if (schema != null && schema.parameters() != null) {
+        return declaredDurationKind(schema).orElseGet(() -> inferDurationKind(value));
+    }
+
+    /**
+     * Returns the duration kind that a schema declares, from its kind parameter or else from its logical name.
+     *
+     * @param schema the duration schema; may be null
+     * @return the declared kind, or empty if the schema declares none, for example, because an earlier version emitted it
+     */
+    public static Optional<StructuredDuration.Kind> declaredDurationKind(Schema schema) {
+        if (schema == null) {
+            return Optional.empty();
+        }
+        if (schema.parameters() != null) {
             final String kindValue = schema.parameters().get(StructuredTemporal.DURATION_KIND_PARAMETER_KEY);
             if (kindValue != null) {
                 final StructuredDuration.Kind kind = StructuredDuration.Kind.parse(kindValue);
                 if (kind == null) {
                     throw new ConnectException("Unknown structured duration kind '" + kindValue + "'");
                 }
-                return kind;
+                return Optional.of(kind);
             }
         }
+        return StructuredDuration.kindOf(schema.name());
+    }
 
+    private static StructuredDuration.Kind inferDurationKind(Struct value) {
         final boolean hasYearMonth = value != null
                 && (nonZero(value.getInt32(StructuredTemporal.YEARS_FIELD)) || nonZero(value.getInt32(StructuredTemporal.MONTHS_FIELD)));
         final boolean hasDayTime = value != null

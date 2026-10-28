@@ -8,6 +8,7 @@ package io.debezium.time;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
+import java.util.Optional;
 
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
@@ -96,6 +97,31 @@ public final class StructuredDuration {
     public static String schemaName(int precision, Kind kind) {
         final String typeName = kind == null ? SCHEMA_NAME : SCHEMA_NAME + kind.getSchemaNameComponent();
         return StructuredTemporal.schemaName(typeName, precision);
+    }
+
+    /**
+     * Returns the duration kind that a logical schema name identifies. A source-column qualifier is ignored.
+     *
+     * @param schemaName the schema name; may be null
+     * @return the kind, or empty if the name does not identify one, for example, because it does not include a kind
+     */
+    public static Optional<Kind> kindOf(String schemaName) {
+        final String typeName = StructuredTemporal.schemaNameWithoutSourceColumn(schemaName);
+        if (typeName == null || !typeName.startsWith(SCHEMA_NAME)) {
+            return Optional.empty();
+        }
+        final String suffix = typeName.substring(SCHEMA_NAME.length());
+        for (Kind kind : Kind.values()) {
+            final String component = kind.getSchemaNameComponent();
+            if (suffix.startsWith(component) && isPrecisionSuffix(suffix.substring(component.length()))) {
+                return Optional.of(kind);
+            }
+        }
+        return Optional.empty();
+    }
+
+    private static boolean isPrecisionSuffix(String suffix) {
+        return suffix.isEmpty() || suffix.matches("Precision\\d+");
     }
 
     public static String[] schemaNames() {

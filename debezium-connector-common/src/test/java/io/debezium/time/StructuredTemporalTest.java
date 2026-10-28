@@ -151,6 +151,21 @@ class StructuredTemporalTest {
     }
 
     @Test
+    void shouldResolveDurationKindFromSchemaName() {
+        for (StructuredDuration.Kind kind : StructuredDuration.Kind.values()) {
+            assertThat(StructuredDuration.kindOf(StructuredDuration.schemaName(-1, kind))).contains(kind);
+            assertThat(StructuredDuration.kindOf(StructuredDuration.schemaName(6, kind))).contains(kind);
+            // The qualifier is ignored, even if the column name looks like a kind
+            assertThat(StructuredDuration.kindOf(
+                    StructuredTemporal.schemaNameWithSourceColumn(StructuredDuration.schemaName(6, kind), "Mixed-column"))).contains(kind);
+        }
+        assertThat(StructuredDuration.kindOf(StructuredDuration.SCHEMA_NAME)).isEmpty();
+        assertThat(StructuredDuration.kindOf(StructuredDuration.schemaName(6, null))).isEmpty();
+        assertThat(StructuredDuration.kindOf(StructuredTimestamp.schemaName(6))).isEmpty();
+        assertThat(StructuredDuration.kindOf(null)).isEmpty();
+    }
+
+    @Test
     void shouldQualifySchemaNameWithSourceColumnWithoutCollisions() {
         final String schemaName = StructuredTimestamp.schemaName(6);
 

@@ -18,6 +18,7 @@ import java.time.OffsetTime;
 import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
 
+import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.errors.ConnectException;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Tag;
@@ -31,6 +32,7 @@ import io.debezium.connector.jdbc.type.debezium.StructuredZonedTimestampType;
 import io.debezium.connector.jdbc.type.debezium.TargetTemporalCapabilities;
 import io.debezium.sink.column.ColumnDescriptor;
 import io.debezium.time.StructuredDuration;
+import io.debezium.time.StructuredTemporal;
 import io.debezium.time.StructuredTime;
 import io.debezium.time.StructuredTimestamp;
 import io.debezium.time.StructuredZonedTime;
@@ -124,6 +126,22 @@ class StructuredTemporalTypeTest {
         assertThat(bindings).hasSize(1);
         assertThat(bindings.get(0).getValue()).isEqualTo("-1 02:03:04.567890000");
         assertThat(bindings.get(0).getTargetSqlType()).isEqualTo(Types.VARCHAR);
+    }
+
+    @Test
+    @DisplayName("Should resolve the duration kind from the schema name without a kind parameter")
+    void shouldResolveDurationKindFromSchemaName() {
+        // The schemas have no kind parameter and no propagated source type, only the logical name identifies the kind
+        final var yearMonthSchema = SchemaBuilder.struct()
+                .name(StructuredDuration.schemaName(-1, StructuredDuration.Kind.YEAR_MONTH))
+                .build();
+        final var dayTimeSchema = SchemaBuilder.struct()
+                .name(StructuredTemporal.schemaNameWithSourceColumn(StructuredDuration.schemaName(6, StructuredDuration.Kind.DAY_TIME), "wait"))
+                .build();
+
+        assertThat(StructuredDurationType.INSTANCE.getTypeName(yearMonthSchema, false)).isEqualTo("INTERVAL YEAR TO MONTH");
+        assertThat(StructuredDurationType.INSTANCE.getQueryBinding(null, yearMonthSchema, null)).isEqualTo("TO_YMINTERVAL(?)");
+        assertThat(StructuredDurationType.INSTANCE.getQueryBinding(null, dayTimeSchema, null)).isEqualTo("TO_DSINTERVAL(?)");
     }
 
     @Test
