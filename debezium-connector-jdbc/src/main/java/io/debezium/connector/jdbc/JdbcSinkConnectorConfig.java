@@ -661,7 +661,7 @@ public class JdbcSinkConnectorConfig implements SinkConnectorConfig {
         hibernateConfig.setProperty(AvailableSettings.AGROAL_INITIAL_SIZE, config.getString(CONNECTION_POOL_MIN_SIZE_FIELD));
         hibernateConfig.setProperty(AvailableSettings.AGROAL_MIN_SIZE, config.getString(CONNECTION_POOL_MIN_SIZE_FIELD));
         hibernateConfig.setProperty(AvailableSettings.AGROAL_MAX_SIZE, config.getString(CONNECTION_POOL_MAX_SIZE_FIELD));
-        hibernateConfig.setProperty(AvailableSettings.AGROAL_IDLE_TIMEOUT, Duration.ofMillis(config.getInteger(CONNECTION_POOL_TIMEOUT_FIELD)).toString());
+        hibernateConfig.setProperty(AvailableSettings.AGROAL_IDLE_TIMEOUT, Duration.ofSeconds(config.getInteger(CONNECTION_POOL_TIMEOUT_FIELD)).toString());
 
         // Unless we explicitly set the connectionValidator as default, which checks if the connection is valid
         // the validation on borrow from the pool is not triggered.
