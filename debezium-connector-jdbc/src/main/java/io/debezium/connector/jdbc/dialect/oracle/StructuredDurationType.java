@@ -130,15 +130,14 @@ public class StructuredDurationType extends AbstractTemporalType {
 
     private IntervalKind resolveIntervalKind(Schema schema) {
         if (schema != null) {
-            if (getSchemaParameter(schema, StructuredTemporal.DURATION_KIND_PARAMETER_KEY).isPresent()) {
-                final StructuredDuration.Kind kind = StructuredTemporalPreflightValidator.durationKind(schema, null);
-                return switch (kind) {
-                    case YEAR_MONTH -> IntervalKind.YEAR_MONTH;
-                    case DAY_TIME, ELAPSED_TIME -> IntervalKind.DAY_SECOND;
-                    case MIXED -> IntervalKind.TEXT;
-                };
-            }
-            return resolveIntervalKind(getSourceColumnType(schema).orElse(null));
+            // Without a declared kind, for example from an earlier version, the propagated source type decides
+            return StructuredTemporalPreflightValidator.declaredDurationKind(schema)
+                    .map(kind -> switch (kind) {
+                        case YEAR_MONTH -> IntervalKind.YEAR_MONTH;
+                        case DAY_TIME, ELAPSED_TIME -> IntervalKind.DAY_SECOND;
+                        case MIXED -> IntervalKind.TEXT;
+                    })
+                    .orElseGet(() -> resolveIntervalKind(getSourceColumnType(schema).orElse(null)));
         }
         return IntervalKind.TEXT;
     }
