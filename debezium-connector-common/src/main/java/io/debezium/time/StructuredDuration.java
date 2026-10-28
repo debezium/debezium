@@ -7,7 +7,6 @@ package io.debezium.time;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Locale;
 import java.util.Optional;
 
 import org.apache.kafka.connect.data.Schema;
@@ -50,6 +49,11 @@ public final class StructuredDuration {
             this.schemaNameComponent = schemaNameComponent;
         }
 
+        /**
+         * Returns the name of the kind that messages and documentation use.
+         *
+         * @return the name, such as {@code day-time}
+         */
         public String getValue() {
             return value;
         }
@@ -63,19 +67,6 @@ public final class StructuredDuration {
         public String getSchemaNameComponent() {
             return schemaNameComponent;
         }
-
-        public static Kind parse(String value) {
-            if (value == null) {
-                return null;
-            }
-            final String normalized = value.toLowerCase(Locale.ENGLISH);
-            for (Kind kind : values()) {
-                if (kind.value.equals(normalized)) {
-                    return kind;
-                }
-            }
-            return null;
-        }
     }
 
     public static SchemaBuilder builder() {
@@ -83,7 +74,7 @@ public final class StructuredDuration {
     }
 
     public static SchemaBuilder builder(int precision, Kind kind) {
-        final SchemaBuilder builder = StructuredTemporal.withPrecision(SchemaBuilder.struct()
+        return StructuredTemporal.withPrecision(SchemaBuilder.struct()
                 .name(schemaName(precision, kind))
                 .version(1)
                 .field(StructuredTemporal.YEARS_FIELD, StructuredTemporal.optionalInt32())
@@ -94,10 +85,6 @@ public final class StructuredDuration {
                 .field(StructuredTemporal.SECONDS_FIELD, StructuredTemporal.optionalInt64())
                 .field(StructuredTemporal.PICOSECONDS_FIELD, StructuredTemporal.optionalInt64())
                 .field(StructuredTemporal.PRECISION_FIELD, StructuredTemporal.optionalInt32()), precision);
-        if (kind != null) {
-            builder.parameter(StructuredTemporal.DURATION_KIND_PARAMETER_KEY, kind.getValue());
-        }
-        return builder;
     }
 
     /**

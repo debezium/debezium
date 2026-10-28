@@ -41,11 +41,6 @@ public final class StructuredTemporal {
      */
     public static final String PRECISION_PARAMETER_KEY = "io.debezium.time.precision";
 
-    /**
-     * Schema parameter that describes the semantic kind of a structured duration.
-     */
-    public static final String DURATION_KIND_PARAMETER_KEY = "io.debezium.time.duration.kind";
-
     public static final String YEARS_FIELD = "years";
     public static final String MONTHS_FIELD = "months";
     public static final String DAYS_FIELD = "days";

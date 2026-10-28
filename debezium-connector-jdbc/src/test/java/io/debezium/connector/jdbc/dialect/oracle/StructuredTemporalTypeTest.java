@@ -144,9 +144,9 @@ class StructuredTemporalTypeTest {
     }
 
     @Test
-    @DisplayName("Should resolve the duration kind from the schema name without a kind parameter")
+    @DisplayName("Should resolve the duration kind from the schema name without a propagated source type")
     void shouldResolveDurationKindFromSchemaName() {
-        // The schemas have no kind parameter and no propagated source type, only the logical name identifies the kind
+        // The schemas have no propagated source type, so only the logical name identifies the kind
         final var yearMonthSchema = SchemaBuilder.struct()
                 .name(StructuredDuration.schemaName(-1, StructuredDuration.Kind.YEAR_MONTH))
                 .build();

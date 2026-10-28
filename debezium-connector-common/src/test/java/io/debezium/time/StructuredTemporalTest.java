@@ -6,6 +6,7 @@
 package io.debezium.time;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.entry;
 
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
@@ -116,15 +117,15 @@ class StructuredTemporalTest {
     }
 
     @Test
-    void shouldDescribeStructuredPrecisionAndDurationKindInSchemaParameters() {
+    void shouldDescribeStructuredPrecisionInSchemaParameters() {
         final Schema timestampSchema = StructuredTimestamp.builder(7).build();
         final Schema durationSchema = StructuredDuration.builder(9, StructuredDuration.Kind.DAY_TIME).build();
 
         assertThat(timestampSchema.parameters())
-                .containsEntry(StructuredTemporal.PRECISION_PARAMETER_KEY, "7");
+                .containsOnly(entry(StructuredTemporal.PRECISION_PARAMETER_KEY, "7"));
+        // The duration kind is part of the logical name only
         assertThat(durationSchema.parameters())
-                .containsEntry(StructuredTemporal.PRECISION_PARAMETER_KEY, "9")
-                .containsEntry(StructuredTemporal.DURATION_KIND_PARAMETER_KEY, StructuredDuration.Kind.DAY_TIME.getValue());
+                .containsOnly(entry(StructuredTemporal.PRECISION_PARAMETER_KEY, "9"));
     }
 
     @Test
