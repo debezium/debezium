@@ -857,6 +857,14 @@ The kinds appear as `ElapsedTime`, `YearMonth`, `DayTime`, and `Mixed`, and a ye
 When it creates a target column, the JDBC sink uses the logical precision and duration metadata before the `__debezium.source.column.*` propagation parameters to determine the target type and precision.
 When it writes to an existing column, the connector instead validates the value against the actual target column metadata.
 
+[NOTE]
+====
+In {prodname} 3.7, structured temporal schemas have fixed logical names, such as `io.debezium.time.StructuredTimestamp` and `io.debezium.time.StructuredDuration`.
+Starting with {prodname} 3.8, the names include the precision, the duration kind, and the source column, as described in the preceding paragraphs.
+If you use Avro with a schema registry, the renamed records make the new value schemas incompatible with the schemas that {prodname} 3.7 registered, so a registry that enforces a compatibility level, such as `BACKWARD`, rejects them.
+Before you upgrade a source connector that uses `time.precision.mode=structured`, relax the compatibility level of the affected subjects, or write the change events to new topics.
+====
+
 Before the connector generates or executes a DML statement, it verifies that the target column can represent each structured temporal value without an implicit loss of meaning.
 For example, a MySQL `TIME` target accepts only elapsed-time durations, so the connector rejects structured durations that include year, month, or day semantics.
 The connector also rejects a structured zoned timestamp if the target cannot preserve its non-zero offset or region identifier.
