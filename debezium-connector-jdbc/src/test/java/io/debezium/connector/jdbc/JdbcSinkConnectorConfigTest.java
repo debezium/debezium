@@ -328,6 +328,7 @@ public class JdbcSinkConnectorConfigTest extends AbstractBaseJdbcSinkTest {
     }
 
     @Test
+    @FixFor("debezium/dbz#2950")
     public void testDefaultConnectionPoolTimeoutIsInSeconds() {
         final JdbcSinkConnectorConfig config = getConfig(connectionProperties());
 
