@@ -37,6 +37,7 @@ import io.debezium.connector.oracle.jdbc.OracleConnectionFactory;
 import io.debezium.connector.oracle.logminer.AbstractLogMinerStreamingChangeEventSource;
 import io.debezium.connector.oracle.logminer.LogFile;
 import io.debezium.connector.oracle.logminer.LogMinerChangeRecordEmitter;
+import io.debezium.connector.oracle.logminer.LogMinerQueryBuilderProvider;
 import io.debezium.connector.oracle.logminer.LogMinerStreamingChangeEventSourceMetrics;
 import io.debezium.connector.oracle.logminer.SqlUtils;
 import io.debezium.connector.oracle.logminer.TransactionCommitConsumer;
@@ -121,7 +122,7 @@ public class BufferedLogMinerStreamingChangeEventSource extends AbstractLogMiner
                                                       LogMinerStreamingChangeEventSourceMetrics streamingMetrics) {
         super(connectorConfig, connectionFactory, dispatcher, errorHandler, clock, schema, jdbcConfig, streamingMetrics);
 
-        this.queryString = new BufferedLogMinerQueryBuilder(connectorConfig).getQuery();
+        this.queryString = LogMinerQueryBuilderProvider.resolve(connectorConfig, new BufferedLogMinerQueryBuilder(connectorConfig)).getQuery();
         this.cacheProvider = createCacheProvider(connectorConfig);
         this.transactionFactory = createTransactionFactory(connectorConfig);
     }

@@ -29,6 +29,7 @@ import io.debezium.connector.oracle.Scn;
 import io.debezium.connector.oracle.jdbc.OracleConnectionFactory;
 import io.debezium.connector.oracle.logminer.AbstractLogMinerStreamingChangeEventSource;
 import io.debezium.connector.oracle.logminer.LogMinerChangeRecordEmitter;
+import io.debezium.connector.oracle.logminer.LogMinerQueryBuilderProvider;
 import io.debezium.connector.oracle.logminer.LogMinerStreamingChangeEventSourceMetrics;
 import io.debezium.connector.oracle.logminer.TransactionCommitConsumer;
 import io.debezium.connector.oracle.logminer.events.DmlEvent;
@@ -78,7 +79,7 @@ public class UnbufferedLogMinerStreamingChangeEventSource extends AbstractLogMin
                                                         Configuration jdbcConfig,
                                                         LogMinerStreamingChangeEventSourceMetrics metrics) {
         super(connectorConfig, connectionFactory, dispatcher, errorHandler, clock, schema, jdbcConfig, metrics);
-        this.miningQuery = new UnbufferedLogMinerQueryBuilder(connectorConfig).getQuery();
+        this.miningQuery = LogMinerQueryBuilderProvider.resolve(connectorConfig, new UnbufferedLogMinerQueryBuilder(connectorConfig)).getQuery();
         this.includeSql = connectorConfig.isLogMiningIncludeRedoSql();
         this.accumulator = new TransactionCommitConsumer(this::dispatchEvent, connectorConfig, schema);
         this.resumePositionProvider = new ResumePositionProvider(connectorConfig, getJdbcConfiguration());
