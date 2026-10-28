@@ -136,14 +136,14 @@ public record TemporalRange(Boundary minimum, Boundary maximum) {
         }
 
         public Boundary withPrecision(int precision) {
-            if (precision >= 12) {
+            if (precision >= StructuredTemporal.MAX_FRACTIONAL_SECOND_PRECISION) {
                 return this;
             }
             if (precision < 0) {
                 throw new IllegalArgumentException("Temporal precision must not be negative");
             }
             long factor = 1;
-            for (int i = precision; i < 12; ++i) {
+            for (int i = precision; i < StructuredTemporal.MAX_FRACTIONAL_SECOND_PRECISION; ++i) {
                 factor *= 10;
             }
             return timestamp(year, month, day, hour, minute, second, picoseconds / factor * factor);
@@ -186,7 +186,7 @@ public record TemporalRange(Boundary minimum, Boundary maximum) {
         public String toString() {
             final StringBuilder builder = new StringBuilder(String.format("%04d-%02d-%02d %02d:%02d:%02d",
                     year, month, day, hour, minute, second));
-            StructuredTemporalSupport.appendFraction(builder, picoseconds, 12);
+            StructuredTemporalSupport.appendFraction(builder, picoseconds, StructuredTemporal.MAX_FRACTIONAL_SECOND_PRECISION);
             return builder.toString();
         }
     }

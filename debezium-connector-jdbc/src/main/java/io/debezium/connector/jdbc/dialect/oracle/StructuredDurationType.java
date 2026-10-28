@@ -178,7 +178,7 @@ public class StructuredDurationType extends AbstractTemporalType {
         StructuredTemporalPreflightValidator.reduceFraction(picoseconds, precision, handlingMode);
 
         BigDecimal adjustedSeconds = BigDecimal.valueOf(Math.abs(seconds))
-                .add(BigDecimal.valueOf(Math.abs(picoseconds), 12));
+                .add(BigDecimal.valueOf(Math.abs(picoseconds), StructuredTemporal.MAX_FRACTIONAL_SECOND_PRECISION));
         final RoundingMode roundingMode = handlingMode == TemporalPrecisionLossHandlingMode.ROUND ? RoundingMode.HALF_UP : RoundingMode.DOWN;
         adjustedSeconds = adjustedSeconds.setScale(precision, roundingMode);
 

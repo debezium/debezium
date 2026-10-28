@@ -95,7 +95,7 @@ public class StructuredDurationType extends AbstractTemporalType {
         final Long seconds = value.getInt64(StructuredTemporal.SECONDS_FIELD);
         final Long picoseconds = value.getInt64(StructuredTemporal.PICOSECONDS_FIELD);
         BigDecimal fractionalSeconds = BigDecimal.valueOf(seconds == null ? 0 : seconds)
-                .add(BigDecimal.valueOf(picoseconds == null ? 0 : picoseconds, 12));
+                .add(BigDecimal.valueOf(picoseconds == null ? 0 : picoseconds, StructuredTemporal.MAX_FRACTIONAL_SECOND_PRECISION));
         if (precision != null) {
             StructuredTemporalPreflightValidator.reduceFraction(picoseconds == null ? 0 : picoseconds, precision, handlingMode);
             final RoundingMode roundingMode = handlingMode == TemporalPrecisionLossHandlingMode.ROUND ? RoundingMode.HALF_UP : RoundingMode.DOWN;

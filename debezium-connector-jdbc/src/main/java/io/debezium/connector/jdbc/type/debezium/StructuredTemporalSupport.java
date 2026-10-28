@@ -81,7 +81,7 @@ public final class StructuredTemporalSupport {
         final Integer offsetSeconds = value.getInt32(StructuredTemporal.OFFSET_SECONDS_FIELD);
 
         final StringBuilder builder = new StringBuilder(String.format("%02d:%02d:%02d", hour, minute, second));
-        appendFraction(builder, picoseconds, 12);
+        appendFraction(builder, picoseconds, StructuredTemporal.MAX_FRACTIONAL_SECOND_PRECISION);
         builder.append(formatOffset(offsetSeconds == null ? 0 : offsetSeconds));
         return builder.toString();
     }
@@ -317,7 +317,7 @@ public final class StructuredTemporalSupport {
         final Long seconds = value.getInt64(StructuredTemporal.SECONDS_FIELD);
         final long picoseconds = getPicoseconds(value);
         final BigDecimal fractionalSeconds = BigDecimal.valueOf(seconds == null ? 0 : seconds)
-                .add(BigDecimal.valueOf(picoseconds, 12))
+                .add(BigDecimal.valueOf(picoseconds, StructuredTemporal.MAX_FRACTIONAL_SECOND_PRECISION))
                 .stripTrailingZeros();
         if (fractionalSeconds.signum() != 0 || builder.length() == 0) {
             append(builder, fractionalSeconds.toPlainString(), " seconds");

@@ -42,6 +42,7 @@ import io.debezium.connector.jdbc.type.debezium.TargetTemporalCapabilities;
 import io.debezium.connector.jdbc.type.debezium.TemporalRange;
 import io.debezium.metadata.CollectionId;
 import io.debezium.sink.field.FieldDescriptor;
+import io.debezium.time.StructuredTemporal;
 import io.debezium.time.ZonedTimestamp;
 import io.debezium.util.Strings;
 
@@ -59,7 +60,7 @@ public class StarRocksDatabaseDialect extends GeneralDatabaseDialect {
 
     @Override
     protected TargetTemporalCapabilities createTargetTemporalCapabilities() {
-        return TargetTemporalCapabilities.defaults(12, getMaxTimestampPrecision())
+        return TargetTemporalCapabilities.defaults(StructuredTemporal.MAX_FRACTIONAL_SECOND_PRECISION, getMaxTimestampPrecision())
                 .withDateRange(TemporalRange.dateYears(0, 9999))
                 .withTimestampRange(TemporalRange.timestampYears(0, 9999))
                 .withTimestampColumnPrecisionReliable(false);

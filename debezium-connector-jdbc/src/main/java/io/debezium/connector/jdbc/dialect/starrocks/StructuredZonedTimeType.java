@@ -13,6 +13,7 @@ import org.apache.kafka.connect.data.Schema;
 import io.debezium.connector.jdbc.type.debezium.StructuredTemporalSupport;
 import io.debezium.sink.column.ColumnDescriptor;
 import io.debezium.sink.valuebinding.ValueBindDescriptor;
+import io.debezium.time.StructuredTemporal;
 
 /**
  * Stores structured zoned times as text so StarRocks retains the original UTC offset.
@@ -21,7 +22,7 @@ class StructuredZonedTimeType extends io.debezium.connector.jdbc.type.debezium.S
 
     static final StructuredZonedTimeType INSTANCE = new StructuredZonedTimeType();
 
-    private static final int MAX_PRECISION = 12;
+    private static final int MAX_PRECISION = StructuredTemporal.MAX_FRACTIONAL_SECOND_PRECISION;
 
     @Override
     public String getTypeName(Schema schema, boolean isKey) {

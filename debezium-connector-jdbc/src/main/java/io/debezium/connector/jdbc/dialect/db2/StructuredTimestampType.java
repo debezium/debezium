@@ -15,6 +15,7 @@ import io.debezium.connector.jdbc.JdbcSinkConnectorConfig.TemporalPrecisionLossH
 import io.debezium.connector.jdbc.type.debezium.StructuredTemporalSupport;
 import io.debezium.sink.column.ColumnDescriptor;
 import io.debezium.sink.valuebinding.ValueBindDescriptor;
+import io.debezium.time.StructuredTemporal;
 import io.debezium.time.StructuredTimestamp;
 
 /**
@@ -67,7 +68,7 @@ public class StructuredTimestampType extends io.debezium.connector.jdbc.type.deb
 
     private static String toLiteral(LocalDateTime value) {
         return StructuredTemporalSupport.toLocalDateTimeLiteral(
-                StructuredTimestamp.from(value), 12, TemporalPrecisionLossHandlingMode.FAIL);
+                StructuredTimestamp.from(value), StructuredTemporal.MAX_FRACTIONAL_SECOND_PRECISION, TemporalPrecisionLossHandlingMode.FAIL);
     }
 
     protected String toLiteral(Schema schema, org.apache.kafka.connect.data.Struct value) {

@@ -92,7 +92,7 @@ final class StructuredTemporalLiteral {
         BigDecimal totalSeconds = BigDecimal.valueOf(intValue(value, StructuredTemporal.HOURS_FIELD)).multiply(BigDecimal.valueOf(3_600))
                 .add(BigDecimal.valueOf(intValue(value, StructuredTemporal.MINUTES_FIELD)).multiply(BigDecimal.valueOf(60)))
                 .add(BigDecimal.valueOf(longValue(value, StructuredTemporal.SECONDS_FIELD)))
-                .add(BigDecimal.valueOf(longValue(value, StructuredTemporal.PICOSECONDS_FIELD), 12));
+                .add(BigDecimal.valueOf(longValue(value, StructuredTemporal.PICOSECONDS_FIELD), StructuredTemporal.MAX_FRACTIONAL_SECOND_PRECISION));
         final RoundingMode roundingMode = handlingMode == TemporalPrecisionLossHandlingMode.ROUND ? RoundingMode.HALF_UP : RoundingMode.DOWN;
         totalSeconds = totalSeconds.setScale(precision, roundingMode);
 
@@ -118,7 +118,7 @@ final class StructuredTemporalLiteral {
     }
 
     private static String formatTimestamp(int year, int month, int day, int hour, int minute, int second, long picoseconds, int precision) {
-        final long fraction = precision == 0 ? 0 : picoseconds / (long) Math.pow(10, 12 - precision);
+        final long fraction = precision == 0 ? 0 : picoseconds / (long) Math.pow(10, StructuredTemporal.MAX_FRACTIONAL_SECOND_PRECISION - precision);
         final String suffix = StructuredTemporalSupport.fixedFraction(fraction, precision);
         return String.format("%04d-%02d-%02d %02d:%02d:%02d%s", year, month, day, hour, minute, second, suffix);
     }
