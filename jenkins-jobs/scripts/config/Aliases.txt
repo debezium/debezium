@@ -259,6 +259,7 @@ mengqiu,Meng Qiu
 methodmissing,Lourens Naudé
 mfortunat,Massimo Fortunat
 mfvitale,Mario Fiore Vitale
+mhejnas,Matt Hejnas
 michal-k-gl,Michal Pioun
 michal.kluz,Michal Pioun
 miguelbirdie,Miguel Angel Sotomayor
