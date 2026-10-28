@@ -65,6 +65,7 @@ import io.debezium.spi.converter.RelationalColumn;
 import io.debezium.time.Date;
 import io.debezium.time.IsoTime;
 import io.debezium.time.MicroTimestamp;
+import io.debezium.time.StructuredTemporal;
 import io.debezium.time.ZonedTime;
 import io.debezium.time.ZonedTimestamp;
 import io.debezium.util.Collect;
@@ -1735,7 +1736,22 @@ public class RecordsSnapshotProducerIT extends AbstractRecordsProducerTest {
     private static void assertArrayElementMatchesScalar(Struct after, String arrayField, String scalarField) {
         final List<?> array = after.getArray(arrayField);
         assertThat(array).as(arrayField).hasSize(1);
-        assertThat(array.get(0)).as(arrayField + " element vs scalar " + scalarField).isEqualTo(after.get(scalarField));
+        final Object element = array.get(0);
+        final Object scalar = after.get(scalarField);
+        if (element instanceof Struct elementStruct && scalar instanceof Struct scalarStruct) {
+            // A structured temporal scalar schema is qualified with its source column, but an array element schema is not
+            assertThat(elementStruct.schema().name()).as(arrayField + " element schema vs scalar " + scalarField)
+                    .isEqualTo(StructuredTemporal.schemaNameWithoutSourceColumn(scalarStruct.schema().name()));
+            assertThat(fieldValues(elementStruct)).as(arrayField + " element vs scalar " + scalarField).isEqualTo(fieldValues(scalarStruct));
+            return;
+        }
+        assertThat(element).as(arrayField + " element vs scalar " + scalarField).isEqualTo(scalar);
+    }
+
+    private static Map<String, Object> fieldValues(Struct struct) {
+        final Map<String, Object> values = new HashMap<>();
+        struct.schema().fields().forEach(field -> values.put(field.name(), struct.get(field)));
+        return values;
     }
 
     private void buildNoStreamProducer(Configuration.Builder config) {
