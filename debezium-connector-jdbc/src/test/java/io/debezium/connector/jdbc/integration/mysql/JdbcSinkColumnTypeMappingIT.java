@@ -380,7 +380,7 @@ public class JdbcSinkColumnTypeMappingIT extends AbstractJdbcSinkTest {
         final String tableName = randomTableName();
         final String topicName = topicName("server2", "schema", tableName);
         final Schema timestampSchema = StructuredTimestamp.builder(9).optional().build();
-        final Schema durationSchema = StructuredDuration.builder(9, StructuredDuration.Kind.ELAPSED_TIME).optional().build();
+        final Schema durationSchema = StructuredDuration.builder(9, StructuredDuration.Kind.DAY_TIME).optional().build();
         final JdbcKafkaSinkRecord record = factory.createRecordWithSchemaValue(
                 topicName,
                 (byte) 1,

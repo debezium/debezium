@@ -132,7 +132,7 @@ class StructuredTemporalTypeTest {
     @Test
     @DisplayName("Should explicitly reduce PostgreSQL interval fractional precision")
     void shouldReduceStructuredDurationPrecision() {
-        final var schema = StructuredDuration.builder(9, StructuredDuration.Kind.MIXED).build();
+        final var schema = StructuredDuration.builder(9, StructuredDuration.Kind.MONTH_DAY_TIME).build();
         final var value = StructuredDuration.from(schema, 1, 2, 3, 4, 5, 6, 789_123_456, 9);
 
         final var truncateType = configuredDurationType(TemporalPrecisionLossHandlingMode.TRUNCATE);

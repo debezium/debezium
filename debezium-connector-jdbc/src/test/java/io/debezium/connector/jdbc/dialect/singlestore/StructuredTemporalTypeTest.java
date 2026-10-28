@@ -86,7 +86,7 @@ class StructuredTemporalTypeTest {
     @Test
     @DisplayName("Should derive SingleStore time precision from column size metadata")
     void shouldDeriveTimePrecisionFromColumnSize() {
-        final var schema = StructuredDuration.builder(6, StructuredDuration.Kind.ELAPSED_TIME).build();
+        final var schema = StructuredDuration.builder(6, StructuredDuration.Kind.DAY_TIME).build();
         final var value = StructuredDuration.from(schema, 0, 0, 0, 1, 2, 3, 123_456_000, 6);
         final var type = new SingleStoreStructuredDurationType();
         type.configure(config(TemporalRangeLossHandlingMode.FAIL), dialect());

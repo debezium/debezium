@@ -485,10 +485,10 @@ public abstract class BinlogValueConvertersTest<C extends SourceConnector> imple
 
         Column timeColumn = table.columnWithName("T");
         Field timeField = new Field(timeColumn.name(), -1, converters.schemaBuilder(timeColumn).build());
-        assertThat(timeField.schema().name()).isEqualTo(StructuredDuration.schemaName(6, StructuredDuration.Kind.ELAPSED_TIME));
+        assertThat(timeField.schema().name()).isEqualTo(StructuredDuration.schemaName(6, StructuredDuration.Kind.DAY_TIME));
         assertThat(timeField.schema().parameters())
                 .containsEntry(StructuredTemporal.PRECISION_PARAMETER_KEY, "6")
-                .containsEntry(StructuredTemporal.DURATION_KIND_PARAMETER_KEY, StructuredDuration.Kind.ELAPSED_TIME.getValue());
+                .containsEntry(StructuredTemporal.DURATION_KIND_PARAMETER_KEY, StructuredDuration.Kind.DAY_TIME.getValue());
         Struct duration = (Struct) converters.converter(timeColumn, timeField).convert(Duration.ofHours(-13).minusMinutes(14).minusSeconds(15).minusNanos(123_456_000));
         assertThat(duration.getInt32(StructuredTemporal.HOURS_FIELD)).isEqualTo(-13);
         assertThat(duration.getInt32(StructuredTemporal.MINUTES_FIELD)).isEqualTo(-14);

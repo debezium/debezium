@@ -145,9 +145,10 @@ class StructuredTemporalTypeTest {
     }
 
     @Test
-    @DisplayName("Should map structured elapsed duration to Oracle day-second interval")
-    void shouldBindStructuredElapsedDuration() {
-        final var schema = StructuredDuration.builder(6, StructuredDuration.Kind.ELAPSED_TIME).build();
+    @DisplayName("Should map a day-time duration with more than 24 hours to Oracle day-second interval")
+    void shouldBindDayTimeDurationWithHoursBeyondOneDay() {
+        // A MySQL TIME value has no days, so its hours can exceed 24
+        final var schema = StructuredDuration.builder(6, StructuredDuration.Kind.DAY_TIME).build();
         final var value = StructuredDuration.from(schema, 0, 0, 0, 34, 5, 6, 789_000_000, 6);
 
         assertThat(StructuredDurationType.INSTANCE.getTypeName(schema, false))
