@@ -491,6 +491,10 @@ The connector writes `POINT`, `LINESTRING`, and `POLYGON` WKB values to SingleSt
 SingleStore supports multiple polygon regions and interior holes within a single `POLYGON` value.
 The connector uses this capability to write `MULTIPOLYGON` WKB values as SingleStore `POLYGON` WKT strings containing all exterior and interior rings.
 
+For structured temporal values, SingleStore `DATE` and `DATETIME(6)` columns accept years from 1000 through 9999, while `TIMESTAMP(6)` columns use the narrower range from `1970-01-01 00:00:01.000000` through `2038-01-19 03:14:07.999999`.
+The connector applies xref:jdbc-property-temporal-range-loss-handling-mode[`temporal.range.loss.handling.mode`] before writing values outside these ranges.
+Because the default SingleStore data conversion compatibility level rejects zero dates, the connector also treats structured zero dates as out of range; use `saturate` to map them to the minimum finite target value.
+
 On insertion, SingleStore `GEOGRAPHY` discards coordinate digits beyond eight decimal places without rounding, then rejects invalid polygons.
 This can make nearby vertices coincide.
 By default, the connector does not change polygon coordinates before insertion.
@@ -526,6 +530,8 @@ StarRocks has no `TIME` data type.
 The connector writes {prodname} `io.debezium.time.Time`, `io.debezium.time.MicroTime`, and `io.debezium.time.NanoTime` logical values, and Kafka Connect `Time` values, to `VARCHAR` columns as `HH:mm:ss.ffffff` formatted strings.
 
 MySQL `TIME` values outside of the 24-hour clock range retain the MySQL `[-]HHH:mm:ss.ffffff` notation, and `io.debezium.time.ZonedTime` values are stored verbatim with their original offset.
+Structured `io.debezium.time.StructuredTime` values map to `VARCHAR(21)`, and `io.debezium.time.StructuredZonedTime` values map to `VARCHAR(32)`.
+These string mappings preserve up to 12 fractional-second digits, and the zoned mapping also preserves the original UTC offset.
 
 `io.debezium.time.ZonedTimestamp` values are normalized to the database time zone and written to `DATETIME` columns; the original offset is not preserved.
 StarRocks `DATETIME` columns do not accept a precision argument; StarRocks retains fractional seconds up to microsecond precision.
@@ -834,8 +840,101 @@ The following table maps {prodname} logical types to their corresponding JDBC SQ
 
 [IMPORTANT]
 ====
-If the database does not support time or timestamps with time zones, the mapping resolves to its equivalent without timezones.
+If the database does not support time with time zones, the mapping resolves to its equivalent without a time zone.
+For `io.debezium.time.StructuredZonedTimestamp`, the connector rejects a value if its non-zero offset or named region would be lost by the target database.
 ====
+
+When a source connector uses `time.precision.mode=structured`, the `io.debezium.time.precision` schema parameter describes the source fractional-second precision.
+To keep Avro named-record definitions with different precision metadata distinct, the logical schema name includes a `Precision<P>` suffix, for example, `io.debezium.time.StructuredTimestampPrecision6`.
+Because column-specific metadata, such as propagated source types or column comments, would otherwise redefine the same Avro named record, the logical schema name also always ends with a source-column qualifier, so that adding or removing such metadata does not change the name.
+A column name that consists only of ASCII letters, digits, and underscores follows `SourceColumn_` as is, for example, `io.debezium.time.StructuredTimestampPrecision6SourceColumn_created_at`.
+Any other column name follows `SourceColumnU`, and each of its characters other than an ASCII letter or digit is escaped as `_u` followed by four hexadecimal digits, for example, `io.debezium.time.StructuredTimestampPrecision6SourceColumnUcreated_u002dat` for the column `created-at`.
+Structured temporal values store the fractional second in the `picoseconds` `INT64` field as a fixed picosecond value whose absolute magnitude is less than one second; duration values can be signed.
+This representation preserves source precisions up to 12 digits without relying on the nanosecond limit of Java temporal types.
+For `io.debezium.time.StructuredDuration`, the logical schema name also identifies the duration kind, which determines the components that a value can have and whether they can be converted into each other:
+
+`year-month`::
+Years and months, which convert into a single number of months, such as an Oracle `INTERVAL YEAR TO MONTH`.
+`day-time`::
+Days, hours, minutes, and seconds, which convert into a single number of seconds because a day is exactly 24 hours, such as a MySQL `TIME` or an Oracle `INTERVAL DAY TO SECOND`.
+`month-day-time`::
+Months, days, and time as independent counters with their own signs, such as a PostgreSQL `INTERVAL`.
+A month is not fixed at 30 days and a day is not fixed at 24 hours, so the counters cannot be converted into each other.
+
+The kind precedes the precision suffix in the name, for example, `io.debezium.time.StructuredDurationDayTimePrecision9`.
+The kinds appear as `YearMonth`, `DayTime`, and `MonthDayTime`, and a year-month duration has no precision suffix because it has no fractional seconds, for example, `io.debezium.time.StructuredDurationYearMonth`.
+If the name does not identify a kind, as in schemas from {prodname} 3.7, the JDBC sink infers the kind from the components of each value, and treats a value with days as a `month-day-time` duration because the days might be calendar days.
+When it creates a target column, the JDBC sink uses the logical precision and duration metadata before the `__debezium.source.column.*` propagation parameters to determine the target type and precision.
+When it writes to an existing column, the connector instead validates the value against the actual target column metadata.
+
+[NOTE]
+====
+In {prodname} 3.7, structured temporal schemas have fixed logical names, such as `io.debezium.time.StructuredTimestamp` and `io.debezium.time.StructuredDuration`.
+Starting with {prodname} 3.8, the names include the precision, the duration kind, and the source column, as described in the preceding paragraphs.
+If you use Avro with a schema registry, the renamed records make the new value schemas incompatible with the schemas that {prodname} 3.7 registered, so a registry that enforces a compatibility level, such as `BACKWARD`, rejects them.
+Before you upgrade a source connector that uses `time.precision.mode=structured`, relax the compatibility level of the affected subjects, or write the change events to new topics.
+====
+
+Before the connector generates or executes a DML statement, it verifies that the target column can represent each structured temporal value without an implicit loss of meaning.
+For example, a MySQL `TIME` target accepts only day-time durations, so the connector rejects year-month and month-day-time durations, and converts the days of a day-time duration into hours.
+The connector also rejects a structured zoned timestamp if the target cannot preserve its non-zero offset or region identifier.
+
+By default, the connector rejects fractional-second values only if the target precision would discard non-zero digits.
+You can use xref:jdbc-property-temporal-precision-loss-handling-mode[`temporal.precision.loss.handling.mode`] to explicitly truncate or round such values instead.
+Rounding chooses the nearest value, with halfway values rounded away from zero, and can carry into the next or previous second and date.
+The same policy applies when the connector renders structured temporal schema default values in generated DDL.
+
+The connector also verifies that structured date and timestamp values are within the range of the target data type.
+The supported range depends on the target dialect and, for an existing column, its actual data type.
+For example, MySQL `TIMESTAMP` and SQL Server `datetime` have narrower ranges than the default timestamp types that those dialects create.
+By default, the connector rejects an out-of-range value.
+You can use xref:jdbc-property-temporal-range-loss-handling-mode[`temporal.range.loss.handling.mode`] to map it to the nearest target boundary instead.
+When both precision and range reduction are necessary, the connector applies the precision policy first and then checks the resulting value against the target range.
+PostgreSQL positive and negative infinity values remain unchanged because PostgreSQL can represent them directly.
+For a target that cannot represent infinity, `fail` rejects the value and `saturate` maps it to the corresponding finite boundary.
+CockroachDB preserves `DATE` infinity, but its timestamp types convert infinity to a finite boundary.
+The connector therefore treats structured timestamp infinity as a range loss for CockroachDB: `fail` rejects it, while `saturate` maps it to `-4714-11-24 00:00:00` or `294276-12-31 23:59:59.999999`.
+
+.Structured temporal target capabilities
+[cols="18%a,42%a,40%a",options="header"]
+|===
+|Target |Date and timestamp range |Other behavior
+
+|Db2 and Db2 iSeries
+|`DATE` and `TIMESTAMP` values use years 1 through 9999.
+|Timestamp precision up to 12 digits is preserved by text binding and a server-side cast.
+
+|MySQL
+|`DATE` and `DATETIME(6)` use years 1000 through 9999. The upper `DATETIME(6)` boundary is `9999-12-31 23:59:59.499999`. An existing `TIMESTAMP(6)` column uses `1970-01-01 00:00:01.000000` through `2038-01-19 03:14:07.499999`.
+|All-zero structured dates and timestamps are passed through when the target SQL mode permits them. `StructuredDuration` accepts only day-time values, and days are converted into hours. `TIME` uses `-838:59:59` through `838:59:59`, and MariaDB also accepts fractional seconds up to `838:59:59.999999`.
+
+|PostgreSQL
+|The connector uses the PostgreSQL finite `DATE` and `TIMESTAMP` ranges.
+|Positive and negative infinity are preserved. Zoned timestamps support instant semantics; values with a non-zero offset or named region identifier are rejected to prevent metadata loss.
+
+|CockroachDB
+|`DATE` uses the PostgreSQL-compatible range. Timestamp values use `-4714-11-24 00:00:00` through `294276-12-31 23:59:59.999999`.
+|`DATE` infinity is preserved. Timestamp infinity is handled by xref:jdbc-property-temporal-range-loss-handling-mode[`temporal.range.loss.handling.mode`].
+
+|Oracle
+|`DATE` and timestamp values use years -4711 through 9999.
+|Timestamp precision is limited to 9 digits. Offsets are preserved, but named region identifiers are rejected.
+
+|SQL Server
+|`date` and `datetime2` values use years 1 through 9999. Existing `datetime` and `smalldatetime` columns use their narrower native ranges.
+|Timestamp precision is limited to 7 digits. Zoned timestamp validation checks both the local value and its instant; offsets are preserved, but named region identifiers are rejected.
+
+|SingleStore
+|`DATE` and `DATETIME(6)` use years 1000 through 9999. `TIMESTAMP(6)` uses `1970-01-01 00:00:01.000000` through `2038-01-19 03:14:07.999999`.
+|All-zero structured dates and timestamps are handled as range loss. `StructuredDuration` accepts only day-time values, and days are converted into hours.
+
+|StarRocks
+|`DATE` and `DATETIME` values use years 0 through 9999. `DATETIME` preserves up to 6 fractional digits.
+|`StructuredTime` and `StructuredZonedTime` use string-backed columns that preserve up to 12 fractional digits; the zoned form also preserves its offset.
+|===
+
+Db2 and Db2 iSeries timestamp targets support fractional-second precision up to 12 digits.
+For structured timestamp values, the connector binds the picosecond value as text and applies a server-side `TIMESTAMP(p)` cast, avoiding the nine-digit precision limit of standard JDBC temporal values.
 
 
 
@@ -1830,6 +1929,25 @@ The following table describes the runtime properties that control how the {prodn
 |[[jdbc-property-use-time-zone]]<<jdbc-property-use-time-zone, `+use.time.zone+`>>
 |`UTC`
 |Specifies the timezone used when inserting JDBC temporal values.
+
+|[[jdbc-property-temporal-precision-loss-handling-mode]]<<jdbc-property-temporal-precision-loss-handling-mode, `+temporal.precision.loss.handling.mode+`>>
+|`fail`
+|Specifies how the connector handles a structured temporal value when its fractional-second precision exceeds the precision of the target column.
+The following options are available:
+
+`fail`:: Rejects the value if reducing its precision would discard non-zero fractional digits.
+`truncate`:: Discards fractional digits that exceed the target column precision.
+`round`:: Rounds the value to the nearest target column precision, with halfway values rounded away from zero. Rounding can carry into the next or previous second and date.
+
+|[[jdbc-property-temporal-range-loss-handling-mode]]<<jdbc-property-temporal-range-loss-handling-mode, `+temporal.range.loss.handling.mode+`>>
+|`fail`
+|Specifies how the connector handles a structured date or timestamp value that is outside the range of the target column.
+The following options are available:
+
+`fail`:: Rejects the value.
+`saturate`:: Maps a value below or above the supported range to the nearest target boundary. Different source values can therefore be stored as the same target value.
+
+When xref:jdbc-property-timestamp-clamp-out-of-range-values[`timestamp.clamp.out.of.range.values`] is set to `true`, the connector first clamps a structured timestamp value that is outside the timestamp range of the target database, and applies this option only to the remaining values.
 
 |[[jdbc-property-delete-enabled]]<<jdbc-property-delete-enabled, `+delete.enabled+`>>
 |`false`

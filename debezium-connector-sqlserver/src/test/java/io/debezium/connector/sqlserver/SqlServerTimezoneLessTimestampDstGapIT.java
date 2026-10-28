@@ -171,7 +171,7 @@ class SqlServerTimezoneLessTimestampDstGapIT extends AbstractAsyncEngineConnecto
                         .isEqualTo(IsoTimestamp.toIsoString(expected, null));
                 break;
             case STRUCTURED:
-                Schema structuredSchema = StructuredTimestamp.builder().optional().build();
+                Schema structuredSchema = StructuredTimestamp.builder(scale).optional().build();
                 new SchemaAndValueField(fieldName, structuredSchema,
                         StructuredTimestamp.from(structuredSchema, expected, scale))
                         .assertFor(record);

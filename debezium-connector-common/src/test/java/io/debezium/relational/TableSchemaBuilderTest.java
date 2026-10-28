@@ -12,6 +12,7 @@ import static org.junit.jupiter.api.Assertions.fail;
 import java.math.BigDecimal;
 import java.nio.ByteBuffer;
 import java.sql.Types;
+import java.time.ZoneOffset;
 import java.util.Collections;
 import java.util.Properties;
 
@@ -23,11 +24,13 @@ import org.apache.kafka.connect.source.SourceRecord;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
+import io.apicurio.registry.utils.converter.avro.AvroData;
 import io.debezium.config.CommonConnectorConfig.EventConvertingFailureHandlingMode;
 import io.debezium.config.Configuration;
 import io.debezium.data.VerifyRecord;
 import io.debezium.doc.FixFor;
 import io.debezium.jdbc.JdbcValueConverters;
+import io.debezium.jdbc.TemporalPrecisionMode;
 import io.debezium.junit.logging.LogInterceptor;
 import io.debezium.junit.relational.TestRelationalDatabaseConfig;
 import io.debezium.relational.Key.CustomKeyMapper;
@@ -42,6 +45,8 @@ import io.debezium.schema.SchemaTopicNamingStrategy;
 import io.debezium.spi.common.ReplacementFunction;
 import io.debezium.spi.topic.TopicNamingStrategy;
 import io.debezium.time.Date;
+import io.debezium.time.StructuredTemporal;
+import io.debezium.time.StructuredTimestamp;
 
 public class TableSchemaBuilderTest {
 
@@ -655,6 +660,74 @@ public class TableSchemaBuilderTest {
 
         Struct value = schema.valueFromColumnData(data);
         assertThat(value.get("C1")).isEqualTo(0);
+    }
+
+    @Test
+    public void shouldKeepPropagatedStructuredTemporalAvroSchemasDistinctBySourceColumn() {
+        final TableId tableId = new TableId("catalog", "schema", "timestamps");
+        final Table timestampTable = Table.editor()
+                .tableId(tableId)
+                .addColumns(
+                        Column.editor().name("first_timestamp")
+                                .type("TIMESTAMP").jdbcType(Types.TIMESTAMP).length(6)
+                                .comment("first timestamp")
+                                .optional(true)
+                                .create(),
+                        Column.editor().name("second_timestamp")
+                                .type("TIMESTAMP").jdbcType(Types.TIMESTAMP).length(6)
+                                .comment("second timestamp")
+                                .optional(true)
+                                .create())
+                .create();
+        final Configuration config = Configuration.create()
+                .with("column.propagate.source.type", tableId + ".*")
+                .build();
+        final ColumnMappers mappers = ColumnMappers.create(new TestRelationalDatabaseConfig(config, null, null, 0));
+        final JdbcValueConverters converters = new JdbcValueConverters(
+                null, TemporalPrecisionMode.STRUCTURED, ZoneOffset.UTC, null, null, null);
+
+        schema = new TableSchemaBuilder(converters, null, adjuster, customConverterRegistry,
+                SchemaBuilder.struct().build(), defaultFieldNamer, false, EventConvertingFailureHandlingMode.FAIL)
+                .create(topicNamingStrategy, timestampTable, null, mappers, null);
+
+        final Schema firstSchema = schema.valueSchema().field("first_timestamp").schema();
+        final Schema secondSchema = schema.valueSchema().field("second_timestamp").schema();
+        assertThat(firstSchema.name()).isNotEqualTo(secondSchema.name());
+        assertThat(firstSchema.doc()).isEqualTo("first timestamp");
+        assertThat(secondSchema.doc()).isEqualTo("second timestamp");
+        assertThat(StructuredTemporal.schemaNameWithoutSourceColumn(firstSchema.name()))
+                .isEqualTo(StructuredTimestamp.schemaName(6));
+        assertThat(StructuredTemporal.schemaNameWithoutSourceColumn(secondSchema.name()))
+                .isEqualTo(StructuredTimestamp.schemaName(6));
+        assertThat(new AvroData(100).fromConnectSchema(schema.valueSchema())).isNotNull();
+    }
+
+    @Test
+    public void shouldQualifyStructuredTemporalSchemaRegardlessOfColumnMetadata() {
+        final TableId tableId = new TableId("catalog", "schema", "timestamps");
+        final JdbcValueConverters converters = new JdbcValueConverters(
+                null, TemporalPrecisionMode.STRUCTURED, ZoneOffset.UTC, null, null, null);
+        final ColumnEditor columnBuilder = Column.editor().name("created_at")
+                .type("TIMESTAMP").jdbcType(Types.TIMESTAMP).length(6)
+                .optional(true);
+        final Column counter = Column.editor().name("counter").type("INTEGER").jdbcType(Types.INTEGER).optional(true).create();
+
+        final Schema withoutComment = createTableSchema(converters, tableId, columnBuilder.create(), counter).valueSchema();
+        final Schema withComment = createTableSchema(converters, tableId, columnBuilder.comment("creation time").create(), counter).valueSchema();
+
+        // Adding a column comment must not rename the Avro record of the structured temporal schema
+        assertThat(withoutComment.field("created_at").schema().name())
+                .isEqualTo(StructuredTemporal.schemaNameWithSourceColumn(StructuredTimestamp.schemaName(6), "created_at"))
+                .isEqualTo(withComment.field("created_at").schema().name());
+        assertThat(withComment.field("created_at").schema().doc()).isEqualTo("creation time");
+        assertThat(withoutComment.field("counter").schema().name()).isNull();
+    }
+
+    private TableSchema createTableSchema(JdbcValueConverters converters, TableId tableId, Column... columns) {
+        final Table table = Table.editor().tableId(tableId).addColumns(columns).create();
+        return new TableSchemaBuilder(converters, null, adjuster, customConverterRegistry,
+                SchemaBuilder.struct().build(), defaultFieldNamer, false, EventConvertingFailureHandlingMode.FAIL)
+                .create(topicNamingStrategy, table, null, null, null);
     }
 
     @Test

@@ -96,38 +96,31 @@ public class DefaultRecordWriter implements RecordWriter {
     }
 
     /**
-     * Bind key field values to the query for a single record.
+     * Bind key field values to the query for a single record with access to the target table.
      */
-    protected int bindKeyValuesToQuery(JdbcSinkRecord record, QueryBinder query, int index) {
+    protected int bindKeyValuesToQuery(TableDescriptor table, JdbcSinkRecord record, QueryBinder query, int index) {
         final Struct keySource = record.filteredKey();
         if (keySource != null) {
-            index = bindFieldValuesToQuery(record, query, index, keySource, record.keyFieldNames());
+            index = bindFieldValuesToQuery(table, record, query, index, keySource, record.keyFieldNames());
         }
         return index;
     }
 
     /**
-     * Bind non-key field values to the query for a single record.
+     * Bind non-key field values to the query for a single record with access to the target table.
      */
-    protected int bindNonKeyValuesToQuery(JdbcSinkRecord record, QueryBinder query, int index) {
-        return bindFieldValuesToQuery(record, query, index, record.getPayload(), record.nonKeyFieldNames());
+    protected int bindNonKeyValuesToQuery(TableDescriptor table, JdbcSinkRecord record, QueryBinder query, int index) {
+        return bindFieldValuesToQuery(table, record, query, index, record.getPayload(), record.nonKeyFieldNames());
     }
 
     /**
-     * Bind field values to the query for a single record.
+     * Bind field values to the query for a single record with access to the target table.
      */
-    protected int bindFieldValuesToQuery(JdbcSinkRecord record, QueryBinder query, int index, Struct source, Set<String> fieldNames) {
+    protected int bindFieldValuesToQuery(TableDescriptor table, JdbcSinkRecord record, QueryBinder query, int index, Struct source, Set<String> fieldNames) {
         for (String fieldName : fieldNames) {
             final JdbcFieldDescriptor field = record.jdbcFields().get(fieldName);
-
-            Object value;
-            if (field.getSchema().isOptional()) {
-                value = source.getWithoutDefault(fieldName);
-            }
-            else {
-                value = source.get(fieldName);
-            }
-            List<ValueBindDescriptor> boundValues = dialect.bindValue(field, index, value);
+            final var column = dialect.resolveColumn(table, field);
+            List<ValueBindDescriptor> boundValues = dialect.bindValue(field, column, index, fieldValue(field, source, fieldName));
 
             boundValues.forEach(query::bind);
             index += boundValues.size();
@@ -412,13 +405,20 @@ public class DefaultRecordWriter implements RecordWriter {
 
     @Override
     public void write(TableDescriptor tableDescriptor, List<JdbcSinkRecord> records) {
+        validateRecords(tableDescriptor, records);
+        write(tableDescriptor, records, getSqlStatementInfo(tableDescriptor, records));
+    }
+
+    /**
+     * Writes records that have been validated with the resolved statement.
+     */
+    protected void write(TableDescriptor tableDescriptor, List<JdbcSinkRecord> records, SqlStatementInfo statementInfo) {
         Stopwatch writeStopwatch = Stopwatch.reusable();
         writeStopwatch.start();
-        SqlStatementInfo statementInfo = getSqlStatementInfo(tableDescriptor, records);
         final Transaction transaction = getSession().beginTransaction();
 
         try {
-            getSession().doWork(processBatch(statementInfo, records));
+            getSession().doWork(processBatch(tableDescriptor, statementInfo, records));
             transaction.commit();
             processMetrics(records, statementInfo);
         }
@@ -462,22 +462,24 @@ public class DefaultRecordWriter implements RecordWriter {
      * Subclasses can override to change the write strategy (e.g., UNNEST).
      */
     protected void performTableWrite(Connection conn, TableDescriptor table, List<JdbcSinkRecord> records) throws SQLException {
-        performWrite(conn, getSqlStatementInfo(table, records), records);
+        validateRecords(table, records);
+        performWrite(conn, table, getSqlStatementInfo(table, records), records);
     }
 
-    private Work processBatch(SqlStatementInfo statementInfo, List<JdbcSinkRecord> records) {
-        return conn -> performWrite(conn, statementInfo, records);
+    private Work processBatch(TableDescriptor table, SqlStatementInfo statementInfo, List<JdbcSinkRecord> records) {
+        return conn -> performWrite(conn, table, statementInfo, records);
     }
 
-    protected void performWrite(Connection conn, SqlStatementInfo statementInfo, List<JdbcSinkRecord> records) throws SQLException {
+    protected void performWrite(Connection conn, TableDescriptor table, SqlStatementInfo statementInfo, List<JdbcSinkRecord> records) throws SQLException {
         try (PreparedStatement prepareStatement = conn.prepareStatement(statementInfo.statement())) {
             QueryBinder queryBinder = getQueryBinderResolver().resolve(prepareStatement);
             Stopwatch allbindStopwatch = Stopwatch.reusable();
             allbindStopwatch.start();
+
             for (JdbcSinkRecord record : records) {
                 Stopwatch singlebindStopwatch = Stopwatch.reusable();
                 singlebindStopwatch.start();
-                bindValues(record, queryBinder);
+                bindValues(table, record, queryBinder);
                 singlebindStopwatch.stop();
 
                 Stopwatch addBatchStopwatch = Stopwatch.reusable();
@@ -488,6 +490,7 @@ public class DefaultRecordWriter implements RecordWriter {
                 LOGGER.trace("[PERF] Bind single record execution time {}", singlebindStopwatch.durations());
                 LOGGER.trace("[PERF] Add batch execution time {}", addBatchStopwatch.durations());
             }
+
             allbindStopwatch.stop();
             LOGGER.trace("[PERF] All records bind execution time {}", allbindStopwatch.durations());
 
@@ -504,22 +507,22 @@ public class DefaultRecordWriter implements RecordWriter {
         }
     }
 
-    protected void bindValues(JdbcSinkRecord record, QueryBinder queryBinder) {
+    protected void bindValues(TableDescriptor table, JdbcSinkRecord record, QueryBinder queryBinder) {
         int index;
         if (record.isDelete()) {
-            bindKeyValuesToQuery(record, queryBinder, 1);
+            bindKeyValuesToQuery(table, record, queryBinder, 1);
             return;
         }
 
         switch (getConfig().getInsertMode()) {
             case INSERT:
             case UPSERT:
-                index = bindKeyValuesToQuery(record, queryBinder, 1);
-                bindNonKeyValuesToQuery(record, queryBinder, index);
+                index = bindKeyValuesToQuery(table, record, queryBinder, 1);
+                bindNonKeyValuesToQuery(table, record, queryBinder, index);
                 break;
             case UPDATE:
-                index = bindNonKeyValuesToQuery(record, queryBinder, 1);
-                bindKeyValuesToQuery(record, queryBinder, index);
+                index = bindNonKeyValuesToQuery(table, record, queryBinder, 1);
+                bindKeyValuesToQuery(table, record, queryBinder, index);
                 break;
         }
     }
@@ -570,6 +573,37 @@ public class DefaultRecordWriter implements RecordWriter {
             return new SqlStatementInfo(dialect.getDeleteStatement(table, firstRecord), false, true);
         }
         throw new DataException(String.format("Unable to get SQL statement for %s", firstRecord));
+    }
+
+    /**
+     * Validates the values of all records against the target table before a statement is generated, so that no record
+     * of the batch is written when the target cannot represent a value.
+     */
+    protected void validateRecords(TableDescriptor table, List<JdbcSinkRecord> records) {
+        for (JdbcSinkRecord record : records) {
+            if (record.isDelete()) {
+                validateFieldValues(table, record, record.filteredKey(), record.keyFieldNames());
+            }
+            else {
+                validateFieldValues(table, record, record.filteredKey(), record.keyFieldNames());
+                validateFieldValues(table, record, record.getPayload(), record.nonKeyFieldNames());
+            }
+        }
+    }
+
+    private void validateFieldValues(TableDescriptor table, JdbcSinkRecord record, Struct source, Set<String> fieldNames) {
+        if (source == null) {
+            return;
+        }
+        for (String fieldName : fieldNames) {
+            final JdbcFieldDescriptor field = record.jdbcFields().get(fieldName);
+            final var column = dialect.resolveColumn(table, field);
+            dialect.validateValue(field, column, fieldValue(field, source, fieldName));
+        }
+    }
+
+    private static Object fieldValue(JdbcFieldDescriptor field, Struct source, String fieldName) {
+        return field.getSchema().isOptional() ? source.getWithoutDefault(fieldName) : source.get(fieldName);
     }
 
 }

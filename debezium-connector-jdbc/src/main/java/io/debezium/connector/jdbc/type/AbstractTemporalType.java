@@ -12,12 +12,16 @@ import java.time.ZonedDateTime;
 import java.time.format.DateTimeParseException;
 import java.util.TimeZone;
 
+import org.apache.kafka.connect.data.Schema;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import io.debezium.connector.jdbc.JdbcSinkConnectorConfig;
+import io.debezium.connector.jdbc.JdbcSinkConnectorConfig.TemporalPrecisionLossHandlingMode;
+import io.debezium.connector.jdbc.JdbcSinkConnectorConfig.TemporalRangeLossHandlingMode;
 import io.debezium.connector.jdbc.dialect.DatabaseDialect;
 import io.debezium.sink.SinkConnectorConfig;
+import io.debezium.sink.column.ColumnDescriptor;
 import io.debezium.time.ZonedTimestamp;
 
 /**
@@ -34,6 +38,8 @@ public abstract class AbstractTemporalType extends AbstractType {
     private boolean timestampBoundsResolved;
     private ZonedDateTime minimumTimestampValue;
     private ZonedDateTime maximumTimestampValue;
+    private TemporalPrecisionLossHandlingMode precisionLossHandlingMode = TemporalPrecisionLossHandlingMode.FAIL;
+    private TemporalRangeLossHandlingMode rangeLossHandlingMode = TemporalRangeLossHandlingMode.FAIL;
 
     @Override
     public void configure(SinkConnectorConfig config, DatabaseDialect dialect) {
@@ -51,10 +57,21 @@ public abstract class AbstractTemporalType extends AbstractType {
             LOGGER.error("Failed to resolve time zone '{}', please specify a correct time zone value", databaseTimeZone, e);
             throw e;
         }
+
+        if (config instanceof JdbcSinkConnectorConfig jdbcConfig && jdbcConfig.getTemporalPrecisionLossHandlingMode() != null) {
+            precisionLossHandlingMode = jdbcConfig.getTemporalPrecisionLossHandlingMode();
+        }
+        if (config instanceof JdbcSinkConnectorConfig jdbcConfig && jdbcConfig.getTemporalRangeLossHandlingMode() != null) {
+            rangeLossHandlingMode = jdbcConfig.getTemporalRangeLossHandlingMode();
+        }
     }
 
     protected TimeZone getDatabaseTimeZone() {
         return databaseTimeZone;
+    }
+
+    protected boolean isClampOutOfRangeValuesEnabled() {
+        return clampOutOfRangeValues;
     }
 
     /**
@@ -123,6 +140,22 @@ public abstract class AbstractTemporalType extends AbstractType {
             // natively rather than a finite timestamp; such dialects have no bound to clamp against.
             return null;
         }
+    }
+
+    protected TemporalPrecisionLossHandlingMode getPrecisionLossHandlingMode() {
+        return precisionLossHandlingMode;
+    }
+
+    protected TemporalRangeLossHandlingMode getRangeLossHandlingMode() {
+        return rangeLossHandlingMode;
+    }
+
+    protected String targetDescription(Schema schema) {
+        return String.format("target type '%s'", getTypeName(schema, false));
+    }
+
+    protected String targetDescription(ColumnDescriptor column) {
+        return String.format("target column '%s' (%s)", column.getColumnName(), column.getTypeName());
     }
 
 }

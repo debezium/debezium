@@ -7,6 +7,8 @@ package io.debezium.connector.jdbc.dialect.oracle;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 import java.sql.Types;
 import java.time.LocalDate;
@@ -16,14 +18,21 @@ import java.time.OffsetTime;
 import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
 
+import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.errors.ConnectException;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 
+import io.debezium.connector.jdbc.JdbcSinkConnectorConfig;
+import io.debezium.connector.jdbc.JdbcSinkConnectorConfig.TemporalPrecisionLossHandlingMode;
+import io.debezium.connector.jdbc.dialect.DatabaseDialect;
 import io.debezium.connector.jdbc.type.debezium.StructuredTimestampType;
 import io.debezium.connector.jdbc.type.debezium.StructuredZonedTimestampType;
+import io.debezium.connector.jdbc.type.debezium.TargetTemporalCapabilities;
+import io.debezium.sink.column.ColumnDescriptor;
 import io.debezium.time.StructuredDuration;
+import io.debezium.time.StructuredTemporal;
 import io.debezium.time.StructuredTime;
 import io.debezium.time.StructuredTimestamp;
 import io.debezium.time.StructuredZonedTime;
@@ -43,6 +52,26 @@ class StructuredTemporalTypeTest {
         assertThat(bindings).hasSize(1);
         assertThat(bindings.get(0).getValue()).isEqualTo(LocalDateTime.of(LocalDate.EPOCH, LocalTime.of(12, 13, 14, 123_456_789)));
         assertThat(bindings.get(0).getTargetSqlType()).isEqualTo(Types.TIMESTAMP);
+    }
+
+    @Test
+    @DisplayName("Should preserve Oracle binding shape after precision reduction")
+    void shouldReduceStructuredTimeAsTimestampValue() {
+        final var schema = StructuredTime.builder(9).build();
+        final var value = StructuredTime.from(schema, LocalTime.of(12, 13, 14, 123_456_789), 9);
+        final var type = new io.debezium.connector.jdbc.dialect.oracle.StructuredTimeType();
+        final JdbcSinkConnectorConfig config = mock(JdbcSinkConnectorConfig.class);
+        final DatabaseDialect dialect = mock(DatabaseDialect.class);
+        when(config.useTimeZone()).thenReturn("UTC");
+        when(config.getTemporalPrecisionLossHandlingMode()).thenReturn(TemporalPrecisionLossHandlingMode.TRUNCATE);
+        when(dialect.getTargetTemporalCapabilities()).thenReturn(TargetTemporalCapabilities.defaults(9, 9));
+        type.configure(config, dialect);
+
+        final var binding = type.bind(1, timeColumn(3), schema, value).get(0);
+
+        assertThat(binding.getValue())
+                .isEqualTo(LocalDateTime.of(LocalDate.EPOCH, LocalTime.of(12, 13, 14, 123_000_000)));
+        assertThat(binding.getTargetSqlType()).isEqualTo(Types.TIMESTAMP);
     }
 
     @Test
@@ -100,11 +129,77 @@ class StructuredTemporalTypeTest {
     }
 
     @Test
+    @DisplayName("Should combine duration components with different signs into a single Oracle interval")
+    void shouldCombineDurationComponentsWithDifferentSigns() {
+        final var daySecondSchema = StructuredDuration.builder(6, StructuredDuration.Kind.DAY_TIME).build();
+        final var yearMonthSchema = StructuredDuration.builder(-1, StructuredDuration.Kind.YEAR_MONTH).build();
+
+        // One hour minus 30 minutes is 30 minutes, and one year minus 14 months is minus 2 months
+        assertThat(StructuredDurationType.INSTANCE.bind(1, daySecondSchema,
+                StructuredDuration.from(daySecondSchema, 0, 0, 0, 1, -30, 0, 0, 6)).get(0).getValue())
+                .isEqualTo("0 00:30:00.000000");
+        assertThat(StructuredDurationType.INSTANCE.bind(1, yearMonthSchema,
+                StructuredDuration.from(yearMonthSchema, 1, -14, 0, 0, 0, 0, 0)).get(0).getValue())
+                .isEqualTo("-0-02");
+    }
+
+    @Test
+    @DisplayName("Should resolve the duration kind from the schema name without a propagated source type")
+    void shouldResolveDurationKindFromSchemaName() {
+        // The schemas have no propagated source type, so only the logical name identifies the kind
+        final var yearMonthSchema = SchemaBuilder.struct()
+                .name(StructuredDuration.schemaName(-1, StructuredDuration.Kind.YEAR_MONTH))
+                .build();
+        final var dayTimeSchema = SchemaBuilder.struct()
+                .name(StructuredTemporal.schemaNameWithSourceColumn(StructuredDuration.schemaName(6, StructuredDuration.Kind.DAY_TIME), "wait"))
+                .build();
+
+        assertThat(StructuredDurationType.INSTANCE.getTypeName(yearMonthSchema, false)).isEqualTo("INTERVAL YEAR TO MONTH");
+        assertThat(StructuredDurationType.INSTANCE.getQueryBinding(null, yearMonthSchema, null)).isEqualTo("TO_YMINTERVAL(?)");
+        assertThat(StructuredDurationType.INSTANCE.getQueryBinding(null, dayTimeSchema, null)).isEqualTo("TO_DSINTERVAL(?)");
+    }
+
+    @Test
+    @DisplayName("Should map a day-time duration with more than 24 hours to Oracle day-second interval")
+    void shouldBindDayTimeDurationWithHoursBeyondOneDay() {
+        // A MySQL TIME value has no days, so its hours can exceed 24
+        final var schema = StructuredDuration.builder(6, StructuredDuration.Kind.DAY_TIME).build();
+        final var value = StructuredDuration.from(schema, 0, 0, 0, 34, 5, 6, 789_000_000, 6);
+
+        assertThat(StructuredDurationType.INSTANCE.getTypeName(schema, false))
+                .isEqualTo("INTERVAL DAY TO SECOND(6)");
+        assertThat(StructuredDurationType.INSTANCE.getQueryBinding(null, schema, value))
+                .isEqualTo("TO_DSINTERVAL(?)");
+        assertThat(StructuredDurationType.INSTANCE.bind(1, schema, value).get(0).getValue())
+                .isEqualTo("1 10:05:06.789000");
+    }
+
+    @Test
+    @DisplayName("Should apply round mode to Oracle day-second defaults")
+    void shouldRoundOracleDaySecondDefault() {
+        final var schema = StructuredDuration.builder()
+                .parameter("__debezium.source.column.type", "INTERVAL DAY TO SECOND")
+                .parameter("__debezium.source.column.scale", "6")
+                .build();
+        final var value = StructuredDuration.from(schema, 0, 0, 1, 2, 3, 4, 567_890_600, 9);
+        final var type = configuredDurationType(TemporalPrecisionLossHandlingMode.ROUND);
+
+        assertThat(type.getDefaultValueBinding(schema, value))
+                .isEqualTo("TO_DSINTERVAL('1 02:03:04.567891')");
+        assertThat(type.bind(1, schema, value).get(0).getValue())
+                .isEqualTo("1 02:03:04.567891");
+        assertThatThrownBy(() -> configuredDurationType(TemporalPrecisionLossHandlingMode.FAIL)
+                .getDefaultValueBinding(schema, value))
+                .isInstanceOf(ConnectException.class)
+                .hasMessageContaining("precision 6");
+    }
+
+    @Test
     @DisplayName("Should fail structured timestamp infinity for Oracle")
     void shouldFailStructuredTimestampInfinity() {
         final var schema = StructuredTimestamp.schema();
 
-        assertThatThrownBy(() -> StructuredTimestampType.INSTANCE.bind(3, schema, StructuredTimestamp.positiveInfinity(schema)))
+        assertThatThrownBy(() -> new StructuredTimestampType().bind(3, schema, StructuredTimestamp.positiveInfinity(schema)))
                 .isInstanceOf(ConnectException.class)
                 .hasMessageContaining("Non-finite structured temporal values require dialect-specific handling");
     }
@@ -114,8 +209,28 @@ class StructuredTemporalTypeTest {
     void shouldFailStructuredZonedTimestampInfinity() {
         final var schema = StructuredZonedTimestamp.schema();
 
-        assertThatThrownBy(() -> StructuredZonedTimestampType.INSTANCE.bind(4, schema, StructuredZonedTimestamp.negativeInfinity(schema)))
+        assertThatThrownBy(() -> new StructuredZonedTimestampType().bind(4, schema, StructuredZonedTimestamp.negativeInfinity(schema)))
                 .isInstanceOf(ConnectException.class)
                 .hasMessageContaining("Non-finite structured temporal values require dialect-specific handling");
+    }
+
+    private ColumnDescriptor timeColumn(int precision) {
+        return ColumnDescriptor.builder()
+                .columnName("time_value")
+                .jdbcType(Types.TIMESTAMP)
+                .typeName("timestamp")
+                .scale(precision)
+                .build();
+    }
+
+    private StructuredDurationType configuredDurationType(TemporalPrecisionLossHandlingMode mode) {
+        final var type = new StructuredDurationType();
+        final JdbcSinkConnectorConfig config = mock(JdbcSinkConnectorConfig.class);
+        final DatabaseDialect dialect = mock(DatabaseDialect.class);
+        when(config.useTimeZone()).thenReturn("UTC");
+        when(config.getTemporalPrecisionLossHandlingMode()).thenReturn(mode);
+        when(dialect.getTargetTemporalCapabilities()).thenReturn(TargetTemporalCapabilities.defaults(9, 9));
+        type.configure(config, dialect);
+        return type;
     }
 }

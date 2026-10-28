@@ -15,6 +15,7 @@ import io.debezium.connector.jdbc.JdbcSinkConnectorConfig;
 import io.debezium.connector.jdbc.dialect.DatabaseDialect;
 import io.debezium.connector.jdbc.dialect.DatabaseDialectProvider;
 import io.debezium.connector.jdbc.dialect.mysql.MariaDbDatabaseDialect;
+import io.debezium.connector.jdbc.type.debezium.TargetTemporalCapabilities;
 
 /**
  * A {@link DatabaseDialect} implementation for SingleStore.
@@ -46,6 +47,12 @@ public class SingleStoreDatabaseDialect extends MariaDbDatabaseDialect {
     }
 
     @Override
+    protected TargetTemporalCapabilities createTargetTemporalCapabilities() {
+        // The MySQL-family ranges are truncated to the target precision when they are applied
+        return super.createTargetTemporalCapabilities().withZeroDateSupported(false);
+    }
+
+    @Override
     protected void registerTypes() {
         super.registerTypes();
 
@@ -57,5 +64,6 @@ public class SingleStoreDatabaseDialect extends MariaDbDatabaseDialect {
         registerType(PointType.INSTANCE);
         registerType(FloatVectorType.INSTANCE);
         registerType(DoubleVectorType.INSTANCE);
+        registerType(SingleStoreStructuredDurationType.INSTANCE);
     }
 }

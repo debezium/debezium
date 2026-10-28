@@ -6,14 +6,17 @@
 package io.debezium.connector.jdbc.type;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
+import java.sql.Types;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
 import java.util.Date;
 import java.util.Map;
 
+import org.apache.kafka.connect.errors.ConnectException;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
@@ -25,7 +28,11 @@ import io.debezium.connector.jdbc.type.debezium.DebeziumZonedTimestampType;
 import io.debezium.connector.jdbc.type.debezium.MicroTimestampType;
 import io.debezium.connector.jdbc.type.debezium.StructuredTimestampType;
 import io.debezium.connector.jdbc.type.debezium.StructuredZonedTimestampType;
+import io.debezium.connector.jdbc.type.debezium.TargetTemporalCapabilities;
+import io.debezium.connector.jdbc.type.debezium.TemporalRange;
+import io.debezium.connector.jdbc.type.debezium.TemporalRange.Boundary;
 import io.debezium.doc.FixFor;
+import io.debezium.sink.column.ColumnDescriptor;
 import io.debezium.time.StructuredTimestamp;
 import io.debezium.time.StructuredZonedTimestamp;
 import io.debezium.time.ZonedTimestamp;
@@ -43,6 +50,9 @@ class TimestampClampOutOfRangeValuesTest {
     // Bounds modeled on the MySQL dialect's TIMESTAMP range
     private static final String MINIMUM_TIMESTAMP = "1970-01-01T00:00:01+00:00";
     private static final String MAXIMUM_TIMESTAMP = "2038-01-19T03:14:07+00:00";
+    private static final TemporalRange TIMESTAMP_RANGE = new TemporalRange(
+            Boundary.timestamp(1970, 1, 1, 0, 0, 1, 0),
+            Boundary.timestamp(2038, 1, 19, 3, 14, 7, 999_999_999_999L));
 
     // 2018 BC (ISO proleptic year -2017), as emitted by the Oracle source for BC values
     private static final LocalDateTime BC_DATE_TIME = LocalDateTime.of(-2017, 3, 27, 12, 34, 56);
@@ -142,6 +152,76 @@ class TimestampClampOutOfRangeValuesTest {
     }
 
     @Test
+    @FixFor("debezium/dbz#2119")
+    @DisplayName("Should clamp out-of-range structured timestamp values before the target column range handling")
+    void shouldClampOutOfRangeStructuredTimestampValuesForTargetColumn() {
+        final var type = new StructuredTimestampType();
+        type.configure(config(true), dialect());
+
+        final var schema = StructuredTimestamp.schema();
+        final var below = StructuredTimestamp.from(BC_DATE_TIME);
+        type.validate(timestampColumn(), schema, below);
+        assertThat(type.bind(0, timestampColumn(), schema, below).get(0).getValue()).isEqualTo(MINIMUM_DATE_TIME);
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2119")
+    @DisplayName("Should clamp out-of-range structured zoned timestamp values before the target column range handling")
+    void shouldClampOutOfRangeStructuredZonedTimestampValuesForTargetColumn() {
+        final var type = new StructuredZonedTimestampType();
+        type.configure(config(true), dialect());
+
+        final var schema = StructuredZonedTimestamp.schema();
+        final var below = StructuredZonedTimestamp.from(BC_DATE_TIME.atOffset(ZoneOffset.UTC));
+        type.validate(timestampColumn(), schema, below);
+        assertThat(type.bind(0, timestampColumn(), schema, below).get(0).getValue())
+                .isEqualTo(MINIMUM_DATE_TIME.atOffset(ZoneOffset.UTC));
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2119")
+    @DisplayName("Should apply the target column range handling to structured timestamp values when clamping is disabled")
+    void shouldApplyRangeHandlingToStructuredTimestampValuesWhenClampingIsDisabled() {
+        final var type = new StructuredTimestampType();
+        type.configure(config(false), dialect());
+
+        final var schema = StructuredTimestamp.schema();
+        final var below = StructuredTimestamp.from(BC_DATE_TIME);
+        assertThatThrownBy(() -> type.bind(0, timestampColumn(), schema, below))
+                .isInstanceOf(ConnectException.class)
+                .hasMessageContaining("outside the range");
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2119")
+    @DisplayName("Should clamp out-of-range structured timestamp values in dialects that bind literals")
+    void shouldClampOutOfRangeStructuredTimestampValuesInLiteralDialects() {
+        final var schema = StructuredTimestamp.schema();
+        final var below = StructuredTimestamp.from(BC_DATE_TIME);
+
+        final var mysqlType = new io.debezium.connector.jdbc.dialect.mysql.StructuredTimestampType();
+        mysqlType.configure(config(true), dialect());
+        mysqlType.validate(timestampColumn(), schema, below);
+        assertThat(mysqlType.bind(0, schema, below).get(0).getValue()).isEqualTo("1970-01-01 00:00:01.000000");
+        assertThat(mysqlType.bind(0, timestampColumn(), schema, below).get(0).getValue()).isEqualTo("1970-01-01 00:00:01.000000");
+
+        // MySQL cannot keep the offset, but the clamped value replaces the source value and its offset
+        final var mysqlZonedType = new io.debezium.connector.jdbc.dialect.mysql.StructuredZonedTimestampType();
+        mysqlZonedType.configure(config(true), dialect());
+        final var zonedSchema = StructuredZonedTimestamp.schema();
+        final var zonedBelow = StructuredZonedTimestamp.from(BC_DATE_TIME.atOffset(ZoneOffset.ofHours(9)));
+        mysqlZonedType.validate(timestampColumn(), zonedSchema, zonedBelow);
+        assertThat(mysqlZonedType.bind(0, timestampColumn(), zonedSchema, zonedBelow).get(0).getValue())
+                .isEqualTo("1970-01-01 00:00:01.000000");
+
+        final var db2Type = new io.debezium.connector.jdbc.dialect.db2.StructuredTimestampType();
+        db2Type.configure(config(true), dialect());
+        db2Type.validate(timestampColumn(), schema, below);
+        assertThat(db2Type.bind(0, schema, below).get(0).getValue()).isEqualTo("1970-01-01 00:00:01");
+        assertThat(db2Type.bind(0, timestampColumn(), schema, below).get(0).getValue()).isEqualTo("1970-01-01 00:00:01");
+    }
+
+    @Test
     @FixFor("debezium/dbz#1008")
     @DisplayName("Should clamp out-of-range ZonedTimestamp values in dialects that override the normal value binding")
     void shouldClampOutOfRangeZonedTimestampValuesInDialectOverrides() {
@@ -207,6 +287,17 @@ class TimestampClampOutOfRangeValuesTest {
         when(dialect.getTimestampNegativeInfinityValue()).thenReturn(MINIMUM_TIMESTAMP);
         when(dialect.getTimestampPositiveInfinityValue()).thenReturn(MAXIMUM_TIMESTAMP);
         when(dialect.isTimeZoneSet()).thenReturn(false);
+        when(dialect.getTargetTemporalCapabilities()).thenReturn(TargetTemporalCapabilities.defaults(6, 6).withTimestampRange(TIMESTAMP_RANGE));
         return dialect;
+    }
+
+    private static ColumnDescriptor timestampColumn() {
+        return ColumnDescriptor.builder()
+                .columnName("ts")
+                .jdbcType(Types.TIMESTAMP)
+                .typeName("timestamp")
+                .precision(0)
+                .scale(6)
+                .build();
     }
 }

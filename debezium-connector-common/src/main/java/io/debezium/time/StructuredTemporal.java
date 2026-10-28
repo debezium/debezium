@@ -5,6 +5,7 @@
  */
 package io.debezium.time;
 
+import org.apache.kafka.connect.data.Field;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.data.Struct;
@@ -14,17 +15,31 @@ import org.apache.kafka.connect.data.Struct;
  */
 public final class StructuredTemporal {
 
+    /**
+     * The maximum fractional-second precision of structured temporal values, which store the fraction in picoseconds.
+     */
+    public static final int MAX_FRACTIONAL_SECOND_PRECISION = 12;
+
+    private static final String SOURCE_COLUMN_SCHEMA_NAME_MARKER = "SourceColumn";
+    private static final char VERBATIM_SOURCE_COLUMN_PREFIX = '_';
+    private static final char ESCAPED_SOURCE_COLUMN_PREFIX = 'U';
+
     public static final String YEAR_FIELD = "year";
     public static final String MONTH_FIELD = "month";
     public static final String DAY_FIELD = "day";
     public static final String HOUR_FIELD = "hour";
     public static final String MINUTE_FIELD = "minute";
     public static final String SECOND_FIELD = "second";
-    public static final String NANOS_FIELD = "nanos";
+    public static final String PICOSECONDS_FIELD = "picoseconds";
     public static final String OFFSET_SECONDS_FIELD = "offsetSeconds";
     public static final String ZONE_ID_FIELD = "zoneId";
     public static final String SPECIAL_VALUE_FIELD = "specialValue";
     public static final String PRECISION_FIELD = "precision";
+
+    /**
+     * Schema parameter that describes the source column's fractional-second precision.
+     */
+    public static final String PRECISION_PARAMETER_KEY = "io.debezium.time.precision";
 
     public static final String YEARS_FIELD = "years";
     public static final String MONTHS_FIELD = "months";
@@ -35,6 +50,9 @@ public final class StructuredTemporal {
 
     public static final String POSITIVE_INFINITY = "POSITIVE_INFINITY";
     public static final String NEGATIVE_INFINITY = "NEGATIVE_INFINITY";
+
+    public static final long PICOSECONDS_PER_NANOSECOND = 1_000L;
+    public static final long PICOSECONDS_PER_SECOND = 1_000_000_000_000L;
 
     static Schema optionalInt8() {
         return SchemaBuilder.int8().optional().build();
@@ -69,6 +87,132 @@ public final class StructuredTemporal {
             struct.put(PRECISION_FIELD, precision);
         }
         return struct;
+    }
+
+    static SchemaBuilder withPrecision(SchemaBuilder builder, int precision) {
+        if (precision >= 0) {
+            builder.parameter(PRECISION_PARAMETER_KEY, Integer.toString(precision));
+        }
+        return builder;
+    }
+
+    static String schemaName(String baseName, int precision) {
+        return precision < 0 ? baseName : baseName + "Precision" + precision;
+    }
+
+    static String[] schemaNames(String baseName) {
+        final String[] names = new String[MAX_FRACTIONAL_SECOND_PRECISION + 2];
+        names[0] = baseName;
+        for (int precision = 0; precision <= MAX_FRACTIONAL_SECOND_PRECISION; ++precision) {
+            names[precision + 1] = schemaName(baseName, precision);
+        }
+        return names;
+    }
+
+    /**
+     * Qualifies a structured temporal schema name with the source column name. This keeps Avro named records distinct when
+     * otherwise identical structured temporal schemas carry column-specific metadata.
+     *
+     * @param builder the field schema builder
+     * @param columnName the source column name
+     * @see #schemaNameWithSourceColumn(String, String)
+     */
+    public static SchemaBuilder qualifySchemaBuilderWithSourceColumn(SchemaBuilder builder, String columnName) {
+        final String schemaName = schemaNameWithoutSourceColumn(builder.name());
+        if (!isStructuredTemporalSchemaName(schemaName)) {
+            return builder;
+        }
+
+        final SchemaBuilder qualifiedBuilder = SchemaBuilder.struct()
+                .name(schemaNameWithSourceColumn(schemaName, columnName));
+        if (builder.version() != null) {
+            qualifiedBuilder.version(builder.version());
+        }
+        if (builder.doc() != null) {
+            qualifiedBuilder.doc(builder.doc());
+        }
+        if (builder.parameters() != null) {
+            qualifiedBuilder.parameters(builder.parameters());
+        }
+        if (builder.isOptional()) {
+            qualifiedBuilder.optional();
+        }
+        for (Field field : builder.fields()) {
+            qualifiedBuilder.field(field.name(), field.schema());
+        }
+        return qualifiedBuilder;
+    }
+
+    /**
+     * Returns a structured temporal schema name qualified with the source column name.
+     * <p>
+     * A column name that consists only of ASCII letters, digits, and underscores is appended as is after
+     * {@code SourceColumn_}, for example, {@code io.debezium.time.StructuredTimestampPrecision6SourceColumn_create_timestamp}.
+     * Any other column name is appended after {@code SourceColumnU}, and each of its characters other than an ASCII letter
+     * or digit is escaped as {@code _u} followed by four hexadecimal digits, for example,
+     * {@code io.debezium.time.StructuredTimestampPrecision6SourceColumnUcreate_u002dtimestamp}. The character that follows
+     * the marker and the fixed-width escapes keep the names of different columns distinct.
+     *
+     * @param schemaName the structured temporal schema name; never null
+     * @param columnName the source column name; never null
+     * @return the qualified schema name
+     */
+    public static String schemaNameWithSourceColumn(String schemaName, String columnName) {
+        return schemaName + SOURCE_COLUMN_SCHEMA_NAME_MARKER + sourceColumnQualifier(columnName);
+    }
+
+    /**
+     * Returns the structured temporal schema name without its source-column qualifier.
+     *
+     * @param schemaName the schema name
+     * @return the canonical schema name
+     */
+    public static String schemaNameWithoutSourceColumn(String schemaName) {
+        if (schemaName == null) {
+            return null;
+        }
+        final int markerIndex = schemaName.indexOf(SOURCE_COLUMN_SCHEMA_NAME_MARKER);
+        if (markerIndex > 0) {
+            final String candidate = schemaName.substring(0, markerIndex);
+            if (isStructuredTemporalSchemaName(candidate)) {
+                return candidate;
+            }
+        }
+        return schemaName;
+    }
+
+    private static boolean isStructuredTemporalSchemaName(String schemaName) {
+        return schemaName != null && (StructuredDate.SCHEMA_NAME.equals(schemaName)
+                || schemaName.startsWith(StructuredDuration.SCHEMA_NAME)
+                || schemaName.startsWith(StructuredZonedTimestamp.SCHEMA_NAME)
+                || schemaName.startsWith(StructuredZonedTime.SCHEMA_NAME)
+                || schemaName.startsWith(StructuredTimestamp.SCHEMA_NAME)
+                || schemaName.startsWith(StructuredTime.SCHEMA_NAME));
+    }
+
+    private static String sourceColumnQualifier(String columnName) {
+        if (columnName.chars().allMatch(c -> isAsciiLetterOrDigit(c) || c == '_')) {
+            return VERBATIM_SOURCE_COLUMN_PREFIX + columnName;
+        }
+        final StringBuilder qualifier = new StringBuilder().append(ESCAPED_SOURCE_COLUMN_PREFIX);
+        for (int i = 0; i < columnName.length(); ++i) {
+            final char current = columnName.charAt(i);
+            if (isAsciiLetterOrDigit(current)) {
+                qualifier.append(current);
+            }
+            else {
+                qualifier.append("_u").append(String.format("%04x", (int) current));
+            }
+        }
+        return qualifier.toString();
+    }
+
+    private static boolean isAsciiLetterOrDigit(int c) {
+        return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9');
+    }
+
+    static long picosecondsFromNanoseconds(int nanoseconds) {
+        return nanoseconds * PICOSECONDS_PER_NANOSECOND;
     }
 
     public static boolean isPositiveInfinity(Struct value) {

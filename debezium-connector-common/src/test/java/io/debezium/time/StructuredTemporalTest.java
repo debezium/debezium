@@ -6,6 +6,7 @@
 package io.debezium.time;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.entry;
 
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
@@ -17,6 +18,7 @@ import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceRecord;
 import org.junit.jupiter.api.Test;
 
+import io.apicurio.registry.utils.converter.avro.AvroData;
 import io.debezium.data.VerifyRecord;
 
 class StructuredTemporalTest {
@@ -63,7 +65,7 @@ class StructuredTemporalTest {
         assertThat(value.getInt8(StructuredTemporal.HOUR_FIELD)).isEqualTo((byte) 23);
         assertThat(value.getInt8(StructuredTemporal.MINUTE_FIELD)).isEqualTo((byte) 59);
         assertThat(value.getInt8(StructuredTemporal.SECOND_FIELD)).isEqualTo((byte) 59);
-        assertThat(value.getInt32(StructuredTemporal.NANOS_FIELD)).isEqualTo(999_999_000);
+        assertThat(value.getInt64(StructuredTemporal.PICOSECONDS_FIELD)).isEqualTo(999_999_000_000L);
         assertThat(value.getInt32(StructuredTemporal.OFFSET_SECONDS_FIELD)).isEqualTo(32_400);
         assertThat(value.getString(StructuredTemporal.ZONE_ID_FIELD)).isEqualTo("Asia/Seoul");
     }
@@ -78,7 +80,7 @@ class StructuredTemporalTest {
         assertThat(value.getInt8(StructuredTemporal.HOUR_FIELD)).isEqualTo((byte) 24);
         assertThat(value.getInt8(StructuredTemporal.MINUTE_FIELD)).isEqualTo((byte) 0);
         assertThat(value.getInt8(StructuredTemporal.SECOND_FIELD)).isEqualTo((byte) 0);
-        assertThat(value.getInt32(StructuredTemporal.NANOS_FIELD)).isZero();
+        assertThat(value.getInt64(StructuredTemporal.PICOSECONDS_FIELD)).isZero();
         assertThat(value.getInt32(StructuredTemporal.OFFSET_SECONDS_FIELD)).isEqualTo(19_800);
         assertThat(StructuredTemporal.isFinite(value)).isTrue();
     }
@@ -95,7 +97,7 @@ class StructuredTemporalTest {
         assertThat(value.getInt32(StructuredTemporal.HOURS_FIELD)).isEqualTo(-4);
         assertThat(value.getInt32(StructuredTemporal.MINUTES_FIELD)).isEqualTo(-5);
         assertThat(value.getInt64(StructuredTemporal.SECONDS_FIELD)).isEqualTo(-6L);
-        assertThat(value.getInt32(StructuredTemporal.NANOS_FIELD)).isEqualTo(-7);
+        assertThat(value.getInt64(StructuredTemporal.PICOSECONDS_FIELD)).isEqualTo(-7_000L);
     }
 
     @Test
@@ -115,19 +117,119 @@ class StructuredTemporalTest {
     }
 
     @Test
-    void shouldSerializeRepeatedStructuredTimestampSchemasWithDifferentPrecisionValues() {
-        final Schema timestamp3Schema = StructuredTimestamp.builder().build();
-        final Schema timestamp6Schema = StructuredTimestamp.builder().build();
+    void shouldDescribeStructuredPrecisionInSchemaParameters() {
+        final Schema timestampSchema = StructuredTimestamp.builder(7).build();
+        final Schema durationSchema = StructuredDuration.builder(9, StructuredDuration.Kind.DAY_TIME).build();
+
+        assertThat(timestampSchema.parameters())
+                .containsOnly(entry(StructuredTemporal.PRECISION_PARAMETER_KEY, "7"));
+        // The duration kind is part of the logical name only
+        assertThat(durationSchema.parameters())
+                .containsOnly(entry(StructuredTemporal.PRECISION_PARAMETER_KEY, "9"));
+    }
+
+    @Test
+    void shouldNameDurationKindBeforePrecisionSuffix() {
+        // Schema names are visible to consumers and schema registries, so the exact names are part of the contract
+        assertThat(StructuredDuration.schemaName(9, StructuredDuration.Kind.DAY_TIME))
+                .isEqualTo("io.debezium.time.StructuredDurationDayTimePrecision9");
+        assertThat(StructuredDuration.schemaName(-1, StructuredDuration.Kind.YEAR_MONTH))
+                .isEqualTo("io.debezium.time.StructuredDurationYearMonth");
+        assertThat(StructuredDuration.schemaName(6, StructuredDuration.Kind.MONTH_DAY_TIME))
+                .isEqualTo("io.debezium.time.StructuredDurationMonthDayTimePrecision6");
+        assertThat(StructuredDuration.Kind.MONTH_DAY_TIME.getValue()).isEqualTo("month-day-time");
+        assertThat(StructuredDuration.schemaName(6, null))
+                .isEqualTo("io.debezium.time.StructuredDurationPrecision6");
+        assertThat(StructuredTimestamp.builder(6).build().name())
+                .isEqualTo("io.debezium.time.StructuredTimestampPrecision6");
+
+        assertThat(StructuredDuration.schemaNames()).contains(
+                "io.debezium.time.StructuredDuration",
+                "io.debezium.time.StructuredDurationYearMonth",
+                "io.debezium.time.StructuredDurationDayTimePrecision9",
+                "io.debezium.time.StructuredDurationPrecision12");
+    }
+
+    @Test
+    void shouldResolveDurationKindFromSchemaName() {
+        for (StructuredDuration.Kind kind : StructuredDuration.Kind.values()) {
+            assertThat(StructuredDuration.kindOf(StructuredDuration.schemaName(-1, kind))).contains(kind);
+            assertThat(StructuredDuration.kindOf(StructuredDuration.schemaName(6, kind))).contains(kind);
+            // The qualifier is ignored, even if the column name looks like a kind
+            assertThat(StructuredDuration.kindOf(
+                    StructuredTemporal.schemaNameWithSourceColumn(StructuredDuration.schemaName(6, kind), "DayTime-column"))).contains(kind);
+        }
+        assertThat(StructuredDuration.kindOf(StructuredDuration.SCHEMA_NAME)).isEmpty();
+        assertThat(StructuredDuration.kindOf(StructuredDuration.schemaName(6, null))).isEmpty();
+        assertThat(StructuredDuration.kindOf(StructuredTimestamp.schemaName(6))).isEmpty();
+        assertThat(StructuredDuration.kindOf(null)).isEmpty();
+    }
+
+    @Test
+    void shouldQualifySchemaNameWithSourceColumnWithoutCollisions() {
+        final String schemaName = StructuredTimestamp.schemaName(6);
+
+        // Valid Avro name characters are kept as is, any other column name is escaped with fixed-width escapes
+        assertThat(StructuredTemporal.schemaNameWithSourceColumn(schemaName, "create_timestamp"))
+                .isEqualTo("io.debezium.time.StructuredTimestampPrecision6SourceColumn_create_timestamp");
+        assertThat(StructuredTemporal.schemaNameWithSourceColumn(schemaName, "create-timestamp"))
+                .isEqualTo("io.debezium.time.StructuredTimestampPrecision6SourceColumnUcreate_u002dtimestamp");
+        assertThat(StructuredTemporal.schemaNameWithSourceColumn(schemaName, "생성일시"))
+                .isEqualTo("io.debezium.time.StructuredTimestampPrecision6SourceColumnU_uc0dd_uc131_uc77c_uc2dc");
+
+        // Column names whose replacements collide with Avro or Unicode schema name adjustment stay distinct
+        assertDistinctQualifiedNames(schemaName, "create_timestamp", "create-timestamp");
+        assertDistinctQualifiedNames(schemaName, "생성일시", "수정일시");
+        assertDistinctQualifiedNames(schemaName, "ā" + "1", "ထ");
+        assertDistinctQualifiedNames(schemaName, "a.b", "a_b");
+        assertDistinctQualifiedNames(schemaName, "create-timestamp", "Ucreate_u002dtimestamp");
+
+        final String qualified = StructuredTemporal.schemaNameWithSourceColumn(schemaName, "order.date");
+        assertThat(qualified).doesNotContain("order.date");
+        assertThat(StructuredTemporal.schemaNameWithoutSourceColumn(qualified)).isEqualTo(schemaName);
+    }
+
+    private static void assertDistinctQualifiedNames(String schemaName, String firstColumn, String secondColumn) {
+        assertThat(StructuredTemporal.schemaNameWithSourceColumn(schemaName, firstColumn))
+                .isNotEqualTo(StructuredTemporal.schemaNameWithSourceColumn(schemaName, secondColumn));
+    }
+
+    @Test
+    void shouldPreservePicosecondTimestampPrecisionInVersionOneSchema() {
+        final Schema schema = StructuredTimestamp.builder(12).build();
+        final Struct value = StructuredTimestamp.fromPicoseconds(schema, 2026, 7, 17, 12, 13, 14, 123_456_789_012L, 12);
+
+        assertThat(schema.version()).isEqualTo(1);
+        assertThat(value.getInt64(StructuredTemporal.PICOSECONDS_FIELD)).isEqualTo(123_456_789_012L);
+        assertThat(value.getInt32(StructuredTemporal.PRECISION_FIELD)).isEqualTo(12);
+    }
+
+    @Test
+    void shouldSerializeRepeatedStructuredSchemasWithDifferentMetadata() {
+        final Schema timestamp3Schema = StructuredTimestamp.builder(3).build();
+        final Schema timestamp6Schema = StructuredTimestamp.builder(6).build();
+        final Schema optionalTimestamp6Schema = StructuredTimestamp.builder(6).optional().build();
+        final Schema yearMonthSchema = StructuredDuration.builder(9, StructuredDuration.Kind.YEAR_MONTH).build();
+        final Schema dayTimeSchema = StructuredDuration.builder(9, StructuredDuration.Kind.DAY_TIME).build();
         final Schema valueSchema = SchemaBuilder.struct()
                 .name("server.schema.table.Value")
                 .field("ts3", timestamp3Schema)
                 .field("ts6", timestamp6Schema)
+                .field("optionalTs6", optionalTimestamp6Schema)
+                .field("yearMonth", yearMonthSchema)
+                .field("dayTime", dayTimeSchema)
                 .build();
         final Struct value = new Struct(valueSchema)
                 .put("ts3", StructuredTimestamp.from(timestamp3Schema, 2026, 6, 20, 12, 13, 14, 123_000_000, 3))
-                .put("ts6", StructuredTimestamp.from(timestamp6Schema, 2026, 6, 20, 12, 13, 14, 123_456_000, 6));
+                .put("ts6", StructuredTimestamp.from(timestamp6Schema, 2026, 6, 20, 12, 13, 14, 123_456_000, 6))
+                .put("optionalTs6", StructuredTimestamp.from(optionalTimestamp6Schema, 2026, 6, 20, 12, 13, 14, 123_456_000, 6))
+                .put("yearMonth", StructuredDuration.fromPicoseconds(yearMonthSchema, 1, 2, 0, 0, 0, 0, 0, 9))
+                .put("dayTime", StructuredDuration.fromPicoseconds(dayTimeSchema, 0, 0, 3, 4, 5, 6, 789_000_000_000L, 9));
         final SourceRecord record = new SourceRecord(Collections.emptyMap(), Collections.emptyMap(), "server.schema.table", null, null, valueSchema, value);
 
+        assertThat(timestamp3Schema.name()).isNotEqualTo(timestamp6Schema.name());
+        assertThat(yearMonthSchema.name()).isNotEqualTo(dayTimeSchema.name());
+        assertThat(new AvroData(100).fromConnectSchema(valueSchema)).isNotNull();
         VerifyRecord.isValid(record);
     }
 }
