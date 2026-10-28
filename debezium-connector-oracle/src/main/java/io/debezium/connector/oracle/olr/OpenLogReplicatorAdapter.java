@@ -28,6 +28,7 @@ import io.debezium.document.Document;
 import io.debezium.pipeline.ErrorHandler;
 import io.debezium.pipeline.EventDispatcher;
 import io.debezium.pipeline.metrics.CapturedTablesSupplier;
+import io.debezium.pipeline.source.snapshot.incremental.IncrementalSnapshotContext;
 import io.debezium.pipeline.source.snapshot.incremental.SignalBasedIncrementalSnapshotContext;
 import io.debezium.pipeline.source.spi.EventMetadataProvider;
 import io.debezium.pipeline.source.spi.StreamingChangeEventSource;
@@ -105,7 +106,8 @@ public class OpenLogReplicatorAdapter extends AbstractStreamingAdapter<OpenLogRe
 
     @Override
     public OracleOffsetContext determineSnapshotOffset(RelationalSnapshotContext<OraclePartition, OracleOffsetContext> ctx,
-                                                       OracleConnectorConfig connectorConfig, OracleConnection connection)
+                                                       OracleConnectorConfig connectorConfig, OracleConnection connection,
+                                                       IncrementalSnapshotContext<TableId> carriedIncrementalSnapshotContext)
             throws SQLException {
         final Optional<Scn> latestTableDdlScn = getLatestTableDdlScn(ctx, connection);
 
@@ -126,7 +128,7 @@ public class OpenLogReplicatorAdapter extends AbstractStreamingAdapter<OpenLogRe
                 .snapshotScn(currentScn)
                 .snapshotPendingTransactions(Collections.emptyMap())
                 .transactionContext(new TransactionContext())
-                .incrementalSnapshotContext(new SignalBasedIncrementalSnapshotContext<>())
+                .incrementalSnapshotContext(carriedIncrementalSnapshotContext != null ? carriedIncrementalSnapshotContext : new SignalBasedIncrementalSnapshotContext<>())
                 .build();
     }
 

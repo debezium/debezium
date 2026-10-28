@@ -50,6 +50,7 @@ import io.debezium.jdbc.MainConnectionProvidingConnectionFactory;
 import io.debezium.pipeline.EventDispatcher;
 import io.debezium.pipeline.notification.NotificationService;
 import io.debezium.pipeline.source.SnapshottingTask;
+import io.debezium.pipeline.source.snapshot.incremental.IncrementalSnapshotContext;
 import io.debezium.pipeline.source.spi.SnapshotChangeEventSource;
 import io.debezium.relational.RelationalDatabaseConnectorConfig.SnapshotTablesRowCountOrder;
 import io.debezium.relational.RelationalSnapshotChangeEventSource;
@@ -265,14 +266,14 @@ public abstract class BinlogSnapshotChangeEventSource<P extends BinlogPartition,
             return;
         }
 
-        final O offsetContext = getInitialOffsetContext(connectorConfig);
+        final O offsetContext = getInitialOffsetContext(connectorConfig, carriedIncrementalSnapshotContext(previousOffset));
         ctx.offset = offsetContext;
 
         setOffsetContextBinlogPositionAndGtidDetailsForSnapshot(offsetContext, connection, snapshotterService);
         tryStartingSnapshot(ctx);
     }
 
-    protected abstract O getInitialOffsetContext(BinlogConnectorConfig connectorConfig);
+    protected abstract O getInitialOffsetContext(BinlogConnectorConfig connectorConfig, IncrementalSnapshotContext<?> carriedIncrementalSnapshotContext);
 
     protected abstract void setOffsetContextBinlogPositionAndGtidDetailsForSnapshot(O offsetContext,
                                                                                     BinlogConnectorConnection connection,

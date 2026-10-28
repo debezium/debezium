@@ -26,6 +26,7 @@ import io.debezium.jdbc.JdbcConnection;
 import io.debezium.pipeline.EventDispatcher;
 import io.debezium.pipeline.notification.NotificationService;
 import io.debezium.pipeline.source.SnapshottingTask;
+import io.debezium.pipeline.source.snapshot.incremental.IncrementalSnapshotContext;
 import io.debezium.pipeline.source.spi.SnapshotProgressListener;
 import io.debezium.pipeline.source.spi.StreamingChangeEventSource;
 import io.debezium.relational.RelationalSnapshotChangeEventSource;
@@ -136,7 +137,9 @@ public class OracleSnapshotChangeEventSource extends RelationalSnapshotChangeEve
             return;
         }
 
-        ctx.offset = connectorConfig.getAdapter().determineSnapshotOffset(ctx, connectorConfig, jdbcConnection);
+        @SuppressWarnings("unchecked")
+        final IncrementalSnapshotContext<TableId> carriedIncrementalContext = (IncrementalSnapshotContext<TableId>) carriedIncrementalSnapshotContext(previousOffset);
+        ctx.offset = connectorConfig.getAdapter().determineSnapshotOffset(ctx, connectorConfig, jdbcConnection, carriedIncrementalContext);
     }
 
     @Override

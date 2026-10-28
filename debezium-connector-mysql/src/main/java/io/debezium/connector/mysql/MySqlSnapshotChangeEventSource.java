@@ -20,6 +20,7 @@ import io.debezium.function.BlockingConsumer;
 import io.debezium.jdbc.MainConnectionProvidingConnectionFactory;
 import io.debezium.pipeline.EventDispatcher;
 import io.debezium.pipeline.notification.NotificationService;
+import io.debezium.pipeline.source.snapshot.incremental.IncrementalSnapshotContext;
 import io.debezium.relational.TableId;
 import io.debezium.snapshot.SnapshotterService;
 import io.debezium.util.Clock;
@@ -46,8 +47,9 @@ public class MySqlSnapshotChangeEventSource extends BinlogSnapshotChangeEventSou
     }
 
     @Override
-    protected MySqlOffsetContext getInitialOffsetContext(BinlogConnectorConfig connectorConfig) {
-        return MySqlOffsetContext.initial((MySqlConnectorConfig) connectorConfig);
+    @SuppressWarnings("unchecked")
+    protected MySqlOffsetContext getInitialOffsetContext(BinlogConnectorConfig connectorConfig, IncrementalSnapshotContext<?> carriedIncrementalSnapshotContext) {
+        return MySqlOffsetContext.initial((MySqlConnectorConfig) connectorConfig, (IncrementalSnapshotContext<TableId>) carriedIncrementalSnapshotContext);
     }
 
     @Override

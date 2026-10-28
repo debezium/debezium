@@ -34,10 +34,12 @@ import io.debezium.connector.oracle.OracleTaskContext;
 import io.debezium.connector.oracle.Scn;
 import io.debezium.document.Document;
 import io.debezium.pipeline.metrics.CapturedTablesSupplier;
+import io.debezium.pipeline.source.snapshot.incremental.IncrementalSnapshotContext;
 import io.debezium.pipeline.source.snapshot.incremental.SignalBasedIncrementalSnapshotContext;
 import io.debezium.pipeline.source.spi.EventMetadataProvider;
 import io.debezium.pipeline.txmetadata.TransactionContext;
 import io.debezium.relational.RelationalSnapshotChangeEventSource.RelationalSnapshotContext;
+import io.debezium.relational.TableId;
 import io.debezium.relational.history.HistoryRecordComparator;
 import io.debezium.util.HexConverter;
 import io.debezium.util.Strings;
@@ -78,7 +80,8 @@ public abstract class AbstractLogMinerStreamingAdapter
     @Override
     public OracleOffsetContext determineSnapshotOffset(RelationalSnapshotContext<OraclePartition, OracleOffsetContext> ctx,
                                                        OracleConnectorConfig connectorConfig,
-                                                       OracleConnection connection)
+                                                       OracleConnection connection,
+                                                       IncrementalSnapshotContext<TableId> carriedIncrementalSnapshotContext)
             throws SQLException {
 
         final Scn latestTableDdlScn = getLatestTableDdlScn(ctx, connection).orElse(null);
@@ -107,7 +110,7 @@ public abstract class AbstractLogMinerStreamingAdapter
                 // The next stage cannot be run within the PDB, reset the connection to the CDB.
                 conn.resetSessionToCdb();
             }
-            return determineSnapshotOffset(connectorConfig, conn, currentScn.get(), pendingTransactions, tableName);
+            return determineSnapshotOffset(connectorConfig, conn, currentScn.get(), pendingTransactions, tableName, carriedIncrementalSnapshotContext);
         }
     }
 
@@ -182,7 +185,8 @@ public abstract class AbstractLogMinerStreamingAdapter
                                                         OracleConnection connection,
                                                         Scn currentScn,
                                                         Map<String, Scn> pendingTransactions,
-                                                        String transactionTableName)
+                                                        String transactionTableName,
+                                                        IncrementalSnapshotContext<TableId> carriedIncrementalSnapshotContext)
             throws SQLException {
 
         if (isPendingTransactionSkip(connectorConfig)) {
@@ -211,7 +215,7 @@ public abstract class AbstractLogMinerStreamingAdapter
                 .snapshotScn(currentScn)
                 .snapshotPendingTransactions(pendingTransactions)
                 .transactionContext(new TransactionContext())
-                .incrementalSnapshotContext(new SignalBasedIncrementalSnapshotContext<>())
+                .incrementalSnapshotContext(carriedIncrementalSnapshotContext != null ? carriedIncrementalSnapshotContext : new SignalBasedIncrementalSnapshotContext<>())
                 .build();
     }
 
