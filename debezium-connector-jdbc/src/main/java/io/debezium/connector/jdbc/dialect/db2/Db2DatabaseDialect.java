@@ -45,7 +45,7 @@ import io.debezium.time.ZonedTimestamp;
 public class Db2DatabaseDialect extends GeneralDatabaseDialect {
 
     @Override
-    public TargetTemporalCapabilities getTargetTemporalCapabilities() {
+    protected TargetTemporalCapabilities createTargetTemporalCapabilities() {
         return TargetTemporalCapabilities.defaults(getMaxTimePrecision(), getMaxTimestampPrecision())
                 .withDateRange(TemporalRange.dateYears(1, 9999))
                 .withTimestampRange(TemporalRange.timestampYears(1, 9999));

@@ -5,8 +5,6 @@
  */
 package io.debezium.connector.jdbc.dialect.singlestore;
 
-import java.util.EnumSet;
-
 import org.hibernate.SessionFactory;
 import org.hibernate.community.dialect.SingleStoreDialect;
 import org.hibernate.dialect.Dialect;
@@ -18,22 +16,11 @@ import io.debezium.connector.jdbc.dialect.DatabaseDialect;
 import io.debezium.connector.jdbc.dialect.DatabaseDialectProvider;
 import io.debezium.connector.jdbc.dialect.mysql.MariaDbDatabaseDialect;
 import io.debezium.connector.jdbc.type.debezium.TargetTemporalCapabilities;
-import io.debezium.connector.jdbc.type.debezium.TemporalRange;
-import io.debezium.connector.jdbc.type.debezium.TemporalRange.Boundary;
-import io.debezium.time.StructuredDuration;
 
 /**
  * A {@link DatabaseDialect} implementation for SingleStore.
  */
 public class SingleStoreDatabaseDialect extends MariaDbDatabaseDialect {
-
-    private static final TemporalRange DATETIME_RANGE = new TemporalRange(
-            Boundary.timestamp(1000, 1, 1, 0, 0, 0, 0),
-            Boundary.timestamp(9999, 12, 31, 23, 59, 59, 999_999_000_000L));
-
-    private static final TemporalRange TIMESTAMP_RANGE = new TemporalRange(
-            Boundary.timestamp(1970, 1, 1, 0, 0, 1, 0),
-            Boundary.timestamp(2038, 1, 19, 3, 14, 7, 999_999_000_000L));
 
     private static final Logger LOGGER = LoggerFactory.getLogger(SingleStoreDatabaseDialect.class);
 
@@ -60,12 +47,9 @@ public class SingleStoreDatabaseDialect extends MariaDbDatabaseDialect {
     }
 
     @Override
-    public TargetTemporalCapabilities getTargetTemporalCapabilities() {
-        return TargetTemporalCapabilities.defaults(getMaxTimePrecision(), getMaxTimestampPrecision())
-                .withDateRange(TemporalRange.dateYears(1000, 9999))
-                .withTimestampRange(DATETIME_RANGE)
-                .withTimestampRangeForType(TIMESTAMP_RANGE, "timestamp")
-                .withDurationKinds(EnumSet.of(StructuredDuration.Kind.ELAPSED_TIME));
+    protected TargetTemporalCapabilities createTargetTemporalCapabilities() {
+        // The MySQL-family ranges are truncated to the target precision when they are applied
+        return super.createTargetTemporalCapabilities().withZeroDateSupported(false);
     }
 
     @Override

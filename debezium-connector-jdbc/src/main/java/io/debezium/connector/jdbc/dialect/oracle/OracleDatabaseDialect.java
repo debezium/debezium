@@ -36,7 +36,7 @@ import io.debezium.connector.jdbc.type.debezium.TemporalRange;
 public class OracleDatabaseDialect extends GeneralDatabaseDialect {
 
     @Override
-    public TargetTemporalCapabilities getTargetTemporalCapabilities() {
+    protected TargetTemporalCapabilities createTargetTemporalCapabilities() {
         return TargetTemporalCapabilities.defaults(getMaxTimePrecision(), getMaxTimestampPrecision())
                 .withDateRange(TemporalRange.dateYears(-4711, 9999))
                 .withTimestampRange(TemporalRange.timestampYears(-4711, 9999))

@@ -81,6 +81,7 @@ import io.debezium.connector.jdbc.type.debezium.StructuredTimeType;
 import io.debezium.connector.jdbc.type.debezium.StructuredTimestampType;
 import io.debezium.connector.jdbc.type.debezium.StructuredZonedTimeType;
 import io.debezium.connector.jdbc.type.debezium.StructuredZonedTimestampType;
+import io.debezium.connector.jdbc.type.debezium.TargetTemporalCapabilities;
 import io.debezium.connector.jdbc.type.debezium.TimeType;
 import io.debezium.connector.jdbc.type.debezium.TimestampType;
 import io.debezium.connector.jdbc.type.debezium.VariableScaleDecimalType;
@@ -112,6 +113,7 @@ public class GeneralDatabaseDialect implements DatabaseDialect {
     private final ColumnNamingStrategy columnNamingStrategy;
     private final Map<String, JdbcType> typeRegistry = new HashMap<>();
     private final boolean jdbcTimeZone;
+    private volatile TargetTemporalCapabilities targetTemporalCapabilities;
 
     public GeneralDatabaseDialect(JdbcSinkConnectorConfig config, SessionFactory sessionFactory) {
         this.connectorConfig = config;
@@ -126,6 +128,30 @@ public class GeneralDatabaseDialect implements DatabaseDialect {
         registerTypes();
 
         LOGGER.info("Database TimeZone: {}", getDatabaseTimeZone(sessionFactory));
+    }
+
+    /**
+     * Returns the temporal capabilities of the target database. Structured temporal types read them for every value they
+     * validate and bind, so they are created once per dialect.
+     */
+    @Override
+    public final TargetTemporalCapabilities getTargetTemporalCapabilities() {
+        TargetTemporalCapabilities capabilities = targetTemporalCapabilities;
+        if (capabilities == null) {
+            capabilities = createTargetTemporalCapabilities();
+            targetTemporalCapabilities = capabilities;
+        }
+        return capabilities;
+    }
+
+    /**
+     * Creates the temporal capabilities of the target database. Dialects override this method to describe their
+     * precision, ranges, and supported special values.
+     *
+     * @return the target temporal capabilities; never null
+     */
+    protected TargetTemporalCapabilities createTargetTemporalCapabilities() {
+        return TargetTemporalCapabilities.defaults(getMaxTimePrecision(), getMaxTimestampPrecision());
     }
 
     @Override

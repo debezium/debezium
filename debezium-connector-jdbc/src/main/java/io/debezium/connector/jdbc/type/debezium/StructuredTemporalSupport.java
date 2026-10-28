@@ -93,6 +93,18 @@ public final class StructuredTemporalSupport {
         return builder.toString();
     }
 
+    /**
+     * Returns the fractional-second suffix of a literal with exactly the given number of digits. Unlike
+     * {@link #appendFraction(StringBuilder, long, int)}, it keeps trailing zeros.
+     *
+     * @param fraction the fractional digits as an integer, such as {@code 120} for {@code .120} at precision 3
+     * @param precision the number of fractional digits
+     * @return the suffix, such as {@code .120}, or an empty string if the precision is zero
+     */
+    public static String fixedFraction(long fraction, int precision) {
+        return precision == 0 ? "" : "." + String.format("%0" + precision + "d", fraction);
+    }
+
     public static void appendFraction(StringBuilder builder, long picoseconds, int precision) {
         if (picoseconds == 0 || precision == 0) {
             return;
