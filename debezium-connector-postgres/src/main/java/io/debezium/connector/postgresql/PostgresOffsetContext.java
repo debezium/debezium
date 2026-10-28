@@ -48,6 +48,7 @@ public class PostgresOffsetContext extends CommonOffsetContext<SourceInfo> {
     private final IncrementalSnapshotContext<TableId> incrementalSnapshotContext;
     private long lsnEventsProcessed;
     private Lsn previousLsn;
+    private Long lastKnownTxId;
 
     private PostgresOffsetContext(PostgresConnectorConfig connectorConfig, Lsn lsn, Lsn lastCompletelyProcessedLsn, Lsn lastCommitLsn, Long txId, Operation messageType,
                                   Instant time,
@@ -60,6 +61,7 @@ public class PostgresOffsetContext extends CommonOffsetContext<SourceInfo> {
         this.lastCommitLsn = lastCommitLsn;
         sourceInfo.updateLastCommit(lastCommitLsn);
         sourceInfo.update(lsn, time, txId, sourceInfo.xmin(), null, messageType);
+        this.lastKnownTxId = txId;
         sourceInfoSchema = sourceInfo.schema();
 
         this.lastSnapshotRecord = lastSnapshotRecord;
@@ -128,6 +130,9 @@ public class PostgresOffsetContext extends CommonOffsetContext<SourceInfo> {
 
     public void updateWalPosition(Lsn lsn, Lsn lastCompletelyProcessedLsn, Instant commitTime, Long txId, Long xmin, TableId tableId, Operation messageType) {
         this.lastCompletelyProcessedLsn = lastCompletelyProcessedLsn;
+        if (txId != null) {
+            this.lastKnownTxId = txId;
+        }
         sourceInfo.update(lsn, commitTime, txId, xmin, tableId, messageType);
     }
 
@@ -226,6 +231,10 @@ public class PostgresOffsetContext extends CommonOffsetContext<SourceInfo> {
 
     Long xmin() {
         return sourceInfo.xmin();
+    }
+
+    Long lastKnownTxId() {
+        return lastKnownTxId;
     }
 
     public static class Loader implements OffsetContext.Loader<PostgresOffsetContext> {
