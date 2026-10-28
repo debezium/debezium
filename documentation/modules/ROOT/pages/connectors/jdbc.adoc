@@ -2133,6 +2133,16 @@ When this property is set to `true`, the connector replaces such values with the
 When this property is set to `false` (the default), the connector passes out-of-range values to the target database unchanged, which typically causes the write to fail.
 
 Clamping alters the stored value; enable this option only when a lossy representation of out-of-range timestamps is acceptable for downstream consumers.
+
+[NOTE]
+====
+This property applies to the temporal values that the connector writes into rows.
+It does not apply to column defaults.
+For MySQL, MariaDB, and SingleStore sink databases, the connector clamps an `io.debezium.time.ZonedTimestamp` column default that the target database cannot represent to the minimum or maximum timestamp that the target database supports, regardless of this property.
+A column default is part of the DDL statement that creates the table or adds the column, so the target database validates the default when it executes that statement, and an out-of-range default that the connector does not clamp makes that statement fail.
+The stored default is therefore the target database's minimum or maximum supported timestamp, not the default value that the source schema defined.
+====
+
 |===
 
 // Type: reference
