@@ -1026,7 +1026,7 @@ public final class Strings {
             if (constValue != null) {
                 sb = sb.replace(startName, endName + 1, constValue);
                 // Checking for another constants
-                startName = sb.indexOf(CURLY_PREFIX);
+                startName = sb.indexOf(CURLY_PREFIX, startName + constValue.length());
 
             }
             else {

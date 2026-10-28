@@ -227,6 +227,17 @@ public class StringsTest {
     }
 
     @Test
+    @FixFor("debezium/dbz#2954")
+    public void replaceVariablesShouldNotHangOnSelfReferencingOrCyclicVariables() {
+        assertReplacement("${v1}", vars("v1", "${v1}"), "${v1}");
+        assertReplacement("pre-${v1}-post", vars("v1", "${v1}"), "pre-${v1}-post");
+        assertReplacement("${v1}${v2}", vars("v1", "${v2}", "v2", "${v1}"), "${v2}${v1}");
+        assertReplacement("pwd=${password}", vars("password", "p${ass}word"), "pwd=p${ass}word");
+        assertReplacement("${v1}${v2}", vars("v1", "${v1}", "v2", "value2"), "${v1}value2");
+        assertReplacement("${v1}${v2}", vars("v1", "value1", "v2", "${v2}"), "value1${v2}");
+    }
+
+    @Test
     public void isNullOrEmptyReturnsTrueForNull() {
         assertThat(Strings.isNullOrEmpty(null)).isTrue();
     }
