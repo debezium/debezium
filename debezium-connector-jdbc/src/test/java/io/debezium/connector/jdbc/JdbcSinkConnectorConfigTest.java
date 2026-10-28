@@ -245,6 +245,7 @@ public class JdbcSinkConnectorConfigTest {
     }
 
     @Test
+    @FixFor("debezium/dbz#2950")    
     public void testConfiguredConnectionPoolTimeoutIsInSeconds() {
         final Map<String, String> properties = connectionProperties();
         properties.put(JdbcSinkConnectorConfig.CONNECTION_POOL_TIMEOUT, "60");
