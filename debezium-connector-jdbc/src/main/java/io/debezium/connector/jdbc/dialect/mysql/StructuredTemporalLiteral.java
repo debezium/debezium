@@ -82,7 +82,7 @@ final class StructuredTemporalLiteral {
                 value.getNano() / 1_000);
     }
 
-    static String duration(Struct value, int precision, TemporalPrecisionLossHandlingMode handlingMode) {
+    static String duration(Struct value, int precision, TemporalPrecisionLossHandlingMode handlingMode, boolean fractionAllowedAtLimit) {
         requireZero(value, StructuredTemporal.YEARS_FIELD);
         requireZero(value, StructuredTemporal.MONTHS_FIELD);
         StructuredTemporalPreflightValidator.reduceFraction(
@@ -97,8 +97,10 @@ final class StructuredTemporalLiteral {
         final RoundingMode roundingMode = handlingMode == TemporalPrecisionLossHandlingMode.ROUND ? RoundingMode.HALF_UP : RoundingMode.DOWN;
         totalSeconds = totalSeconds.setScale(precision, roundingMode);
 
-        final BigDecimal maxSeconds = BigDecimal.valueOf(838L * 3_600 + 59L * 60 + 59L)
-                .add(BigDecimal.ONE.subtract(BigDecimal.ONE.movePointLeft(precision)));
+        BigDecimal maxSeconds = BigDecimal.valueOf(838L * 3_600 + 59L * 60 + 59L);
+        if (fractionAllowedAtLimit) {
+            maxSeconds = maxSeconds.add(BigDecimal.ONE.subtract(BigDecimal.ONE.movePointLeft(precision)));
+        }
         if (totalSeconds.abs().compareTo(maxSeconds) > 0) {
             throw new ConnectException(String.format(
                     "Structured duration value '%s' is outside the MySQL TIME range",

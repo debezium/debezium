@@ -95,6 +95,24 @@ class StructuredTemporalTypeTest {
     }
 
     @Test
+    @DisplayName("Should apply the MySQL and MariaDB TIME limits to fractional seconds")
+    void shouldApplyTimeLimitToFractionalSeconds() {
+        final var schema = StructuredDuration.builder(6, StructuredDuration.Kind.DAY_TIME).build();
+        final var fractionBeyondLimit = StructuredDuration.from(schema, 0, 0, 0, 838, 59, 59, 999_999_000, 6);
+        final var mysqlType = configuredDurationType(TemporalPrecisionLossHandlingMode.FAIL);
+        final var mariaDbType = configuredDurationType(new MariaDbStructuredDurationType(), TemporalPrecisionLossHandlingMode.FAIL);
+
+        // MySQL rejects 838:59:59.999999 in strict mode and truncates it to 838:59:59 otherwise
+        assertThatThrownBy(() -> mysqlType.bind(1, timeColumn(6), schema, fractionBeyondLimit))
+                .isInstanceOf(ConnectException.class)
+                .hasMessageContaining("MySQL TIME range");
+        assertThat(mariaDbType.bind(1, timeColumn(6), schema, fractionBeyondLimit).get(0).getValue())
+                .isEqualTo("838:59:59.999999");
+        assertThat(mysqlType.bind(1, timeColumn(6), schema, StructuredDuration.from(schema, 0, 0, 0, -838, -59, -59, 0, 6)).get(0).getValue())
+                .isEqualTo("-838:59:59.000000");
+    }
+
+    @Test
     @DisplayName("Should use propagated source column length for structured duration precision")
     void shouldUseSourceColumnLengthForStructuredDurationPrecision() {
         final var type = new StructuredDurationType();
@@ -312,7 +330,10 @@ class StructuredTemporalTypeTest {
     }
 
     private StructuredDurationType configuredDurationType(TemporalPrecisionLossHandlingMode mode) {
-        final var type = new StructuredDurationType();
+        return configuredDurationType(new StructuredDurationType(), mode);
+    }
+
+    private StructuredDurationType configuredDurationType(StructuredDurationType type, TemporalPrecisionLossHandlingMode mode) {
         final JdbcSinkConnectorConfig config = mock(JdbcSinkConnectorConfig.class);
         final DatabaseDialect dialect = mock(DatabaseDialect.class);
         when(config.useTimeZone()).thenReturn("UTC");

@@ -907,7 +907,7 @@ The connector therefore treats structured timestamp infinity as a range loss for
 
 |MySQL
 |`DATE` and `DATETIME(6)` use years 1000 through 9999. The upper `DATETIME(6)` boundary is `9999-12-31 23:59:59.499999`. An existing `TIMESTAMP(6)` column uses `1970-01-01 00:00:01.000000` through `2038-01-19 03:14:07.499999`.
-|All-zero structured dates and timestamps are passed through when the target SQL mode permits them. `StructuredDuration` accepts only day-time values, and days are converted into hours.
+|All-zero structured dates and timestamps are passed through when the target SQL mode permits them. `StructuredDuration` accepts only day-time values, and days are converted into hours. `TIME` uses `-838:59:59` through `838:59:59`, and MariaDB also accepts fractional seconds up to `838:59:59.999999`.
 
 |PostgreSQL
 |The connector uses the PostgreSQL finite `DATE` and `TIMESTAMP` ranges.
