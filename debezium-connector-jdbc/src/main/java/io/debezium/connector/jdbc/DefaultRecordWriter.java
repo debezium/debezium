@@ -19,7 +19,6 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.Callable;
-import java.util.function.BiConsumer;
 import java.util.stream.Collectors;
 
 import org.apache.kafka.connect.data.Struct;
@@ -97,17 +96,6 @@ public class DefaultRecordWriter implements RecordWriter {
     }
 
     /**
-     * Bind key field values to the query for a single record.
-     */
-    protected int bindKeyValuesToQuery(JdbcSinkRecord record, QueryBinder query, int index) {
-        final Struct keySource = record.filteredKey();
-        if (keySource != null) {
-            index = bindFieldValuesToQuery(record, query, index, keySource, record.keyFieldNames());
-        }
-        return index;
-    }
-
-    /**
      * Bind key field values to the query for a single record with access to the target table.
      */
     protected int bindKeyValuesToQuery(TableDescriptor table, JdbcSinkRecord record, QueryBinder query, int index) {
@@ -119,40 +107,10 @@ public class DefaultRecordWriter implements RecordWriter {
     }
 
     /**
-     * Bind non-key field values to the query for a single record.
-     */
-    protected int bindNonKeyValuesToQuery(JdbcSinkRecord record, QueryBinder query, int index) {
-        return bindFieldValuesToQuery(record, query, index, record.getPayload(), record.nonKeyFieldNames());
-    }
-
-    /**
      * Bind non-key field values to the query for a single record with access to the target table.
      */
     protected int bindNonKeyValuesToQuery(TableDescriptor table, JdbcSinkRecord record, QueryBinder query, int index) {
         return bindFieldValuesToQuery(table, record, query, index, record.getPayload(), record.nonKeyFieldNames());
-    }
-
-    /**
-     * Bind field values to the query for a single record.
-     */
-    protected int bindFieldValuesToQuery(JdbcSinkRecord record, QueryBinder query, int index, Struct source, Set<String> fieldNames) {
-        for (String fieldName : fieldNames) {
-            final JdbcFieldDescriptor field = record.jdbcFields().get(fieldName);
-
-            Object value;
-            if (field.getSchema().isOptional()) {
-                value = source.getWithoutDefault(fieldName);
-            }
-            else {
-                value = source.get(fieldName);
-            }
-            List<ValueBindDescriptor> boundValues = dialect.bindValue(field, index, value);
-
-            boundValues.forEach(query::bind);
-            index += boundValues.size();
-        }
-
-        return index;
     }
 
     /**
@@ -162,15 +120,7 @@ public class DefaultRecordWriter implements RecordWriter {
         for (String fieldName : fieldNames) {
             final JdbcFieldDescriptor field = record.jdbcFields().get(fieldName);
             final var column = dialect.resolveColumn(table, field);
-
-            Object value;
-            if (field.getSchema().isOptional()) {
-                value = source.getWithoutDefault(fieldName);
-            }
-            else {
-                value = source.get(fieldName);
-            }
-            List<ValueBindDescriptor> boundValues = dialect.bindValue(field, column, index, value);
+            List<ValueBindDescriptor> boundValues = dialect.bindValue(field, column, index, fieldValue(field, source, fieldName));
 
             boundValues.forEach(query::bind);
             index += boundValues.size();
@@ -455,9 +405,16 @@ public class DefaultRecordWriter implements RecordWriter {
 
     @Override
     public void write(TableDescriptor tableDescriptor, List<JdbcSinkRecord> records) {
+        validateRecords(tableDescriptor, records);
+        write(tableDescriptor, records, getSqlStatementInfo(tableDescriptor, records));
+    }
+
+    /**
+     * Writes records that have been validated with the resolved statement.
+     */
+    protected void write(TableDescriptor tableDescriptor, List<JdbcSinkRecord> records, SqlStatementInfo statementInfo) {
         Stopwatch writeStopwatch = Stopwatch.reusable();
         writeStopwatch.start();
-        SqlStatementInfo statementInfo = getSqlStatementInfo(tableDescriptor, records);
         final Transaction transaction = getSession().beginTransaction();
 
         try {
@@ -505,6 +462,7 @@ public class DefaultRecordWriter implements RecordWriter {
      * Subclasses can override to change the write strategy (e.g., UNNEST).
      */
     protected void performTableWrite(Connection conn, TableDescriptor table, List<JdbcSinkRecord> records) throws SQLException {
+        validateRecords(table, records);
         performWrite(conn, table, getSqlStatementInfo(table, records), records);
     }
 
@@ -512,17 +470,7 @@ public class DefaultRecordWriter implements RecordWriter {
         return conn -> performWrite(conn, table, statementInfo, records);
     }
 
-    protected void performWrite(Connection conn, SqlStatementInfo statementInfo, List<JdbcSinkRecord> records) throws SQLException {
-        performWrite(conn, statementInfo, records, this::bindValues);
-    }
-
     protected void performWrite(Connection conn, TableDescriptor table, SqlStatementInfo statementInfo, List<JdbcSinkRecord> records) throws SQLException {
-        performWrite(conn, statementInfo, records, (record, queryBinder) -> bindValues(table, record, queryBinder));
-    }
-
-    private void performWrite(Connection conn, SqlStatementInfo statementInfo, List<JdbcSinkRecord> records,
-                              BiConsumer<JdbcSinkRecord, QueryBinder> valueBinder)
-            throws SQLException {
         try (PreparedStatement prepareStatement = conn.prepareStatement(statementInfo.statement())) {
             QueryBinder queryBinder = getQueryBinderResolver().resolve(prepareStatement);
             Stopwatch allbindStopwatch = Stopwatch.reusable();
@@ -531,7 +479,7 @@ public class DefaultRecordWriter implements RecordWriter {
             for (JdbcSinkRecord record : records) {
                 Stopwatch singlebindStopwatch = Stopwatch.reusable();
                 singlebindStopwatch.start();
-                valueBinder.accept(record, queryBinder);
+                bindValues(table, record, queryBinder);
                 singlebindStopwatch.stop();
 
                 Stopwatch addBatchStopwatch = Stopwatch.reusable();
@@ -556,26 +504,6 @@ public class DefaultRecordWriter implements RecordWriter {
                 }
             }
             LOGGER.trace("[PERF] Execute batch execution time {}", executeStopwatch.durations());
-        }
-    }
-
-    protected void bindValues(JdbcSinkRecord record, QueryBinder queryBinder) {
-        int index;
-        if (record.isDelete()) {
-            bindKeyValuesToQuery(record, queryBinder, 1);
-            return;
-        }
-
-        switch (getConfig().getInsertMode()) {
-            case INSERT:
-            case UPSERT:
-                index = bindKeyValuesToQuery(record, queryBinder, 1);
-                bindNonKeyValuesToQuery(record, queryBinder, index);
-                break;
-            case UPDATE:
-                index = bindNonKeyValuesToQuery(record, queryBinder, 1);
-                bindKeyValuesToQuery(record, queryBinder, index);
-                break;
         }
     }
 
@@ -608,8 +536,6 @@ public class DefaultRecordWriter implements RecordWriter {
         if (records.isEmpty()) {
             throw new DataException("Cannot generate SQL statement for empty record list");
         }
-
-        validateRecords(table, records);
 
         // Get first record for basic checks and fallback
         JdbcSinkRecord firstRecord = records.get(0);
@@ -649,6 +575,10 @@ public class DefaultRecordWriter implements RecordWriter {
         throw new DataException(String.format("Unable to get SQL statement for %s", firstRecord));
     }
 
+    /**
+     * Validates the values of all records against the target table before a statement is generated, so that no record
+     * of the batch is written when the target cannot represent a value.
+     */
     protected void validateRecords(TableDescriptor table, List<JdbcSinkRecord> records) {
         for (JdbcSinkRecord record : records) {
             if (record.isDelete()) {
@@ -668,9 +598,12 @@ public class DefaultRecordWriter implements RecordWriter {
         for (String fieldName : fieldNames) {
             final JdbcFieldDescriptor field = record.jdbcFields().get(fieldName);
             final var column = dialect.resolveColumn(table, field);
-            final Object value = field.getSchema().isOptional() ? source.getWithoutDefault(fieldName) : source.get(fieldName);
-            dialect.validateValue(field, column, value);
+            dialect.validateValue(field, column, fieldValue(field, source, fieldName));
         }
+    }
+
+    private static Object fieldValue(JdbcFieldDescriptor field, Struct source, String fieldName) {
+        return field.getSchema().isOptional() ? source.getWithoutDefault(fieldName) : source.get(fieldName);
     }
 
 }

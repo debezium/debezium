@@ -56,24 +56,26 @@ public class UnnestRecordWriter extends DefaultRecordWriter {
     @Override
     public void write(TableDescriptor tableDescriptor, List<JdbcSinkRecord> records) {
         // If it's a batch statement (UNNEST), use column-wise binding
-        // Otherwise delegate to parent's standard row-wise binding
+        // Otherwise use parent's standard row-wise binding with the same statement
+        validateRecords(tableDescriptor, records);
         SqlStatementInfo sqlStatementInfo = getSqlStatementInfo(tableDescriptor, records);
         if (sqlStatementInfo.isBatchStatement()) {
             writeUnnestBatch(tableDescriptor, sqlStatementInfo, records);
         }
         else {
-            super.write(tableDescriptor, records);
+            write(tableDescriptor, records, sqlStatementInfo);
         }
     }
 
     @Override
     protected void performTableWrite(Connection conn, TableDescriptor table, List<JdbcSinkRecord> records) throws SQLException {
+        validateRecords(table, records);
         SqlStatementInfo statementInfo = getSqlStatementInfo(table, records);
         if (statementInfo.isBatchStatement()) {
             performUnnestBatch(conn, table, statementInfo.statement(), records);
         }
         else {
-            super.performTableWrite(conn, table, records);
+            performWrite(conn, table, statementInfo, records);
         }
     }
 

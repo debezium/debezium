@@ -64,7 +64,7 @@ class DefaultRecordWriterTest extends AbstractBaseJdbcSinkTest {
         doThrow(new ConnectException("precision loss"))
                 .when(dialect).validateValue(field, column, value);
 
-        assertThatThrownBy(() -> writer.statement(table, List.of(record)))
+        assertThatThrownBy(() -> writer.write(table, List.of(record)))
                 .isInstanceOf(ConnectException.class)
                 .hasMessage("precision loss");
         verify(dialect, never()).getInsertStatement(table, record);
@@ -74,10 +74,6 @@ class DefaultRecordWriterTest extends AbstractBaseJdbcSinkTest {
 
         ExposedRecordWriter(SharedSessionContract session, JdbcSinkConnectorConfig config, DatabaseDialect dialect) {
             super(session, new QueryBinderResolver(), config, dialect, SinkProgressListener.NO_OP());
-        }
-
-        void statement(TableDescriptor table, List<JdbcSinkRecord> records) {
-            getSqlStatementInfo(table, records);
         }
     }
 }

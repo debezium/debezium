@@ -104,10 +104,14 @@ class UnnestRecordWriterTest extends AbstractBaseJdbcSinkTest {
         when(conn.prepareStatement(standardSql)).thenReturn(ps);
         when(ps.executeBatch()).thenReturn(new int[0]);
 
-        writer.performTableWrite(conn, table, List.of(record));
+        final List<JdbcSinkRecord> records = List.of(record);
+        writer.performTableWrite(conn, table, records);
 
         verify(conn).prepareStatement(standardSql);
         verify(ps).executeBatch();
+        // The standard path reuses the validation and the statement of the UNNEST writer
+        verify(writer).validateRecords(table, records);
+        verify(writer).getSqlStatementInfo(table, records);
     }
 
     @Test
