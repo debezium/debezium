@@ -129,6 +129,21 @@ class StructuredTemporalTypeTest {
     }
 
     @Test
+    @DisplayName("Should combine duration components with different signs into a single Oracle interval")
+    void shouldCombineDurationComponentsWithDifferentSigns() {
+        final var daySecondSchema = StructuredDuration.builder(6, StructuredDuration.Kind.DAY_TIME).build();
+        final var yearMonthSchema = StructuredDuration.builder(-1, StructuredDuration.Kind.YEAR_MONTH).build();
+
+        // One hour minus 30 minutes is 30 minutes, and one year minus 14 months is minus 2 months
+        assertThat(StructuredDurationType.INSTANCE.bind(1, daySecondSchema,
+                StructuredDuration.from(daySecondSchema, 0, 0, 0, 1, -30, 0, 0, 6)).get(0).getValue())
+                .isEqualTo("0 00:30:00.000000");
+        assertThat(StructuredDurationType.INSTANCE.bind(1, yearMonthSchema,
+                StructuredDuration.from(yearMonthSchema, 1, -14, 0, 0, 0, 0, 0)).get(0).getValue())
+                .isEqualTo("-0-02");
+    }
+
+    @Test
     @DisplayName("Should resolve the duration kind from the schema name without a kind parameter")
     void shouldResolveDurationKindFromSchemaName() {
         // The schemas have no kind parameter and no propagated source type, only the logical name identifies the kind
