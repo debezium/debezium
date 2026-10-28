@@ -21,19 +21,31 @@ public final class StructuredDuration {
     public static final String SCHEMA_NAME = "io.debezium.time.StructuredDuration";
 
     public enum Kind {
-        ELAPSED_TIME("elapsed-time"),
-        YEAR_MONTH("year-month"),
-        DAY_TIME("day-time"),
-        MIXED("mixed");
+        ELAPSED_TIME("elapsed-time", "ElapsedTime"),
+        YEAR_MONTH("year-month", "YearMonth"),
+        DAY_TIME("day-time", "DayTime"),
+        MIXED("mixed", "Mixed");
 
         private final String value;
+        private final String schemaNameComponent;
 
-        Kind(String value) {
+        Kind(String value, String schemaNameComponent) {
             this.value = value;
+            this.schemaNameComponent = schemaNameComponent;
         }
 
         public String getValue() {
             return value;
+        }
+
+        /**
+         * Returns the component that identifies the kind in a logical schema name. It is part of the schema names that
+         * consumers and schema registries see, so it must not change with the name of the enum constant.
+         *
+         * @return the schema name component, such as {@code DayTime}
+         */
+        public String getSchemaNameComponent() {
+            return schemaNameComponent;
         }
 
         public static Kind parse(String value) {
@@ -72,9 +84,18 @@ public final class StructuredDuration {
         return builder;
     }
 
+    /**
+     * Returns the logical schema name of a structured duration. The kind is part of the semantic type name and precedes
+     * the precision suffix that all structured temporal types share, for example,
+     * {@code io.debezium.time.StructuredDurationDayTimePrecision9}.
+     *
+     * @param precision the fractional-second precision, or a negative value if it is not known
+     * @param kind the duration kind; may be null if it is not known
+     * @return the schema name
+     */
     public static String schemaName(int precision, Kind kind) {
-        final String baseName = StructuredTemporal.schemaName(SCHEMA_NAME, precision);
-        return kind == null ? baseName : baseName + kind.name();
+        final String typeName = kind == null ? SCHEMA_NAME : SCHEMA_NAME + kind.getSchemaNameComponent();
+        return StructuredTemporal.schemaName(typeName, precision);
     }
 
     public static String[] schemaNames() {

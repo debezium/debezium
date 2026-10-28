@@ -128,6 +128,29 @@ class StructuredTemporalTest {
     }
 
     @Test
+    void shouldNameDurationKindBeforePrecisionSuffix() {
+        // Schema names are visible to consumers and schema registries, so the exact names are part of the contract
+        assertThat(StructuredDuration.schemaName(6, StructuredDuration.Kind.ELAPSED_TIME))
+                .isEqualTo("io.debezium.time.StructuredDurationElapsedTimePrecision6");
+        assertThat(StructuredDuration.schemaName(9, StructuredDuration.Kind.DAY_TIME))
+                .isEqualTo("io.debezium.time.StructuredDurationDayTimePrecision9");
+        assertThat(StructuredDuration.schemaName(-1, StructuredDuration.Kind.YEAR_MONTH))
+                .isEqualTo("io.debezium.time.StructuredDurationYearMonth");
+        assertThat(StructuredDuration.schemaName(6, StructuredDuration.Kind.MIXED))
+                .isEqualTo("io.debezium.time.StructuredDurationMixedPrecision6");
+        assertThat(StructuredDuration.schemaName(6, null))
+                .isEqualTo("io.debezium.time.StructuredDurationPrecision6");
+        assertThat(StructuredTimestamp.builder(6).build().name())
+                .isEqualTo("io.debezium.time.StructuredTimestampPrecision6");
+
+        assertThat(StructuredDuration.schemaNames()).contains(
+                "io.debezium.time.StructuredDuration",
+                "io.debezium.time.StructuredDurationYearMonth",
+                "io.debezium.time.StructuredDurationDayTimePrecision9",
+                "io.debezium.time.StructuredDurationPrecision12");
+    }
+
+    @Test
     void shouldPreservePicosecondTimestampPrecisionInVersionOneSchema() {
         final Schema schema = StructuredTimestamp.builder(12).build();
         final Struct value = StructuredTimestamp.fromPicoseconds(schema, 2026, 7, 17, 12, 13, 14, 123_456_789_012L, 12);
