@@ -725,7 +725,7 @@ public abstract class AbstractOracleDatatypesTest extends AbstractAsyncEngineCon
         assertThat(zonedTimestamp.getInt32(StructuredTemporal.OFFSET_SECONDS_FIELD)).isEqualTo(-39_600);
 
         assertThat(after.schema().field("VAL_INT_YTM").schema().name())
-                .isEqualTo(StructuredDuration.schemaName(0, StructuredDuration.Kind.YEAR_MONTH));
+                .isEqualTo(StructuredDuration.schemaName(-1, StructuredDuration.Kind.YEAR_MONTH));
         Struct yearMonth = after.getStruct("VAL_INT_YTM");
         assertThat(yearMonth.getInt32(StructuredTemporal.YEARS_FIELD)).isEqualTo(-3);
         assertThat(yearMonth.getInt32(StructuredTemporal.MONTHS_FIELD)).isEqualTo(-6);
@@ -794,7 +794,7 @@ public abstract class AbstractOracleDatatypesTest extends AbstractAsyncEngineCon
             assertThat(zonedTimestamp.getInt32(StructuredTemporal.OFFSET_SECONDS_FIELD)).isEqualTo(50_400);
 
             assertThat(after.schema().field("VAL_INT_YTM_EDGE").schema().name())
-                    .isEqualTo(StructuredDuration.schemaName(0, StructuredDuration.Kind.YEAR_MONTH));
+                    .isEqualTo(StructuredDuration.schemaName(-1, StructuredDuration.Kind.YEAR_MONTH));
             final Struct yearMonth = after.getStruct("VAL_INT_YTM_EDGE");
             assertThat(yearMonth.getInt32(StructuredTemporal.YEARS_FIELD)).isEqualTo(-123);
             assertThat(yearMonth.getInt32(StructuredTemporal.MONTHS_FIELD)).isEqualTo(-11);

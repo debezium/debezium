@@ -312,9 +312,10 @@ public class OracleValueConvertersTest {
         final Struct yearMonth = (Struct) convertersStructured.converter(yearMonthColumn, yearMonthField)
                 .convert(new INTERVALYM("-123-11"));
 
-        assertThat(yearMonthField.schema().name()).isEqualTo(StructuredDuration.schemaName(0, StructuredDuration.Kind.YEAR_MONTH));
+        assertThat(yearMonthField.schema().name()).isEqualTo(StructuredDuration.schemaName(-1, StructuredDuration.Kind.YEAR_MONTH));
+        // A year-month interval has no fractional seconds
         assertThat(yearMonthField.schema().parameters())
-                .containsEntry(StructuredTemporal.PRECISION_PARAMETER_KEY, "0")
+                .doesNotContainKey(StructuredTemporal.PRECISION_PARAMETER_KEY)
                 .containsEntry(StructuredTemporal.DURATION_KIND_PARAMETER_KEY, StructuredDuration.Kind.YEAR_MONTH.getValue());
         assertThat(yearMonth.getInt32(StructuredTemporal.YEARS_FIELD)).isEqualTo(-123);
         assertThat(yearMonth.getInt32(StructuredTemporal.MONTHS_FIELD)).isEqualTo(-11);

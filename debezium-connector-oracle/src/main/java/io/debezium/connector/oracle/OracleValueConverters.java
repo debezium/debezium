@@ -169,7 +169,8 @@ public class OracleValueConverters extends JdbcValueConverters {
                 return intervalHandlingMode == OracleConnectorConfig.IntervalHandlingMode.STRING ? Interval.builder() : MicroDuration.builder();
             case OracleTypes.INTERVALYM:
                 if (temporalPrecisionMode == TemporalPrecisionMode.STRUCTURED) {
-                    return StructuredDuration.builder(0, StructuredDuration.Kind.YEAR_MONTH);
+                    // A year-month interval has no fractional seconds, so its schema has no precision
+                    return StructuredDuration.builder(-1, StructuredDuration.Kind.YEAR_MONTH);
                 }
                 return intervalHandlingMode == OracleConnectorConfig.IntervalHandlingMode.STRING ? Interval.builder() : MicroDuration.builder();
             case Types.STRUCT:

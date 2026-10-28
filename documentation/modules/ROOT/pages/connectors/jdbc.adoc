@@ -850,7 +850,8 @@ If a source connector adds column-specific metadata, such as propagated source t
 Structured temporal values store the fractional second in the `picoseconds` `INT64` field as a fixed picosecond value whose absolute magnitude is less than one second; duration values can be signed.
 This representation preserves source precisions up to 12 digits without relying on the nanosecond limit of Java temporal types.
 For `io.debezium.time.StructuredDuration`, the `io.debezium.time.duration.kind` schema parameter also identifies whether the source value represents elapsed time, a year-month interval, a day-time interval, or a mixed interval.
-Duration logical schema names also include the duration kind, for example, `io.debezium.time.StructuredDurationPrecision9DAY_TIME`.
+Duration logical schema names also include the duration kind before the precision suffix, for example, `io.debezium.time.StructuredDurationDayTimePrecision9`.
+The kinds appear as `ElapsedTime`, `YearMonth`, `DayTime`, and `Mixed`, and a year-month duration has no precision suffix because it has no fractional seconds, for example, `io.debezium.time.StructuredDurationYearMonth`.
 When it creates a target column, the JDBC sink uses the logical precision and duration metadata before the `__debezium.source.column.*` propagation parameters to determine the target type and precision.
 When it writes to an existing column, the connector instead validates the value against the actual target column metadata.
 
