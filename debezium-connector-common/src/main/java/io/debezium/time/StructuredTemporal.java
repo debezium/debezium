@@ -15,7 +15,10 @@ import org.apache.kafka.connect.data.Struct;
  */
 public final class StructuredTemporal {
 
-    static final int MAX_FRACTIONAL_SECOND_PRECISION = 12;
+    /**
+     * The maximum fractional-second precision of structured temporal values, which store the fraction in picoseconds.
+     */
+    public static final int MAX_FRACTIONAL_SECOND_PRECISION = 12;
 
     private static final String SOURCE_COLUMN_SCHEMA_NAME_MARKER = "SourceColumn";
     private static final char VERBATIM_SOURCE_COLUMN_PREFIX = '_';

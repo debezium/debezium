@@ -67,7 +67,7 @@ public final class StructuredTemporalPreflightValidator {
     }
 
     public static boolean hasDiscardedDigits(Long picoseconds, int targetPrecision) {
-        if (picoseconds == null || targetPrecision >= 12) {
+        if (picoseconds == null || targetPrecision >= StructuredTemporal.MAX_FRACTIONAL_SECOND_PRECISION) {
             return false;
         }
         final long factor = precisionFactor(targetPrecision);
@@ -131,7 +131,7 @@ public final class StructuredTemporalPreflightValidator {
     }
 
     public static ReducedFraction reduceFraction(long picoseconds, int targetPrecision, TemporalPrecisionLossHandlingMode handlingMode) {
-        if (targetPrecision >= 12) {
+        if (targetPrecision >= StructuredTemporal.MAX_FRACTIONAL_SECOND_PRECISION) {
             return new ReducedFraction(picoseconds, 0);
         }
 
@@ -152,11 +152,12 @@ public final class StructuredTemporalPreflightValidator {
     }
 
     private static long precisionFactor(int targetPrecision) {
-        if (targetPrecision < 0 || targetPrecision > 12) {
-            throw new ConnectException("Target temporal precision must be between 0 and 12, but was " + targetPrecision);
+        if (targetPrecision < 0 || targetPrecision > StructuredTemporal.MAX_FRACTIONAL_SECOND_PRECISION) {
+            throw new ConnectException("Target temporal precision must be between 0 and " + StructuredTemporal.MAX_FRACTIONAL_SECOND_PRECISION
+                    + ", but was " + targetPrecision);
         }
         long factor = 1;
-        for (int i = targetPrecision; i < 12; ++i) {
+        for (int i = targetPrecision; i < StructuredTemporal.MAX_FRACTIONAL_SECOND_PRECISION; ++i) {
             factor *= 10;
         }
         return factor;
