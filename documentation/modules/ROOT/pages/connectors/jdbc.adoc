@@ -851,7 +851,7 @@ A column name that consists only of ASCII letters, digits, and underscores follo
 Any other column name follows `SourceColumnU`, and each of its characters other than an ASCII letter or digit is escaped as `_u` followed by four hexadecimal digits, for example, `io.debezium.time.StructuredTimestampPrecision6SourceColumnUcreated_u002dat` for the column `created-at`.
 Structured temporal values store the fractional second in the `picoseconds` `INT64` field as a fixed picosecond value whose absolute magnitude is less than one second; duration values can be signed.
 This representation preserves source precisions up to 12 digits without relying on the nanosecond limit of Java temporal types.
-For `io.debezium.time.StructuredDuration`, the `io.debezium.time.duration.kind` schema parameter also identifies the duration kind, which determines the components that a value can have and whether they can be converted into each other:
+For `io.debezium.time.StructuredDuration`, the logical schema name also identifies the duration kind, which determines the components that a value can have and whether they can be converted into each other:
 
 `year-month`::
 Years and months, which convert into a single number of months, such as an Oracle `INTERVAL YEAR TO MONTH`.
@@ -861,10 +861,9 @@ Days, hours, minutes, and seconds, which convert into a single number of seconds
 Months, days, and time as independent counters with their own signs, such as a PostgreSQL `INTERVAL`.
 A month is not fixed at 30 days and a day is not fixed at 24 hours, so the counters cannot be converted into each other.
 
-Duration logical schema names also include the duration kind before the precision suffix, for example, `io.debezium.time.StructuredDurationDayTimePrecision9`.
+The kind precedes the precision suffix in the name, for example, `io.debezium.time.StructuredDurationDayTimePrecision9`.
 The kinds appear as `YearMonth`, `DayTime`, and `MonthDayTime`, and a year-month duration has no precision suffix because it has no fractional seconds, for example, `io.debezium.time.StructuredDurationYearMonth`.
-If a duration schema has no `io.debezium.time.duration.kind` parameter, the JDBC sink resolves the kind from the logical schema name.
-If the name does not identify a kind either, as in schemas from {prodname} 3.7, the connector infers the kind from the components of each value, and treats a value with days as a `month-day-time` duration because the days might be calendar days.
+If the name does not identify a kind, as in schemas from {prodname} 3.7, the JDBC sink infers the kind from the components of each value, and treats a value with days as a `month-day-time` duration because the days might be calendar days.
 When it creates a target column, the JDBC sink uses the logical precision and duration metadata before the `__debezium.source.column.*` propagation parameters to determine the target type and precision.
 When it writes to an existing column, the connector instead validates the value against the actual target column metadata.
 

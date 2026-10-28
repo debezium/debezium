@@ -313,10 +313,8 @@ public class OracleValueConvertersTest {
                 .convert(new INTERVALYM("-123-11"));
 
         assertThat(yearMonthField.schema().name()).isEqualTo(StructuredDuration.schemaName(-1, StructuredDuration.Kind.YEAR_MONTH));
-        // A year-month interval has no fractional seconds
-        assertThat(yearMonthField.schema().parameters())
-                .doesNotContainKey(StructuredTemporal.PRECISION_PARAMETER_KEY)
-                .containsEntry(StructuredTemporal.DURATION_KIND_PARAMETER_KEY, StructuredDuration.Kind.YEAR_MONTH.getValue());
+        // A year-month interval has no fractional seconds, and the logical name carries the kind, so the schema has no parameters
+        assertThat(yearMonthField.schema().parameters()).isNull();
         assertThat(yearMonth.getInt32(StructuredTemporal.YEARS_FIELD)).isEqualTo(-123);
         assertThat(yearMonth.getInt32(StructuredTemporal.MONTHS_FIELD)).isEqualTo(-11);
         assertThat(yearMonth.getInt32(StructuredTemporal.DAYS_FIELD)).isZero();
@@ -335,8 +333,7 @@ public class OracleValueConvertersTest {
 
         assertThat(daySecondField.schema().name()).isEqualTo(StructuredDuration.schemaName(9, StructuredDuration.Kind.DAY_TIME));
         assertThat(daySecondField.schema().parameters())
-                .containsEntry(StructuredTemporal.PRECISION_PARAMETER_KEY, "9")
-                .containsEntry(StructuredTemporal.DURATION_KIND_PARAMETER_KEY, StructuredDuration.Kind.DAY_TIME.getValue());
+                .containsEntry(StructuredTemporal.PRECISION_PARAMETER_KEY, "9");
         assertThat(daySecond.getInt32(StructuredTemporal.PRECISION_FIELD)).isEqualTo(9);
         assertThat(daySecond.getInt32(StructuredTemporal.DAYS_FIELD)).isEqualTo(-999);
         assertThat(daySecond.getInt32(StructuredTemporal.HOURS_FIELD)).isEqualTo(-23);

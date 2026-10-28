@@ -491,8 +491,6 @@ public class PostgresTemporalPrecisionHandlingIT extends AbstractAsyncEngineConn
         assertEquals(StructuredTemporal.schemaNameWithSourceColumn(StructuredDuration.schemaName(6, StructuredDuration.Kind.MONTH_DAY_TIME), "c_interval"),
                 after.schema().field("c_interval").schema().name());
         assertEquals("6", after.schema().field("c_interval").schema().parameters().get(StructuredTemporal.PRECISION_PARAMETER_KEY));
-        assertEquals(StructuredDuration.Kind.MONTH_DAY_TIME.getValue(),
-                after.schema().field("c_interval").schema().parameters().get(StructuredTemporal.DURATION_KIND_PARAMETER_KEY));
         Struct interval = after.getStruct("c_interval");
         assertEquals(1, interval.getInt32(StructuredTemporal.YEARS_FIELD));
         assertEquals(2, interval.getInt32(StructuredTemporal.MONTHS_FIELD));
@@ -618,8 +616,6 @@ public class PostgresTemporalPrecisionHandlingIT extends AbstractAsyncEngineConn
         assertEquals(StructuredTemporal.schemaNameWithSourceColumn(StructuredDuration.schemaName(6, StructuredDuration.Kind.MONTH_DAY_TIME), "c_interval"),
                 after.schema().field("c_interval").schema().name());
         assertEquals("6", after.schema().field("c_interval").schema().parameters().get(StructuredTemporal.PRECISION_PARAMETER_KEY));
-        assertEquals(StructuredDuration.Kind.MONTH_DAY_TIME.getValue(),
-                after.schema().field("c_interval").schema().parameters().get(StructuredTemporal.DURATION_KIND_PARAMETER_KEY));
         final Struct interval = after.getStruct("c_interval");
         assertEquals(1, interval.getInt32(StructuredTemporal.YEARS_FIELD));
         assertEquals(2, interval.getInt32(StructuredTemporal.MONTHS_FIELD));
