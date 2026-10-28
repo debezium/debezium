@@ -12,6 +12,7 @@
     <packaging>jar</packaging>
 
     <properties>
+        <confluent>true</confluent>
         <version.sqlite>3.41.2.2</version.sqlite>
     </properties>
 

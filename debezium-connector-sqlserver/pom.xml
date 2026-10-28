@@ -11,6 +11,7 @@
     <name>Debezium Connector for MS SQL Server</name>
     <packaging>jar</packaging>
     <properties>
+        <confluent>true</confluent>
         <!--
           Specify the properties that will be used for setting up the integration tests' Docker container.
           Note that the `dockerhost.ip` property is computed from the IP address of DOCKER_HOST, which will

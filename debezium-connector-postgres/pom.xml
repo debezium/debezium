@@ -11,7 +11,8 @@
     <name>Debezium Connector for PostgreSQL</name>
     <packaging>jar</packaging>
     <properties>
-        <!-- 
+        <confluent>true</confluent>
+        <!--
           Specify the properties that will be used for setting up the integration tests' Docker container.
           Note that the `dockerhost.ip` property is computed from the IP address of DOCKER_HOST, which will
           work on all platforms. We'll set some of these as system properties during integration testing.

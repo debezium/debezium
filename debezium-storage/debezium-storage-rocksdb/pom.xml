@@ -10,6 +10,9 @@
     <artifactId>debezium-storage-rocksdb</artifactId>
     <name>Debezium Storage RocksDB Module</name>
     <packaging>jar</packaging>
+    <properties>
+        <confluent>true</confluent>
+    </properties>
 
     <dependencies>
         <dependency>

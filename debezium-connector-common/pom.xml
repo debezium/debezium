@@ -12,6 +12,7 @@
     <name>Debezium Connector Common</name>
 
     <properties>
+        <confluent>true</confluent>
         <mockito.argLine>-Dnet.bytebuddy.experimental=${net.bytebuddy.experimental} -javaagent:${org.mockito:mockito-core:jar}</mockito.argLine>
     </properties>
 
