@@ -846,7 +846,9 @@ For `io.debezium.time.StructuredZonedTimestamp`, the connector rejects a value i
 
 When a source connector uses `time.precision.mode=structured`, the `io.debezium.time.precision` schema parameter describes the source fractional-second precision.
 To keep Avro named-record definitions with different precision metadata distinct, the logical schema name includes a `Precision<P>` suffix, for example, `io.debezium.time.StructuredTimestampPrecision6`.
-If a source connector adds column-specific metadata, such as propagated source types or column comments, it also adds a source-column qualifier to prevent that metadata from redefining the same Avro named record.
+Because column-specific metadata, such as propagated source types or column comments, would otherwise redefine the same Avro named record, the logical schema name also always ends with a source-column qualifier, so that adding or removing such metadata does not change the name.
+A column name that consists only of ASCII letters, digits, and underscores follows `SourceColumn_` as is, for example, `io.debezium.time.StructuredTimestampPrecision6SourceColumn_created_at`.
+Any other column name follows `SourceColumnU`, and each of its characters other than an ASCII letter or digit is escaped as `_u` followed by four hexadecimal digits, for example, `io.debezium.time.StructuredTimestampPrecision6SourceColumnUcreated_u002dat` for the column `created-at`.
 Structured temporal values store the fractional second in the `picoseconds` `INT64` field as a fixed picosecond value whose absolute magnitude is less than one second; duration values can be signed.
 This representation preserves source precisions up to 12 digits without relying on the nanosecond limit of Java temporal types.
 For `io.debezium.time.StructuredDuration`, the `io.debezium.time.duration.kind` schema parameter also identifies whether the source value represents elapsed time, a year-month interval, a day-time interval, or a mixed interval.

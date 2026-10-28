@@ -5,8 +5,6 @@
  */
 package io.debezium.time;
 
-import java.nio.charset.StandardCharsets;
-
 import org.apache.kafka.connect.data.Field;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
@@ -20,6 +18,8 @@ public final class StructuredTemporal {
     static final int MAX_FRACTIONAL_SECOND_PRECISION = 12;
 
     private static final String SOURCE_COLUMN_SCHEMA_NAME_MARKER = "SourceColumn";
+    private static final char VERBATIM_SOURCE_COLUMN_PREFIX = '_';
+    private static final char ESCAPED_SOURCE_COLUMN_PREFIX = 'U';
 
     public static final String YEAR_FIELD = "year";
     public static final String MONTH_FIELD = "month";
@@ -117,6 +117,7 @@ public final class StructuredTemporal {
      *
      * @param builder the field schema builder
      * @param columnName the source column name
+     * @see #schemaNameWithSourceColumn(String, String)
      */
     public static SchemaBuilder qualifySchemaBuilderWithSourceColumn(SchemaBuilder builder, String columnName) {
         final String schemaName = schemaNameWithoutSourceColumn(builder.name());
@@ -125,7 +126,7 @@ public final class StructuredTemporal {
         }
 
         final SchemaBuilder qualifiedBuilder = SchemaBuilder.struct()
-                .name(schemaName + SOURCE_COLUMN_SCHEMA_NAME_MARKER + encodeSchemaNameComponent(columnName));
+                .name(schemaNameWithSourceColumn(schemaName, columnName));
         if (builder.version() != null) {
             qualifiedBuilder.version(builder.version());
         }
@@ -142,6 +143,24 @@ public final class StructuredTemporal {
             qualifiedBuilder.field(field.name(), field.schema());
         }
         return qualifiedBuilder;
+    }
+
+    /**
+     * Returns a structured temporal schema name qualified with the source column name.
+     * <p>
+     * A column name that consists only of ASCII letters, digits, and underscores is appended as is after
+     * {@code SourceColumn_}, for example, {@code io.debezium.time.StructuredTimestampPrecision6SourceColumn_create_timestamp}.
+     * Any other column name is appended after {@code SourceColumnU}, and each of its characters other than an ASCII letter
+     * or digit is escaped as {@code _u} followed by four hexadecimal digits, for example,
+     * {@code io.debezium.time.StructuredTimestampPrecision6SourceColumnUcreate_u002dtimestamp}. The character that follows
+     * the marker and the fixed-width escapes keep the names of different columns distinct.
+     *
+     * @param schemaName the structured temporal schema name; never null
+     * @param columnName the source column name; never null
+     * @return the qualified schema name
+     */
+    public static String schemaNameWithSourceColumn(String schemaName, String columnName) {
+        return schemaName + SOURCE_COLUMN_SCHEMA_NAME_MARKER + sourceColumnQualifier(columnName);
     }
 
     /**
@@ -173,14 +192,25 @@ public final class StructuredTemporal {
                 || schemaName.startsWith(StructuredTime.SCHEMA_NAME));
     }
 
-    private static String encodeSchemaNameComponent(String value) {
-        final byte[] bytes = value.getBytes(StandardCharsets.UTF_8);
-        final StringBuilder encoded = new StringBuilder(bytes.length * 2);
-        for (byte current : bytes) {
-            encoded.append(Character.forDigit((current >>> 4) & 0x0f, 16));
-            encoded.append(Character.forDigit(current & 0x0f, 16));
+    private static String sourceColumnQualifier(String columnName) {
+        if (columnName.chars().allMatch(c -> isAsciiLetterOrDigit(c) || c == '_')) {
+            return VERBATIM_SOURCE_COLUMN_PREFIX + columnName;
         }
-        return encoded.toString();
+        final StringBuilder qualifier = new StringBuilder().append(ESCAPED_SOURCE_COLUMN_PREFIX);
+        for (int i = 0; i < columnName.length(); ++i) {
+            final char current = columnName.charAt(i);
+            if (isAsciiLetterOrDigit(current)) {
+                qualifier.append(current);
+            }
+            else {
+                qualifier.append("_u").append(String.format("%04x", (int) current));
+            }
+        }
+        return qualifier.toString();
+    }
+
+    private static boolean isAsciiLetterOrDigit(int c) {
+        return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9');
     }
 
     static long picosecondsFromNanoseconds(int nanoseconds) {

@@ -151,6 +151,35 @@ class StructuredTemporalTest {
     }
 
     @Test
+    void shouldQualifySchemaNameWithSourceColumnWithoutCollisions() {
+        final String schemaName = StructuredTimestamp.schemaName(6);
+
+        // Valid Avro name characters are kept as is, any other column name is escaped with fixed-width escapes
+        assertThat(StructuredTemporal.schemaNameWithSourceColumn(schemaName, "create_timestamp"))
+                .isEqualTo("io.debezium.time.StructuredTimestampPrecision6SourceColumn_create_timestamp");
+        assertThat(StructuredTemporal.schemaNameWithSourceColumn(schemaName, "create-timestamp"))
+                .isEqualTo("io.debezium.time.StructuredTimestampPrecision6SourceColumnUcreate_u002dtimestamp");
+        assertThat(StructuredTemporal.schemaNameWithSourceColumn(schemaName, "생성일시"))
+                .isEqualTo("io.debezium.time.StructuredTimestampPrecision6SourceColumnU_uc0dd_uc131_uc77c_uc2dc");
+
+        // Column names whose replacements collide with Avro or Unicode schema name adjustment stay distinct
+        assertDistinctQualifiedNames(schemaName, "create_timestamp", "create-timestamp");
+        assertDistinctQualifiedNames(schemaName, "생성일시", "수정일시");
+        assertDistinctQualifiedNames(schemaName, "ā" + "1", "ထ");
+        assertDistinctQualifiedNames(schemaName, "a.b", "a_b");
+        assertDistinctQualifiedNames(schemaName, "create-timestamp", "Ucreate_u002dtimestamp");
+
+        final String qualified = StructuredTemporal.schemaNameWithSourceColumn(schemaName, "order.date");
+        assertThat(qualified).doesNotContain("order.date");
+        assertThat(StructuredTemporal.schemaNameWithoutSourceColumn(qualified)).isEqualTo(schemaName);
+    }
+
+    private static void assertDistinctQualifiedNames(String schemaName, String firstColumn, String secondColumn) {
+        assertThat(StructuredTemporal.schemaNameWithSourceColumn(schemaName, firstColumn))
+                .isNotEqualTo(StructuredTemporal.schemaNameWithSourceColumn(schemaName, secondColumn));
+    }
+
+    @Test
     void shouldPreservePicosecondTimestampPrecisionInVersionOneSchema() {
         final Schema schema = StructuredTimestamp.builder(12).build();
         final Struct value = StructuredTimestamp.fromPicoseconds(schema, 2026, 7, 17, 12, 13, 14, 123_456_789_012L, 12);
