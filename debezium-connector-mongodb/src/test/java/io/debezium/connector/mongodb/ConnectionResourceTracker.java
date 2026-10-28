@@ -85,8 +85,9 @@ class ConnectionResourceTracker implements AutoCloseable {
     }
 
     void assertClientsCreated() {
-        assertThat(openedClusters).isNotEmpty();
         assertThat(openedPools).isNotEmpty();
+        // Cluster events are asynchronous; pool lifecycle callbacks are synchronous.
+        Awaitility.await().atMost(Duration.ofSeconds(5)).untilAsserted(() -> assertThat(openedClusters).isNotEmpty());
     }
 
     void assertSnapshotWorkersCreated() {

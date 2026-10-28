@@ -17,6 +17,7 @@ import org.junit.jupiter.api.Test;
 import com.mongodb.client.MongoClient;
 
 import io.debezium.connector.mongodb.connection.MongoDbConnections;
+import io.debezium.doc.FixFor;
 import io.debezium.function.BlockingConsumer;
 
 class MongoDbConnectionLifecycleTest {
@@ -32,6 +33,14 @@ class MongoDbConnectionLifecycleTest {
             }
             tracker.assertClientsCreated();
             tracker.assertReleased();
+        }
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2938")
+    void shouldNotPassWhenNoClientWasCreated() {
+        try (var tracker = new ConnectionResourceTracker()) {
+            assertThatThrownBy(tracker::assertClientsCreated).isInstanceOf(AssertionError.class);
         }
     }
 
