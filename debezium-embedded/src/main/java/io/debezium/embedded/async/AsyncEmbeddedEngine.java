@@ -16,8 +16,10 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.Properties;
 import java.util.ServiceLoader;
+import java.util.Set;
 import java.util.concurrent.Callable;
 import java.util.concurrent.CancellationException;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorCompletionService;
@@ -30,6 +32,8 @@ import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.Consumer;
 import java.util.function.Function;
 
@@ -74,6 +78,7 @@ import io.debezium.spi.storage.OffsetStoreProvider;
 import io.debezium.storage.kafka.offset.KafkaConnectOffsetUtil;
 import io.debezium.util.DelayStrategy;
 import io.debezium.util.KafkaConnectUtil;
+import io.debezium.util.Threads;
 
 /**
  * Implementation of {@link DebeziumEngine} which allows to run multiple tasks in parallel and also
@@ -108,6 +113,7 @@ public final class AsyncEmbeddedEngine<R> implements DebeziumEngine<R>, AsyncEng
     private final List<Future<Void>> pollingFutures = new ArrayList<>();
     private final ExecutorService taskService;
     private final ExecutorService recordService;
+    private final Lock offsetCommitLock = new ReentrantLock();
     // A latch to make sure close() method finishes before we call completion callback, see also DBZ-7496.
     private final CountDownLatch shutDownLatch = new CountDownLatch(1);
     private Signaler signaler;
@@ -415,6 +421,7 @@ public final class AsyncEmbeddedEngine<R> implements DebeziumEngine<R>, AsyncEng
                         taskConfig,
                         connector.context().offsetStorageReader(),
                         connector.context().offsetStorageWriter(),
+                        offsetCommitLock,
                         offsetCommitPolicy,
                         clock,
                         transformations,
@@ -705,16 +712,36 @@ public final class AsyncEmbeddedEngine<R> implements DebeziumEngine<R>, AsyncEng
      * @param tasks {@link List<EngineSourceTask>} of source tasks which should be stopped.
      */
     private void stopSourceTasks(final List<EngineSourceTask> tasks) {
+        // Clear interrupt flag so the graceful stop of the tasks is always attempted.
+        Thread.interrupted();
+        final ExecutorService stopTaskService = Threads.newFixedThreadPool(AsyncEmbeddedEngine.class,
+                config.getString(EmbeddedEngineConfig.ENGINE_NAME), "task-stop", Math.max(tasks.size(), 1));
+        final Set<EngineTaskId> tasksNotStopped = ConcurrentHashMap.newKeySet();
+        tasks.forEach(task -> tasksNotStopped.add(task.context().connectorTaskId()));
         try {
             LOGGER.debug("Stopping source connector tasks.");
-            final ExecutorCompletionService<Void> taskCompletionService = new ExecutorCompletionService(taskService);
+            final ExecutorCompletionService<Void> taskCompletionService = new ExecutorCompletionService(stopTaskService);
+            final ClassLoader originalTccl = Thread.currentThread().getContextClassLoader();
             for (EngineSourceTask task : tasks) {
                 final long commitTimeout = Configuration.from(task.context().config()).getLong(EmbeddedEngineConfig.OFFSET_COMMIT_TIMEOUT_MS);
                 taskCompletionService.submit(() -> {
-                    LOGGER.debug("Committing task's offset.");
-                    commitOffsets(task.context().offsetStorageWriter(), task.context().clock(), commitTimeout, task.connectTask());
-                    LOGGER.debug("Stopping Connect task.");
-                    task.connectTask().stop();
+                    EngineLoggingContext.clear();
+                    try (EngineLoggingContext loggingContext = EngineLoggingContext.forTask(task.context().connectorTaskId())) {
+                        Thread.currentThread().setContextClassLoader(this.classLoader);
+                        try {
+                            LOGGER.debug("Committing task's offset.");
+                            commitOffsets(task.context().offsetStorageWriter(), task.context().offsetCommitLock(), task.context().clock(), commitTimeout,
+                                    task.connectTask());
+                        }
+                        finally {
+                            LOGGER.debug("Stopping Connect task.");
+                            task.connectTask().stop();
+                            tasksNotStopped.remove(task.context().connectorTaskId());
+                        }
+                    }
+                    finally {
+                        Thread.currentThread().setContextClassLoader(originalTccl);
+                    }
                     return null;
                 });
             }
@@ -749,8 +776,12 @@ public final class AsyncEmbeddedEngine<R> implements DebeziumEngine<R>, AsyncEng
             LOGGER.warn("Failure during stopping tasks, stopping them immediately. Failed with ", e);
         }
         finally {
-            // Make sure task service is shut down and no other tasks can be run.
+            // Make sure both executors are shut down and no other tasks can be run.
             taskService.shutdownNow();
+            stopTaskService.shutdownNow();
+            if (!tasksNotStopped.isEmpty()) {
+                LOGGER.warn("Stopping of task(s) {} timed out or failed, the task(s) may still be running.", tasksNotStopped);
+            }
         }
     }
 
@@ -900,41 +931,52 @@ public final class AsyncEmbeddedEngine<R> implements DebeziumEngine<R>, AsyncEng
      * Commits the offset to {@link OffsetStore} via {@link OffsetStorageWriter}.
      *
      * @param offsetWriter {@link OffsetStorageWriter} which performs the flushing the offset into {@link OffsetStore}.
+     * @param offsetCommitLock {@link Lock} which serializes the offset commits on the {@code offsetWriter}.
      * @param commitTimeout amount of time to wait for offset flush to finish before it's aborted.
      * @param task {@link SourceTask} which performs the offset commit.
      * @return {@code true} if the offset was successfully committed, {@code false} otherwise.
      */
-    private static boolean commitOffsets(final OffsetStorageWriter offsetWriter, final io.debezium.util.Clock clock, final long commitTimeout, final SourceTask task)
+    private static boolean commitOffsets(final OffsetStorageWriter offsetWriter, final Lock offsetCommitLock, final io.debezium.util.Clock clock,
+                                         final long commitTimeout, final SourceTask task)
             throws InterruptedException, TimeoutException {
-        final long timeout = clock.currentTimeInMillis() + commitTimeout;
-        if (!offsetWriter.beginFlush(commitTimeout, TimeUnit.MILLISECONDS)) {
-            LOGGER.trace("No offset to be committed.");
+        if (!offsetCommitLock.tryLock(commitTimeout, TimeUnit.MILLISECONDS)) {
+            LOGGER.warn("Flush of the offsets skipped, concurrent flush didn't finish within {} ms.", commitTimeout);
             return false;
         }
-
         try {
-            final Future<Void> flush = offsetWriter.doFlush((Throwable error, Void result) -> {
-            });
-            if (flush == null) {
-                LOGGER.warn("Flushing process probably failed, please check previous log for more details.");
-                offsetWriter.cancelFlush();
+            final long timeout = clock.currentTimeInMillis() + commitTimeout;
+            if (!offsetWriter.beginFlush(commitTimeout, TimeUnit.MILLISECONDS)) {
+                LOGGER.trace("No offset to be committed.");
                 return false;
             }
 
-            flush.get(Math.max(timeout - clock.currentTimeInMillis(), 0), TimeUnit.MILLISECONDS);
-            task.commit();
+            try {
+                final Future<Void> flush = offsetWriter.doFlush((Throwable error, Void result) -> {
+                });
+                if (flush == null) {
+                    LOGGER.warn("Flushing process probably failed, please check previous log for more details.");
+                    offsetWriter.cancelFlush();
+                    return false;
+                }
+
+                flush.get(Math.max(timeout - clock.currentTimeInMillis(), 0), TimeUnit.MILLISECONDS);
+                task.commit();
+            }
+            catch (InterruptedException e) {
+                LOGGER.debug("Flush of the offsets interrupted, canceling the flush.");
+                offsetWriter.cancelFlush();
+                throw e;
+            }
+            catch (Exception e) {
+                LOGGER.warn("Flush of the offsets failed, canceling the flush.", e);
+                offsetWriter.cancelFlush();
+                return false;
+            }
+            return true;
         }
-        catch (InterruptedException e) {
-            LOGGER.debug("Flush of the offsets interrupted, canceling the flush.");
-            offsetWriter.cancelFlush();
-            throw e;
+        finally {
+            offsetCommitLock.unlock();
         }
-        catch (Exception e) {
-            LOGGER.warn("Flush of the offsets failed, canceling the flush.", e);
-            offsetWriter.cancelFlush();
-            return false;
-        }
-        return true;
     }
 
     @Override
@@ -1349,6 +1391,7 @@ public final class AsyncEmbeddedEngine<R> implements DebeziumEngine<R>, AsyncEng
 
         final SourceTask task;
         final OffsetStorageWriter offsetWriter;
+        final Lock offsetCommitLock;
         final OffsetCommitPolicy offsetCommitPolicy;
         final io.debezium.util.Clock clock;
         final long commitTimeout;
@@ -1359,6 +1402,7 @@ public final class AsyncEmbeddedEngine<R> implements DebeziumEngine<R>, AsyncEng
         SourceRecordCommitter(final EngineSourceTask task) {
             this.task = task.connectTask();
             this.offsetWriter = task.context().offsetStorageWriter();
+            this.offsetCommitLock = task.context().offsetCommitLock();
             this.offsetCommitPolicy = task.context().offsetCommitPolicy();
             this.clock = task.context().clock();
             this.commitTimeout = Configuration.from(task.context().config()).getLong(EmbeddedEngineConfig.OFFSET_COMMIT_TIMEOUT_MS);
@@ -1376,7 +1420,7 @@ public final class AsyncEmbeddedEngine<R> implements DebeziumEngine<R>, AsyncEng
             final Duration durationSinceLastCommit = Duration.ofMillis(clock.currentTimeInMillis() - timeOfLastCommitMillis);
             if (offsetCommitPolicy.performCommit(recordsSinceLastCommit, durationSinceLastCommit)) {
                 try {
-                    if (commitOffsets(offsetWriter, clock, commitTimeout, task)) {
+                    if (commitOffsets(offsetWriter, offsetCommitLock, clock, commitTimeout, task)) {
                         recordsSinceLastCommit = 0;
                         timeOfLastCommitMillis = clock.currentTimeInMillis();
                     }
