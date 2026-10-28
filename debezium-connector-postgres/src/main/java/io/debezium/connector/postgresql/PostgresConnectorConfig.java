@@ -1151,12 +1151,9 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
             .withWidth(Width.SHORT)
             .withDefault(0L)
             .withImportance(Importance.LOW)
-            .withDescription("Maximum time in milliseconds that the connector continues to read the replication stream after the database server "
-                    + "terminates the connector's regular JDBC connection with SQLSTATE 57P01 (admin_shutdown), for example during a fast shutdown. "
-                    + "While draining, the connector processes the remaining changes and confirms each LSN to the server only after the records "
-                    + "for that LSN are delivered, so that the server can persist the position in its shutdown checkpoint. "
-                    + "The drain ends when all delivered changes are confirmed, when the replication stream ends, when an operation needs the "
-                    + "regular connection, or when this timeout expires; the connector then fails with the original error. "
+            .withDescription("Maximum time in milliseconds that the connector keeps reading the replication stream after the database server "
+                    + "terminates the connector's regular JDBC connection with SQLSTATE 57P01 (admin_shutdown), for example during a fast shutdown, "
+                    + "so that delivered changes can be confirmed before the server stops. "
                     + "Ignored when lsn.flush.mode is manual. The default value of 0 disables draining.")
             .withValidation(Field::isNonNegativeLong);
 
