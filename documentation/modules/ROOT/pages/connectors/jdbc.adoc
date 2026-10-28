@@ -851,10 +851,20 @@ A column name that consists only of ASCII letters, digits, and underscores follo
 Any other column name follows `SourceColumnU`, and each of its characters other than an ASCII letter or digit is escaped as `_u` followed by four hexadecimal digits, for example, `io.debezium.time.StructuredTimestampPrecision6SourceColumnUcreated_u002dat` for the column `created-at`.
 Structured temporal values store the fractional second in the `picoseconds` `INT64` field as a fixed picosecond value whose absolute magnitude is less than one second; duration values can be signed.
 This representation preserves source precisions up to 12 digits without relying on the nanosecond limit of Java temporal types.
-For `io.debezium.time.StructuredDuration`, the `io.debezium.time.duration.kind` schema parameter also identifies whether the source value represents elapsed time, a year-month interval, a day-time interval, or a mixed interval.
+For `io.debezium.time.StructuredDuration`, the `io.debezium.time.duration.kind` schema parameter also identifies the duration kind, which determines the components that a value can have and whether they can be converted into each other:
+
+`year-month`::
+Years and months, which convert into a single number of months, such as an Oracle `INTERVAL YEAR TO MONTH`.
+`day-time`::
+Days, hours, minutes, and seconds, which convert into a single number of seconds because a day is exactly 24 hours, such as a MySQL `TIME` or an Oracle `INTERVAL DAY TO SECOND`.
+`month-day-time`::
+Months, days, and time as independent counters with their own signs, such as a PostgreSQL `INTERVAL`.
+A month is not fixed at 30 days and a day is not fixed at 24 hours, so the counters cannot be converted into each other.
+
 Duration logical schema names also include the duration kind before the precision suffix, for example, `io.debezium.time.StructuredDurationDayTimePrecision9`.
-The kinds appear as `ElapsedTime`, `YearMonth`, `DayTime`, and `Mixed`, and a year-month duration has no precision suffix because it has no fractional seconds, for example, `io.debezium.time.StructuredDurationYearMonth`.
+The kinds appear as `YearMonth`, `DayTime`, and `MonthDayTime`, and a year-month duration has no precision suffix because it has no fractional seconds, for example, `io.debezium.time.StructuredDurationYearMonth`.
 If a duration schema has no `io.debezium.time.duration.kind` parameter, the JDBC sink resolves the kind from the logical schema name.
+If the name does not identify a kind either, as in schemas from {prodname} 3.7, the connector infers the kind from the components of each value, and treats a value with days as a `month-day-time` duration because the days might be calendar days.
 When it creates a target column, the JDBC sink uses the logical precision and duration metadata before the `__debezium.source.column.*` propagation parameters to determine the target type and precision.
 When it writes to an existing column, the connector instead validates the value against the actual target column metadata.
 
@@ -867,7 +877,7 @@ Before you upgrade a source connector that uses `time.precision.mode=structured`
 ====
 
 Before the connector generates or executes a DML statement, it verifies that the target column can represent each structured temporal value without an implicit loss of meaning.
-For example, a MySQL `TIME` target accepts only elapsed-time durations, so the connector rejects structured durations that include year, month, or day semantics.
+For example, a MySQL `TIME` target accepts only day-time durations, so the connector rejects year-month and month-day-time durations, and converts the days of a day-time duration into hours.
 The connector also rejects a structured zoned timestamp if the target cannot preserve its non-zero offset or region identifier.
 
 By default, the connector rejects fractional-second values only if the target precision would discard non-zero digits.
@@ -897,7 +907,7 @@ The connector therefore treats structured timestamp infinity as a range loss for
 
 |MySQL
 |`DATE` and `DATETIME(6)` use years 1000 through 9999. The upper `DATETIME(6)` boundary is `9999-12-31 23:59:59.499999`. An existing `TIMESTAMP(6)` column uses `1970-01-01 00:00:01.000000` through `2038-01-19 03:14:07.499999`.
-|All-zero structured dates and timestamps are passed through when the target SQL mode permits them. `StructuredDuration` accepts only elapsed-time values.
+|All-zero structured dates and timestamps are passed through when the target SQL mode permits them. `StructuredDuration` accepts only day-time values, and days are converted into hours.
 
 |PostgreSQL
 |The connector uses the PostgreSQL finite `DATE` and `TIMESTAMP` ranges.
@@ -917,7 +927,7 @@ The connector therefore treats structured timestamp infinity as a range loss for
 
 |SingleStore
 |`DATE` and `DATETIME(6)` use years 1000 through 9999. `TIMESTAMP(6)` uses `1970-01-01 00:00:01.000000` through `2038-01-19 03:14:07.999999`.
-|All-zero structured dates and timestamps are handled as range loss. `StructuredDuration` accepts only elapsed-time values.
+|All-zero structured dates and timestamps are handled as range loss. `StructuredDuration` accepts only day-time values, and days are converted into hours.
 
 |StarRocks
 |`DATE` and `DATETIME` values use years 0 through 9999. `DATETIME` preserves up to 6 fractional digits.

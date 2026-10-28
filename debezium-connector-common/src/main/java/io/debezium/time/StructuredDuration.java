@@ -21,11 +21,26 @@ public final class StructuredDuration {
 
     public static final String SCHEMA_NAME = "io.debezium.time.StructuredDuration";
 
+    /**
+     * The kind of a duration, which determines which components a value may have and whether they can be converted into
+     * each other without changing its meaning.
+     */
     public enum Kind {
-        ELAPSED_TIME("elapsed-time", "ElapsedTime"),
+        /**
+         * Years and months, which convert into a single signed number of months, such as an Oracle
+         * {@code INTERVAL YEAR TO MONTH}.
+         */
         YEAR_MONTH("year-month", "YearMonth"),
+        /**
+         * Days, hours, minutes, and seconds, which convert into a single signed number of seconds because a day has
+         * exactly 24 hours, such as a MySQL {@code TIME} or an Oracle {@code INTERVAL DAY TO SECOND}.
+         */
         DAY_TIME("day-time", "DayTime"),
-        MIXED("mixed", "Mixed");
+        /**
+         * Months, days, and time as independent counters with their own signs, such as a PostgreSQL {@code INTERVAL}.
+         * A month is not fixed at 30 days and a day is not fixed at 24 hours, so the counters cannot be combined.
+         */
+        MONTH_DAY_TIME("month-day-time", "MonthDayTime");
 
         private final String value;
         private final String schemaNameComponent;

@@ -130,14 +130,13 @@ class StructuredTemporalTest {
     @Test
     void shouldNameDurationKindBeforePrecisionSuffix() {
         // Schema names are visible to consumers and schema registries, so the exact names are part of the contract
-        assertThat(StructuredDuration.schemaName(6, StructuredDuration.Kind.ELAPSED_TIME))
-                .isEqualTo("io.debezium.time.StructuredDurationElapsedTimePrecision6");
         assertThat(StructuredDuration.schemaName(9, StructuredDuration.Kind.DAY_TIME))
                 .isEqualTo("io.debezium.time.StructuredDurationDayTimePrecision9");
         assertThat(StructuredDuration.schemaName(-1, StructuredDuration.Kind.YEAR_MONTH))
                 .isEqualTo("io.debezium.time.StructuredDurationYearMonth");
-        assertThat(StructuredDuration.schemaName(6, StructuredDuration.Kind.MIXED))
-                .isEqualTo("io.debezium.time.StructuredDurationMixedPrecision6");
+        assertThat(StructuredDuration.schemaName(6, StructuredDuration.Kind.MONTH_DAY_TIME))
+                .isEqualTo("io.debezium.time.StructuredDurationMonthDayTimePrecision6");
+        assertThat(StructuredDuration.Kind.MONTH_DAY_TIME.getValue()).isEqualTo("month-day-time");
         assertThat(StructuredDuration.schemaName(6, null))
                 .isEqualTo("io.debezium.time.StructuredDurationPrecision6");
         assertThat(StructuredTimestamp.builder(6).build().name())
@@ -157,7 +156,7 @@ class StructuredTemporalTest {
             assertThat(StructuredDuration.kindOf(StructuredDuration.schemaName(6, kind))).contains(kind);
             // The qualifier is ignored, even if the column name looks like a kind
             assertThat(StructuredDuration.kindOf(
-                    StructuredTemporal.schemaNameWithSourceColumn(StructuredDuration.schemaName(6, kind), "Mixed-column"))).contains(kind);
+                    StructuredTemporal.schemaNameWithSourceColumn(StructuredDuration.schemaName(6, kind), "DayTime-column"))).contains(kind);
         }
         assertThat(StructuredDuration.kindOf(StructuredDuration.SCHEMA_NAME)).isEmpty();
         assertThat(StructuredDuration.kindOf(StructuredDuration.schemaName(6, null))).isEmpty();

@@ -134,8 +134,8 @@ public class StructuredDurationType extends AbstractTemporalType {
             return StructuredTemporalPreflightValidator.declaredDurationKind(schema)
                     .map(kind -> switch (kind) {
                         case YEAR_MONTH -> IntervalKind.YEAR_MONTH;
-                        case DAY_TIME, ELAPSED_TIME -> IntervalKind.DAY_SECOND;
-                        case MIXED -> IntervalKind.TEXT;
+                        case DAY_TIME -> IntervalKind.DAY_SECOND;
+                        case MONTH_DAY_TIME -> IntervalKind.TEXT;
                     })
                     .orElseGet(() -> resolveIntervalKind(getSourceColumnType(schema).orElse(null)));
         }

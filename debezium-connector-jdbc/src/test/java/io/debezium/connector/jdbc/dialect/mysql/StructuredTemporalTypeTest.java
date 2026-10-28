@@ -84,7 +84,7 @@ class StructuredTemporalTypeTest {
     @Test
     @DisplayName("Should include the structured duration value in MySQL range errors")
     void shouldIncludeStructuredDurationValueInRangeError() {
-        final var schema = StructuredDuration.builder(6, StructuredDuration.Kind.ELAPSED_TIME).build();
+        final var schema = StructuredDuration.builder(6, StructuredDuration.Kind.DAY_TIME).build();
         final var value = StructuredDuration.from(schema, 0, 0, 0, 839, 0, 0, 0, 6);
         final var type = configuredDurationType(TemporalPrecisionLossHandlingMode.FAIL);
 
@@ -124,23 +124,43 @@ class StructuredTemporalTypeTest {
                 .hasMessageContaining("year-month")
                 .hasMessageContaining("MySQL TIME");
 
+        final var monthDayTimeSchema = StructuredDuration.builder(6, StructuredDuration.Kind.MONTH_DAY_TIME).build();
+        assertThatThrownBy(() -> type.getTypeName(monthDayTimeSchema, false))
+                .isInstanceOf(ConnectException.class)
+                .hasMessageContaining("'month-day-time'");
+
+        // Without a declared kind, days cannot tell a day of exactly 24 hours from a calendar day
         final var legacySchema = StructuredDuration.schema();
         final var valueWithDays = StructuredDuration.from(legacySchema, 0, 0, 1, 2, 3, 4, 0);
         assertThatThrownBy(() -> type.validate(timeColumn(6), legacySchema, valueWithDays))
                 .isInstanceOf(ConnectException.class)
-                .hasMessageContaining("day-time");
+                .hasMessageContaining("'month-day-time'");
 
-        final var elapsedSchema = StructuredDuration.builder(6, StructuredDuration.Kind.ELAPSED_TIME).build();
-        final var inconsistentValue = StructuredDuration.from(elapsedSchema, 0, 0, 1, 2, 3, 4, 0, 6);
-        assertThatThrownBy(() -> type.validate(timeColumn(6), elapsedSchema, inconsistentValue))
+        final var dayTimeSchema = StructuredDuration.builder(6, StructuredDuration.Kind.DAY_TIME).build();
+        final var inconsistentValue = StructuredDuration.from(dayTimeSchema, 0, 1, 0, 2, 3, 4, 0, 6);
+        assertThatThrownBy(() -> type.validate(timeColumn(6), dayTimeSchema, inconsistentValue))
                 .isInstanceOf(ConnectException.class)
-                .hasMessageContaining("do not match schema kind 'elapsed-time'");
+                .hasMessageContaining("do not match schema kind 'day-time'");
+    }
+
+    @Test
+    @DisplayName("Should fold the days of a day-time duration into MySQL time hours")
+    void shouldFoldDayTimeDaysIntoHours() {
+        final var schema = StructuredDuration.builder(6, StructuredDuration.Kind.DAY_TIME).build();
+        final var type = configuredDurationType(TemporalPrecisionLossHandlingMode.FAIL);
+
+        // For example, an Oracle INTERVAL DAY TO SECOND of 34 days 22:59:59 is the MySQL TIME limit of 838:59:59
+        assertThat(type.bind(1, timeColumn(6), schema, StructuredDuration.from(schema, 0, 0, -34, -22, -59, -59, 0, 6)).get(0).getValue())
+                .isEqualTo("-838:59:59.000000");
+        assertThatThrownBy(() -> type.bind(1, timeColumn(6), schema, StructuredDuration.from(schema, 0, 0, 35, 0, 0, 0, 0, 6)))
+                .isInstanceOf(ConnectException.class)
+                .hasMessageContaining("MySQL TIME range");
     }
 
     @Test
     @DisplayName("Should explicitly truncate and round MySQL duration fractions")
     void shouldReduceMySqlDurationPrecision() {
-        final var schema = StructuredDuration.builder(9, StructuredDuration.Kind.ELAPSED_TIME).build();
+        final var schema = StructuredDuration.builder(9, StructuredDuration.Kind.DAY_TIME).build();
         final var value = StructuredDuration.from(schema, 0, 0, 0, 1, 2, 3, 123_456_789, 9);
 
         final var truncateType = configuredDurationType(TemporalPrecisionLossHandlingMode.TRUNCATE);
@@ -167,7 +187,7 @@ class StructuredTemporalTypeTest {
     @Test
     @DisplayName("Should derive MySQL time precision from Connector/J column size metadata")
     void shouldDeriveTimePrecisionFromConnectorJColumnSize() {
-        final var schema = StructuredDuration.builder(9, StructuredDuration.Kind.ELAPSED_TIME).build();
+        final var schema = StructuredDuration.builder(9, StructuredDuration.Kind.DAY_TIME).build();
         final var value = StructuredDuration.from(schema, 0, 0, 0, 1, 2, 3, 123_456_789, 9);
         final var type = configuredDurationType(TemporalPrecisionLossHandlingMode.ROUND);
 
@@ -181,7 +201,7 @@ class StructuredTemporalTypeTest {
         final var timestampSchema = StructuredTimestamp.builder(9).build();
         final var timestamp = StructuredTimestamp.from(
                 timestampSchema, 2026, 7, 17, 12, 13, 14, 123_456_789, 9);
-        final var durationSchema = StructuredDuration.builder(9, StructuredDuration.Kind.ELAPSED_TIME).build();
+        final var durationSchema = StructuredDuration.builder(9, StructuredDuration.Kind.DAY_TIME).build();
         final var duration = StructuredDuration.from(durationSchema, 0, 0, 0, 1, 2, 3, 123_456_789, 9);
 
         assertThat(configuredTimestampType(TemporalPrecisionLossHandlingMode.ROUND)
@@ -309,7 +329,7 @@ class StructuredTemporalTypeTest {
         return TargetTemporalCapabilities.defaults(6, 6)
                 .withDateRange(TemporalRange.dateYears(1000, 9999))
                 .withTimestampRange(datetimeRange)
-                .withDurationKinds(java.util.EnumSet.of(StructuredDuration.Kind.ELAPSED_TIME))
+                .withDurationKinds(java.util.EnumSet.of(StructuredDuration.Kind.DAY_TIME))
                 .withZeroDateSupported(true);
     }
 

@@ -110,24 +110,24 @@ public final class StructuredTemporalPreflightValidator {
     }
 
     private static StructuredDuration.Kind inferDurationKind(Struct value) {
-        final boolean hasYearMonth = value != null
-                && (nonZero(value.getInt32(StructuredTemporal.YEARS_FIELD)) || nonZero(value.getInt32(StructuredTemporal.MONTHS_FIELD)));
-        final boolean hasDayTime = value != null
-                && (nonZero(value.getInt32(StructuredTemporal.DAYS_FIELD))
-                        || nonZero(value.getInt32(StructuredTemporal.HOURS_FIELD))
-                        || nonZero(value.getInt32(StructuredTemporal.MINUTES_FIELD))
-                        || nonZero(value.getInt64(StructuredTemporal.SECONDS_FIELD))
-                        || StructuredTemporalSupport.getPicoseconds(value) != 0);
-        if (hasYearMonth && hasDayTime) {
-            return StructuredDuration.Kind.MIXED;
-        }
-        if (hasYearMonth) {
-            return StructuredDuration.Kind.YEAR_MONTH;
-        }
-        if (value != null && nonZero(value.getInt32(StructuredTemporal.DAYS_FIELD))) {
+        if (value == null) {
             return StructuredDuration.Kind.DAY_TIME;
         }
-        return StructuredDuration.Kind.ELAPSED_TIME;
+        final boolean hasYearMonth = nonZero(value.getInt32(StructuredTemporal.YEARS_FIELD))
+                || nonZero(value.getInt32(StructuredTemporal.MONTHS_FIELD));
+        final boolean hasDays = nonZero(value.getInt32(StructuredTemporal.DAYS_FIELD));
+        final boolean hasTime = nonZero(value.getInt32(StructuredTemporal.HOURS_FIELD))
+                || nonZero(value.getInt32(StructuredTemporal.MINUTES_FIELD))
+                || nonZero(value.getInt64(StructuredTemporal.SECONDS_FIELD))
+                || StructuredTemporalSupport.getPicoseconds(value) != 0;
+        if (hasYearMonth && !hasDays && !hasTime) {
+            return StructuredDuration.Kind.YEAR_MONTH;
+        }
+        if (!hasYearMonth && !hasDays) {
+            return StructuredDuration.Kind.DAY_TIME;
+        }
+        // Days alone cannot tell a day of exactly 24 hours from a calendar day, so only the most general kind is safe
+        return StructuredDuration.Kind.MONTH_DAY_TIME;
     }
 
     public static ReducedFraction reduceFraction(long picoseconds, int targetPrecision, TemporalPrecisionLossHandlingMode handlingMode) {
@@ -179,10 +179,9 @@ public final class StructuredTemporalPreflightValidator {
                 || nonZero(value.getInt64(StructuredTemporal.SECONDS_FIELD))
                 || StructuredTemporalSupport.getPicoseconds(value) != 0;
         final boolean invalid = switch (kind) {
-            case ELAPSED_TIME -> hasYearMonth || hasDays;
             case YEAR_MONTH -> hasDays || hasTime;
             case DAY_TIME -> hasYearMonth;
-            case MIXED -> false;
+            case MONTH_DAY_TIME -> false;
         };
         if (invalid) {
             throw new ConnectException(String.format(

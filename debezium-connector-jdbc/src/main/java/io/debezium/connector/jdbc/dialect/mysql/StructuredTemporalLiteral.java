@@ -85,11 +85,12 @@ final class StructuredTemporalLiteral {
     static String duration(Struct value, int precision, TemporalPrecisionLossHandlingMode handlingMode) {
         requireZero(value, StructuredTemporal.YEARS_FIELD);
         requireZero(value, StructuredTemporal.MONTHS_FIELD);
-        requireZero(value, StructuredTemporal.DAYS_FIELD);
         StructuredTemporalPreflightValidator.reduceFraction(
                 longValue(value, StructuredTemporal.PICOSECONDS_FIELD), precision, handlingMode);
 
-        BigDecimal totalSeconds = BigDecimal.valueOf(intValue(value, StructuredTemporal.HOURS_FIELD)).multiply(BigDecimal.valueOf(3_600))
+        // A day-time duration has days of exactly 24 hours, which MySQL TIME represents as hours
+        BigDecimal totalSeconds = BigDecimal.valueOf(intValue(value, StructuredTemporal.DAYS_FIELD)).multiply(BigDecimal.valueOf(86_400))
+                .add(BigDecimal.valueOf(intValue(value, StructuredTemporal.HOURS_FIELD)).multiply(BigDecimal.valueOf(3_600)))
                 .add(BigDecimal.valueOf(intValue(value, StructuredTemporal.MINUTES_FIELD)).multiply(BigDecimal.valueOf(60)))
                 .add(BigDecimal.valueOf(longValue(value, StructuredTemporal.SECONDS_FIELD)))
                 .add(BigDecimal.valueOf(longValue(value, StructuredTemporal.PICOSECONDS_FIELD), StructuredTemporal.MAX_FRACTIONAL_SECOND_PRECISION));

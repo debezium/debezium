@@ -229,7 +229,7 @@ public class PostgresValueConverter extends JdbcValueConverters {
                 return Bits.builder(column.length());
             case PgOid.INTERVAL:
                 if (temporalPrecisionMode == TemporalPrecisionMode.STRUCTURED) {
-                    return StructuredDuration.builder(getTimePrecision(column), StructuredDuration.Kind.MIXED);
+                    return StructuredDuration.builder(getTimePrecision(column), StructuredDuration.Kind.MONTH_DAY_TIME);
                 }
                 return intervalMode == IntervalHandlingMode.STRING ? Interval.builder() : MicroDuration.builder();
             case PgOid.TIMESTAMPTZ:

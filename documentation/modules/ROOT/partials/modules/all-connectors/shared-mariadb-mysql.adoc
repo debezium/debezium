@@ -2351,7 +2351,7 @@ The {connector-name} connector represents temporal values as Kafka Connect struc
 This mode can preserve zero and invalid temporal components without converting them to epoch-based numeric values.
 Structured temporal values store fractional seconds in an optional `picoseconds` `INT64` field.
 The optional `precision` value field and the `io.debezium.time.precision` schema parameter record the source column's fractional-second precision.
-For a `TIME` column, the `io.debezium.time.duration.kind` schema parameter is `elapsed-time`.
+For a `TIME` column, the `io.debezium.time.duration.kind` schema parameter is `day-time`.
 The {prodname} JDBC sink connector can consume these structured temporal schemas directly and maps them according to the target database dialect.
 +
 .Mappings when `time.precision.mode=structured`
@@ -2369,7 +2369,7 @@ Contains `year`, `month`, and `day` fields.
 |`STRUCT`
 a|`io.debezium.time.StructuredDuration`
 
-Contains signed `years`, `months`, `days`, `hours`, `minutes`, `seconds`, `picoseconds`, and optional `precision` fields. The duration kind is `elapsed-time`.
+Contains signed `years`, `months`, `days`, `hours`, `minutes`, `seconds`, `picoseconds`, and optional `precision` fields. The duration kind is `day-time`.
 
 |`DATETIME[(M)]`
 |`STRUCT`

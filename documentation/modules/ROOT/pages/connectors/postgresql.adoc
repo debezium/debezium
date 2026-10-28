@@ -1947,7 +1947,7 @@ This mode avoids flattening high-precision temporal values into a single epoch-b
 PostgreSQL `infinity` and `-infinity` values are represented by the `specialValue` field instead of by finite sentinel timestamps.
 Structured temporal values store fractional seconds in an optional `picoseconds` `INT64` field.
 The optional `precision` value field and the `io.debezium.time.precision` schema parameter record the source column's fractional-second precision.
-For an `INTERVAL` column, the `io.debezium.time.duration.kind` schema parameter is `mixed` because PostgreSQL intervals can combine year-month and day-time components.
+For an `INTERVAL` column, the `io.debezium.time.duration.kind` schema parameter is `month-day-time` because PostgreSQL intervals keep months, days, and time as independent counters, and a month or a day does not have a fixed length.
 To keep Avro named-record definitions with different metadata distinct, structured temporal schema names include their precision and, for durations, their duration kind.
 The {prodname} JDBC sink connector can consume these structured temporal schemas directly and maps them according to the target database dialect.
 
