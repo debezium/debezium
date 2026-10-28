@@ -416,9 +416,8 @@ public class TableSchemaBuilder {
                 .orElse(valueConverterProvider.schemaBuilder(column));
 
         if (fieldBuilder != null) {
-            if (mapper != null || column.comment() != null) {
-                fieldBuilder = StructuredTemporal.qualifySchemaBuilderWithSourceColumn(fieldBuilder, column.name());
-            }
+            // Always qualify structured temporal schemas, so that column metadata such as comments never changes the name
+            fieldBuilder = StructuredTemporal.qualifySchemaBuilderWithSourceColumn(fieldBuilder, column.name());
             if (mapper != null) {
                 // Let the mapper add properties to the schema ...
                 mapper.alterFieldSchema(column, fieldBuilder);

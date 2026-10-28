@@ -703,6 +703,34 @@ public class TableSchemaBuilderTest {
     }
 
     @Test
+    public void shouldQualifyStructuredTemporalSchemaRegardlessOfColumnMetadata() {
+        final TableId tableId = new TableId("catalog", "schema", "timestamps");
+        final JdbcValueConverters converters = new JdbcValueConverters(
+                null, TemporalPrecisionMode.STRUCTURED, ZoneOffset.UTC, null, null, null);
+        final ColumnEditor columnBuilder = Column.editor().name("created_at")
+                .type("TIMESTAMP").jdbcType(Types.TIMESTAMP).length(6)
+                .optional(true);
+        final Column counter = Column.editor().name("counter").type("INTEGER").jdbcType(Types.INTEGER).optional(true).create();
+
+        final Schema withoutComment = createTableSchema(converters, tableId, columnBuilder.create(), counter).valueSchema();
+        final Schema withComment = createTableSchema(converters, tableId, columnBuilder.comment("creation time").create(), counter).valueSchema();
+
+        // Adding a column comment must not rename the Avro record of the structured temporal schema
+        assertThat(withoutComment.field("created_at").schema().name())
+                .isEqualTo(StructuredTemporal.schemaNameWithSourceColumn(StructuredTimestamp.schemaName(6), "created_at"))
+                .isEqualTo(withComment.field("created_at").schema().name());
+        assertThat(withComment.field("created_at").schema().doc()).isEqualTo("creation time");
+        assertThat(withoutComment.field("counter").schema().name()).isNull();
+    }
+
+    private TableSchema createTableSchema(JdbcValueConverters converters, TableId tableId, Column... columns) {
+        final Table table = Table.editor().tableId(tableId).addColumns(columns).create();
+        return new TableSchemaBuilder(converters, null, adjuster, customConverterRegistry,
+                SchemaBuilder.struct().build(), defaultFieldNamer, false, EventConvertingFailureHandlingMode.FAIL)
+                .create(topicNamingStrategy, table, null, null, null);
+    }
+
+    @Test
     @FixFor("DBZ-6641")
     public void shouldUseDefaultOrCustomTopicNamingStrategySchemaRecordPrefix() {
         // table id with catalog and SchemaTopicNamingStrategy
