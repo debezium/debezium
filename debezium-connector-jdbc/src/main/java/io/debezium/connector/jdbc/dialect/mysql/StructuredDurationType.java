@@ -44,7 +44,7 @@ public class StructuredDurationType extends AbstractTemporalType {
     @Override
     public String getDefaultValueBinding(Schema schema, Object value) {
         return "'" + StructuredTemporalLiteral.duration(
-                requireStruct(value), getSchemaTimePrecision(schema), getPrecisionLossHandlingMode()) + "'";
+                requireStruct(value), getSchemaTimePrecision(schema), getPrecisionLossHandlingMode(), isFractionAllowedAtTimeLimit()) + "'";
     }
 
     @Override
@@ -53,7 +53,7 @@ public class StructuredDurationType extends AbstractTemporalType {
             return List.of(new ValueBindDescriptor(index, null));
         }
         return List.of(new ValueBindDescriptor(index, StructuredTemporalLiteral.duration(
-                requireStruct(value), getSchemaTimePrecision(schema), getPrecisionLossHandlingMode()), Types.VARCHAR));
+                requireStruct(value), getSchemaTimePrecision(schema), getPrecisionLossHandlingMode(), isFractionAllowedAtTimeLimit()), Types.VARCHAR));
     }
 
     @Override
@@ -66,7 +66,7 @@ public class StructuredDurationType extends AbstractTemporalType {
         StructuredTemporalPreflightValidator.validateDuration(schema, struct, capabilities);
         StructuredTemporalPreflightValidator.validatePrecision(column, struct, targetTimePrecision(column), getPrecisionLossHandlingMode());
         StructuredTemporalLiteral.duration(struct,
-                targetTimePrecision(column), getPrecisionLossHandlingMode());
+                targetTimePrecision(column), getPrecisionLossHandlingMode(), isFractionAllowedAtTimeLimit());
     }
 
     @Override
@@ -77,7 +77,7 @@ public class StructuredDurationType extends AbstractTemporalType {
         validate(column, schema, value);
         final int precision = targetTimePrecision(column);
         return List.of(new ValueBindDescriptor(index,
-                StructuredTemporalLiteral.duration(requireStruct(value), precision, getPrecisionLossHandlingMode()), Types.VARCHAR));
+                StructuredTemporalLiteral.duration(requireStruct(value), precision, getPrecisionLossHandlingMode(), isFractionAllowedAtTimeLimit()), Types.VARCHAR));
     }
 
     private int getSchemaTimePrecision(Schema schema) {
@@ -100,5 +100,15 @@ public class StructuredDurationType extends AbstractTemporalType {
 
     protected int getTimeColumnSizeWithoutFraction() {
         return 8;
+    }
+
+    /**
+     * Returns whether the target {@code TIME} range includes fractional seconds beyond {@code 838:59:59}.
+     * MySQL rejects {@code 838:59:59.5}, or truncates it to {@code 838:59:59} without strict mode.
+     *
+     * @return true if the target accepts fractional seconds at the range limit
+     */
+    protected boolean isFractionAllowedAtTimeLimit() {
+        return false;
     }
 }
