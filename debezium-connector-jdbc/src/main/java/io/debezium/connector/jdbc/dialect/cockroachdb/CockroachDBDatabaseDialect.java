@@ -40,8 +40,8 @@ public class CockroachDBDatabaseDialect extends PostgresDatabaseDialect {
             Boundary.timestamp(294_276, 12, 31, 23, 59, 59, 999_999_000_000L));
 
     @Override
-    public TargetTemporalCapabilities getTargetTemporalCapabilities() {
-        return super.getTargetTemporalCapabilities()
+    protected TargetTemporalCapabilities createTargetTemporalCapabilities() {
+        return super.createTargetTemporalCapabilities()
                 .withTimestampRange(TIMESTAMP_RANGE)
                 .withTimestampInfinitySupported(false);
     }

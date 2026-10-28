@@ -113,13 +113,13 @@ final class StructuredTemporalLiteral {
         final int seconds = remaining.intValue();
         final int fraction = remaining.remainder(BigDecimal.ONE).movePointRight(precision).intValue();
 
-        final String suffix = precision == 0 ? "" : "." + String.format("%0" + precision + "d", fraction);
+        final String suffix = StructuredTemporalSupport.fixedFraction(fraction, precision);
         return String.format("%s%03d:%02d:%02d%s", negative ? "-" : "", hours, minutes, seconds, suffix);
     }
 
     private static String formatTimestamp(int year, int month, int day, int hour, int minute, int second, long picoseconds, int precision) {
         final long fraction = precision == 0 ? 0 : picoseconds / (long) Math.pow(10, 12 - precision);
-        final String suffix = precision == 0 ? "" : "." + String.format("%0" + precision + "d", fraction);
+        final String suffix = StructuredTemporalSupport.fixedFraction(fraction, precision);
         return String.format("%04d-%02d-%02d %02d:%02d:%02d%s", year, month, day, hour, minute, second, suffix);
     }
 

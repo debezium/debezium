@@ -58,7 +58,7 @@ import io.debezium.util.Strings;
 public class StarRocksDatabaseDialect extends GeneralDatabaseDialect {
 
     @Override
-    public TargetTemporalCapabilities getTargetTemporalCapabilities() {
+    protected TargetTemporalCapabilities createTargetTemporalCapabilities() {
         return TargetTemporalCapabilities.defaults(12, getMaxTimestampPrecision())
                 .withDateRange(TemporalRange.dateYears(0, 9999))
                 .withTimestampRange(TemporalRange.timestampYears(0, 9999))

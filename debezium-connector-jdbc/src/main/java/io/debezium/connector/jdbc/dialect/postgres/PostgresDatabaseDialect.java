@@ -45,7 +45,7 @@ import io.debezium.sink.column.ColumnDescriptor;
 public class PostgresDatabaseDialect extends GeneralDatabaseDialect {
 
     @Override
-    public TargetTemporalCapabilities getTargetTemporalCapabilities() {
+    protected TargetTemporalCapabilities createTargetTemporalCapabilities() {
         return TargetTemporalCapabilities.defaults(getMaxTimePrecision(), getMaxTimestampPrecision())
                 .withDateRange(TemporalRange.dateYears(-4712, 5_874_897))
                 .withTimestampRange(TemporalRange.timestampYears(-4712, 294_276))

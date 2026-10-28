@@ -42,9 +42,10 @@ class StructuredTemporalTypeTest {
 
         assertThat(capabilities.zeroDateSupported()).isFalse();
         assertThat(capabilities.dateRange().minimum()).isEqualTo(Boundary.date(1000, 1, 1));
-        assertThat(capabilities.timestampRange().maximum())
+        // The ranges are truncated to the microsecond precision of SingleStore when they are applied
+        assertThat(capabilities.timestampRange().atPrecision(6).maximum())
                 .isEqualTo(Boundary.timestamp(9999, 12, 31, 23, 59, 59, 999_999_000_000L));
-        assertThat(capabilities.targetTimestampRange(timestampColumn("timestamp")).maximum())
+        assertThat(capabilities.targetTimestampRange(timestampColumn("timestamp")).atPrecision(6).maximum())
                 .isEqualTo(Boundary.timestamp(2038, 1, 19, 3, 14, 7, 999_999_000_000L));
     }
 

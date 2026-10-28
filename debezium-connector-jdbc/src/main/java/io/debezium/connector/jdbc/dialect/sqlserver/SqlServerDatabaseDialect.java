@@ -44,7 +44,7 @@ public class SqlServerDatabaseDialect extends GeneralDatabaseDialect {
             Boundary.timestamp(2079, 6, 6, 23, 59, 0, 0));
 
     @Override
-    public TargetTemporalCapabilities getTargetTemporalCapabilities() {
+    protected TargetTemporalCapabilities createTargetTemporalCapabilities() {
         return TargetTemporalCapabilities.defaults(getMaxTimePrecision(), getMaxTimestampPrecision())
                 .withDateRange(TemporalRange.dateYears(1, 9999))
                 .withTimestampRange(TemporalRange.timestampYears(1, 9999))

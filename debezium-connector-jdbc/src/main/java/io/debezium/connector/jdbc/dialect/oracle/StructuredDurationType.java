@@ -192,7 +192,7 @@ public class StructuredDurationType extends AbstractTemporalType {
 
         final int wholeSeconds = adjustedSeconds.intValue();
         final int fraction = adjustedSeconds.remainder(BigDecimal.ONE).movePointRight(precision).intValue();
-        final String suffix = precision == 0 ? "" : "." + String.format("%0" + precision + "d", fraction);
+        final String suffix = StructuredTemporalSupport.fixedFraction(fraction, precision);
         return String.format("%s%d %02d:%02d:%02d%s",
                 negative ? "-" : "",
                 days,
