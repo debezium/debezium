@@ -34,7 +34,7 @@ class ResumeTokenIT extends AbstractMongoConnectorIT {
 
     @ParameterizedTest
     @EnumSource(JsonSerializationMode.class)
-    @FixFor("debezium/dbz#718")
+    @FixFor({ "debezium/dbz#718", "debezium/dbz#2549" })
     void shouldExposeCrudTokensAndResumeFromThePayload(JsonSerializationMode mode) throws InterruptedException {
         configure(mode, 0);
         try (var client = connect()) {
@@ -69,8 +69,11 @@ class ResumeTokenIT extends AbstractMongoConnectorIT {
                 final var deleted = deletes.get(0);
                 final var tombstone = deletes.get(1);
                 assertThat(((Struct) deleted.value()).getString(Envelope.FieldName.OPERATION)).isEqualTo(Operation.DELETE.code());
-                final var deleteToken = assertResumeTokenMatchesEvent(deleted, readChangeStreamEvent(observer));
+                final var deleteToken = assertPayloadResumeTokenMatchesEvent(deleted, readChangeStreamEvent(observer));
+                // The tombstone completes the delete event, so the offset of the delete still resumes before the event
+                assertThat(offsetResumeToken(deleted)).isEqualTo(replaceToken);
                 assertThat(tombstone.value()).isNull();
+                assertThat(offsetResumeToken(tombstone)).isEqualTo(deleteToken);
                 assertThat(List.of(createToken, updateToken, replaceToken, deleteToken)).doesNotHaveDuplicates();
                 assertThat(updated.key()).isEqualTo(created.key());
                 assertThat(replaced.key()).isEqualTo(created.key());
@@ -149,12 +152,20 @@ class ResumeTokenIT extends AbstractMongoConnectorIT {
     }
 
     private static BsonDocument assertResumeTokenMatchesEvent(SourceRecord record, ChangeStreamDocument<BsonDocument> event) {
+        final var payloadToken = assertPayloadResumeTokenMatchesEvent(record, event);
+        assertThat(offsetResumeToken(record)).isEqualTo(payloadToken);
+        return payloadToken;
+    }
+
+    private static BsonDocument assertPayloadResumeTokenMatchesEvent(SourceRecord record, ChangeStreamDocument<BsonDocument> event) {
         final var source = ((Struct) record.value()).getStruct(Envelope.FieldName.SOURCE);
         final var payloadToken = BsonDocument.parse(source.getString(SourceInfo.RESUME_TOKEN));
-        final var offsetToken = ResumeTokens.fromBase64((String) record.sourceOffset().get(SourceInfo.RESUME_TOKEN));
         assertThat(payloadToken).isEqualTo(event.getResumeToken());
-        assertThat(offsetToken).isEqualTo(payloadToken);
         return payloadToken;
+    }
+
+    private static BsonDocument offsetResumeToken(SourceRecord record) {
+        return ResumeTokens.fromBase64((String) record.sourceOffset().get(SourceInfo.RESUME_TOKEN));
     }
 
 }

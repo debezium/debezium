@@ -8,6 +8,7 @@ package io.debezium.pipeline.txmetadata;
 import static io.debezium.util.Loggings.maybeRedactSensitiveData;
 
 import java.time.Instant;
+import java.util.Map;
 import java.util.Objects;
 
 import org.apache.kafka.connect.data.Schema;
@@ -89,21 +90,25 @@ public class TransactionMonitor {
             // commit transaction
             if (transactionContext.isTransactionInProgress()) {
                 LOGGER.trace("Transaction was in progress, executing implicit transaction commit");
-                endTransaction(partition, offset, eventMetadataProvider.getEventTimestamp(source, offset, key, value));
+                endTransaction(partition, offset, offset.getOffsetForIncompleteEvent(), eventMetadataProvider.getEventTimestamp(source, offset, key, value));
                 transactionContext.endTransaction();
+                offset.updateTransactionContextForIncompleteEvent();
             }
             return;
         }
 
         if (!transactionContext.isTransactionInProgress()) {
             transactionContext.beginTransaction(transactionInfo);
-            beginTransaction(partition, offset, eventMetadataProvider.getEventTimestamp(source, offset, key, value));
+            offset.updateTransactionContextForIncompleteEvent();
+            beginTransaction(partition, offset, offset.getOffsetForIncompleteEvent(), eventMetadataProvider.getEventTimestamp(source, offset, key, value));
         }
         else if (!transactionContext.getTransactionId().equals(txId)) {
-            endTransaction(partition, offset, eventMetadataProvider.getEventTimestamp(source, offset, key, value));
+            endTransaction(partition, offset, offset.getOffsetForIncompleteEvent(), eventMetadataProvider.getEventTimestamp(source, offset, key, value));
             transactionContext.endTransaction();
+            offset.updateTransactionContextForIncompleteEvent();
             transactionContext.beginTransaction(transactionInfo);
-            beginTransaction(partition, offset, eventMetadataProvider.getEventTimestamp(source, offset, key, value));
+            offset.updateTransactionContextForIncompleteEvent();
+            beginTransaction(partition, offset, offset.getOffsetForIncompleteEvent(), eventMetadataProvider.getEventTimestamp(source, offset, key, value));
         }
         transactionEvent(offset, source, value);
     }
@@ -113,9 +118,13 @@ public class TransactionMonitor {
             return;
         }
         if (offset.getTransactionContext().isTransactionInProgress()) {
-            endTransaction(partition, offset, timestamp);
+            final Map<String, ?> sourceOffset = offset.getOffset();
+            endTransaction(partition, offset, sourceOffset, timestamp);
+            offset.markOffsetEmitted(sourceOffset);
         }
         offset.getTransactionContext().endTransaction();
+        // The records that do not complete the next source event resume after the ended transaction
+        offset.updateTransactionContextForIncompleteEvent();
     }
 
     public void transactionStartedEvent(Partition partition, TransactionInfo transactionInfo, OffsetContext offset, Instant timestamp) throws InterruptedException {
@@ -130,7 +139,9 @@ public class TransactionMonitor {
             return;
         }
         transactionContext.beginTransaction(transactionInfo);
-        beginTransaction(partition, offset, timestamp);
+        final Map<String, ?> sourceOffset = offset.getOffset();
+        beginTransaction(partition, offset, sourceOffset, timestamp);
+        offset.markOffsetEmitted(sourceOffset);
     }
 
     protected Struct prepareTxKey(OffsetContext offsetContext) {
@@ -163,17 +174,19 @@ public class TransactionMonitor {
         value.put(Envelope.FieldName.TRANSACTION, txStruct);
     }
 
-    private void beginTransaction(Partition partition, OffsetContext offsetContext, Instant timestamp) throws InterruptedException {
+    private void beginTransaction(Partition partition, OffsetContext offsetContext, Map<String, ?> sourceOffset, Instant timestamp)
+            throws InterruptedException {
         final Struct key = prepareTxKey(offsetContext);
         final Struct value = prepareTxBeginValue(offsetContext, timestamp);
-        sender.accept(new SourceRecord(partition.getSourcePartition(), offsetContext.getOffset(),
+        sender.accept(new SourceRecord(partition.getSourcePartition(), sourceOffset,
                 topicName, null, key.schema(), key, value.schema(), value));
     }
 
-    private void endTransaction(Partition partition, OffsetContext offsetContext, Instant timestamp) throws InterruptedException {
+    private void endTransaction(Partition partition, OffsetContext offsetContext, Map<String, ?> sourceOffset, Instant timestamp)
+            throws InterruptedException {
         final Struct key = prepareTxKey(offsetContext);
         final Struct value = prepareTxEndValue(offsetContext, timestamp);
-        sender.accept(new SourceRecord(partition.getSourcePartition(), offsetContext.getOffset(),
+        sender.accept(new SourceRecord(partition.getSourcePartition(), sourceOffset,
                 topicName, null, key.schema(), key, value.schema(), value));
     }
 }

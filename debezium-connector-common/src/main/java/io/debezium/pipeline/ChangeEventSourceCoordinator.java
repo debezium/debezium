@@ -279,6 +279,8 @@ public class ChangeEventSourceCoordinator<P extends Partition, O extends OffsetC
             }
             finally {
                 eventDispatcher.setEventListener(streamingMetrics);
+                // Streaming resumes from the offset after the snapshot rather than from an offset emitted during it
+                markResumeOffset(offsetContext);
                 try {
                     resumeStreaming(partition);
                 }
@@ -355,12 +357,27 @@ public class ChangeEventSourceCoordinator<P extends Partition, O extends OffsetC
         }
     }
 
+    /**
+     * Records the offset from which streaming starts or resumes, so that the records that do not complete the first
+     * source event can be replayed from it before any record has been emitted.
+     */
+    private static void markResumeOffset(OffsetContext offsetContext) {
+        if (offsetContext == null) {
+            return;
+        }
+        final Map<String, ?> offset = offsetContext.getOffset();
+        if (offset != null && !offset.isEmpty()) {
+            offsetContext.markOffsetEmitted(offset);
+        }
+    }
+
     protected void initStreamEvents(P partition, O offsetContext) throws InterruptedException {
 
         streamingSource = changeEventSourceFactory.getStreamingChangeEventSource();
         eventDispatcher.setEventListener(streamingMetrics);
         streamingConnected(true);
         streamingSource.init(offsetContext);
+        markResumeOffset(offsetContext != null ? offsetContext : streamingSource.getOffsetContext());
         registerOffsetActivityMonitor();
 
         getSignalProcessor(previousOffsets).ifPresent(s -> s.setContext(Offsets.of(partition, streamingSource.getOffsetContext())));
