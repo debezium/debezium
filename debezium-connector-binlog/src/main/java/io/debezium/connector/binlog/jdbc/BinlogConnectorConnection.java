@@ -349,6 +349,28 @@ public abstract class BinlogConnectorConnection extends JdbcConnection {
     }
 
     /**
+     * Determines whether the database server logs partial JSON updates, i.e. {@code binlog_row_value_options='PARTIAL_JSON'}.
+     *
+     * @return {@code true} if {@code binlog_row_value_options} is set to {@code PARTIAL_JSON}, {@code false} otherwise
+     *         (including on servers that do not expose the variable, e.g. MariaDB)
+     */
+    public boolean isBinlogRowValueOptionsPartialJson() {
+        try {
+            final String valueOptions = queryAndMap("SHOW GLOBAL VARIABLES LIKE 'binlog_row_value_options'", rs -> {
+                if (rs.next()) {
+                    return rs.getString(2);
+                }
+                return "";
+            });
+            LOGGER.debug("binlog_row_value_options={}", valueOptions);
+            return "PARTIAL_JSON".equalsIgnoreCase(valueOptions);
+        }
+        catch (SQLException e) {
+            throw new DebeziumException("Unexpected error while connecting to the database and looking at BINLOG_ROW_VALUE_OPTIONS: ", e);
+        }
+    }
+
+    /**
      * Determines whether the binlog carries FULL table metadata, i.e. {@code binlog_row_metadata='FULL'}.
      * When enabled, every {@code TABLE_MAP} event includes column names, types, charsets, enum/set values
      * and the primary key, which is required by the binlog-metadata-based schema mode.

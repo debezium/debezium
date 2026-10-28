@@ -80,6 +80,8 @@ import io.debezium.config.CommonConnectorConfig.EventProcessingFailureHandlingMo
 import io.debezium.config.Configuration;
 import io.debezium.connector.binlog.BinlogConnectorConfig.SecureConnectionMode;
 import io.debezium.connector.binlog.event.EventDataDeserializationExceptionData;
+import io.debezium.connector.binlog.event.PartialUpdateRowsEventData;
+import io.debezium.connector.binlog.event.PartialUpdateRowsEventDataDeserializer;
 import io.debezium.connector.binlog.event.RowDeserializers;
 import io.debezium.connector.binlog.event.StopEventDataDeserializer;
 import io.debezium.connector.binlog.event.TransactionPayloadDeserializer;
@@ -226,6 +228,7 @@ public abstract class BinlogStreamingChangeEventSource<P extends BinlogPartition
         if (!skippedOperations.contains(Envelope.Operation.UPDATE)) {
             eventHandlers.put(EventType.UPDATE_ROWS, (event) -> handleUpdate(partition, effectiveOffsetContext, event));
             eventHandlers.put(EventType.EXT_UPDATE_ROWS, (event) -> handleUpdate(partition, effectiveOffsetContext, event));
+            eventHandlers.put(EventType.PARTIAL_UPDATE_ROWS_EVENT, (event) -> handlePartialUpdate(partition, effectiveOffsetContext, event));
         }
 
         if (!skippedOperations.contains(Envelope.Operation.DELETE)) {
@@ -598,6 +601,7 @@ public abstract class BinlogStreamingChangeEventSource<P extends BinlogPartition
         eventDeserializer.setEventDataDeserializer(EventType.EXT_UPDATE_ROWS,
                 new RowDeserializers.UpdateRowsDeserializer(
                         tableMapEventByTableId, eventDeserializationFailureHandlingMode, preserveInvalidTemporalValues).setMayContainExtraInformation(true));
+        eventDeserializer.setEventDataDeserializer(EventType.PARTIAL_UPDATE_ROWS_EVENT, new PartialUpdateRowsEventDataDeserializer());
         eventDeserializer.setEventDataDeserializer(EventType.EXT_DELETE_ROWS,
                 new RowDeserializers.DeleteRowsDeserializer(
                         tableMapEventByTableId, eventDeserializationFailureHandlingMode, preserveInvalidTemporalValues).setMayContainExtraInformation(true));
@@ -1096,6 +1100,52 @@ public abstract class BinlogStreamingChangeEventSource<P extends BinlogPartition
                         new BinlogChangeRecordEmitter<>(partition, offsetContext, clock, Envelope.Operation.UPDATE, row.getKey(), row.getValue(),
                                 connectorConfig)),
                 (tableId, row) -> validateChangeEventWithTable(schema.tableFor(tableId), row.getKey(), row.getValue()));
+    }
+
+    /**
+     * Handle the supplied event with a {@link PartialUpdateRowsEventData}, which MySQL writes for every update when
+     * {@code binlog_row_value_options=PARTIAL_JSON}. The connector can't capture this event, so for a captured table
+     * the event is handled according to the event processing failure handling mode.
+     *
+     * @param partition the partition in which the even occurred
+     * @param event the database change data event to be processed; may not be null
+     */
+    protected void handlePartialUpdate(P partition, O offsetContext, Event event) {
+        final PartialUpdateRowsEventData data = unwrapData(event);
+        final TableId tableId = schema.getTableId(data.getTableId());
+        if (tableId == null) {
+            LOGGER.debug("Skipping partial update event for table number {} that isn't captured", data.getTableId());
+            return;
+        }
+
+        metrics.onErroneousEvent(partition, "source = " + tableId + ", event " + event, Envelope.Operation.UPDATE);
+        final EventHeaderV4 eventHeader = event.getHeader();
+
+        if (eventDeserializationFailureHandlingMode == EventProcessingFailureHandlingMode.FAIL) {
+            LOGGER.error(
+                    "Encountered update event at offset {} for table {} that was written with binlog_row_value_options=PARTIAL_JSON, which this connector can't capture. "
+                            + "Set binlog_row_value_options to an empty value on the database server and reconnect the sessions that update the table.{}"
+                            + "Use the mysqlbinlog tool to view the problematic event: mysqlbinlog --start-position={} --stop-position={} --verbose {}",
+                    offsetContext.getOffset(), tableId, System.lineSeparator(), eventHeader.getPosition(),
+                    eventHeader.getNextPosition(), offsetContext.getSource().binlogFilename());
+            throw new DebeziumException("Encountered update event for table " + tableId
+                    + " that was written with binlog_row_value_options=PARTIAL_JSON, which this connector can't capture");
+        }
+        else if (eventDeserializationFailureHandlingMode == EventProcessingFailureHandlingMode.WARN) {
+            LOGGER.warn(
+                    "Encountered update event at offset {} for table {} that was written with binlog_row_value_options=PARTIAL_JSON, which this connector can't capture. "
+                            + "Set binlog_row_value_options to an empty value on the database server and reconnect the sessions that update the table.{}"
+                            + "The event will be ignored.{}"
+                            + "Use the mysqlbinlog tool to view the problematic event: mysqlbinlog --start-position={} --stop-position={} --verbose {}",
+                    offsetContext.getOffset(), tableId, System.lineSeparator(), System.lineSeparator(),
+                    eventHeader.getPosition(), eventHeader.getNextPosition(), offsetContext.getSource().binlogFilename());
+        }
+        else {
+            LOGGER.debug(
+                    "Encountered update event at offset {} for table {} that was written with binlog_row_value_options=PARTIAL_JSON, which this connector can't capture. "
+                            + "The event will be ignored.",
+                    offsetContext.getOffset(), tableId);
+        }
     }
 
     /**
