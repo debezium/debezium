@@ -26,6 +26,7 @@ import java.util.function.BiConsumer;
 import java.util.function.BiFunction;
 import java.util.function.BooleanSupplier;
 import java.util.function.Consumer;
+import java.util.function.DoubleSupplier;
 import java.util.function.Function;
 import java.util.function.IntSupplier;
 import java.util.function.LongSupplier;
@@ -1316,6 +1317,28 @@ public interface Configuration {
     }
 
     /**
+     * Get the double value associated with the given key, using the given supplier to obtain a default value if there is no such
+     * key-value pair.
+     *
+     * @param key the key for the configuration property
+     * @param defaultValueSupplier the supplier for the default value; may be null
+     * @return the double value, or null if the key is null, there is no such key-value pair in the configuration, the
+     *         {@code defaultValueSupplier} reference is null, or there is a key-value pair in the configuration but the value
+     *         could not be parsed as a double
+     */
+    default Double getDouble(String key, DoubleSupplier defaultValueSupplier) {
+        String value = getString(key);
+        if (value != null) {
+            try {
+                return Double.valueOf(value);
+            }
+            catch (NumberFormatException e) {
+            }
+        }
+        return defaultValueSupplier != null ? defaultValueSupplier.getAsDouble() : null;
+    }
+
+    /**
      * Get the boolean value associated with the given key, using the given supplier to obtain a default value if there is no such
      * key-value pair.
      *
@@ -1379,6 +1402,19 @@ public interface Configuration {
      */
     default long getLong(Field field) {
         return getLong(field.name(), () -> Long.valueOf(field.defaultValueAsString())).longValue();
+    }
+
+    /**
+     * Get the double value associated with the given field, returning the field's default value if there is no such
+     * key-value pair.
+     *
+     * @param field the field
+     * @return the double value, or the default value if there is no such key-value pair in the configuration or there is a
+     *         key-value pair in the configuration but the value could not be parsed as a double value
+     * @throws NumberFormatException if there is no name-value pair and the field has no default value
+     */
+    default double getDouble(Field field) {
+        return getDouble(field.name(), () -> Double.parseDouble(field.defaultValueAsString())).doubleValue();
     }
 
     /**
