@@ -12,6 +12,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 import java.util.stream.Collectors;
 
 import org.apache.commons.lang3.RandomStringUtils;
@@ -25,12 +26,14 @@ import org.junit.jupiter.api.Test;
 import io.debezium.config.Configuration;
 import io.debezium.connector.postgresql.connection.PostgresConnection;
 import io.debezium.data.Envelope;
+import io.debezium.data.UnavailableValuePlaceholderParameter;
 import io.debezium.data.VerifyRecord;
 import io.debezium.doc.FixFor;
 import io.debezium.jdbc.JdbcConnection;
 import io.debezium.junit.logging.LogInterceptor;
 import io.debezium.processors.AbstractReselectProcessorTest;
 import io.debezium.processors.reselect.ReselectColumnsPostProcessor;
+import io.debezium.relational.RelationalDatabaseConnectorConfig;
 
 /**
  * Postgres' integration tests for {@link ReselectColumnsPostProcessor}.
@@ -380,6 +383,134 @@ public class PostgresReselectColumnsProcessorIT extends AbstractReselectProcesso
         assertThat(after.get("data2")).isEqualTo(2);
 
         assertColumnReselectedForUnavailableValue(logInterceptor, "s1.dbz8212_toast", "data");
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2495")
+    public void testToastColumnUuidArrayReselectedWhenPlaceholderDeclaredAsSchemaParameter() throws Exception {
+        TestHelper.execute("CREATE TABLE s1.dbz2495_toast (id int primary key, data uuid[], data2 int);");
+
+        final LogInterceptor logInterceptor = getReselectLogInterceptor();
+
+        Configuration config = getConfigurationBuilder()
+                .with(PostgresConnectorConfig.TABLE_INCLUDE_LIST, "s1\\.dbz2495_toast")
+                .with(PostgresConnectorConfig.PROPAGATE_COLUMN_UNAVAILABLE_VALUE_PLACEHOLDER, "true")
+                .build();
+
+        start(PostgresConnector.class, config);
+        waitForStreamingStarted();
+
+        TestHelper.execute(
+                "INSERT INTO s1.dbz2495_toast (id,data,data2) values (1,(SELECT array_agg(gen_random_uuid()) FROM generate_series(1,1000)), 1);",
+                "UPDATE s1.dbz2495_toast SET data2 = 2 where id = 1;");
+
+        final SourceRecords sourceRecords = consumeRecordsByTopic(2);
+        final List<SourceRecord> tableRecords = sourceRecords.recordsForTopic("test_server.s1.dbz2495_toast");
+
+        // Check insert
+        SourceRecord record = tableRecords.get(0);
+        Struct after = ((Struct) record.value()).getStruct(Envelope.FieldName.AFTER);
+        VerifyRecord.isValidInsert(record, "id", 1);
+        final Object uuidValues = after.get("data");
+        assertThat((List<?>) uuidValues).hasSize(1000);
+
+        // The connector declares the exact placeholder representation of the column as a schema parameter
+        final String declared = after.schema().field("data").schema().parameters()
+                .get(UnavailableValuePlaceholderParameter.SCHEMA_PARAMETER_KEY);
+        final String placeholderUuid = UUID.nameUUIDFromBytes(
+                RelationalDatabaseConnectorConfig.DEFAULT_UNAVAILABLE_VALUE_PLACEHOLDER.getBytes()).toString();
+        assertThat(declared).isEqualTo("[\"" + placeholderUuid + "\"]");
+
+        // Check update: uuid[] placeholders are not recognized by the value-shape heuristics, so the
+        // re-selection can only have happened through the declared schema parameter
+        record = tableRecords.get(1);
+        after = ((Struct) record.value()).getStruct(Envelope.FieldName.AFTER);
+        VerifyRecord.isValidUpdate(record, "id", 1);
+        assertThat(after.get("id")).isEqualTo(1);
+        assertThat(after.get("data")).isEqualTo(uuidValues);
+        assertThat(after.get("data2")).isEqualTo(2);
+
+        assertColumnReselectedForUnavailableValue(logInterceptor, "s1.dbz2495_toast", "data");
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2495")
+    public void testGenuineArrayValueContainingThePlaceholderIsNotReselectedWhenDeclared() throws Exception {
+        TestHelper.execute("CREATE TABLE s1.dbz2495_collision (id int primary key, data text[], data2 int);");
+
+        final LogInterceptor logInterceptor = getReselectLogInterceptor();
+
+        Configuration config = getConfigurationBuilder()
+                .with(PostgresConnectorConfig.TABLE_INCLUDE_LIST, "s1\\.dbz2495_collision")
+                .with(PostgresConnectorConfig.PROPAGATE_COLUMN_UNAVAILABLE_VALUE_PLACEHOLDER, "true")
+                .build();
+
+        start(PostgresConnector.class, config);
+        waitForStreamingStarted();
+
+        // A short array, so it is never toasted, that genuinely holds the sentinel as one of its elements.
+        // The value-shape heuristics match an array as unavailable as soon as any single element equals the
+        // sentinel, so without the declared representation this row is reselected on every update.
+        final List<String> textValues = List.of("a", RelationalDatabaseConnectorConfig.DEFAULT_UNAVAILABLE_VALUE_PLACEHOLDER, "b");
+        final String data = textValues.stream().map(v -> "\"" + v + "\"").collect(Collectors.joining(", "));
+
+        TestHelper.execute(
+                "INSERT INTO s1.dbz2495_collision (id,data,data2) values (1,'{" + data + "}', 1);",
+                "UPDATE s1.dbz2495_collision SET data2 = 2 where id = 1;");
+
+        final SourceRecords sourceRecords = consumeRecordsByTopic(2);
+        final List<SourceRecord> tableRecords = sourceRecords.recordsForTopic("test_server.s1.dbz2495_collision");
+
+        SourceRecord record = tableRecords.get(1);
+        Struct after = ((Struct) record.value()).getStruct(Envelope.FieldName.AFTER);
+        VerifyRecord.isValidUpdate(record, "id", 1);
+        assertThat(after.get("data")).isEqualTo(textValues);
+        assertThat(after.get("data2")).isEqualTo(2);
+
+        // The declared representation holds a single element, so the three-element value cannot be the placeholder
+        final String declared = after.schema().field("data").schema().parameters()
+                .get(UnavailableValuePlaceholderParameter.SCHEMA_PARAMETER_KEY);
+        assertThat(declared).isEqualTo("[\"" + RelationalDatabaseConnectorConfig.DEFAULT_UNAVAILABLE_VALUE_PLACEHOLDER + "\"]");
+        assertThat(logInterceptor.containsMessage(
+                "Adding column data for table s1.dbz2495_collision to re-select list due to unavailable value placeholder.")).isFalse();
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2495")
+    public void testToastColumnTextArrayReselectedWhenPlaceholderDeclaredAsSchemaParameter() throws Exception {
+        TestHelper.execute("CREATE TABLE s1.dbz2495_text_array (id int primary key, data text[], data2 int);");
+
+        final LogInterceptor logInterceptor = getReselectLogInterceptor();
+
+        final List<String> textValues = new ArrayList<>();
+        textValues.add(RandomStringUtils.randomAlphanumeric(8192));
+        textValues.add(RandomStringUtils.randomAlphanumeric(8192));
+
+        final String data = textValues.stream().map(v -> "\"" + v + "\"").collect(Collectors.joining(", "));
+
+        Configuration config = getConfigurationBuilder()
+                .with(PostgresConnectorConfig.TABLE_INCLUDE_LIST, "s1\\.dbz2495_text_array")
+                .with(PostgresConnectorConfig.PROPAGATE_COLUMN_UNAVAILABLE_VALUE_PLACEHOLDER, "true")
+                .build();
+
+        start(PostgresConnector.class, config);
+        waitForStreamingStarted();
+
+        TestHelper.execute(
+                "INSERT INTO s1.dbz2495_text_array (id,data,data2) values (1,'{" + data + "}', 1);",
+                "UPDATE s1.dbz2495_text_array SET data2 = 2 where id = 1;");
+
+        final SourceRecords sourceRecords = consumeRecordsByTopic(2);
+        final List<SourceRecord> tableRecords = sourceRecords.recordsForTopic("test_server.s1.dbz2495_text_array");
+
+        // A type the heuristics already recognize keeps working through the declared representation
+        SourceRecord record = tableRecords.get(1);
+        Struct after = ((Struct) record.value()).getStruct(Envelope.FieldName.AFTER);
+        VerifyRecord.isValidUpdate(record, "id", 1);
+        assertThat(after.get("data")).isEqualTo(textValues);
+        assertThat(after.get("data2")).isEqualTo(2);
+
+        assertColumnReselectedForUnavailableValue(logInterceptor, "s1.dbz2495_text_array", "data");
     }
 
     @Test
