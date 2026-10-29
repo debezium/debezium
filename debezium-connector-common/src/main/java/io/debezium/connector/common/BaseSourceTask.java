@@ -51,6 +51,7 @@ import io.debezium.openlineage.DebeziumOpenLineageEmitter;
 import io.debezium.pipeline.ChangeEventSourceCoordinator;
 import io.debezium.pipeline.DataChangeEvent;
 import io.debezium.pipeline.ErrorHandler;
+import io.debezium.pipeline.meters.ConnectedServerMeter;
 import io.debezium.pipeline.monitor.OffsetActivityMonitorServiceProvider;
 import io.debezium.pipeline.notification.channels.NotificationChannel;
 import io.debezium.pipeline.signal.channels.SignalChannelReader;
@@ -230,6 +231,12 @@ public abstract class BaseSourceTask<P extends Partition, O extends OffsetContex
     private final ServiceLoader<SignalChannelReader> availableSignalChannels = ServiceLoader.load(SignalChannelReader.class);
 
     private final List<NotificationChannel> notificationChannels;
+
+    /**
+     * The server that provides the streaming connection. The task keeps it, as the streaming metrics are created again
+     * on each restart after a retriable error.
+     */
+    private final ConnectedServerMeter connectedServerMeter = new ConnectedServerMeter();
 
     /**
      * A flag to record whether the offsets stored in the offset store are loaded for the first time.
@@ -716,6 +723,15 @@ public abstract class BaseSourceTask<P extends Partition, O extends OffsetContex
 
     public List<NotificationChannel> getNotificationChannels() {
         return notificationChannels;
+    }
+
+    /**
+     * Returns the meter of the server that provides the streaming connection, for the streaming metrics of the task.
+     * It is the same meter for the lifetime of the task, so that a restart after a retriable error still compares the
+     * next connection with the previous one.
+     */
+    protected ConnectedServerMeter getConnectedServerMeter() {
+        return connectedServerMeter;
     }
 
     protected void registerServiceProviders(ServiceRegistry serviceRegistry) {

@@ -164,5 +164,20 @@ The {prodname} {connector-name} connector also provides the following additional
 |`long`
 |The number of transactions that have not fit into the look-ahead buffer. For optimal performance, this value should be significantly smaller than `NumberOfCommittedTransactions` and `NumberOfRolledBackTransactions`.
 
+|[[connected-server]]<<connected-server,`+ConnectedServer+`>>
+|`Map<String, String>`
+|The server that provides the binlog stream, as `server_id`, the value of the `server_id` system variable of that server.
+This is not the xref:{context}-property-database-server-id[`database.server.id`] of the connector.
+The connector reads the value on the binlog connection whenever it connects, so the value identifies the server behind the configured host name, even when a DNS name or a virtual IP address leads to another server after a failover.
+The `server_id` field in the `source` block of change events can differ from this value, because the `source` field identifies the server that originally wrote the event.
+For example, if the connector reads from a replica, the field reports the primary for events that were written on the primary.
+The map is empty while the connector is disconnected.
+
+|[[number-of-connected-server-changes]]<<number-of-connected-server-changes,`+NumberOfConnectedServerChanges+`>>
+|`long`
+|The number of times that the connector connected to a different server than the server of its previous connection.
+The first connection and reconnections to the same server are not counted.
+The number is kept when the task restarts after a retriable error, but starts again from `0` when Kafka Connect creates a new task.
+
 |===
 endif::MARIADB,MYSQL[]

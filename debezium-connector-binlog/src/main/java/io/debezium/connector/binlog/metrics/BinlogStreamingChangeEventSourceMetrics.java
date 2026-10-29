@@ -16,6 +16,7 @@ import com.github.shyiko.mysql.binlog.jmx.BinaryLogClientStatistics;
 import io.debezium.connector.base.ChangeEventQueueMetrics;
 import io.debezium.connector.binlog.BinlogDatabaseSchema;
 import io.debezium.connector.binlog.BinlogTaskContext;
+import io.debezium.pipeline.meters.ConnectedServerMeter;
 import io.debezium.pipeline.metrics.CapturedTablesSupplier;
 import io.debezium.pipeline.metrics.DefaultStreamingChangeEventSourceMetrics;
 import io.debezium.pipeline.source.spi.EventMetadataProvider;
@@ -33,6 +34,7 @@ public class BinlogStreamingChangeEventSourceMetrics<T extends BinlogDatabaseSch
 
     private final BinaryLogClient client;
     private final BinaryLogClientStatistics stats;
+    private final ConnectedServerMeter connectedServerMeter;
 
     private final AtomicLong numberOfCommittedTransactions = new AtomicLong();
     private final AtomicLong numberOfRolledBackTransactions = new AtomicLong();
@@ -46,16 +48,38 @@ public class BinlogStreamingChangeEventSourceMetrics<T extends BinlogDatabaseSch
                                                    ChangeEventQueueMetrics changeEventQueueMetrics,
                                                    EventMetadataProvider eventMetadataProvider,
                                                    CapturedTablesSupplier capturedTablesSupplier,
-                                                   BinaryLogClient client) {
+                                                   BinaryLogClient client,
+                                                   ConnectedServerMeter connectedServerMeter) {
         super(taskContext, changeEventQueueMetrics, eventMetadataProvider, capturedTablesSupplier);
         this.client = client;
         this.stats = new BinaryLogClientStatistics(client);
+        this.connectedServerMeter = connectedServerMeter;
         this.milliSecondsBehindSource.set(-1);
     }
 
     @Override
     public boolean isConnected() {
         return this.client.isConnected();
+    }
+
+    @Override
+    public Map<String, String> getConnectedServer() {
+        return connectedServerMeter.getConnectedServer();
+    }
+
+    @Override
+    public long getNumberOfConnectedServerChanges() {
+        return connectedServerMeter.getNumberOfConnectedServerChanges();
+    }
+
+    @Override
+    public void serverConnected(Map<String, String> server) {
+        connectedServerMeter.connected(server);
+    }
+
+    @Override
+    public void serverDisconnected() {
+        connectedServerMeter.disconnected();
     }
 
     @Override
@@ -112,6 +136,7 @@ public class BinlogStreamingChangeEventSourceMetrics<T extends BinlogDatabaseSch
         numberOfLargeTransactions.set(0);
         lastTransactionId.set(null);
         isGtidModeEnabled.set(false);
+        connectedServerMeter.reset();
     }
 
     @Override
