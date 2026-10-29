@@ -4564,7 +4564,7 @@ Continues processing and ignores the timeout.
 |The maximum time, in milliseconds, that the connector waits for an LSN flush operation to complete.
 If the operation does not complete within the specified interval, the connector takes the action configured in the xref:postgresql-property-lsn-flush-timeout-action[`lsn.flush.timeout.action`] property.
 
-|[[postgresql-property-server-shutdown-drain-timeout-ms]]<<postgresql-property-server-shutdown-drain-timeout-ms, `+server.shutdown.drain.timeout.ms+`>>
+|[[postgresql-property-database-shutdown-drain-timeout-ms]]<<postgresql-property-database-shutdown-drain-timeout-ms, `+database.shutdown.drain.timeout.ms+`>>
 |`0`
 |The maximum time, in milliseconds, that the connector continues to read the replication stream after the database server terminates the connector's regular JDBC connection with SQLSTATE `57P01` (`admin_shutdown`), for example, during a fast shutdown.
 During a fast shutdown, PostgreSQL terminates regular connections first, but keeps logical replication connections open so that clients can receive the remaining changes and confirm them before the server writes its shutdown checkpoint.
