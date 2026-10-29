@@ -20,6 +20,7 @@ import io.debezium.pipeline.meters.ConnectedServerMeter;
 import io.debezium.pipeline.metrics.CapturedTablesSupplier;
 import io.debezium.pipeline.metrics.DefaultStreamingChangeEventSourceMetrics;
 import io.debezium.pipeline.source.spi.EventMetadataProvider;
+import io.debezium.pipeline.source.spi.ServerRoleObservation;
 import io.debezium.pipeline.spi.Partition;
 import io.debezium.util.Collect;
 
@@ -73,6 +74,26 @@ public class BinlogStreamingChangeEventSourceMetrics<T extends BinlogDatabaseSch
     }
 
     @Override
+    public String getConnectedServerRole() {
+        return connectedServerMeter.getConnectedServerRole();
+    }
+
+    @Override
+    public String getConnectedServerRoleSource() {
+        return connectedServerMeter.getConnectedServerRoleSource();
+    }
+
+    @Override
+    public Map<String, String> getConnectedServerState() {
+        return connectedServerMeter.getConnectedServerState();
+    }
+
+    @Override
+    public long getMilliSecondsSinceConnectedServerRoleObserved() {
+        return connectedServerMeter.getMilliSecondsSinceConnectedServerRoleObserved();
+    }
+
+    @Override
     public void serverConnected(Map<String, String> server) {
         connectedServerMeter.connected(server);
     }
@@ -80,6 +101,11 @@ public class BinlogStreamingChangeEventSourceMetrics<T extends BinlogDatabaseSch
     @Override
     public void serverDisconnected() {
         connectedServerMeter.disconnected();
+    }
+
+    @Override
+    public void serverRoleObserved(Map<String, String> server, ServerRoleObservation observation) {
+        connectedServerMeter.roleObserved(server, observation);
     }
 
     @Override

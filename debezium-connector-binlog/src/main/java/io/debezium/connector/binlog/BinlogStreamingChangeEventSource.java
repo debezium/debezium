@@ -90,6 +90,7 @@ import io.debezium.connector.binlog.metrics.BinlogStreamingChangeEventSourceMetr
 import io.debezium.connector.binlog.util.RowImageUtils;
 import io.debezium.data.Envelope;
 import io.debezium.function.BlockingConsumer;
+import io.debezium.jdbc.ConnectionFactory;
 import io.debezium.jdbc.TemporalPrecisionMode;
 import io.debezium.pipeline.ErrorHandler;
 import io.debezium.pipeline.EventDispatcher;
@@ -141,6 +142,8 @@ public abstract class BinlogStreamingChangeEventSource<P extends BinlogPartition
 
     private final BinaryLogClient client;
     private final BinlogStreamingChangeEventSourceMetrics<?, P> metrics;
+    // Null when the connector does not observe the role of the server
+    private final ConnectedServerRoleObserver serverRoleObserver;
     // todo: can we go back to accessing schema via task context? issue is all the generics :/
     private final BinlogTaskContext<?> taskContext;
     private final BinlogDatabaseSchema schema;
@@ -175,6 +178,7 @@ public abstract class BinlogStreamingChangeEventSource<P extends BinlogPartition
 
     public BinlogStreamingChangeEventSource(BinlogConnectorConfig connectorConfig,
                                             BinlogConnectorConnection connection,
+                                            ConnectionFactory<? extends BinlogConnectorConnection> connectionFactory,
                                             EventDispatcher<P, TableId> dispatcher,
                                             ErrorHandler errorHandler,
                                             Clock clock,
@@ -196,6 +200,10 @@ public abstract class BinlogStreamingChangeEventSource<P extends BinlogPartition
         this.resolveLikeTableSchema = connectorConfig.isResolveLikeTableSchema();
         this.snapshotterService = snapshotterService;
         this.client = client;
+        final Duration serverRoleRefreshInterval = connectorConfig.getConnectedServerRoleRefreshInterval();
+        this.serverRoleObserver = connection.isServerRoleObservable() && !serverRoleRefreshInterval.isZero()
+                ? new ConnectedServerRoleObserver(serverRoleRefreshInterval, connectionFactory, client, metrics, clock)
+                : null;
         configureBinaryLogClient(client, connectorConfig, binaryLogClientThreads, connection);
         this.gtidDmlSourceFilter = getGtidDmlSourceFilter();
         this.isGtidModeEnabled = connection.isGtidModeEnabled();
@@ -394,6 +402,9 @@ public abstract class BinlogStreamingChangeEventSource<P extends BinlogPartition
             while (context.isRunning()) {
                 Thread.sleep(100);
                 waitWhenStreamingPaused(context);
+                if (serverRoleObserver != null) {
+                    serverRoleObserver.observeIfDue();
+                }
             }
         }
         finally {
@@ -402,6 +413,9 @@ public abstract class BinlogStreamingChangeEventSource<P extends BinlogPartition
             }
             catch (Exception e) {
                 LOGGER.info("Exception while stopping binary log client", e);
+            }
+            if (serverRoleObserver != null) {
+                serverRoleObserver.close();
             }
         }
     }
@@ -1529,7 +1543,10 @@ public abstract class BinlogStreamingChangeEventSource<P extends BinlogPartition
             // The client reads the server id on this connection before it requests the binlog stream, so it identifies
             // the server that provides the stream, which may not be the one that wrote the events
             final long serverId = client.getMasterServerId();
-            metrics.serverConnected(serverId >= 0 ? Map.of("server_id", Long.toString(serverId)) : Map.of());
+            metrics.serverConnected(serverIdentity(serverId));
+            if (serverRoleObserver != null) {
+                serverRoleObserver.requestObservation();
+            }
             // The event row number will be used when processing the first event ...
             LOGGER.info("Connected to binlog at {}:{} on server {}, starting at {}",
                     connectorConfig.getHostName(), connectorConfig.getPort(), serverId, offsetContext);
@@ -1579,6 +1596,16 @@ public abstract class BinlogStreamingChangeEventSource<P extends BinlogPartition
     }
 
     protected abstract SSLMode sslModeFor(SecureConnectionMode mode);
+
+    /**
+     * Returns the identity of a server for the streaming metrics.
+     *
+     * @param serverId the server id that the binlog client read on the binlog connection, negative if unknown
+     * @return the identity of the server, empty if it is unknown
+     */
+    static Map<String, String> serverIdentity(long serverId) {
+        return serverId >= 0 ? Map.of("server_id", Long.toString(serverId)) : Map.of();
+    }
 
     @VisibleForTesting
     SSLSocketFactory getBinlogSslSocketFactory(BinlogConnectorConfig connectorConfig, BinlogConnectorConnection connection) {

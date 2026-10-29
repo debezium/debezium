@@ -27,6 +27,7 @@ import io.debezium.connector.binlog.BinlogConnectorConfig;
 import io.debezium.connector.binlog.BinlogOffsetContext;
 import io.debezium.connector.binlog.gtid.GtidSet;
 import io.debezium.jdbc.JdbcConnection;
+import io.debezium.pipeline.source.spi.ServerRoleObservation;
 import io.debezium.pipeline.spi.OffsetContext;
 import io.debezium.pipeline.spi.Partition;
 import io.debezium.relational.Column;
@@ -616,6 +617,40 @@ public abstract class BinlogConnectorConnection extends JdbcConnection {
      * @return {@code false} if the server has not enabled GTIDs, {@code true} otherwise
      */
     public abstract boolean isGtidModeEnabled();
+
+    /**
+     * Returns the {@code server_id} of the server that this connection is attached to.
+     *
+     * @return the server id
+     * @throws SQLException if the server id cannot be read
+     */
+    public long serverId() throws SQLException {
+        return queryAndMap("SELECT @@server_id", rs -> {
+            if (rs.next()) {
+                return rs.getLong(1);
+            }
+            throw new SQLException("Unable to read the server id");
+        });
+    }
+
+    /**
+     * Returns whether {@link #observeServerRole()} can determine the role of the server.
+     *
+     * @return {@code true} if the role of the server can be observed, {@code false} otherwise
+     */
+    public boolean isServerRoleObservable() {
+        return false;
+    }
+
+    /**
+     * Observes the role of the server that this connection is attached to.
+     *
+     * @return the observed role, or {@link ServerRoleObservation#UNKNOWN} if it cannot be determined; never null
+     * @throws SQLException if the facts that the role is determined from cannot be read
+     */
+    public ServerRoleObservation observeServerRole() throws SQLException {
+        return ServerRoleObservation.UNKNOWN;
+    }
 
     /**
      * Returns the most recent executed GTID set or position.
