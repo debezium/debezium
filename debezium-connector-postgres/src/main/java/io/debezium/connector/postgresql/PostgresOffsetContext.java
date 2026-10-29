@@ -38,7 +38,9 @@ public class PostgresOffsetContext extends CommonOffsetContext<SourceInfo> {
     public static final String LAST_COMPLETELY_PROCESSED_LSN_KEY = "lsn_proc";
     public static final String LAST_COMMIT_LSN_KEY = "lsn_commit";
     public static final String LSN_EVENTS_PROCESSED_KEY = "lsn_events_processed";
+    public static final String LAST_KNOWN_TXID_KEY = "last_known_txid";
 
+    private final PostgresConnectorConfig connectorConfig;
     private final Schema sourceInfoSchema;
     private boolean lastSnapshotRecord;
     private Lsn lastCompletelyProcessedLsn;
@@ -57,6 +59,7 @@ public class PostgresOffsetContext extends CommonOffsetContext<SourceInfo> {
                                   IncrementalSnapshotContext<TableId> incrementalSnapshotContext) {
         super(new SourceInfo(connectorConfig), snapshotCompleted);
 
+        this.connectorConfig = connectorConfig;
         this.lastCompletelyProcessedLsn = lastCompletelyProcessedLsn;
         this.lastCommitLsn = lastCommitLsn;
         sourceInfo.updateLastCommit(lastCommitLsn);
@@ -107,6 +110,9 @@ public class PostgresOffsetContext extends CommonOffsetContext<SourceInfo> {
         }
         if (lsnEventsProcessed > 0) {
             result.put(LSN_EVENTS_PROCESSED_KEY, lsnEventsProcessed);
+        }
+        if (connectorConfig.isReadOnlyConnection() && sourceInfo.txId() == null && lastKnownTxId != null) {
+            result.put(LAST_KNOWN_TXID_KEY, lastKnownTxId);
         }
         return sourceInfo.isSnapshot() ? result : incrementalSnapshotContext.store(transactionContext.store(result));
     }
@@ -276,6 +282,10 @@ public class PostgresOffsetContext extends CommonOffsetContext<SourceInfo> {
                             : SignalBasedIncrementalSnapshotContext.load(offset, false));
             context.lsnEventsProcessed = lsnEventsProcessed;
             context.previousLsn = lsn;
+            final Long storedLastKnownTxId = readOptionalLong(offset, LAST_KNOWN_TXID_KEY);
+            if (storedLastKnownTxId != null) {
+                context.lastKnownTxId = storedLastKnownTxId;
+            }
             return context;
         }
 
