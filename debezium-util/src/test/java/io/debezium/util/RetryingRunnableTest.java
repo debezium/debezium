@@ -6,6 +6,7 @@
 package io.debezium.util;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.sql.SQLException;
 import java.sql.SQLRecoverableException;
@@ -308,6 +309,30 @@ public class RetryingRunnableTest {
 
         // The outer SQLException is not an SQLRecoverableException and the predicate must not
         // look at the cause chain, unlike the retriableExceptions type matching.
+        assertThat(runs.get()).isEqualTo(1);
+        Assertions.assertThat(heals.get()).isEqualTo(0);
+    }
+
+    @FixFor("debezium/dbz#2498")
+    @Test
+    void shouldPropagateOriginalExceptionWhenRetriableWhenPredicateThrows() {
+        assertThatThrownBy(() -> RetryingRunnable.<SQLException> builder()
+                .retries(10)
+                .retriableWhen(e -> {
+                    throw new IllegalStateException("predicate failure");
+                })
+                .doRun(() -> {
+                    runs.incrementAndGet();
+                    throw new SQLRecoverableException("Good try, but I always fail");
+                })
+                .doAutoHeal(heals::incrementAndGet)
+                .delayStrategy(DelayStrategy.linear(Duration.ofMillis(100)))
+                .build()
+                .run())
+                .isInstanceOf(SQLRecoverableException.class)
+                .hasMessage("Good try, but I always fail");
+
+        // When the predicate itself threw, the original exception is treated as non-retriable and propagated immediately.
         assertThat(runs.get()).isEqualTo(1);
         Assertions.assertThat(heals.get()).isEqualTo(0);
     }
