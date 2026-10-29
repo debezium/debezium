@@ -13,6 +13,7 @@ import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.function.BinaryOperator;
 
 import org.junit.jupiter.api.Test;
 
@@ -1309,6 +1310,186 @@ public class CappedLogFileSessionSelectorTest {
         assertThat(second.effectiveUpperBounds()).isEqualTo(Scn.valueOf(349));
     }
 
+    @Test
+    @FixFor("dbz#2957")
+    void testClosedThreadTruncatedByBudgetTightensBoundary() {
+        // Reproduces the first session after a restart reported in dbz#2957, with a 2-node RAC
+        // where thread 2 is CLOSED and the read position is behind by more than the budget.
+        // Thread 1 (OPEN): 88.5 + 96.8 + 88.7 MB reaches the 200 MB budget, window ends at 216035143.
+        // Thread 2 (CLOSED): 91.5 + 92.9 + 88.5 MB reaches the budget, window ends at 216023554,
+        // with logs 65463-65465 dropped. The boundary must not pass the end of thread 2's window,
+        // otherwise thread 2's changes from 216023555 up to 216035143 are never mined.
+        List<LogFile> logs = List.of(
+                createArchiveLog("t1_63148.log", 216008075, 216015722, 63148, 1, megabytes(88.5)),
+                createArchiveLog("t1_63149.log", 216015722, 216023032, 63149, 1, megabytes(96.8)),
+                createArchiveLog("t1_63150.log", 216023032, 216035144, 63150, 1, megabytes(88.7)),
+                createArchiveLog("t1_63151.log", 216035144, 216047000, 63151, 1, megabytes(100)),
+                createArchiveLog("t2_65460.log", 216008398, 216012514, 65460, 2, megabytes(91.5)),
+                createArchiveLog("t2_65461.log", 216012514, 216018423, 65461, 2, megabytes(92.9)),
+                createArchiveLog("t2_65462.log", 216018423, 216023555, 65462, 2, megabytes(88.5)),
+                createArchiveLog("t2_65463.log", 216023555, 216028000, 65463, 2, megabytes(90)),
+                createArchiveLog("t2_65464.log", 216028000, 216032978, 65464, 2, megabytes(90)),
+                createArchiveLog("t2_65465.log", 216032978, 216037778, 65465, 2, megabytes(90)));
+
+        SessionLogSelection result = selector.selectLogsForSession(
+                new LogFilesResult(logs, openAndClosedThread()), Scn.valueOf(216050000));
+
+        assertThat(result.logFiles()).extracting(LogFile::getFileName)
+                .containsExactly("t1_63148.log", "t1_63149.log", "t1_63150.log",
+                        "t2_65460.log", "t2_65461.log", "t2_65462.log");
+        assertThat(result.effectiveUpperBounds()).isEqualTo(Scn.valueOf(216023554));
+    }
+
+    @Test
+    @FixFor("dbz#2957")
+    void testClosedThreadWithAllRemainingLogsInWindowDoesNotTightenBoundary() {
+        // Thread 1 (OPEN): capped at t1_arc2, window ends at 299.
+        // Thread 2 (CLOSED): both remaining logs fit within the budget, so its window already reaches
+        // the end of its redo at 179 and must not pull the boundary below thread 1's window.
+        List<LogFile> logs = List.of(
+                createArchiveLog("t1_arc1.log", 100, 200, 1, 1, ONE_GB),
+                createArchiveLog("t1_arc2.log", 200, 300, 2, 1, ONE_GB),
+                createArchiveLog("t1_arc3.log", 300, 400, 3, 1, ONE_GB),
+                createRedoLog("t1_redo.log", 400, 4, 1),
+                createArchiveLog("t2_arc1.log", 100, 150, 1, 2, ONE_GB),
+                createArchiveLog("t2_arc2.log", 150, 180, 2, 2, ONE_GB));
+
+        SessionLogSelection result = selector.selectLogsForSession(
+                new LogFilesResult(logs, openAndClosedThread()), UPPER_BOUNDS);
+
+        assertThat(result.logFiles()).extracting(LogFile::getFileName)
+                .containsExactly("t1_arc1.log", "t1_arc2.log", "t2_arc1.log", "t2_arc2.log");
+        assertThat(result.effectiveUpperBounds()).isEqualTo(Scn.valueOf(299));
+    }
+
+    @Test
+    @FixFor("dbz#2957")
+    void testClosedThreadTruncatedWhileOpenThreadMinesOnlineUsesCappedWindow() {
+        // Thread 1 (OPEN): its window ends on the current online redo log.
+        // Thread 2 (CLOSED): capped at t2_arc2, dropping t2_arc3. Rather than registering all of the
+        // closed thread's remaining logs in a single session, the capped window is used so that the
+        // budget keeps limiting how many logs a session mines while catching up, and the boundary is
+        // tightened to the end of thread 2's window.
+        List<LogFile> logs = List.of(
+                createArchiveLog("t1_arc1.log", 100, 200, 1, 1, ONE_GB),
+                createRedoLog("t1_redo.log", 200, 2, 1),
+                createArchiveLog("t2_arc1.log", 100, 150, 1, 2, ONE_GB),
+                createArchiveLog("t2_arc2.log", 150, 180, 2, 2, ONE_GB),
+                createArchiveLog("t2_arc3.log", 180, 250, 3, 2, ONE_GB));
+
+        SessionLogSelection result = selector.selectLogsForSession(
+                new LogFilesResult(logs, openAndClosedThread()), UPPER_BOUNDS);
+
+        assertThat(result.logFiles()).extracting(LogFile::getFileName)
+                .containsExactly("t1_arc1.log", "t1_redo.log", "t2_arc1.log", "t2_arc2.log");
+        assertThat(result.effectiveUpperBounds()).isEqualTo(Scn.valueOf(179));
+    }
+
+    @Test
+    @FixFor("dbz#2957")
+    void testDisabledThreadTruncatedByBudgetTightensBoundary() {
+        // Thread 1 (OPEN): capped at t1_arc2, window ends at 299.
+        // Thread 2 (DISABLED): its redo is finite, but the remaining logs are capped at t2_arc2,
+        // dropping t2_arc3 and t2_arc4, so the boundary is tightened to the end of its window.
+        List<LogFile> logs = List.of(
+                createArchiveLog("t1_arc1.log", 100, 200, 1, 1, ONE_GB),
+                createArchiveLog("t1_arc2.log", 200, 300, 2, 1, ONE_GB),
+                createArchiveLog("t1_arc3.log", 300, 400, 3, 1, ONE_GB),
+                createRedoLog("t1_redo.log", 400, 4, 1),
+                createArchiveLog("t2_arc1.log", 100, 150, 1, 2, ONE_GB),
+                createArchiveLog("t2_arc2.log", 150, 180, 2, 2, ONE_GB),
+                createArchiveLog("t2_arc3.log", 180, 250, 3, 2, ONE_GB),
+                createArchiveLog("t2_arc4.log", 250, 350, 4, 2, ONE_GB));
+
+        SessionLogSelection result = selector.selectLogsForSession(
+                new LogFilesResult(logs, openAndDisabledThread()), UPPER_BOUNDS);
+
+        assertThat(result.logFiles()).extracting(LogFile::getFileName)
+                .containsExactly("t1_arc1.log", "t1_arc2.log", "t2_arc1.log", "t2_arc2.log");
+        assertThat(result.effectiveUpperBounds()).isEqualTo(Scn.valueOf(179));
+    }
+
+    @Test
+    @FixFor("dbz#2957")
+    void testClosedThreadIsMinedWithoutGapsWhileCatchingUp() {
+        // Each session resumes at the previous session's boundary.
+        mineClosedThreadCatchUp((start, boundary) -> boundary, 20);
+    }
+
+    @Test
+    @FixFor("dbz#2957")
+    void testClosedThreadIsMinedWithoutGapsWhenResumingBelowBoundary() {
+        // Each session resumes only 10 SCNs past its start, well below its boundary, as when the last
+        // processed SCN of a session trails its boundary. Resuming inside the first log of each thread
+        // collects the same logs again, which grows the budget while thread 2 paces the sessions, and
+        // the read position still passes thread 2 rather than stalling.
+        final List<SessionLogSelection> selections = mineClosedThreadCatchUp(
+                (start, boundary) -> Scn.valueOf(Math.min(boundary.longValue(), start.longValue() + 10)), 64);
+
+        assertThat(selections).extracting(selection -> selection.logFiles().stream().filter(logFile -> logFile.getThread() == 1).count())
+                .as("thread 1 logs per session, growing past the configured minimum on a stall")
+                .anyMatch(count -> count > 2);
+    }
+
+    /**
+     * Mines a sparse open thread alongside a dense closed thread from a seeded restart until the read
+     * position passes the end of the closed thread, checking that no part of the closed thread is
+     * skipped.
+     *
+     * <p>Thread 1 (OPEN) is sparse, each log spanning 200 SCNs, while thread 2 (CLOSED) is dense, each
+     * log spanning 50 SCNs and ending at 699. Every session must include each of thread 2's logs that
+     * overlaps the range between the read position and the session's boundary.
+     *
+     * @param nextReadPosition resolves the next session's read position from a session's start and boundary
+     * @param maxSessions the number of sessions within which the read position must pass thread 2
+     * @return the selections of every session mined
+     */
+    private static List<SessionLogSelection> mineClosedThreadCatchUp(BinaryOperator<Scn> nextReadPosition, int maxSessions) {
+        final List<LogFile> logs = new ArrayList<>();
+        for (int i = 0; i < 4; i++) {
+            logs.add(createArchiveLog("t1_arc" + (i + 1) + ".log", 100 + i * 200L, 300 + i * 200L, i + 1, 1, ONE_GB));
+        }
+        logs.add(createRedoLog("t1_redo.log", 900, 5, 1));
+        for (int i = 0; i < 12; i++) {
+            logs.add(createArchiveLog("t2_arc" + (i + 1) + ".log", 100 + i * 50L, 150 + i * 50L, i + 1, 2, ONE_GB));
+        }
+
+        final CappedLogFileSessionSelector racSelector = new CappedLogFileSessionSelector(2, 16, Scn.valueOf(120));
+
+        final List<SessionLogSelection> selections = new ArrayList<>();
+        Scn readPosition = Scn.valueOf(110);
+        while (readPosition.compareTo(Scn.valueOf(699)) < 0) {
+            assertThat(selections.size()).as("sessions needed to mine past thread 2").isLessThan(maxSessions);
+
+            final Scn start = readPosition;
+            final List<LogFile> remaining = logs.stream()
+                    .filter(logFile -> logFile.isCurrent() || logFile.getLastScn().compareTo(start) > 0)
+                    .toList();
+
+            final SessionLogSelection selection = racSelector.selectLogsForSession(
+                    new LogFilesResult(remaining, openAndClosedThread()), UPPER_BOUNDS);
+            final Scn boundary = selection.effectiveUpperBounds();
+            assertThat(boundary).isGreaterThan(start);
+
+            final List<String> expectedThread2Logs = remaining.stream()
+                    .filter(logFile -> logFile.getThread() == 2)
+                    .filter(logFile -> logFile.getFirstScn().compareTo(boundary) <= 0)
+                    .map(LogFile::getFileName)
+                    .toList();
+            assertThat(selection.logFiles()).extracting(LogFile::getFileName)
+                    .as("thread 2 logs overlapping (%s, %s]", start, boundary)
+                    .containsAll(expectedThread2Logs);
+
+            selections.add(selection);
+            readPosition = nextReadPosition.apply(start, boundary);
+        }
+        return selections;
+    }
+
+    private static long megabytes(double value) {
+        return (long) (value * 1024L * 1024L);
+    }
+
     private static LogFile createArchiveLog(String name, long startScn, long endScn, int seq, int thread, long bytes) {
         return LogFile.forArchive(name, Scn.valueOf(startScn), Scn.valueOf(endScn), BigInteger.valueOf(seq), thread, bytes, false, false);
     }
@@ -1435,6 +1616,53 @@ public class CappedLogFileSessionSelectorTest {
                 .lastRedoScn(Scn.valueOf(200))
                 .lastRedoBlock(1234L)
                 .lastRedoSequenceNumber(1L)
+                .lastRedoTime(Instant.now().minus(5, ChronoUnit.MINUTES))
+                .conId(0L)
+                .build()
+                .build();
+    }
+
+    private static RedoThreadState openAndDisabledThread() {
+        return RedoThreadState.builder()
+                .thread()
+                .threadId(1)
+                .status("OPEN")
+                .enabled("PUBLIC")
+                .instanceName("ORCLCDB")
+                .logGroups(2L)
+                .openTime(Instant.now().minus(10, ChronoUnit.MINUTES))
+                .checkpointScn(Scn.valueOf(100))
+                .checkpointTime(Instant.now().minus(5, ChronoUnit.MINUTES))
+                .currentGroupNumber(1L)
+                .currentSequenceNumber(1L)
+                .enabledScn(Scn.valueOf(50))
+                .enabledTime(Instant.now().minus(10, ChronoUnit.MINUTES))
+                .disabledScn(Scn.valueOf(0))
+                .disabledTime(null)
+                .lastRedoScn(Scn.valueOf(1000))
+                .lastRedoBlock(1234L)
+                .lastRedoSequenceNumber(1L)
+                .lastRedoTime(Instant.now())
+                .conId(0L)
+                .build()
+                .thread()
+                .threadId(2)
+                .status("CLOSED")
+                .enabled("DISABLED")
+                .instanceName("ORCLCDB")
+                .logGroups(2L)
+                .openTime(Instant.now().minus(10, ChronoUnit.MINUTES))
+                .checkpointScn(Scn.valueOf(350))
+                .checkpointTime(Instant.now().minus(5, ChronoUnit.MINUTES))
+                .currentGroupNumber(1L)
+                .currentSequenceNumber(1L)
+                .enabledScn(Scn.valueOf(50))
+                .enabledTime(Instant.now().minus(10, ChronoUnit.MINUTES))
+                .disabledScn(Scn.valueOf(350))
+                .disabledTime(Instant.now().minus(5, ChronoUnit.MINUTES))
+                .lastRedoScn(Scn.valueOf(350))
+                .lastRedoBlock(1234L)
+                .lastRedoSequenceNumber(4L)
                 .lastRedoTime(Instant.now().minus(5, ChronoUnit.MINUTES))
                 .conId(0L)
                 .build()
