@@ -7,6 +7,7 @@ package io.debezium.connector.mysql;
 
 import static io.debezium.connector.binlog.BinlogConnectorConfig.SnapshotLockingMode.MINIMAL_AT_LEAST_ONCE;
 
+import java.time.Duration;
 import java.util.Optional;
 import java.util.function.Predicate;
 
@@ -362,6 +363,18 @@ public class MySqlConnectorConfig extends BinlogConnectorConfig {
                     + "'verify_identity' like 'verify_ca' but additionally verify that the server certificate matches "
                     + "the host to which the connection is attempted.");
 
+    public static final Field CONNECTED_SERVER_ROLE_REFRESH_INTERVAL_MS = Field.create("connected.server.role.refresh.interval.ms")
+            .withDisplayName("Connected server role refresh interval (ms)")
+            .withType(Type.LONG)
+            .withWidth(Width.SHORT)
+            .withImportance(Importance.LOW)
+            .withDefault(Duration.ofSeconds(30).toMillis())
+            .withValidation(Field::isNonNegativeLong)
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTION_ADVANCED))
+            .withDescription("How often, in milliseconds, the connector observes the role of the server that provides the binlog stream "
+                    + "for the streaming metrics, on a separate connection to the database. "
+                    + "Defaults to 30 seconds (30,000 ms). A value of 0 disables the observation.");
+
     public static final Field SOURCE_INFO_STRUCT_MAKER = CommonConnectorConfig.SOURCE_INFO_STRUCT_MAKER
             .withDefault(MySqlSourceInfoStructMaker.class.getName());
 
@@ -380,6 +393,7 @@ public class MySqlConnectorConfig extends BinlogConnectorConfig {
                     BinlogConnectorConfig.GTID_SOURCE_INCLUDES,
                     BinlogConnectorConfig.GTID_SOURCE_EXCLUDES)
             .group(Field.Group.CONNECTION, JDBC_DRIVER, JDBC_PROTOCOL)
+            .group(Field.Group.CONNECTION_ADVANCED, CONNECTED_SERVER_ROLE_REFRESH_INTERVAL_MS)
             .group(Field.Group.CONNECTION_ADVANCED_SSL, SSL_MODE)
             .group(Field.Group.CONNECTOR_SNAPSHOT, SNAPSHOT_LOCKING_MODE)
             .group(Field.Group.CONNECTOR, GTID_SOURCE_INCLUDES, GTID_SOURCE_EXCLUDES, SOURCE_INFO_STRUCT_MAKER)
@@ -400,6 +414,7 @@ public class MySqlConnectorConfig extends BinlogConnectorConfig {
     private final SnapshotLockingStrategy snapshotLockingStrategy;
     private final SecureConnectionMode secureConnectionMode;
     private final DdlParserType ddlParserType;
+    private final Duration connectedServerRoleRefreshInterval;
 
     public MySqlConnectorConfig(Configuration config) {
         super(MySqlConnector.class, config, DEFAULT_SNAPSHOT_FETCH_SIZE);
@@ -412,6 +427,8 @@ public class MySqlConnectorConfig extends BinlogConnectorConfig {
 
         this.ddlParserType = DdlParserType.parse(config.getString(DDL_PARSER_TYPE), DDL_PARSER_TYPE.defaultValueAsString());
 
+        this.connectedServerRoleRefreshInterval = Duration.ofMillis(config.getLong(CONNECTED_SERVER_ROLE_REFRESH_INTERVAL_MS));
+
         // Set up the GTID filter ...
         final String gtidSetIncludes = config.getString(GTID_SOURCE_INCLUDES);
         final String gtidSetExcludes = config.getString(GTID_SOURCE_EXCLUDES);
@@ -419,6 +436,11 @@ public class MySqlConnectorConfig extends BinlogConnectorConfig {
                 : (gtidSetExcludes != null ? Predicates.excludesUuids(gtidSetExcludes) : null);
 
         getServiceRegistry().registerServiceProvider(new MySqlCharsetRegistryServiceProvider());
+    }
+
+    @Override
+    public Duration getConnectedServerRoleRefreshInterval() {
+        return connectedServerRoleRefreshInterval;
     }
 
     public Optional<SnapshotLockingMode> getSnapshotLockingMode() {

@@ -1075,6 +1075,15 @@ public abstract class BinlogConnectorConfig extends HistorizedRelationalDatabase
      * @return the number of consecutive failed reconnect attempts after which the connector fails,
      *         0 means the keep alive thread reconnects indefinitely
      */
+    /**
+     * Returns how often the connector observes the role of the server that provides the binlog stream.
+     *
+     * @return the interval, {@link Duration#ZERO} if the connector does not observe the role
+     */
+    public Duration getConnectedServerRoleRefreshInterval() {
+        return Duration.ZERO;
+    }
+
     public int getKeepAliveMaxReconnectAttempts() {
         return config.getInteger(KEEP_ALIVE_MAX_RECONNECT_ATTEMPTS);
     }

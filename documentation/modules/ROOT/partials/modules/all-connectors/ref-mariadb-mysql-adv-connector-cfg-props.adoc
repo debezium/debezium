@@ -88,6 +88,24 @@ Set a value that exceeds the length of any planned maintenance window, to avoid 
 +
 This property has no effect when `connect.keep.alive` is set to `false`.
 
+ifdef::MYSQL[]
+
+[id="{context}-property-connected-server-role-refresh-interval-ms"]
+xref:{context}-property-connected-server-role-refresh-interval-ms[`connected.server.role.refresh.interval.ms`]::
+
+Default value::: `30000` (30 seconds)
+
+Description:::
+How often, in milliseconds, the connector observes the role of the server that provides the binlog stream, which the <<connected-server-role,`ConnectedServerRole`>> streaming metric reports.
+The connector observes the role whenever it connects to the binlog, and then at this interval, so that the metric follows a promotion of the server even when the binlog connection stays open.
++
+Because the binlog connection accepts no queries while it streams, the connector observes the role on a separate connection to the database.
+If the host name resolves that connection to another server than the one whose `server_id` the binlog connection reported, for example after a failover behind a DNS name or a virtual IP address, the connector reports the role as `UNKNOWN`.
+To determine the role, the connector reads the `read_only` and `super_read_only` system variables and the `replication_group_members`, `replication_connection_status`, and `replication_connection_configuration` tables of the Performance Schema, which requires the `SELECT` privilege on them.
++
+A value of `0` disables the observation, and the connector then opens no separate connection for it.
+endif::MYSQL[]
+
 
 [id="{context}-property-converters"]
 xref:{context}-property-converters[`converters`]::

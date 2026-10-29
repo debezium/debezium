@@ -28,4 +28,15 @@ public interface StreamingProgressListener {
      */
     default void serverDisconnected() {
     }
+
+    /**
+     * Invoked when the role of the server that provides the streaming connection was observed. The role can change
+     * without the connection being established again, for example when the server is promoted.
+     *
+     * @param server the identity of the server that the role was observed for, as passed to
+     *            {@link #serverConnected(Map)}
+     * @param observation the observed role; never null
+     */
+    default void serverRoleObserved(Map<String, String> server, ServerRoleObservation observation) {
+    }
 }

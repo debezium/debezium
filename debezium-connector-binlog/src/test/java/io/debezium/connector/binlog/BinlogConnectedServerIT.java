@@ -47,6 +47,8 @@ public abstract class BinlogConnectedServerIT<C extends SourceConnector> extends
             .toAbsolutePath();
 
     private static final int KEEP_ALIVE_INTERVAL_MS = 1_000;
+    // Only the MySQL connector observes the role of the server, MariaDB reports it as unknown
+    private static final String SERVER_ROLE_REFRESH_INTERVAL_MS = "connected.server.role.refresh.interval.ms";
 
     private final UniqueDatabase DATABASE = TestHelper.getUniqueDatabase("connectedserver", "empty")
             .withDbHistoryPath(SCHEMA_HISTORY_PATH);
@@ -83,6 +85,7 @@ public abstract class BinlogConnectedServerIT<C extends SourceConnector> extends
             startThrough(proxy);
             final Map<String, String> primary = serverOf(getTestDatabaseConnection(DATABASE.getDatabaseName()));
             awaitConnectedServer(primary);
+            awaitConnectedServerRole("PRIMARY");
             assertThat(numberOfConnectedServerChanges()).isZero();
 
             proxy.dropConnections();
@@ -92,6 +95,7 @@ public abstract class BinlogConnectedServerIT<C extends SourceConnector> extends
                     .until(() -> logInterceptor.countOccurrences("Connected to binlog at") >= 2);
 
             awaitConnectedServer(primary);
+            awaitConnectedServerRole("PRIMARY");
             assertThat(numberOfConnectedServerChanges()).isZero();
         }
     }
@@ -107,11 +111,13 @@ public abstract class BinlogConnectedServerIT<C extends SourceConnector> extends
             final Map<String, String> replica = serverOf(getTestReplicaDatabaseConnection(DATABASE.getDatabaseName()));
             assertThat(replica).isNotEqualTo(primary);
             awaitConnectedServer(primary);
+            awaitConnectedServerRole("PRIMARY");
 
             // The address now leads to the replica, as after a failover ...
             proxy.retarget(replicaHost, replicaPort);
             proxy.dropConnections();
             awaitConnectedServer(replica);
+            awaitConnectedServerRole("REPLICA");
             assertThat(numberOfConnectedServerChanges()).isEqualTo(1);
 
             // ... which streams the rows written on the primary with the server id of the primary
@@ -127,6 +133,7 @@ public abstract class BinlogConnectedServerIT<C extends SourceConnector> extends
             proxy.retarget(primaryHost, primaryPort);
             proxy.dropConnections();
             awaitConnectedServer(primary);
+            awaitConnectedServerRole("PRIMARY");
             assertThat(numberOfConnectedServerChanges()).isEqualTo(2);
         }
     }
@@ -141,6 +148,7 @@ public abstract class BinlogConnectedServerIT<C extends SourceConnector> extends
                 .with(BinlogConnectorConfig.SNAPSHOT_MODE, BinlogConnectorConfig.SnapshotMode.NO_DATA)
                 .with(BinlogConnectorConfig.INCLUDE_SCHEMA_CHANGES, false)
                 .with(BinlogConnectorConfig.KEEP_ALIVE_INTERVAL_MS, KEEP_ALIVE_INTERVAL_MS)
+                .with(SERVER_ROLE_REFRESH_INTERVAL_MS, KEEP_ALIVE_INTERVAL_MS)
                 .build();
         start(getConnectorClass(), config);
         assertConnectorIsRunning();
@@ -163,19 +171,42 @@ public abstract class BinlogConnectedServerIT<C extends SourceConnector> extends
                 .until(() -> server.equals(connectedServer()));
     }
 
-    private Map<String, String> connectedServer() {
-        final TabularData data = MetricsHelper.getStreamingMetric(getConnectorName(), DATABASE.getServerName(), getStreamingNamespace(),
-                "ConnectedServer");
-        final Map<String, String> server = new HashMap<>();
-        for (Object row : data.values()) {
-            final CompositeData entry = (CompositeData) row;
-            server.put((String) entry.get("key"), (String) entry.get("value"));
+    private void awaitConnectedServerRole(String role) {
+        final boolean observable = !isMariaDb();
+        final String expectedRole = observable ? role : "UNKNOWN";
+        Awaitility.await()
+                .alias("streaming metrics to report role " + expectedRole)
+                .atMost(Duration.ofSeconds(60))
+                .pollInterval(Duration.ofMillis(200))
+                .ignoreExceptions()
+                .until(() -> expectedRole.equals(streamingMetric("ConnectedServerRole")));
+        if (observable) {
+            // Neither test server is part of a replication group or Aurora, so the role is inferred
+            assertThat((String) streamingMetric("ConnectedServerRoleSource")).isEqualTo("INFERRED");
+            assertThat(mapMetric("ConnectedServerState")).containsKeys("read_only", "super_read_only");
+            assertThat((long) streamingMetric("MilliSecondsSinceConnectedServerRoleObserved")).isNotNegative();
         }
-        return server;
+    }
+
+    private Map<String, String> connectedServer() {
+        return mapMetric("ConnectedServer");
     }
 
     private long numberOfConnectedServerChanges() {
-        return MetricsHelper.getStreamingMetric(getConnectorName(), DATABASE.getServerName(), getStreamingNamespace(),
-                "NumberOfConnectedServerChanges");
+        return streamingMetric("NumberOfConnectedServerChanges");
+    }
+
+    private Map<String, String> mapMetric(String name) {
+        final TabularData data = streamingMetric(name);
+        final Map<String, String> map = new HashMap<>();
+        for (Object row : data.values()) {
+            final CompositeData entry = (CompositeData) row;
+            map.put((String) entry.get("key"), (String) entry.get("value"));
+        }
+        return map;
+    }
+
+    private <T> T streamingMetric(String name) {
+        return MetricsHelper.getStreamingMetric(getConnectorName(), DATABASE.getServerName(), getStreamingNamespace(), name);
     }
 }
