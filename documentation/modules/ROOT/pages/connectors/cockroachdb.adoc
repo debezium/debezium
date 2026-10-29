@@ -181,6 +181,10 @@ If a running changefeed matches the connector's topic prefix and tables, but it 
 The connector then fails to start and returns an error stating that you must recreate that changefeed with `envelope='enriched'` or else use a different topic prefix.
 In `initial_only` snapshot mode, the matching changefeed must have been created with `initial_scan='only'`, because a changefeed that keeps streaming never completes the snapshot.
 Otherwise, the connector fails to start and returns an error that names the changefeed job.
+If the connector configuration enables xref:cockroachdb-property-include-diff[`cockroachdb.changefeed.include.diff`] and the matching changefeed does not use the `diff` option, the connector also fails to start, because update events from that changefeed cannot carry a before image.
+The same applies to `cockroachdb.changefeed.include.mvcc.timestamp` and the `mvcc_timestamp` option.
+To add the missing option to the existing changefeed, pause the changefeed job, run `ALTER CHANGEFEED _<job_id>_ SET diff` (or `SET mvcc_timestamp`), resume the job, and then restart the connector.
+Alternatively, cancel the job so that the connector creates a new changefeed, or disable the property.
 
 [NOTE]
 ====
