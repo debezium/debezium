@@ -111,6 +111,9 @@ On restart with an existing offset, streaming resumes from the stored cursor.
 |`only`
 |The snapshot backfills all existing rows, then the connector stops.
 Useful for one-time data migration.
+CockroachDB does not allow the `updated`, `diff`, or `mvcc_timestamp` options together with `initial_scan='only'`.
+In this mode, the connector ignores xref:cockroachdb-property-include-updated[`cockroachdb.changefeed.include.updated`] and xref:cockroachdb-property-include-diff[`cockroachdb.changefeed.include.diff`], and logs a warning.
+After the snapshot completes, the connector does not repeat it when it restarts.
 
 |`no_data` / `never`
 |`no`
@@ -176,6 +179,8 @@ If any of these conditions is not met, the connector does not recognize the exis
 A changefeed created with a different `topic_prefix` or without `full_table_name` is not recognized as a match, and the connector creates its own. 
 If a running changefeed matches the connector's topic prefix and tables, but it was created with an envelope other than `enriched`, the connector cannot consume it.
 The connector then fails to start and returns an error stating that you must recreate that changefeed with `envelope='enriched'` or else use a different topic prefix.
+In `initial_only` snapshot mode, the matching changefeed must have been created with `initial_scan='only'`, because a changefeed that keeps streaming never completes the snapshot.
+Otherwise, the connector fails to start and returns an error that names the changefeed job.
 
 [NOTE]
 ====
