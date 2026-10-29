@@ -1508,6 +1508,7 @@ public abstract class BinlogStreamingChangeEventSource<P extends BinlogPartition
 
         @Override
         public void onDisconnect(BinaryLogClient client) {
+            metrics.serverDisconnected();
             if (LOGGER.isInfoEnabled()) {
                 taskContext.temporaryLoggingContext(connectorConfig, "binlog", () -> {
                     Map<String, ?> offset = lastOffset;
@@ -1525,9 +1526,13 @@ public abstract class BinlogStreamingChangeEventSource<P extends BinlogPartition
         public void onConnect(BinaryLogClient client) {
             // Set up the MDC logging context for this thread ...
             taskContext.configureLoggingContext("binlog");
+            // The client reads the server id on this connection before it requests the binlog stream, so it identifies
+            // the server that provides the stream, which may not be the one that wrote the events
+            final long serverId = client.getMasterServerId();
+            metrics.serverConnected(serverId >= 0 ? Map.of("server_id", Long.toString(serverId)) : Map.of());
             // The event row number will be used when processing the first event ...
-            LOGGER.info("Connected to binlog at {}:{}, starting at {}",
-                    connectorConfig.getHostName(), connectorConfig.getPort(), offsetContext);
+            LOGGER.info("Connected to binlog at {}:{} on server {}, starting at {}",
+                    connectorConfig.getHostName(), connectorConfig.getPort(), serverId, offsetContext);
             totalRecordCounter.set(0);
         }
 
