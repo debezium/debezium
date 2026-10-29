@@ -7,6 +7,7 @@ package io.debezium.connector.oracle;
 
 import java.sql.CallableStatement;
 import java.sql.Clob;
+import java.sql.Connection;
 import java.sql.DatabaseMetaData;
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -92,9 +93,11 @@ public class OracleConnection extends JdbcConnection {
     private static final Field URL = Field.create("url", "Raw JDBC url");
 
     private static final String QUOTED_CHARACTER = "\"";
+    private static final String CDB_ROOT = "cdb$root";
 
     private final int queryFetchSize;
     private OracleDatabaseVersion databaseVersion;
+    private String lastSessionContainerName;
 
     public OracleConnection(OracleConnectorConfig connectorConfig, boolean autoCommit) {
         this(connectorConfig.getJdbcConfig(), connectorConfig.getQueryFetchSize(), autoCommit);
@@ -128,12 +131,60 @@ public class OracleConnection extends JdbcConnection {
         return statement -> statement.getConnection().setAutoCommit(autoCommit);
     }
 
-    public void setSessionToPdb(String pdbName) {
+    public synchronized void setSessionToPdb(String pdbName) {
         setContainerAs(pdbName);
+        lastSessionContainerName = pdbName;
     }
 
-    public void resetSessionToCdb() {
-        setContainerAs("cdb$root");
+    public synchronized void resetSessionToCdb() {
+        setContainerAs(CDB_ROOT);
+        lastSessionContainerName = CDB_ROOT;
+    }
+
+    @Override
+    public synchronized Connection connection(boolean executeOnConnect) throws SQLException {
+        final boolean wasConnected = isConnected();
+        final Connection connection = super.connection(executeOnConnect);
+        if (!wasConnected) {
+            restoreSessionContainer(connection);
+        }
+        return connection;
+    }
+
+    @Override
+    public synchronized void reconnect() throws SQLException {
+        super.reconnect();
+        restoreSessionContainer(connection());
+    }
+
+    @Override
+    public synchronized void close() throws SQLException {
+        // A connection that is explicitly closed and reused starts over in the default container.
+        lastSessionContainerName = null;
+        super.close();
+    }
+
+    private void restoreSessionContainer(Connection connection) throws SQLException {
+        if (lastSessionContainerName == null) {
+            return;
+        }
+        // The physical connection was re-established, which places the new session in the default
+        // container of the service. Switch back to the container the session was last set to.
+        LOGGER.debug("Restoring session container to '{}' after reconnect.", lastSessionContainerName);
+        try (Statement statement = connection.createStatement()) {
+            statement.execute("alter session set container=" + lastSessionContainerName);
+        }
+        catch (SQLException e) {
+            // Close the physical connection so that the next call reconnects and retries the switch,
+            // rather than continuing to use a session in the wrong container.
+            try {
+                connection.close();
+            }
+            catch (SQLException closeException) {
+                e.addSuppressed(closeException);
+            }
+            throw e;
+        }
     }
 
     private void setContainerAs(String containerName) {
@@ -143,7 +194,7 @@ public class OracleConnection extends JdbcConnection {
             statement.execute("alter session set container=" + containerName);
         }
         catch (SQLException e) {
-            throw new RuntimeException(e);
+            throw new DebeziumException("Failed to set session container to " + containerName, e);
         }
         finally {
             if (statement != null) {
