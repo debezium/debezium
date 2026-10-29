@@ -7,11 +7,15 @@ package io.debezium.connector.oracle.antlr.listener;
 
 import java.sql.Types;
 import java.util.List;
+import java.util.function.ToIntFunction;
 
 import org.antlr.v4.runtime.tree.ParseTreeListener;
 
 import io.debezium.antlr.DataTypeResolver;
+import io.debezium.connector.oracle.OracleDatabaseSchema;
+import io.debezium.connector.oracle.OracleValueConverters;
 import io.debezium.connector.oracle.antlr.OracleDdlParser;
+import io.debezium.connector.oracle.relational.OracleColumnEditor;
 import io.debezium.ddl.parser.oracle.generated.PlSqlParser;
 import io.debezium.relational.Column;
 import io.debezium.relational.ColumnEditor;
@@ -114,6 +118,9 @@ public class ColumnDefinitionParserListener extends BaseParserListener {
         // This standardizes the handling of scale when data types shift from one to another
         columnEditor.unsetScale();
 
+        // Like scale, the octet length is only set for the data types that have one
+        setOctetLength(Column.UNSET_INT_VALUE);
+
         if (ctx.native_datatype_element() != null) {
             PlSqlParser.Precision_partContext precisionPart = ctx.precision_part();
             if (ctx.native_datatype_element().INT() != null
@@ -181,6 +188,14 @@ public class ColumnDefinitionParserListener extends BaseParserListener {
                 }
                 else {
                     setPrecision(precisionPart, columnEditor);
+                    // Without an explicit CHAR, the length is in bytes, the default NLS_LENGTH_SEMANTICS
+                    if (precisionPart.CHAR() != null) {
+                        setStringOctetLength(columnEditor.length(),
+                                converters -> OracleDatabaseSchema.getMaxBytesPerChar(converters.getDatabaseCharacterSet()));
+                    }
+                    else {
+                        setStringOctetLength(columnEditor.length(), converters -> 1);
+                    }
                 }
             }
             else if (ctx.native_datatype_element().NVARCHAR2() != null) {
@@ -193,6 +208,9 @@ public class ColumnDefinitionParserListener extends BaseParserListener {
                 }
                 else {
                     setPrecision(precisionPart, columnEditor);
+                    // NVARCHAR2 always uses character length semantics
+                    setStringOctetLength(columnEditor.length(),
+                            converters -> OracleDatabaseSchema.getMaxBytesPerChar(converters.getNationalCharacterSet()));
                 }
             }
             else if (ctx.native_datatype_element().CHAR() != null ||
@@ -352,6 +370,27 @@ public class ColumnDefinitionParserListener extends BaseParserListener {
     private int getVarCharDefaultLength() {
         // TODO replace with value from select name, value from v$parameter where name='max_string_size';
         return 4000;
+    }
+
+    /**
+     * Sets the octet length of a {@code VARCHAR2} or {@code NVARCHAR2} column, which Oracle limits to the
+     * database's maximum string size. Leaves it unset when the parser has no value converters.
+     *
+     * @param length the declared length
+     * @param bytesPerUnit resolves the number of bytes for each unit of the declared length
+     */
+    private void setStringOctetLength(int length, ToIntFunction<OracleValueConverters> bytesPerUnit) {
+        final OracleValueConverters converters = parser.getConverters();
+        if (converters != null) {
+            final int maxBytes = OracleDatabaseSchema.getMaxStringBytes(converters.isExtendedStringsSupported());
+            setOctetLength((int) Math.min((long) length * bytesPerUnit.applyAsInt(converters), maxBytes));
+        }
+    }
+
+    private void setOctetLength(int octetLength) {
+        if (columnEditor instanceof OracleColumnEditor oracleColumnEditor) {
+            oracleColumnEditor.octetLength(octetLength);
+        }
     }
 
     private void setPrecision(PlSqlParser.Precision_partContext precisionPart, ColumnEditor columnEditor) {

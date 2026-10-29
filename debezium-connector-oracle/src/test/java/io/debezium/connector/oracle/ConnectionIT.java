@@ -10,14 +10,22 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.sql.SQLException;
 import java.sql.SQLTimeoutException;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 import org.junit.jupiter.api.Test;
 
 import io.debezium.config.Configuration;
+import io.debezium.connector.oracle.antlr.OracleDdlParser;
 import io.debezium.connector.oracle.junit.SkipWhenAdapterNameIsNot;
+import io.debezium.connector.oracle.relational.OracleColumn;
 import io.debezium.connector.oracle.util.TestHelper;
 import io.debezium.doc.FixFor;
+import io.debezium.relational.Column;
+import io.debezium.relational.Table;
 import io.debezium.relational.TableId;
+import io.debezium.relational.Tables;
 import io.debezium.util.Testing;
 
 public class ConnectionIT implements Testing {
@@ -54,6 +62,65 @@ public class ConnectionIT implements Testing {
                     "   dbms_lock.sleep(10);\n" +
                     "end;"))
                     .isInstanceOf(SQLTimeoutException.class);
+        }
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2794")
+    void shouldReadColumnOctetLengthFromJdbcMetadataAndDdl() throws SQLException {
+        final String ddl = "CREATE TABLE dbz2794 (id numeric(9,0) primary key, c1 varchar2(500 char), "
+                + "c2 varchar2(500 byte), c3 varchar2(500), c4 nvarchar2(500), c5 raw(100), c6 number(5))";
+        try (OracleConnection connection = TestHelper.testConnection()) {
+            TestHelper.dropTable(connection, "dbz2794");
+            try {
+                connection.execute(ddl);
+
+                final Map<String, Integer> dataLengths = connection.queryAndMap(
+                        "SELECT COLUMN_NAME, DATA_LENGTH FROM USER_TAB_COLUMNS WHERE TABLE_NAME = 'DBZ2794'",
+                        rs -> {
+                            final Map<String, Integer> results = new HashMap<>();
+                            while (rs.next()) {
+                                results.put(rs.getString(1), rs.getInt(2));
+                            }
+                            return results;
+                        });
+
+                final OracleConnectorConfig connectorConfig = new OracleConnectorConfig(TestHelper.defaultConfig().build());
+                final Tables tables = new Tables(false, connectorConfig);
+                connection.readSchema(tables, null, "DEBEZIUM", Tables.TableFilter.fromPredicate(id -> "DBZ2794".equals(id.table())), null, false);
+                final Table table = tables.tableIds().stream()
+                        .filter(id -> "DBZ2794".equals(id.table()))
+                        .findFirst()
+                        .map(tables::forTable)
+                        .orElse(null);
+                assertThat(table).isNotNull();
+
+                for (String columnName : List.of("C1", "C2", "C3", "C4")) {
+                    assertThat(table.columnWithName(columnName).unwrap(OracleColumn.class).octetLength())
+                            .as(columnName)
+                            .isEqualTo(dataLengths.get(columnName));
+                }
+                // The byte length is only recorded for the string types that can be extended strings
+                assertThat(table.columnWithName("C5").unwrap(OracleColumn.class).octetLength()).isEqualTo(Column.UNSET_INT_VALUE);
+                assertThat(table.columnWithName("C6").unwrap(OracleColumn.class).octetLength()).isEqualTo(Column.UNSET_INT_VALUE);
+
+                // The DDL parser must resolve the same byte lengths from the database character sets
+                final OracleValueConverters converters = connectorConfig.getAdapter().getValueConverter(connectorConfig, connection);
+                final OracleDdlParser parser = new OracleDdlParser(converters);
+                parser.setCurrentSchema("DEBEZIUM");
+                final Tables parsedTables = new Tables(false, connectorConfig);
+                parser.parse(ddl, parsedTables);
+                final Table parsedTable = parsedTables.forTable(new TableId(null, "DEBEZIUM", "DBZ2794"));
+                assertThat(parsedTable).isNotNull();
+                for (String columnName : List.of("C1", "C2", "C3", "C4")) {
+                    assertThat(parsedTable.columnWithName(columnName).unwrap(OracleColumn.class).octetLength())
+                            .as(columnName)
+                            .isEqualTo(dataLengths.get(columnName));
+                }
+            }
+            finally {
+                TestHelper.dropTable(connection, "dbz2794");
+            }
         }
     }
 

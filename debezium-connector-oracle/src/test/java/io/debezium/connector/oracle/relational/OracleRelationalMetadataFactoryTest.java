@@ -16,6 +16,7 @@ import io.debezium.connector.oracle.OracleConnectorConfig;
 import io.debezium.connector.oracle.antlr.OracleDdlParser;
 import io.debezium.connector.oracle.util.TestHelper;
 import io.debezium.doc.FixFor;
+import io.debezium.document.Document;
 import io.debezium.relational.Column;
 import io.debezium.relational.ColumnEditor;
 import io.debezium.relational.Table;
@@ -99,6 +100,82 @@ public class OracleRelationalMetadataFactoryTest {
         final Table plainTable = Table.editor().tableId(TABLE_ID).addColumn(column).create();
         assertThat(table).isNotEqualTo(plainTable);
         assertThat(plainTable).isNotEqualTo(table);
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2794")
+    void shouldKeepOctetLengthWhenCreatingAndEditing() {
+        final OracleColumn column = varcharColumn(8000);
+        assertThat(column.octetLength()).isEqualTo(8000);
+        assertThat(column.edit().octetLength()).isEqualTo(8000);
+        assertThat(column.edit().create()).isEqualTo(column);
+        assertThat(column.toString()).contains("OCTET_LENGTH 8000");
+
+        final OracleColumn unset = varcharColumn(Column.UNSET_INT_VALUE);
+        assertThat(unset.octetLength()).isEqualTo(Column.UNSET_INT_VALUE);
+        assertThat(unset.toString()).doesNotContain("OCTET_LENGTH");
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2794")
+    void shouldIncludeOctetLengthInEquality() {
+        final OracleColumn column = varcharColumn(8000);
+        final OracleColumn other = column.edit().octetLength(2000).create();
+        assertThat(other).isNotEqualTo(column);
+        assertThat(column).isNotEqualTo(other);
+        assertThat(column.edit().create().hashCode()).isEqualTo(column.hashCode());
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2794")
+    void shouldRoundTripOctetLengthThroughSchemaHistoryDocument() {
+        final Table table = OracleRelationalMetadataFactory.INSTANCE.tableEditor()
+                .tableId(TABLE_ID)
+                .addColumn(varcharColumn(8000))
+                .addColumn(OracleRelationalMetadataFactory.INSTANCE.columnEditor()
+                        .name("ID").type("NUMBER").jdbcType(Types.NUMERIC).length(9).position(2)
+                        .create())
+                .create();
+
+        final JsonTableChangeSerializer serializer = OracleRelationalMetadataFactory.INSTANCE.jsonTableChangesSerializer();
+        assertThat(serializer).isInstanceOf(OracleJsonTableChangeSerializer.class);
+
+        final Document document = serializer.toDocument(table);
+        final Document dataColumn = document.getArray("columns").get(0).asDocument();
+        assertThat(dataColumn.getDocument(OracleJsonTableChangeSerializer.ORACLE_KEY).getInteger(OracleJsonTableChangeSerializer.OCTET_LENGTH_KEY))
+                .isEqualTo(8000);
+        assertThat(document.getArray("columns").get(1).asDocument().has(OracleJsonTableChangeSerializer.ORACLE_KEY)).isFalse();
+
+        final Table recovered = serializer.fromDocument(TABLE_ID, document);
+        assertThat(recovered).isEqualTo(table);
+        assertThat(recovered.columnWithName("DATA").unwrap(OracleColumn.class).octetLength()).isEqualTo(8000);
+        assertThat(recovered.columnWithName("ID").unwrap(OracleColumn.class).octetLength()).isEqualTo(Column.UNSET_INT_VALUE);
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2794")
+    void shouldLeaveOctetLengthUnsetWhenReadingLegacySchemaHistoryDocument() {
+        final Table table = OracleRelationalMetadataFactory.INSTANCE.tableEditor()
+                .tableId(TABLE_ID)
+                .addColumn(varcharColumn(8000))
+                .create();
+
+        // A document written by the base serializer has no Oracle entry, like history from older versions
+        final Document legacy = new JsonTableChangeSerializer().toDocument(table);
+        final Table recovered = OracleRelationalMetadataFactory.INSTANCE.jsonTableChangesSerializer().fromDocument(TABLE_ID, legacy);
+
+        final OracleColumn column = recovered.columnWithName("DATA").unwrap(OracleColumn.class);
+        assertThat(column.octetLength()).isEqualTo(Column.UNSET_INT_VALUE);
+        assertThat(column.length()).isEqualTo(2000);
+        assertThat(column.typeName()).isEqualTo("VARCHAR2");
+        assertThat(column.jdbcType()).isEqualTo(Types.VARCHAR);
+    }
+
+    private static OracleColumn varcharColumn(int octetLength) {
+        final OracleColumnEditor editor = OracleRelationalMetadataFactory.INSTANCE.columnEditor();
+        // Not optional, because editing an optional column without a default adds an implicit NULL default
+        editor.name("DATA").type("VARCHAR2").jdbcType(Types.VARCHAR).length(2000).position(1).optional(false);
+        return editor.octetLength(octetLength).create();
     }
 
     private static Column dataColumn(ColumnEditor editor) {
