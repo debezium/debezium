@@ -13,6 +13,7 @@ import java.sql.Statement;
 import java.time.Duration;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -164,13 +165,14 @@ public class DefaultRecordWriter implements RecordWriter {
         return readTable(collectionId);
     }
 
-    private boolean hasTable(CollectionId collectionId) {
+    @Override
+    public boolean tableExists(CollectionId collectionId) {
         return this.executeWithRetries("check for existence of table",
                 () -> session.doReturningWork((connection) -> dialect.tableExists(connection, collectionId)));
     }
 
     private TableDescriptor alterTableIfNeeded(CollectionId collectionId, JdbcSinkRecord record) throws SQLException {
-        if (!hasTable(collectionId)) {
+        if (!tableExists(collectionId)) {
             LOGGER.error("Table '{}' does not exist and cannot be altered.", collectionId.toFullIdentiferString());
             throw new SQLException("Could not find table: " + collectionId.toFullIdentiferString());
         }
@@ -225,7 +227,7 @@ public class DefaultRecordWriter implements RecordWriter {
     }
 
     public TableDescriptor checkAndApplyTableChangesIfNeeded(CollectionId collectionId, JdbcSinkRecord record) throws SQLException {
-        if (!hasTable(collectionId)) {
+        if (!tableExists(collectionId)) {
             // Table does not exist, lets attempt to create it.
             try {
                 return createTable(collectionId, record);
@@ -307,7 +309,7 @@ public class DefaultRecordWriter implements RecordWriter {
                     currentTable = checkAndApplyTableChangesIfNeeded(collectionId, record);
                 }
                 else {
-                    if (hasTable(collectionId)) {
+                    if (tableExists(collectionId)) {
                         currentTable = readTable(collectionId);
                     }
                     else {
@@ -349,10 +351,22 @@ public class DefaultRecordWriter implements RecordWriter {
         Map<CollectionId, TableDescriptor> tablesInBatch = new LinkedHashMap<>();
         Map<CollectionId, List<JdbcSinkRecord>> inserts = new LinkedHashMap<>();
         Map<CollectionId, List<JdbcSinkRecord>> deletes = new LinkedHashMap<>();
+        Set<CollectionId> missingTables = new HashSet<>();
 
         for (BatchRecord batchRecord : batch) {
             var record = (JdbcKafkaSinkRecord) batchRecord.record();
             var collectionId = batchRecord.collectionId();
+
+            if ((record.isDelete() || record.isTombstone()) && record.getPayload() == null
+                    && !tablesInBatch.containsKey(collectionId) && !tablesRegistry.containsKey(collectionId)
+                    && (missingTables.contains(collectionId) || !tableExists(collectionId))) {
+                // A delete without payload, e.g. a tombstone, carries no columns the missing table could be
+                // created from, and there is nothing to delete in a table that does not exist.
+                LOGGER.debug("Delete without payload skipped because table '{}' does not exist.", collectionId.toFullIdentiferString());
+                missingTables.add(collectionId);
+                progressListener().filtered();
+                continue;
+            }
 
             tablesInBatch.put(collectionId, tableFromRecord(batchRecord));
 
