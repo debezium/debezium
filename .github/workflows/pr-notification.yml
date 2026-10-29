@@ -6,6 +6,10 @@ on:
     types:
       - completed
 
+permissions:
+  contents: read
+  pull-requests: read
+
 jobs:
   notify_pr_author:
     name: "Notify PR Author"
@@ -20,14 +24,12 @@ jobs:
           sparse-checkout: |
             .github/config/zulip-user-mapping.txt
           sparse-checkout-cone-mode: false
+          persist-credentials: false
 
       - name: Find PR and check user mapping
         id: check-notification
         run: |
-          # Get workflow run details
-          HEAD_BRANCH="${{ github.event.workflow_run.head_branch }}"
-          HEAD_SHA="${{ github.event.workflow_run.head_sha }}"
-
+          # HEAD_BRANCH is attacker-controlled (fork branch name), so it is only ever read from env
           echo "Looking for PR with branch: $HEAD_BRANCH"
 
           # Try to find PR using gh CLI
@@ -73,32 +75,41 @@ jobs:
           echo "zulip_user_id=$ZULIP_USER_ID" >> $GITHUB_OUTPUT
         env:
           GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          HEAD_BRANCH: ${{ github.event.workflow_run.head_branch }}
 
       - name: Get full PR details
         if: steps.check-notification.outputs.should_notify == 'true'
         id: pr-details
         run: |
-          PR_NUMBER="${{ steps.check-notification.outputs.pr_number }}"
-
           # Get full PR details
           PR_DATA=$(gh pr view "$PR_NUMBER" --json title,url,author)
 
           PR_TITLE=$(echo "$PR_DATA" | jq -r '.title')
           PR_URL=$(echo "$PR_DATA" | jq -r '.url')
 
-          echo "PR_TITLE=$PR_TITLE" >> $GITHUB_ENV
-          echo "PR_NUMBER=$PR_NUMBER" >> $GITHUB_ENV
-          echo "PR_URL=$PR_URL" >> $GITHUB_ENV
-          echo "PR_AUTHOR=${{ steps.check-notification.outputs.pr_author }}" >> $GITHUB_ENV
+          # Use a random heredoc delimiter so a crafted title cannot inject extra env entries
+          DELIM="EOF_$(openssl rand -hex 16)"
+          {
+            echo "PR_TITLE<<$DELIM"
+            echo "$PR_TITLE"
+            echo "$DELIM"
+            echo "PR_NUMBER=$PR_NUMBER"
+            echo "PR_URL=$PR_URL"
+            echo "PR_AUTHOR=$PR_AUTHOR"
+          } >> "$GITHUB_ENV"
         env:
           GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          PR_NUMBER: ${{ steps.check-notification.outputs.pr_number }}
+          PR_AUTHOR: ${{ steps.check-notification.outputs.pr_author }}
 
       - name: Determine overall result
         if: steps.check-notification.outputs.should_notify == 'true'
         id: result
+        env:
+          CONCLUSION: ${{ github.event.workflow_run.conclusion }}
         run: |
-          CONCLUSION="${{ github.event.workflow_run.conclusion }}"
-
           if [ "$CONCLUSION" = "success" ]; then
             echo "overall_status=success" >> $GITHUB_OUTPUT
             echo "status_emoji=✅" >> $GITHUB_OUTPUT
@@ -135,11 +146,15 @@ jobs:
             **Workflow Run:** ${{ github.event.workflow_run.html_url }}
 
       - name: Log notification status
+        env:
+          SHOULD_NOTIFY: ${{ steps.check-notification.outputs.should_notify }}
+          ZULIP_USER_ID: ${{ steps.check-notification.outputs.zulip_user_id }}
+          REASON: ${{ steps.check-notification.outputs.skip_reason }}
+          PR_AUTHOR: ${{ steps.check-notification.outputs.pr_author }}
         run: |
-          if [ "${{ steps.check-notification.outputs.should_notify }}" = "true" ]; then
-            echo "✅ Zulip notification sent to user ID: ${{ steps.check-notification.outputs.zulip_user_id }}"
+          if [ "$SHOULD_NOTIFY" = "true" ]; then
+            echo "✅ Zulip notification sent to user ID: $ZULIP_USER_ID"
           else
-            REASON="${{ steps.check-notification.outputs.skip_reason }}"
             case "$REASON" in
               "no_pr_found")
                 echo "ℹ️ No notification sent - no PR found for this workflow run"
@@ -148,7 +163,7 @@ jobs:
                 echo "ℹ️ No notification sent - mapping file not found"
                 ;;
               "user_not_mapped")
-                echo "ℹ️ No notification sent - user ${{ steps.check-notification.outputs.pr_author }} not in mapping file"
+                echo "ℹ️ No notification sent - user $PR_AUTHOR not in mapping file"
                 ;;
               *)
                 echo "ℹ️ No notification sent - unknown reason"
