@@ -8,14 +8,20 @@ package io.debezium.storage.rocksdb.reselect;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import java.io.IOException;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+import java.util.stream.Stream;
 
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
@@ -23,10 +29,15 @@ import org.apache.kafka.connect.data.Struct;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
+import org.rocksdb.Options;
+import org.rocksdb.RocksDB;
+import org.rocksdb.TtlDB;
 
 import io.debezium.DebeziumException;
 import io.debezium.config.Configuration;
+import io.debezium.doc.FixFor;
 import io.debezium.processors.reselect.cache.ReselectColumnCache.Hit;
+import io.debezium.storage.rocksdb.RocksDbUtil;
 
 /**
  * Unit tests for {@link RocksDbReselectColumnCache}. RocksDB runs embedded, so these cover the full
@@ -38,6 +49,8 @@ import io.debezium.processors.reselect.cache.ReselectColumnCache.Hit;
 public class RocksDbReselectColumnCacheTest {
 
     private static final Schema INT_KEY = SchemaBuilder.struct().name("key").field("id", Schema.INT32_SCHEMA).build();
+    private static final Pattern OPTIONS_FILE_NAME = Pattern.compile("OPTIONS-\\d+");
+    private static final Pattern PERIODIC_COMPACTION_OPTION = Pattern.compile("^\\s*periodic_compaction_seconds=(\\d+)\\s*$", Pattern.MULTILINE);
 
     @TempDir
     Path tempDir;
@@ -64,6 +77,41 @@ public class RocksDbReselectColumnCacheTest {
 
     private static Struct intKey(int id) {
         return new Struct(INT_KEY).put("id", id);
+    }
+
+    /**
+     * Returns the {@code periodic_compaction_seconds} value recorded in the newest {@code OPTIONS-<number>}
+     * file that RocksDB persists in the given database directory, i.e. the effective value it was opened with.
+     */
+    private static long persistedPeriodicCompactionSeconds(Path dbDir) throws IOException {
+        final Path latest;
+        try (Stream<Path> files = Files.list(dbDir)) {
+            latest = files
+                    .filter(p -> OPTIONS_FILE_NAME.matcher(p.getFileName().toString()).matches())
+                    .max(Comparator.comparingLong(p -> Long.parseLong(p.getFileName().toString().substring("OPTIONS-".length()))))
+                    .orElseThrow(() -> new AssertionError("No RocksDB OPTIONS file found in " + dbDir));
+        }
+        final Matcher matcher = PERIODIC_COMPACTION_OPTION.matcher(Files.readString(latest));
+        assertThat(matcher.find()).as("periodic_compaction_seconds in %s", latest).isTrue();
+        return Long.parseUnsignedLong(matcher.group(1));
+    }
+
+    /**
+     * Returns the value RocksDB itself records for a TTL database opened with the same base options as the
+     * cache, without the periodic compaction setter ever being called.
+     */
+    private long rocksDbDefaultTtlPeriodicCompactionSeconds() throws Exception {
+        final Path baselineDir = tempDir.resolve("baseline");
+        Files.createDirectories(baselineDir);
+        try (Options options = RocksDbUtil.createOptions();
+                RocksDB db = TtlDB.open(options, baselineDir.toString(), 60, false)) {
+            db.put(new byte[]{ 1 }, new byte[]{ 1 });
+        }
+        return persistedPeriodicCompactionSeconds(baselineDir);
+    }
+
+    private Path cacheDir() {
+        return tempDir.resolve("reselect-cache");
     }
 
     @Test
@@ -145,6 +193,74 @@ public class RocksDbReselectColumnCacheTest {
         assertThatThrownBy(() -> open(Configuration.empty()))
                 .isInstanceOf(DebeziumException.class)
                 .hasMessageContaining(RocksDbReselectColumnCache.PATH);
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2865")
+    public void periodicCompactionSecondsIsAppliedWhenTtlEnabled() throws Exception {
+        cache = open(config()
+                .with("reselect.cache.ttl.ms", 60_000)
+                .with(RocksDbReselectColumnCache.PERIODIC_COMPACTION_SECONDS, 3600)
+                .build());
+        cache.forRow(intKey(1)).put("data", Schema.OPTIONAL_STRING_SCHEMA, "AAA");
+        cache.close();
+        cache = null;
+
+        assertThat(persistedPeriodicCompactionSeconds(cacheDir())).isEqualTo(3600L);
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2865")
+    public void periodicCompactionSecondsIsAppliedWithoutTtl() throws Exception {
+        cache = open(config().with(RocksDbReselectColumnCache.PERIODIC_COMPACTION_SECONDS, 7200).build());
+        cache.forRow(intKey(1)).put("data", Schema.OPTIONAL_STRING_SCHEMA, "AAA");
+        assertThat(cache.forRow(intKey(1)).get("data")).map(Hit::value).contains("AAA");
+        cache.close();
+        cache = null;
+
+        assertThat(persistedPeriodicCompactionSeconds(cacheDir())).isEqualTo(7200L);
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2865")
+    public void periodicCompactionDefaultLeavesRocksDbDefault() throws Exception {
+        final long rocksDbDefault = rocksDbDefaultTtlPeriodicCompactionSeconds();
+
+        cache = open(config().with("reselect.cache.ttl.ms", 60_000).build());
+        cache.forRow(intKey(1)).put("data", Schema.OPTIONAL_STRING_SCHEMA, "AAA");
+        cache.close();
+        cache = null;
+
+        // RocksDB enables 30-day periodic compaction by default for a TTL database. The reselect-columns
+        // documentation quotes this value, so update it if a rocksdbjni upgrade changes the default.
+        assertThat(rocksDbDefault).isEqualTo(2_592_000L);
+        assertThat(persistedPeriodicCompactionSeconds(cacheDir())).isEqualTo(rocksDbDefault);
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2865")
+    public void explicitZeroPeriodicCompactionSecondsLeavesRocksDbDefault() throws Exception {
+        final long rocksDbDefault = rocksDbDefaultTtlPeriodicCompactionSeconds();
+
+        // Unlike RocksDB's own periodic_compaction_seconds=0, the property's 0 does not disable periodic compaction
+        cache = open(config()
+                .with("reselect.cache.ttl.ms", 60_000)
+                .with(RocksDbReselectColumnCache.PERIODIC_COMPACTION_SECONDS, 0)
+                .build());
+        cache.forRow(intKey(1)).put("data", Schema.OPTIONAL_STRING_SCHEMA, "AAA");
+        cache.close();
+        cache = null;
+
+        assertThat(rocksDbDefault).isNotZero();
+        assertThat(persistedPeriodicCompactionSeconds(cacheDir())).isEqualTo(rocksDbDefault);
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2865")
+    public void negativePeriodicCompactionSecondsFails() {
+        assertThatThrownBy(() -> open(config().with(RocksDbReselectColumnCache.PERIODIC_COMPACTION_SECONDS, -1).build()))
+                .isInstanceOf(DebeziumException.class)
+                .hasMessageContaining(RocksDbReselectColumnCache.PERIODIC_COMPACTION_SECONDS);
     }
 
     @Test
