@@ -41,6 +41,7 @@ import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Field;
 import io.debezium.connector.oracle.OracleConnectorConfig.ConnectorAdapter;
 import io.debezium.connector.oracle.logminer.SqlUtils;
+import io.debezium.connector.oracle.relational.OracleColumnEditor;
 import io.debezium.connector.oracle.relational.OracleRelationalMetadataFactory;
 import io.debezium.connector.oracle.util.OracleUtils;
 import io.debezium.jdbc.JdbcConfiguration;
@@ -54,6 +55,7 @@ import io.debezium.relational.ColumnEditor;
 import io.debezium.relational.RelationalDatabaseConnectorConfig;
 import io.debezium.relational.Table;
 import io.debezium.relational.TableId;
+import io.debezium.relational.Tables.ColumnNameFilter;
 import io.debezium.spi.schema.DataCollectionId;
 import io.debezium.util.Strings;
 
@@ -76,6 +78,7 @@ public class OracleConnection extends JdbcConnection {
     private static final Pattern SYS_NC_PATTERN = Pattern.compile("^SYS_NC(?:_OID|_ROWINFO|[0-9][0-9][0-9][0-9][0-9])\\$$");
 
     private CharacterSet databaseCharacterSet;
+    private Boolean extendedStringSupport;
 
     /**
      * Pattern to identify abstract data type indices and column names.
@@ -691,6 +694,24 @@ public class OracleConnection extends JdbcConnection {
     }
 
     @Override
+    protected Optional<ColumnEditor> readTableColumn(ResultSet columnMetadata, TableId tableId, ColumnNameFilter columnFilter) throws SQLException {
+        final Optional<ColumnEditor> column = super.readTableColumn(columnMetadata, tableId, columnFilter);
+        if (column.isPresent() && isOctetLengthType(column.get().typeName())) {
+            // The driver reports DATA_LENGTH, the maximum length in bytes, as CHAR_OCTET_LENGTH. The column
+            // size is the length in characters for CHAR semantics and national character types.
+            final int octetLength = columnMetadata.getInt(16);
+            if (!columnMetadata.wasNull() && octetLength > 0 && column.get() instanceof OracleColumnEditor editor) {
+                editor.octetLength(octetLength);
+            }
+        }
+        return column;
+    }
+
+    private static boolean isOctetLengthType(String typeName) {
+        return "VARCHAR2".equals(typeName) || "NVARCHAR2".equals(typeName);
+    }
+
+    @Override
     protected ColumnEditor overrideColumn(ColumnEditor column) {
         // This allows the column state to be overridden before default-value resolution so that the
         // output of the default value is within the same precision as that of the column values.
@@ -1017,10 +1038,15 @@ public class OracleConnection extends JdbcConnection {
     }
 
     public boolean hasExtendedStringSupport() {
+        // MAX_STRING_SIZE can only change with a database restart in upgrade mode, so the result can be cached
+        if (extendedStringSupport != null) {
+            return extendedStringSupport;
+        }
         try {
             final String value = Strings.defaultIfBlank(getDatabaseParameterValue("MAX_STRING_SIZE"), "STANDARD");
             LOGGER.info("Oracle MAX_STRING_SIZE is {}", value);
-            return "EXTENDED".equals(value);
+            extendedStringSupport = "EXTENDED".equals(value);
+            return extendedStringSupport;
         }
         catch (Exception e) {
             LOGGER.warn("Failed to check MAX_STRING_SIZE status, defaulting to STANDARD.", e);

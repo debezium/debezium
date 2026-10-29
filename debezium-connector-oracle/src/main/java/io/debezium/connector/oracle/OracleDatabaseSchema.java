@@ -11,7 +11,10 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -20,6 +23,7 @@ import io.debezium.config.CommonConnectorConfig;
 import io.debezium.connector.common.CdcSourceTaskContext;
 import io.debezium.connector.oracle.StreamingAdapter.TableNameCaseSensitivity;
 import io.debezium.connector.oracle.antlr.OracleDdlParser;
+import io.debezium.connector.oracle.relational.OracleColumn;
 import io.debezium.relational.Attribute;
 import io.debezium.relational.Column;
 import io.debezium.relational.CustomConverterRegistry;
@@ -35,6 +39,7 @@ import io.debezium.spi.topic.TopicNamingStrategy;
 import io.debezium.util.LRUCacheMap;
 
 import oracle.jdbc.OracleTypes;
+import oracle.sql.CharacterSet;
 
 /**
  * The schema of an Oracle database.
@@ -48,9 +53,17 @@ public class OracleDatabaseSchema extends HistorizedRelationalDatabaseSchema {
     public static final String ATTRIBUTE_OBJECT_ID = "OBJECT_ID";
     public static final String ATTRIBUTE_DATA_OBJECT_ID = "DATA_OBJECT_ID";
     private static final TableId NO_SUCH_TABLE = new TableId(null, null, "__NULL");
+    private static final int MAX_STANDARD_STRING_BYTES = 4000;
+    private static final int MAX_EXTENDED_STRING_BYTES = 32767;
+
+    /**
+     * Oracle names multibyte character sets with the number of bits after the region, for example {@code ZHS16GBK}.
+     */
+    private static final Pattern MULTIBYTE_CHARACTER_SET_NAME = Pattern.compile("^[A-Z]+(16|32)[A-Z].*");
 
     private final OracleDdlParser ddlParser;
     private final Map<TableId, List<Column>> lobColumnsByTableId = new ConcurrentHashMap<>();
+    private final Set<TableId> tablesWarnedForMissingOctetLength = ConcurrentHashMap.newKeySet();
     private final Map<String, TableId> tableIdCache = new ConcurrentHashMap<>();
     private final OracleValueConverters valueConverters;
     private final LRUCacheMap<Long, TableId> objectIdToTableId;
@@ -87,6 +100,13 @@ public class OracleDatabaseSchema extends HistorizedRelationalDatabaseSchema {
 
         this.objectIdToTableId = new LRUCacheMap<>(connectorConfig.getObjectIdToTableIdCacheSize());
         this.extendedStringsSupported = extendedStringsSupported;
+
+        if (extendedStringsSupported && connectorConfig.isLobEnabled() && isMultibyteNonUnicode(valueConverters.getDatabaseCharacterSet())) {
+            LOGGER.warn("The database character set {} is a multibyte character set that is not Unicode. "
+                    + "For VARCHAR2 columns with CHAR length semantics that are created or altered while streaming, "
+                    + "the connector estimates {} bytes per character from the character set name to detect extended strings.",
+                    valueConverters.getDatabaseCharacterSet(), getMaxBytesPerChar(valueConverters.getDatabaseCharacterSet()));
+        }
     }
 
     public Tables getTables() {
@@ -222,6 +242,40 @@ public class OracleDatabaseSchema extends HistorizedRelationalDatabaseSchema {
     }
 
     /**
+     * Get the maximum length in bytes of a {@code VARCHAR2} or {@code NVARCHAR2} column, which depends on the
+     * database's {@code MAX_STRING_SIZE} setting.
+     *
+     * @param extendedStringsSupported whether {@code MAX_STRING_SIZE} is {@code EXTENDED}
+     * @return the maximum length in bytes
+     */
+    public static int getMaxStringBytes(boolean extendedStringsSupported) {
+        return extendedStringsSupported ? MAX_EXTENDED_STRING_BYTES : MAX_STANDARD_STRING_BYTES;
+    }
+
+    /**
+     * Get the maximum number of bytes a single character uses in the given character set.
+     * <p>
+     * For multibyte character sets that are not Unicode, the width is derived from the number of bits in the
+     * Oracle character set name, for example 2 for {@code ZHS16GBK} and 4 for {@code ZHS32GB18030}. The
+     * {@code JA16EUC} sets use up to 3 bytes. Over-counting only treats a column as an extended string
+     * column, while under-counting would lose its changes.
+     *
+     * @param characterSet the character set, may be {@code null}
+     * @return the maximum bytes per character, at least 1
+     */
+    public static int getMaxBytesPerChar(CharacterSet characterSet) {
+        if (characterSet == null) {
+            return 1;
+        }
+        return switch (characterSet.getOracleId()) {
+            case CharacterSet.AL32UTF8_CHARSET -> 4;
+            case CharacterSet.UTF8_CHARSET -> 3;
+            case CharacterSet.AL16UTF16_CHARSET, CharacterSet.AL16UTF16LE_CHARSET -> 2;
+            default -> characterSet.isUnicode() ? 4 : getMaxBytesPerCharFromName(characterSet.toString());
+        };
+    }
+
+    /**
      * Return whether the provided relational column model is a LOB data type.
      */
     private static boolean isLobColumn(Column column) {
@@ -250,13 +304,49 @@ public class OracleDatabaseSchema extends HistorizedRelationalDatabaseSchema {
     }
 
     /**
-     * Returns whether the provided relational column model is an extended string data type.
+     * Returns whether the provided relational column model is an extended string data type, a
+     * {@code VARCHAR2} or {@code NVARCHAR2} column whose maximum length is more than 4000 bytes.
      */
     private static boolean isExtendedStringColumn(Column column) {
-        if (column.jdbcType() == OracleTypes.VARCHAR && column.length() > 4000) {
-            return true;
+        if (!isStringColumn(column)) {
+            return false;
         }
-        return column.jdbcType() == OracleTypes.NVARCHAR && column.length() > 2000;
+        final int octetLength = getOctetLength(column);
+        if (octetLength != Column.UNSET_INT_VALUE) {
+            return octetLength > MAX_STANDARD_STRING_BYTES;
+        }
+        // Without a byte length only the declared length is known, which is in characters for
+        // CHAR semantics, so this misses some extended string columns.
+        if (column.jdbcType() == OracleTypes.VARCHAR) {
+            return column.length() > MAX_STANDARD_STRING_BYTES;
+        }
+        return column.length() > MAX_STANDARD_STRING_BYTES / 2;
+    }
+
+    private static boolean isStringColumn(Column column) {
+        return column.jdbcType() == OracleTypes.VARCHAR || column.jdbcType() == OracleTypes.NVARCHAR;
+    }
+
+    private static int getOctetLength(Column column) {
+        return column instanceof OracleColumn oracleColumn ? oracleColumn.octetLength() : Column.UNSET_INT_VALUE;
+    }
+
+    private static int getMaxBytesPerCharFromName(String characterSetName) {
+        if (characterSetName == null) {
+            return 1;
+        }
+        final Matcher matcher = MULTIBYTE_CHARACTER_SET_NAME.matcher(characterSetName);
+        if (!matcher.matches()) {
+            return 1;
+        }
+        if (characterSetName.startsWith("JA16EUC")) {
+            return 3;
+        }
+        return "16".equals(matcher.group(1)) ? 2 : 4;
+    }
+
+    private static boolean isMultibyteNonUnicode(CharacterSet characterSet) {
+        return characterSet != null && !characterSet.isUnicode() && getMaxBytesPerChar(characterSet) > 1;
     }
 
     private static boolean isJsonColumn(Column column) {
@@ -284,13 +374,12 @@ public class OracleDatabaseSchema extends HistorizedRelationalDatabaseSchema {
                     lobColumns.add(column);
                     break;
                 case OracleTypes.VARCHAR:
-                    if (extendedStringsSupported && column.length() > 4000) {
-                        lobColumns.add(column);
-                    }
-                    break;
                 case OracleTypes.NVARCHAR:
-                    if (extendedStringsSupported && column.length() > 2000) {
-                        lobColumns.add(column);
+                    if (extendedStringsSupported) {
+                        warnIfOctetLengthIsMissing(table, column);
+                        if (isExtendedStringColumn(column)) {
+                            lobColumns.add(column);
+                        }
                     }
                     break;
                 default: {
@@ -305,6 +394,17 @@ public class OracleDatabaseSchema extends HistorizedRelationalDatabaseSchema {
         }
         else {
             lobColumnsByTableId.remove(table.id());
+        }
+    }
+
+    private void warnIfOctetLengthIsMissing(Table table, Column column) {
+        // Other types reported as VARCHAR, such as ROWID, never have a byte length
+        final boolean hasOctetLength = "VARCHAR2".equals(column.typeName()) || "NVARCHAR2".equals(column.typeName());
+        if (hasOctetLength && column.length() != Column.UNSET_INT_VALUE && getOctetLength(column) == Column.UNSET_INT_VALUE
+                && tablesWarnedForMissingOctetLength.add(table.id())) {
+            LOGGER.warn("Table '{}' has no byte length for column '{}', so its declared length is used instead "
+                    + "and it may not be detected as an extended string column.",
+                    table.id(), column.name());
         }
     }
 

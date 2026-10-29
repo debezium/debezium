@@ -31,4 +31,9 @@ public final class OracleRelationalMetadataFactory implements RelationalMetadata
     public OracleTableEditor tableEditor() {
         return new OracleTableEditorImpl();
     }
+
+    @Override
+    public OracleJsonTableChangeSerializer jsonTableChangesSerializer() {
+        return new OracleJsonTableChangeSerializer(this);
+    }
 }

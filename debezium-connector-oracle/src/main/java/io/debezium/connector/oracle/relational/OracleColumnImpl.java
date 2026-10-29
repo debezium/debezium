@@ -5,6 +5,8 @@
  */
 package io.debezium.connector.oracle.relational;
 
+import java.util.Objects;
+
 import io.debezium.relational.ColumnImpl;
 
 /**
@@ -14,22 +16,37 @@ import io.debezium.relational.ColumnImpl;
  */
 final class OracleColumnImpl extends ColumnImpl implements OracleColumn {
 
+    private final int octetLength;
+
     OracleColumnImpl(OracleColumnEditor editor) {
         super(editor);
+        this.octetLength = editor.octetLength();
+    }
+
+    @Override
+    public int octetLength() {
+        return octetLength;
     }
 
     @Override
     public OracleColumnEditor edit() {
-        return copyTo(new OracleColumnEditorImpl());
+        return copyTo(new OracleColumnEditorImpl()).octetLength(octetLength);
     }
 
     @Override
     public boolean equals(Object obj) {
-        return obj instanceof OracleColumn && super.equals(obj);
+        return obj instanceof OracleColumn that && super.equals(that) && octetLength == that.octetLength();
     }
 
     @Override
     public int hashCode() {
-        return super.hashCode();
+        return Objects.hash(super.hashCode(), octetLength);
+    }
+
+    @Override
+    protected void appendExtensions(StringBuilder sb) {
+        if (octetLength != UNSET_INT_VALUE) {
+            sb.append(" OCTET_LENGTH ").append(octetLength);
+        }
     }
 }
