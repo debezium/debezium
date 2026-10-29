@@ -233,7 +233,7 @@ public class PostgresShutdownDrainIT extends AbstractAsyncEngineConnectorTest {
                 .with(PostgresConnectorConfig.DROP_SLOT_ON_STOP, false)
                 .with(PostgresConnectorConfig.SCHEMA_INCLUDE_LIST, "s1")
                 .with(PostgresConnectorConfig.STATUS_UPDATE_INTERVAL_MS, 1_000)
-                .with(PostgresConnectorConfig.SERVER_SHUTDOWN_DRAIN_TIMEOUT_MS, drainTimeout.toMillis())
+                .with(PostgresConnectorConfig.DATABASE_SHUTDOWN_DRAIN_TIMEOUT_MS, drainTimeout.toMillis())
                 .with(CommonConnectorConfig.MAX_QUEUE_SIZE, 20)
                 .with(CommonConnectorConfig.MAX_BATCH_SIZE, 10)
                 .with(CommonConnectorConfig.MAX_RETRIES_ON_ERROR, 0);

@@ -1144,8 +1144,8 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
                     "The default is set to 0 ms, which disables tracking xmin.")
             .withValidation(Field::isNonNegativeLong);
 
-    public static final Field SERVER_SHUTDOWN_DRAIN_TIMEOUT_MS = Field.create("server.shutdown.drain.timeout.ms")
-            .withDisplayName("Server shutdown drain timeout (ms)")
+    public static final Field DATABASE_SHUTDOWN_DRAIN_TIMEOUT_MS = Field.create("database.shutdown.drain.timeout.ms")
+            .withDisplayName("Database shutdown drain timeout (ms)")
             .withType(Type.LONG)
             .withGroup(Field.createGroupEntry(Field.Group.CONNECTION_ADVANCED_REPLICATION))
             .withWidth(Width.SHORT)
@@ -1530,8 +1530,8 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
         return Duration.ofMillis(getConfig().getLong(PostgresConnectorConfig.XMIN_FETCH_INTERVAL));
     }
 
-    protected Duration serverShutdownDrainTimeout() {
-        return Duration.ofMillis(getConfig().getLong(PostgresConnectorConfig.SERVER_SHUTDOWN_DRAIN_TIMEOUT_MS));
+    protected Duration databaseShutdownDrainTimeout() {
+        return Duration.ofMillis(getConfig().getLong(PostgresConnectorConfig.DATABASE_SHUTDOWN_DRAIN_TIMEOUT_MS));
     }
 
     public LsnFlushMode getLsnFlushMode() {
@@ -1597,7 +1597,7 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
             .group(Field.Group.CONNECTION_ADVANCED_SSL, SSL_MODE, SSL_CLIENT_CERT, SSL_CLIENT_KEY, SSL_CLIENT_KEY_PASSWORD, SSL_ROOT_CERT, SSL_SOCKET_FACTORY)
             .group(Field.Group.CONNECTION_ADVANCED_REPLICATION, PLUGIN_NAME, SLOT_NAME, PUBLICATION_NAME, PUBLICATION_AUTOCREATE_MODE, REPLICA_IDENTITY_AUTOSET_VALUES,
                     DROP_SLOT_ON_STOP, CREATE_FAIL_OVER_SLOT, STREAM_PARAMS, MAX_RETRIES, RETRY_DELAY_MS, STATUS_UPDATE_INTERVAL_MS, LSN_FLUSH_TIMEOUT_MS,
-                    LSN_FLUSH_TIMEOUT_ACTION, XMIN_FETCH_INTERVAL, SERVER_SHUTDOWN_DRAIN_TIMEOUT_MS)
+                    LSN_FLUSH_TIMEOUT_ACTION, XMIN_FETCH_INTERVAL, DATABASE_SHUTDOWN_DRAIN_TIMEOUT_MS)
             .group(Field.Group.CONNECTOR, HSTORE_HANDLING_MODE, BINARY_HANDLING_MODE, SCHEMA_NAME_ADJUSTMENT_MODE, INTERVAL_HANDLING_MODE,
                     LOGICAL_DECODING_MESSAGE_PREFIX_INCLUDE_LIST, LOGICAL_DECODING_MESSAGE_PREFIX_EXCLUDE_LIST, PUBLISH_VIA_PARTITION_ROOT, LSN_FLUSH_MODE,
                     SHOULD_FLUSH_LSN_IN_SOURCE_DB, UNAVAILABLE_VALUE_PLACEHOLDER, SKIPPED_OPERATIONS)

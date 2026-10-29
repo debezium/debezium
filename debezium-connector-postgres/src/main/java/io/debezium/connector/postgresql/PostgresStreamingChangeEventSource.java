@@ -111,7 +111,7 @@ public class PostgresStreamingChangeEventSource implements StreamingChangeEventS
     private ElapsedTimeStrategy refreshXmin;
     private Long lastXmin;
 
-    private final Duration serverShutdownDrainTimeout;
+    private final Duration databaseShutdownDrainTimeout;
     private volatile RecordPosition lastCommittedRecord;
     private RecordPosition lastEmittedRecord;
     private SQLException drainCause;
@@ -138,31 +138,31 @@ public class PostgresStreamingChangeEventSource implements StreamingChangeEventS
             this.refreshXmin = ElapsedTimeStrategy.constant(Clock.SYSTEM, connectorConfig.xminFetchInterval().toMillis());
         }
         this.offsetActivityMonitorService = OffsetActivityMonitorService.lookup(connectorConfig.getServiceRegistry());
-        this.serverShutdownDrainTimeout = resolveServerShutdownDrainTimeout(connectorConfig);
+        this.databaseShutdownDrainTimeout = resolveDatabaseShutdownDrainTimeout(connectorConfig);
     }
 
-    private static Duration resolveServerShutdownDrainTimeout(PostgresConnectorConfig connectorConfig) {
-        final Duration timeout = connectorConfig.serverShutdownDrainTimeout();
+    private static Duration resolveDatabaseShutdownDrainTimeout(PostgresConnectorConfig connectorConfig) {
+        final Duration timeout = connectorConfig.databaseShutdownDrainTimeout();
         if (!timeout.isZero() && !connectorConfig.isFlushLsnOnSource()) {
             LOGGER.warn("Ignoring '{}' because '{}' is '{}'; the connector does not confirm LSNs to the server in this mode",
-                    PostgresConnectorConfig.SERVER_SHUTDOWN_DRAIN_TIMEOUT_MS.name(), PostgresConnectorConfig.LSN_FLUSH_MODE.name(),
+                    PostgresConnectorConfig.DATABASE_SHUTDOWN_DRAIN_TIMEOUT_MS.name(), PostgresConnectorConfig.LSN_FLUSH_MODE.name(),
                     connectorConfig.getLsnFlushMode().getValue());
             return Duration.ZERO;
         }
         if (!timeout.isZero() && timeout.compareTo(connectorConfig.statusUpdateInterval()) <= 0) {
             LOGGER.warn("'{}' ({} ms) is not greater than '{}' ({} ms); the drain can end only by timeout, so it does not confirm the last processed commit LSN",
-                    PostgresConnectorConfig.SERVER_SHUTDOWN_DRAIN_TIMEOUT_MS.name(), timeout.toMillis(),
+                    PostgresConnectorConfig.DATABASE_SHUTDOWN_DRAIN_TIMEOUT_MS.name(), timeout.toMillis(),
                     PostgresConnectorConfig.STATUS_UPDATE_INTERVAL_MS.name(), connectorConfig.statusUpdateInterval().toMillis());
         }
         return timeout;
     }
 
-    private boolean isServerShutdownDrainEnabled() {
-        return !serverShutdownDrainTimeout.isZero();
+    private boolean isDatabaseShutdownDrainEnabled() {
+        return !databaseShutdownDrainTimeout.isZero();
     }
 
     private boolean isDrainTimedOut() {
-        return drainElapsed.elapsedTime() >= serverShutdownDrainTimeout.toMillis();
+        return drainElapsed.elapsedTime() >= databaseShutdownDrainTimeout.toMillis();
     }
 
     /**
@@ -173,7 +173,7 @@ public class PostgresStreamingChangeEventSource implements StreamingChangeEventS
         if (drainCause == null || !isDrainTimedOut()) {
             return failure;
         }
-        LOGGER.warn("The replication stream drain did not complete within {} ms; stopping streaming", serverShutdownDrainTimeout.toMillis());
+        LOGGER.warn("The replication stream drain did not complete within {} ms; stopping streaming", databaseShutdownDrainTimeout.toMillis());
         if (failure != drainCause) {
             drainCause.addSuppressed(failure);
         }
@@ -464,7 +464,7 @@ public class PostgresStreamingChangeEventSource implements StreamingChangeEventS
                 offsetContext.resetLsnEventsProcessed();
                 commitMessage(partition, offsetContext, lsn);
                 // The END event carries this commit LSN, so the final drain confirmation waits until its source offset is acknowledged
-                final boolean emitsTransactionEnd = isServerShutdownDrainEnabled() && offsetContext.getTransactionContext().isTransactionInProgress();
+                final boolean emitsTransactionEnd = isDatabaseShutdownDrainEnabled() && offsetContext.getTransactionContext().isTransactionInProgress();
                 dispatcher.dispatchTransactionCommittedEvent(partition, offsetContext, message.getCommitTime());
                 if (emitsTransactionEnd) {
                     lastEmittedRecord = RecordPosition.of(offsetContext);
@@ -489,7 +489,7 @@ public class PostgresStreamingChangeEventSource implements StreamingChangeEventS
                     offsetContext,
                     clock.currentTimeAsInstant().toEpochMilli(),
                     logicalMessage);
-            if (isServerShutdownDrainEnabled() && connectorConfig.getMessageFilter().isIncluded(logicalMessage.getPrefix())) {
+            if (isDatabaseShutdownDrainEnabled() && connectorConfig.getMessageFilter().isIncluded(logicalMessage.getPrefix())) {
                 lastEmittedRecord = RecordPosition.of(offsetContext);
             }
 
@@ -533,7 +533,7 @@ public class PostgresStreamingChangeEventSource implements StreamingChangeEventS
                             connection,
                             tableId,
                             message));
-            if (dispatched && isServerShutdownDrainEnabled()) {
+            if (dispatched && isDatabaseShutdownDrainEnabled()) {
                 lastEmittedRecord = RecordPosition.of(offsetContext);
             }
 
@@ -580,14 +580,14 @@ public class PostgresStreamingChangeEventSource implements StreamingChangeEventS
     }
 
     private void startDrainOrThrow(SQLException e, PostgresOffsetContext offsetContext) throws SQLException {
-        if (!isServerShutdownDrainEnabled()
+        if (!isDatabaseShutdownDrainEnabled()
                 || !SQL_STATE_ADMIN_SHUTDOWN.equals(e.getSQLState())
                 || isInPreSnapshotCatchUpStreaming(offsetContext)) {
             throw e;
         }
         LOGGER.warn("The database server terminated the connector's regular connection ({}). "
                 + "Continuing to read the replication stream for up to {} ms so that delivered changes can be confirmed before the server shuts down.",
-                e.getMessage(), serverShutdownDrainTimeout.toMillis());
+                e.getMessage(), databaseShutdownDrainTimeout.toMillis());
         drainCause = e;
         drainElapsed = Threads.timeSince(clock);
         drainElapsed.reset();
@@ -595,7 +595,7 @@ public class PostgresStreamingChangeEventSource implements StreamingChangeEventS
         // Dispatching blocks while the queue is full, so the timeout check in the loop might never run.
         // The watchdog interrupts the streaming thread when the timeout expires. Only this thread resets drainElapsed.
         final Thread streamingThread = Thread.currentThread();
-        drainWatchdog = Threads.timeout("server-shutdown-drain", serverShutdownDrainTimeout.toMillis(), TimeUnit.MILLISECONDS,
+        drainWatchdog = Threads.timeout("database-shutdown-drain", databaseShutdownDrainTimeout.toMillis(), TimeUnit.MILLISECONDS,
                 100, TimeUnit.MILLISECONDS, drainElapsed::elapsedTime, null, streamingThread::interrupt);
         drainWatchdog.setDaemon(true);
         drainWatchdog.start();
@@ -677,7 +677,7 @@ public class PostgresStreamingChangeEventSource implements StreamingChangeEventS
         final Lsn commitLsn = Lsn.valueOf((Long) offset.get(PostgresOffsetContext.LAST_COMMIT_LSN_KEY));
         final Lsn changeLsn = Lsn.valueOf((Long) offset.get(PostgresOffsetContext.LAST_COMPLETELY_PROCESSED_LSN_KEY));
         final Lsn lsn = (commitLsn != null) ? commitLsn : changeLsn;
-        if (isServerShutdownDrainEnabled()) {
+        if (isDatabaseShutdownDrainEnabled()) {
             lastCommittedRecord = RecordPosition.of(offset);
         }
 
