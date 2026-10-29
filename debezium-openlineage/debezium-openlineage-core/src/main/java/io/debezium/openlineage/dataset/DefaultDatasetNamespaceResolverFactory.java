@@ -24,7 +24,9 @@ public class DefaultDatasetNamespaceResolverFactory implements DatasetNamespaceR
             case MONGODB, MONGODB_SINK -> new MongoDbDatasetNamespaceResolver();
             case POSTGRESQL -> new PostgresDatasetNamespaceResolver();
             case JDBC -> new JdbcDatasetNamespaceResolver();
-            default -> new DefaultDatabaseNamespaceResolver();
+            default -> DatasetNamespaceResolverProviders.get(connectorName)
+                    .map(DatasetNamespaceResolverProvider::create)
+                    .orElse(new DefaultDatabaseNamespaceResolver());
         };
     }
 }
