@@ -976,6 +976,10 @@ public final class Strings {
      * @return the function that will replace variables in supplied strings; never null
      */
     public static String replaceVariables(String value, Function<String, String> replacementsByVariableName) {
+        return replaceVariables(value, replacementsByVariableName, Collections.emptySet());
+    }
+
+    private static String replaceVariables(String value, Function<String, String> replacementsByVariableName, Set<String> resolvingVariables) {
         if (value == null || value.trim().length() == 0) {
             return value;
         }
@@ -992,7 +996,7 @@ public final class Strings {
         // substitution
         while (startName != -1) {
             String defaultValue = null;
-            int endName = sb.indexOf(CURLY_SUFFIX, startName);
+            int endName = findMatchingClosingBrace(sb, startName);
             if (endName == -1) {
                 // if no suffix can be found, then this variable was probably defined incorrectly
                 // but return what there is at this point
@@ -1000,7 +1004,7 @@ public final class Strings {
             }
 
             String varString = sb.substring(startName + 2, endName);
-            int delimIndex = varString.indexOf(DEFAULT_DELIM);
+            int delimIndex = findFirstTopLevelColon(varString);
             if (delimIndex > -1) {
                 defaultValue = varString.substring(delimIndex + 1);
                 varString = varString.substring(0, delimIndex);
@@ -1010,33 +1014,72 @@ public final class Strings {
             // split the property(s) based VAR_DELIM, when multiple property options are defined
             List<String> vars = split(varString, VAR_DELIM);
             for (final String var : vars) {
+                if (resolvingVariables.contains(var)) {
+                    // Prevent circular expansion
+                    continue;
+                }
                 constValue = replacementsByVariableName.apply(var);
 
                 // the first found property is the value to be substituted
                 if (constValue != null) {
+                    Set<String> nextResolving = new HashSet<>(resolvingVariables);
+                    nextResolving.add(var);
+                    constValue = replaceVariables(constValue, replacementsByVariableName, nextResolving);
                     break;
                 }
             }
 
             // if no property is found to substitute, then use the default value, if defined
             if (constValue == null && defaultValue != null) {
-                constValue = defaultValue;
+                constValue = replaceVariables(defaultValue, replacementsByVariableName, resolvingVariables);
             }
 
             if (constValue != null) {
                 sb = sb.replace(startName, endName + 1, constValue);
-                // Checking for another constants
+                // Continue scanning afterward
                 startName = sb.indexOf(CURLY_PREFIX, startName + constValue.length());
-
             }
             else {
                 // continue to try to substitute for other properties so that all defined variables
                 // are tried to be substituted for
-                startName = sb.indexOf(CURLY_PREFIX, endName);
+                startName = sb.indexOf(CURLY_PREFIX, endName + 1);
             }
         }
         return sb.toString();
+    }
 
+    private static int findMatchingClosingBrace(StringBuilder sb, int startName) {
+        int depth = 0;
+        for (int i = startName; i < sb.length(); i++) {
+            if (i + 1 < sb.length() && sb.charAt(i) == '$' && sb.charAt(i + 1) == '{') {
+                depth++;
+                i++;
+            }
+            else if (sb.charAt(i) == '}') {
+                depth--;
+                if (depth == 0) {
+                    return i;
+                }
+            }
+        }
+        return -1;
+    }
+
+    private static int findFirstTopLevelColon(String str) {
+        int depth = 0;
+        for (int i = 0; i < str.length(); i++) {
+            if (i + 1 < str.length() && str.charAt(i) == '$' && str.charAt(i + 1) == '{') {
+                depth++;
+                i++;
+            }
+            else if (str.charAt(i) == '}') {
+                depth--;
+            }
+            else if (str.charAt(i) == ':' && depth == 0) {
+                return i;
+            }
+        }
+        return -1;
     }
 
     /**
