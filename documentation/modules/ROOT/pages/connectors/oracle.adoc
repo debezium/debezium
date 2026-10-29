@@ -1486,7 +1486,7 @@ With this property enabled, the connector can capture the following data types:
 `BLOB`:: Binary large objects.
 `XMLTYPE`:: XML data stored as a LOB.
 `JSON`:: JSON data (Oracle 21c and later).
-`Extended strings`:: `VARCHAR2`, `NVARCHAR2`, and `RAW` columns that exceed the legacy maximum lengths when the database parameter `max_string_size` is set to `EXTENDED`.
+`Extended strings`:: `VARCHAR2` and `NVARCHAR2` columns that exceed the legacy maximum length of 4000 bytes when the database parameter `max_string_size` is set to `EXTENDED`.
 For more information about how the connector supports extended strings, see xref:support-for-extended-max-string-size[Extended max string size].
 
 When `lob.enabled` is set to `false` (the default), snapshot events include the current LOB column values, but streamed change events represent LOB columns with the xref:oracle-property-unavailable-value-placeholder[`unavailable.value.placeholder`] constant.
@@ -3725,7 +3725,29 @@ While a database administrator can change the `max_string_size` from `STANDARD` 
 Once the database is updated to `EXTENDED` string support, that cannot be undone.
 ====
 
-For the {prodname} Oracle connector, when the database parameter `max_string_size` is `EXTENDED`, the `lob.enabled` connector configuration option should be set to `true` to capture changes made to `VARCHAR2` and `NVARCHAR2` fields that have string lengths that exceed 4000 bytes or `RAW` fields with more than 2000 bytes.
+For the {prodname} Oracle connector, when the database parameter `max_string_size` is `EXTENDED`, the `lob.enabled` connector configuration option should be set to `true` to capture changes made to `VARCHAR2` and `NVARCHAR2` fields that have string lengths that exceed 4000 bytes.
+The connector does not support extended `RAW` fields with more than 2000 bytes.
+
+To decide whether a `VARCHAR2` or `NVARCHAR2` column is an extended string column, the connector compares the maximum length of the column in bytes, as reported by the `DATA_LENGTH` column of the `ALL_TAB_COLUMNS` view, with the 4000 byte limit, and not the declared length of the column.
+For a column that uses character length semantics, such as `VARCHAR2(2000 CHAR)`, and for every `NVARCHAR2` column, the maximum byte length depends on the character set.
+For example, in a database that uses the `AL32UTF8` character set, a `VARCHAR2(2000 CHAR)` column can store up to 8000 bytes, and so the connector treats it as an extended string column.
+
+When the connector reads the definition of a table from the database, for example during a snapshot, it uses the byte length that the database reports.
+When the connector parses the DDL for a table that is created or altered while it streams changes, it calculates the byte length from the declared length and the character set, with the following limitations:
+
+* For a `VARCHAR2` column that does not specify `CHAR` or `BYTE`, the connector assumes byte length semantics, the default for the `NLS_LENGTH_SEMANTICS` parameter.
+* For a `VARCHAR2` column with character length semantics in a database whose character set is multibyte but not Unicode, such as `ZHS16GBK` or `JA16SJIS`, the connector estimates the bytes for each character from the number of bits in the character set name, for example 2 bytes for `ZHS16GBK`.
+If the estimate is larger than the actual width, the connector might treat a column that cannot exceed 4000 bytes as an extended string column, which only affects how its changes are mined.
+When `lob.enabled` is `true`, the connector logs a warning at startup with the estimate that it uses.
+
+[IMPORTANT]
+====
+Earlier versions of the connector compared the declared length of a column with these limits.
+As a result, they did not capture changes to `VARCHAR2` columns that use character length semantics or to `NVARCHAR2` columns whose byte length exceeds 4000 bytes, and emitted the values of such columns as `null`.
+The schema history that earlier versions recorded does not include the byte length of columns.
+If the database parameter `max_string_size` is `EXTENDED`, after you upgrade the connector, run a snapshot with xref:oracle-property-snapshot-mode[`snapshot.mode`] set to `recovery` to rebuild the schema history topic.
+Until you rebuild the schema history, or until a DDL change is made to a table, the connector continues to use the declared length for that table, and logs a warning that the byte length of the column is missing.
+====
 
 When set to `EXTENDED`, Oracle performs an implicit conversion of the character data in-flight when the byte length of the string data exceeds the legacy maximums.
 This implicit conversion means that Oracle internally treats the string data as though it is a `CLOB`, so you get the benefit of treating the field as a regular string to the outside world, but with all the pitfalls and concerns about storage at the database tier level.

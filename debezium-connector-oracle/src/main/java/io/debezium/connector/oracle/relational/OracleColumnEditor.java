@@ -16,6 +16,21 @@ import io.debezium.relational.ColumnEditor;
 @Incubating
 public interface OracleColumnEditor extends ColumnEditor {
 
+    /**
+     * Get the maximum length of the column's values in bytes.
+     *
+     * @return the length in bytes, or {@link io.debezium.relational.Column#UNSET_INT_VALUE} when not known
+     */
+    int octetLength();
+
+    /**
+     * Set the maximum length of the column's values in bytes.
+     *
+     * @param octetLength the length in bytes, or {@link io.debezium.relational.Column#UNSET_INT_VALUE} when not known
+     * @return this editor so methods can be chained together; never null
+     */
+    OracleColumnEditor octetLength(int octetLength);
+
     @Override
     OracleColumn create();
 }
