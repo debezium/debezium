@@ -9,6 +9,9 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.nio.charset.StandardCharsets;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
@@ -37,9 +40,11 @@ import io.debezium.connector.jdbc.junit.TestHelper;
 import io.debezium.connector.jdbc.junit.jupiter.Sink;
 import io.debezium.connector.jdbc.junit.jupiter.SinkRecordFactoryArgumentsProvider;
 import io.debezium.connector.jdbc.junit.jupiter.SinkType;
+import io.debezium.connector.jdbc.junit.jupiter.e2e.SkipWhenSink;
 import io.debezium.connector.jdbc.util.DebeziumSinkRecordFactory;
 import io.debezium.connector.jdbc.util.SinkRecordFactory;
 import io.debezium.doc.FixFor;
+import io.debezium.time.ZonedTimestamp;
 import io.debezium.util.Strings;
 
 /**
@@ -48,6 +53,20 @@ import io.debezium.util.Strings;
  * @author Chris Cranford
  */
 public abstract class AbstractJdbcSinkSchemaEvolutionTest extends AbstractJdbcSinkTest {
+
+    /**
+     * The UTC wall time of the MySQL {@code TIMESTAMP} lower bound, i.e. the instant that
+     * {@code MySqlDatabaseDialect.getTimestampNegativeInfinityValue()} clamps an out-of-range
+     * default to.
+     */
+    private static final String MYSQL_MIN_TIMESTAMP = "1970-01-01 00:00:01";
+
+    /**
+     * The UTC wall time of the MySQL {@code TIMESTAMP} upper bound, i.e. the instant that
+     * {@code MySqlDatabaseDialect.getTimestampPositiveInfinityValue()} clamps an out-of-range
+     * default to.
+     */
+    private static final String MYSQL_MAX_TIMESTAMP = "2038-01-19 03:14:07";
 
     public AbstractJdbcSinkSchemaEvolutionTest(Sink sink) {
         super(sink);
@@ -680,6 +699,150 @@ public abstract class AbstractJdbcSinkSchemaEvolutionTest extends AbstractJdbcSi
         finally {
             task2.stop();
             connector2.stop();
+        }
+    }
+
+    @ParameterizedTest
+    @ArgumentsSource(SinkRecordFactoryArgumentsProvider.class)
+    @SkipWhenSink(value = { SinkType.ORACLE, SinkType.POSTGRES, SinkType.SQLSERVER,
+            SinkType.DB2 }, reason = "Only the MySQL family writes a ZonedTimestamp default in the session time zone")
+    @FixFor("debezium/dbz#1256")
+    public void shouldCreateTableWithEpochZonedTimestampDefault(SinkRecordFactory factory) {
+        assertZonedTimestampDefault(factory, "1970-01-01T00:00:00Z", sessionZoneLiteral(MYSQL_MIN_TIMESTAMP));
+    }
+
+    @ParameterizedTest
+    @ArgumentsSource(SinkRecordFactoryArgumentsProvider.class)
+    @SkipWhenSink(value = { SinkType.ORACLE, SinkType.POSTGRES, SinkType.SQLSERVER,
+            SinkType.DB2 }, reason = "Only the MySQL family writes a ZonedTimestamp default in the session time zone")
+    @FixFor("debezium/dbz#1256")
+    public void shouldCreateTableWithMinTimestampZonedTimestampDefault(SinkRecordFactory factory) {
+        assertZonedTimestampDefault(factory, "1970-01-01T00:00:01Z", sessionZoneLiteral(MYSQL_MIN_TIMESTAMP));
+    }
+
+    @ParameterizedTest
+    @ArgumentsSource(SinkRecordFactoryArgumentsProvider.class)
+    @SkipWhenSink(value = { SinkType.ORACLE, SinkType.POSTGRES, SinkType.SQLSERVER,
+            SinkType.DB2 }, reason = "Only the MySQL family writes a ZonedTimestamp default in the session time zone")
+    @FixFor("debezium/dbz#1256")
+    public void shouldCreateTableWithNearLowerBoundZonedTimestampDefault(SinkRecordFactory factory) {
+        assertZonedTimestampDefault(factory, "1970-01-01T00:30:00Z", sessionZoneLiteral("1970-01-01 00:30:00"));
+    }
+
+    @ParameterizedTest
+    @ArgumentsSource(SinkRecordFactoryArgumentsProvider.class)
+    @SkipWhenSink(value = { SinkType.ORACLE, SinkType.POSTGRES, SinkType.SQLSERVER,
+            SinkType.DB2 }, reason = "Only the MySQL family writes a ZonedTimestamp default in the session time zone")
+    @FixFor("debezium/dbz#1256")
+    public void shouldCreateTableWithInRangeZonedTimestampDefault(SinkRecordFactory factory) {
+        assertZonedTimestampDefault(factory, "2024-06-15T12:00:00Z", sessionZoneLiteral("2024-06-15 12:00:00"));
+    }
+
+    @ParameterizedTest
+    @ArgumentsSource(SinkRecordFactoryArgumentsProvider.class)
+    @SkipWhenSink(value = { SinkType.ORACLE, SinkType.POSTGRES, SinkType.SQLSERVER,
+            SinkType.DB2 }, reason = "Only the MySQL family writes a ZonedTimestamp default in the session time zone")
+    @FixFor("debezium/dbz#1256")
+    public void shouldCreateTableWithFractionalZonedTimestampDefault(SinkRecordFactory factory) {
+        assertZonedTimestampDefault(factory, "2024-06-15T12:00:00.123456Z", sessionZoneLiteral("2024-06-15 12:00:00.123456"));
+    }
+
+    @ParameterizedTest
+    @ArgumentsSource(SinkRecordFactoryArgumentsProvider.class)
+    @SkipWhenSink(value = { SinkType.ORACLE, SinkType.POSTGRES, SinkType.SQLSERVER,
+            SinkType.DB2 }, reason = "Only the MySQL family writes a ZonedTimestamp default in the session time zone")
+    @FixFor("debezium/dbz#1256")
+    public void shouldCreateTableWithNearUpperBoundZonedTimestampDefault(SinkRecordFactory factory) {
+        assertZonedTimestampDefault(factory, "2038-01-19T03:14:06Z", sessionZoneLiteral("2038-01-19 03:14:06"));
+    }
+
+    @ParameterizedTest
+    @ArgumentsSource(SinkRecordFactoryArgumentsProvider.class)
+    @SkipWhenSink(value = { SinkType.ORACLE, SinkType.POSTGRES, SinkType.SQLSERVER,
+            SinkType.DB2 }, reason = "Only the MySQL family writes a ZonedTimestamp default in the session time zone")
+    @FixFor("debezium/dbz#1256")
+    public void shouldCreateTableWithUpperBoundZonedTimestampDefault(SinkRecordFactory factory) {
+        assertZonedTimestampDefault(factory, "2038-01-19T03:14:08Z", sessionZoneLiteral(MYSQL_MAX_TIMESTAMP));
+    }
+
+    @ParameterizedTest
+    @ArgumentsSource(SinkRecordFactoryArgumentsProvider.class)
+    @SkipWhenSink(value = { SinkType.ORACLE, SinkType.POSTGRES, SinkType.SQLSERVER,
+            SinkType.DB2 }, reason = "Only the MySQL family writes a ZonedTimestamp default in the session time zone")
+    @FixFor("debezium/dbz#1256")
+    public void shouldCreateTableWithZonedTimestampWithoutDefault(SinkRecordFactory factory) {
+        assertZonedTimestampDefault(factory, null, null);
+    }
+
+    private void assertZonedTimestampDefault(SinkRecordFactory factory, String defaultValue, String expectedDefault) {
+        final Map<String, String> properties = getDefaultSinkConfig();
+        properties.put(JdbcSinkConnectorConfig.SCHEMA_EVOLUTION, SchemaEvolutionMode.BASIC.getValue());
+        startSinkConnector(properties);
+        assertSinkConnectorIsRunning();
+
+        final SchemaBuilder zonedTimestamp = SchemaBuilder.string().name(ZonedTimestamp.SCHEMA_NAME);
+        if (defaultValue != null) {
+            zonedTimestamp.defaultValue(defaultValue);
+        }
+        final Schema recordSchema = SchemaBuilder.struct()
+                .field("id", Schema.INT8_SCHEMA)
+                .field("created_at", zonedTimestamp.build())
+                .build();
+
+        final String tableName = randomTableName();
+        final String topicName = topicName("server1", "schema", tableName);
+
+        final JdbcSinkConnectorConfig config = getConfig(properties);
+        final JdbcKafkaSinkRecord record = factory.createBuilder(config)
+                .name("prefix")
+                .topic(topicName)
+                .keySchema(factory.basicKeySchema())
+                .recordSchema(recordSchema)
+                .sourceSchema(factory.basicSourceSchema())
+                .key("id", (byte) 1)
+                .after("id", (byte) 1)
+                .after("created_at", "2024-06-15T12:00:00Z")
+                .source("ts_ms", (int) Instant.now().getEpochSecond())
+                .build();
+        consume(record);
+
+        final String destinationTable = destinationTableName(record);
+        final TableAssert tableAssert = TestHelper.assertTable(assertDbConnection(), destinationTable);
+        tableAssert.hasNumberOfRows(1).hasNumberOfColumns(2);
+        getSink().assertColumnType(tableAssert, "id", ValueType.NUMBER, (byte) 1);
+        if (expectedDefault == null) {
+            assertThat(columnDefault(destinationTable, "created_at")).isNull();
+        }
+        else {
+            assertThat(columnDefault(destinationTable, "created_at")).isEqualTo(expectedDefault);
+        }
+    }
+
+    private String sessionZoneLiteral(String utcLiteral) {
+        try (PreparedStatement statement = getSink().getConnection().prepareStatement(
+                "SELECT DATE_FORMAT(CONVERT_TZ(?, '+00:00', @@session.time_zone), '%Y-%m-%d %H:%i:%s.%f')")) {
+            statement.setString(1, utcLiteral);
+            try (ResultSet converted = statement.executeQuery()) {
+                if (converted.next() && converted.getString(1) != null) {
+                    return converted.getString(1);
+                }
+                throw new AssertionError("The target database returned no session time zone offset");
+            }
+        }
+        catch (SQLException e) {
+            throw new AssertionError("Failed to resolve the session time zone offset from the target database", e);
+        }
+    }
+
+    private String columnDefault(String tableName, String columnName) {
+        try (ResultSet columns = getSink().getConnection().getMetaData().getColumns(null, null, tableName, columnName)) {
+            if (columns.next()) {
+                return columns.getString("COLUMN_DEF");
+            }
+            throw new AssertionError(String.format("Column %s not found in table %s.", columnName, tableName));
+        }
+        catch (SQLException e) {
+            throw new AssertionError(String.format("Failed to read the default of column %s in table %s", columnName, tableName), e);
         }
     }
 

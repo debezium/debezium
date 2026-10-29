@@ -5,9 +5,12 @@
  */
 package io.debezium.connector.jdbc.dialect.mysql;
 
+import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Types;
+import java.time.LocalDateTime;
+import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeFormatterBuilder;
@@ -19,6 +22,7 @@ import java.util.Optional;
 import java.util.Set;
 
 import org.apache.kafka.connect.data.Schema;
+import org.apache.kafka.connect.errors.ConnectException;
 import org.hibernate.PessimisticLockException;
 import org.hibernate.SessionFactory;
 import org.hibernate.StatelessSession;
@@ -75,12 +79,51 @@ public class MySqlDatabaseDialect extends GeneralDatabaseDialect {
     }
 
     private final boolean connectionTimeZoneSet;
+    private final SessionFactory sessionFactory;
 
     protected MySqlDatabaseDialect(JdbcSinkConnectorConfig config, SessionFactory sessionFactory) {
         super(config, sessionFactory);
+        this.sessionFactory = sessionFactory;
 
         try (StatelessSession session = sessionFactory.openStatelessSession()) {
             this.connectionTimeZoneSet = session.doReturningWork((connection) -> connection.getMetaData().getURL().contains("connectionTimeZone="));
+        }
+    }
+
+    /**
+     * Renders the given instant as the wall clock of the session time zone of the target database.
+     * <p>
+     * A {@code TIMESTAMP} literal carries no offset, so the server resolves it against the session
+     * time zone of the connection that executes the statement, and the bound-value path ends in the
+     * same place, because the driver converts a bound value into the session time zone before it
+     * sends it. A column default must therefore be the session-zone wall clock of the instant it is
+     * meant to store, and not its UTC wall clock.
+     * <p>
+     * The source zone is the numeric offset {@code '+00:00'} and not the name {@code 'UTC'}, because
+     * a named zone is resolved through the {@code mysql.time_zone_name} table and is unknown on a
+     * server where that table is empty, where {@code CONVERT_TZ} returns {@code null}.
+     *
+     * @param value the instant to render
+     * @return the wall clock of the instant in the session time zone
+     */
+    private String toSessionZoneLiteral(ZonedDateTime value) {
+        final LocalDateTime utc = LocalDateTime.ofInstant(value.toInstant(), ZoneOffset.UTC);
+        try (StatelessSession session = sessionFactory.openStatelessSession()) {
+            return session.doReturningWork((connection) -> {
+                try (PreparedStatement statement = connection.prepareStatement(
+                        "SELECT REPLACE(CONVERT_TZ(?, '+00:00', @@session.time_zone), ' ', 'T')")) {
+                    statement.setString(1, ISO_LOCAL_DATE_TIME_WITH_SPACE.format(utc));
+                    try (ResultSet converted = statement.executeQuery()) {
+                        if (converted.next() && converted.getString(1) != null) {
+                            return converted.getString(1);
+                        }
+                    }
+                }
+                throw new ConnectException("Failed to resolve the session time zone offset from the target database");
+            });
+        }
+        catch (Exception e) {
+            throw new ConnectException("Failed to resolve the session time zone offset from the target database", e);
         }
     }
 
@@ -178,7 +221,7 @@ public class MySqlDatabaseDialect extends GeneralDatabaseDialect {
     @Override
     public String getFormattedTimestampWithTimeZone(String value) {
         final ZonedDateTime zonedDateTime = ZonedDateTime.parse(value, ZonedTimestamp.FORMATTER);
-        return String.format("'%s'", DateTimeFormatter.ISO_LOCAL_DATE_TIME.format(zonedDateTime));
+        return String.format("'%s'", toSessionZoneLiteral(zonedDateTime));
     }
 
     @Override

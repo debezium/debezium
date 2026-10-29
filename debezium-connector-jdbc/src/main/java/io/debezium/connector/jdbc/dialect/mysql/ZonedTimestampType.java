@@ -6,6 +6,9 @@
 package io.debezium.connector.jdbc.dialect.mysql;
 
 import java.sql.Types;
+import java.time.ZonedDateTime;
+
+import org.apache.kafka.connect.data.Schema;
 
 import io.debezium.connector.jdbc.type.JdbcType;
 import io.debezium.connector.jdbc.type.debezium.DebeziumZonedTimestampType;
@@ -23,5 +26,16 @@ public class ZonedTimestampType extends DebeziumZonedTimestampType {
     @Override
     protected int getJdbcBindType() {
         return Types.TIMESTAMP; // TIMESTAMP_WITH_TIMEZONE not supported
+    }
+
+    @Override
+    public String getDefaultValueBinding(Schema schema, Object value) {
+        if (value == null) {
+            return super.getDefaultValueBinding(schema, value);
+        }
+
+        final ZonedDateTime parsed = ZonedDateTime.parse((String) value, ZonedTimestamp.FORMATTER);
+        final ZonedDateTime clamped = clampToDialectBounds(parsed);
+        return getDialect().getFormattedTimestampWithTimeZone(ZonedTimestamp.toIsoString(clamped, null, null));
     }
 }
