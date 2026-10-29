@@ -15,6 +15,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
 import org.apache.kafka.connect.data.Schema;
@@ -35,10 +37,13 @@ import io.debezium.connector.postgresql.junit.SkipWhenDecoderPluginNameIsNot.Dec
 import io.debezium.converters.CloudEventsConverterTest;
 import io.debezium.data.VariableScaleDecimal;
 import io.debezium.doc.FixFor;
+import io.debezium.heartbeat.Heartbeat;
 import io.debezium.jdbc.JdbcConnection;
 import io.debezium.junit.SkipWhenDatabaseVersion;
+import io.debezium.junit.logging.LogInterceptor;
 import io.debezium.kafka.KafkaClusterUtils;
 import io.debezium.pipeline.signal.channels.KafkaSignalChannel;
+import io.debezium.pipeline.source.snapshot.incremental.AbstractIncrementalSnapshotChangeEventSource;
 import io.debezium.pipeline.source.snapshot.incremental.AbstractIncrementalSnapshotTest;
 import io.debezium.relational.RelationalDatabaseConnectorConfig;
 import io.debezium.relational.mapping.PropagateSourceMetadataToSchemaParameter;
@@ -631,6 +636,88 @@ public class IncrementalSnapshotIT extends AbstractIncrementalSnapshotTest<Postg
                 null);
 
         assertThat(dbChanges).contains(entry(1, 1));
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2742")
+    public void snapshotOnlyWithoutSchemaRefreshOnStreamingStart() throws Exception {
+        populateTable();
+        startConnector(x -> x.with(PostgresConnectorConfig.SCHEMA_REFRESH_ON_STREAMING_START, false));
+
+        sendAdHocSnapshotSignal();
+
+        final Map<Integer, Integer> dbChanges = consumeMixedWithIncrementalSnapshot(ROW_COUNT);
+        for (int i = 0; i < ROW_COUNT; i++) {
+            assertThat(dbChanges).contains(entry(i + 1, i));
+        }
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2742")
+    public void snapshotWithRegexDataCollectionsWithoutSchemaRefreshOnStreamingStart() throws Exception {
+        populateTable();
+        startConnector(x -> x.with(PostgresConnectorConfig.SCHEMA_REFRESH_ON_STREAMING_START, false));
+
+        sendAdHocSnapshotSignal(".*");
+
+        final Map<Integer, Integer> dbChanges = consumeMixedWithIncrementalSnapshot(ROW_COUNT);
+        for (int i = 0; i < ROW_COUNT; i++) {
+            assertThat(dbChanges).contains(entry(i + 1, i));
+        }
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2742")
+    public void snapshotWithQuotedTableNameWithoutSchemaRefreshOnStreamingStart() throws Exception {
+        populateTable();
+        startConnector(x -> x.with(PostgresConnectorConfig.SCHEMA_REFRESH_ON_STREAMING_START, false));
+
+        sendAdHocSnapshotSignal("\\\"s1\\\".\\\"a\\\"");
+
+        final Map<Integer, Integer> dbChanges = consumeMixedWithIncrementalSnapshot(ROW_COUNT);
+        for (int i = 0; i < ROW_COUNT; i++) {
+            assertThat(dbChanges).contains(entry(i + 1, i));
+        }
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2742")
+    public void snapshotWithRestartWithoutSchemaRefreshOnStreamingStart() throws Exception {
+        final int rowCount = ROW_COUNT * 10;
+        populateTable(rowCount);
+
+        final Configuration config = config()
+                .with(PostgresConnectorConfig.SCHEMA_REFRESH_ON_STREAMING_START, false)
+                .with(Heartbeat.HEARTBEAT_INTERVAL_PROPERTY_NAME, 5000)
+                .build();
+        startAndConsumeTillEnd(connectorClass(), config);
+        waitForStreamingRunning(connector(), server(), getStreamingNamespace(), task());
+
+        consumedLines.clear();
+        sendAdHocSnapshotSignal();
+
+        // the incremental snapshot in progress makes the restarted connector load the schema
+        final LogInterceptor logInterceptor = new LogInterceptor(PostgresStreamingChangeEventSource.class);
+        final LogInterceptor snapshotLogInterceptor = new LogInterceptor(AbstractIncrementalSnapshotChangeEventSource.class);
+        final AtomicInteger recordCounter = new AtomicInteger();
+        final AtomicBoolean restarted = new AtomicBoolean();
+        final Map<Integer, Integer> dbChanges = consumeMixedWithIncrementalSnapshot(rowCount, x -> true,
+                x -> {
+                    if (recordCounter.addAndGet(x.size()) > 50 && !restarted.get()) {
+                        stopConnector();
+                        assertConnectorNotRunning();
+
+                        start(connectorClass(), config);
+                        waitForConnectorToStart();
+                        waitForStreamingRunning(connector(), server(), getStreamingNamespace(), task());
+                        restarted.set(true);
+                    }
+                });
+        for (int i = 0; i < rowCount; i++) {
+            assertThat(dbChanges).contains(entry(i + 1, i));
+        }
+        assertThat(snapshotLogInterceptor.containsMessage("Incremental snapshot in progress, need to read new chunk on start")).isTrue();
+        assertThat(logInterceptor.containsMessage("Skipping the initial schema load")).isFalse();
     }
 
     protected void populate4PkTable() throws SQLException {
