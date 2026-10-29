@@ -663,8 +663,17 @@ public class StringsTest {
     @FixFor("debezium/dbz#2953")
     public void asNumberShouldParseFloatingPointAndDecimalValues() {
         assertThat(Strings.asNumber("1.5")).isEqualTo(1.5f);
+        assertThat(Strings.asNumber("0.1")).isEqualTo(0.1f);
+        assertThat(Strings.asNumber("3.14")).isEqualTo(3.14f);
+        assertThat(Strings.asNumber("3.141592653589793")).isEqualTo(3.141592653589793d);
+        assertThat(Strings.asNumber("3.1415926535897932384626433832795")).isEqualTo(new BigDecimal("3.1415926535897932384626433832795"));
+        assertThat(Strings.asNumber("1e-40")).isEqualTo(1e-40d);
+        assertThat(Strings.asNumber("1e-50")).isEqualTo(1e-50d);
+        assertThat(Strings.asNumber("1e-400")).isEqualTo(new BigDecimal("1e-400"));
         assertThat(Strings.asNumber("1e39")).isEqualTo(1e39d);
         assertThat(Strings.asNumber("1e400")).isEqualTo(new BigDecimal("1e400"));
+        assertThat(Strings.asNumber("0.0")).isEqualTo(0.0f);
+        assertThat(Strings.asNumber("-0.0")).isEqualTo(-0.0f);
         assertThat(Strings.asNumber("Infinity")).isEqualTo(Float.POSITIVE_INFINITY);
         assertThat(Strings.asNumber("-Infinity")).isEqualTo(Float.NEGATIVE_INFINITY);
         assertThat(Strings.asNumber("NaN")).isEqualTo(Float.NaN);
