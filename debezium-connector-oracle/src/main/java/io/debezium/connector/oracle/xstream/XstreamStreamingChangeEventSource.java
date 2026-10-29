@@ -15,7 +15,6 @@ import java.util.concurrent.atomic.AtomicReference;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import io.debezium.DebeziumException;
 import io.debezium.connector.oracle.OracleConnection;
 import io.debezium.connector.oracle.OracleConnectorConfig;
 import io.debezium.connector.oracle.OracleDatabaseSchema;
@@ -37,6 +36,7 @@ import io.debezium.pipeline.txmetadata.TransactionContext;
 import io.debezium.relational.TableId;
 import io.debezium.util.Clock;
 import io.debezium.util.DelayStrategy;
+import io.debezium.util.RetryingRunnable;
 
 import oracle.sql.NUMBER;
 import oracle.streams.StreamsException;
@@ -263,49 +263,50 @@ public class XstreamStreamingChangeEventSource implements StreamingChangeEventSo
 
     private OracleConnection connectAndAttachWithRetries(ChangeEventSourceContext context, byte[] startPosition, byte[] fallbackPosition)
             throws Exception {
-        OracleConnection connection = null;
-        final DelayStrategy retryStrategy = DelayStrategy.exponential(Duration.ofSeconds(1), Duration.ofMinutes(1));
-        for (int attempt = 1; attempt <= DEFAULT_MAX_ATTACH_RETRIES; attempt++) {
-            // The delay between attempts restores the thread's interrupt flag rather than propagating the
-            // interrupt, so both the running state and the interrupt flag must be checked here; otherwise
-            // the remaining attempts would be made back-to-back after a shutdown request.
-            if (!context.isRunning() || Thread.currentThread().isInterrupted()) {
-                LOGGER.info("Abandoning attach to outbound server {}, the connector is stopping.", xstreamOutboundServerName);
-                return null;
-            }
-
-            XStreamOut out = null;
-            try {
-                connection = connectionFactory.streamingConnectionFactory().newConnection();
-                connection.setAutoCommit(true);
-
-                out = attach(connection, startPosition, fallbackPosition);
-
-                xsOut = out;
-                return connection;
-            }
-            catch (StreamsException e) {
-                if (!isAttachExceptionRetriable(e)) {
-                    LOGGER.warn("Failed to attach to outbound server with non-retriable error", e);
-                    throw e;
-                }
-                if (attempt == DEFAULT_MAX_ATTACH_RETRIES) {
-                    LOGGER.warn("Failed to attach to outbound server with max attempts", e);
-                    throw e;
-                }
-
-                LOGGER.warn("Failed to attach to outbound server - attempt {} / {}: {}", attempt, DEFAULT_MAX_ATTACH_RETRIES, e.getMessage());
-                retryStrategy.sleepWhen(true);
-            }
-            finally {
-                // If we failed to attach and connection isn't null, close and clear it
-                if (xsOut == null && connection != null) {
-                    connection.close();
-                    connection = null;
-                }
-            }
+        final AtomicReference<OracleConnection> attached = new AtomicReference<>();
+        try {
+            RetryingRunnable.<Exception> builder()
+                    .retries(DEFAULT_MAX_ATTACH_RETRIES - 1) // retries plus one final call == DEFAULT_MAX_ATTACH_RETRIES attempts
+                    .delayStrategy(DelayStrategy.exponential(Duration.ofSeconds(1), Duration.ofMinutes(1)))
+                    .retriableWhen(e -> e instanceof StreamsException se && isAttachExceptionRetriable(se))
+                    .doRun(() -> {
+                        // Stop attaching once the connector is stopping; an interruption during the back-off delay is
+                        // turned into an InterruptedException by RetryingRunnable
+                        if (!context.isRunning() || Thread.currentThread().isInterrupted()) {
+                            throw new StreamingStoppedException();
+                        }
+                        final OracleConnection connection = connectionFactory.streamingConnectionFactory().newConnection();
+                        try {
+                            connection.setAutoCommit(true);
+                            xsOut = attach(connection, startPosition, fallbackPosition);
+                            attached.set(connection);
+                        }
+                        finally {
+                            if (attached.get() == null) {
+                                try {
+                                    connection.close();
+                                }
+                                catch (Exception closeException) {
+                                    LOGGER.warn("Error while closing connection after failed attach attempt", closeException);
+                                }
+                            }
+                        }
+                    })
+                    .build()
+                    .run();
+            return attached.get();
         }
-        throw new DebeziumException("Failed to attach to the Oracle XStream outbound server");
+        catch (StreamingStoppedException e) {
+            LOGGER.info("Abandoning attach to outbound server {}, the connector is stopping.", xstreamOutboundServerName);
+            return null;
+        }
+        catch (InterruptedException e) {
+            // The delay strategy restores the interrupt flag and RetryingRunnable turns it into an
+            // InterruptedException; either way the connector is stopping, so stop attaching gracefully.
+            Thread.currentThread().interrupt();
+            LOGGER.info("Abandoning attach to outbound server {}, the connector is stopping.", xstreamOutboundServerName);
+            return null;
+        }
     }
 
     private XStreamOut attach(OracleConnection connection, byte[] startPosition, byte[] fallbackPosition) throws SQLException, StreamsException {
@@ -336,6 +337,17 @@ public class XstreamStreamingChangeEventSource implements StreamingChangeEventSo
                 || e.getMessage().contains("did not start properly and is currently in state")
                 || e.getMessage().contains("Timeout occurred while starting XStream process")
                 || e.getMessage().contains("Unable to communicate with XStream apply coordinator process");
+    }
+
+    /**
+     * Signals that the connector stopped while attaching to the outbound server. Not retriable: the
+     * {@code retriableWhen} predicate only accepts {@link StreamsException}s.
+     */
+    private static class StreamingStoppedException extends Exception {
+
+        public StreamingStoppedException() {
+            super("The connector stopped while attaching to the XStream outbound server");
+        }
     }
 
     private byte[] convertScnToPosition(Scn scn) {

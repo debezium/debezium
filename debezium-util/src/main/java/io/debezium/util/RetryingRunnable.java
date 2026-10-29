@@ -138,7 +138,17 @@ public class RetryingRunnable<E extends Exception> {
     }
 
     private boolean isRetriableWhen(Exception ex) {
-        return retriableWhen != null && retriableWhen.test(ex);
+        if (retriableWhen == null) {
+            return false;
+        }
+        try {
+            return retriableWhen.test(ex);
+        }
+        catch (RuntimeException predicateException) {
+            LOGGER.error("The retriableWhen predicate threw an exception while evaluating {}, treating the original exception as non-retriable",
+                    ex.getClass().getName(), predicateException);
+            return false;
+        }
     }
 
     /**
@@ -243,8 +253,10 @@ public class RetryingRunnable<E extends Exception> {
 
         /**
          * Sets a predicate deciding whether a given exception should be retried. The predicate receives the
-         * exception thrown by the action as-is, i.e. without unwrapping its cause chain. A {@code null}
-         * argument is treated as not set (no predicate condition).
+         * exception thrown by the action as-is, i.e. without unwrapping its cause chain. If the predicate itself
+         * throws a {@link RuntimeException}, it is caught and logged, and the original exception is treated
+         * as non-retriable and propagated as-is. A {@code null} argument is treated as not set
+         * (no predicate condition).
          */
         public Builder<E> retriableWhen(Predicate<Exception> retriableWhen) {
             this.retriableWhen = retriableWhen;
