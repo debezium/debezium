@@ -19,6 +19,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.fail;
 
 import java.io.IOException;
+import java.io.StringReader;
 import java.sql.SQLException;
 import java.time.Duration;
 import java.time.Instant;
@@ -61,6 +62,8 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
+import org.postgresql.PGConnection;
+import org.postgresql.copy.CopyManager;
 import org.postgresql.util.PSQLState;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -75,6 +78,7 @@ import io.debezium.config.Configuration;
 import io.debezium.config.EnumeratedValue;
 import io.debezium.config.Field;
 import io.debezium.connector.postgresql.PostgresConnectorConfig.LogicalDecoder;
+import io.debezium.connector.postgresql.PostgresConnectorConfig.LsnFlushMode;
 import io.debezium.connector.postgresql.PostgresConnectorConfig.SnapshotMode;
 import io.debezium.connector.postgresql.connection.AbstractMessageDecoder;
 import io.debezium.connector.postgresql.connection.Lsn;
@@ -4348,6 +4352,70 @@ public class PostgresConnectorIT extends AbstractAsyncEngineConnectorTest {
         // than receiving a record.
         SourceRecords recordsAfterRestart = consumeRecordsByTopic(1);
         assertThat(recordsAfterRestart.allRecordsInOrder().size()).isEqualTo(0);
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2894")
+    void shouldNotEmitRowAlreadyProcessedAtStoredLsnAgain() throws Exception {
+        // The decoderbufs plugin reports the BEGIN of a transaction and the rows of a COPY at the
+        // same LSN, so a restart in the middle of such a transaction replays the BEGIN together
+        // with the rows that were already processed. The BEGIN is not an event
+        // lsn_events_processed counts, so it must not use up one of the skips that are reserved
+        // for the rows which were already processed.
+        TestHelper.execute(
+                "DROP SCHEMA IF EXISTS s1 CASCADE;",
+                "CREATE SCHEMA s1;",
+                "CREATE TABLE s1.copy_tbl (pk integer PRIMARY KEY, aa integer);");
+
+        Configuration.Builder configBuilder = TestHelper.defaultConfig()
+                .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NO_DATA)
+                .with(PostgresConnectorConfig.DROP_SLOT_ON_STOP, Boolean.FALSE)
+                .with(PostgresConnectorConfig.LSN_FLUSH_MODE, LsnFlushMode.MANUAL.getValue())
+                .with(PostgresConnectorConfig.TABLE_INCLUDE_LIST, "s1.copy_tbl");
+
+        // The connector is stopped when the third row arrives, so that the stored offset describes
+        // the two rows which were already processed.
+        CountDownLatch latch = new CountDownLatch(1);
+        DebeziumEngine.CompletionCallback completionCallback = (success, message, error) -> {
+            if (error != null) {
+                latch.countDown();
+            }
+            else {
+                fail("A controlled exception was expected....");
+            }
+        };
+        start(PostgresConnector.class, configBuilder.build(), completionCallback, stopOnPKPredicate(3));
+        waitForStreamingRunning();
+
+        // The three rows are copied in one transaction, so that they share the LSN with the BEGIN.
+        try (PostgresConnection connection = TestHelper.create()) {
+            final CopyManager copyManager = connection.connection().unwrap(PGConnection.class).getCopyAPI();
+            copyManager.copyIn("COPY s1.copy_tbl (pk, aa) FROM STDIN WITH (FORMAT csv)", new StringReader("1,1\n2,2\n3,3\n"));
+        }
+
+        // wait until we know we've raised the exception AND the engine has been shutdown
+        if (!latch.await(TestHelper.waitTimeForRecords() * 5, TimeUnit.SECONDS)) {
+            fail("did not reach stop condition in time");
+        }
+        assertConnectorNotRunning();
+        // just drain all the records
+        consumeAvailableRecords(record -> {
+        });
+        // stop the engine altogether
+        stopConnector();
+        // make sure there are no records to consume
+        assertNoRecordsToConsume();
+
+        // start the connector back up, it resumes from the stored offset and replays the transaction
+        start(PostgresConnector.class, configBuilder.build());
+        assertConnectorIsRunning();
+
+        // Only the row that was not processed before may be emitted again. Note consumeRecordsByTopic(2)
+        // is expected to return due to consumer timeout rather than receiving a second record.
+        SourceRecords recordsAfterRestart = consumeRecordsByTopic(2);
+        assertThat(recordsAfterRestart.allRecordsInOrder()).hasSize(1);
+        final Struct value = (Struct) recordsAfterRestart.allRecordsInOrder().get(0).value();
+        assertThat(value.getStruct("after").getInt32("pk")).isEqualTo(3);
     }
 
     /**
