@@ -9,6 +9,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import java.io.IOException;
 import java.sql.SQLException;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.Executors;
@@ -19,6 +20,7 @@ import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceRecord;
+import org.awaitility.Awaitility;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -42,6 +44,11 @@ import io.debezium.util.Testing;
  */
 public class SqlServerChangeTableSetIT extends AbstractAsyncEngineConnectorTest {
 
+    private static final String ORDERS_TOPIC = "server1.testDB1.dbo.orders";
+    private static final String AGENT_JOB_ALREADY_RUNNING = "refused because the job is already running";
+    private static final String AGENT_JOB_NOT_RUNNING = "refused because the job is not currently running";
+    private static final String CAPTURE_JOB_NAME = "cdc." + TestHelper.TEST_DATABASE_1 + "_capture";
+
     private SqlServerConnection connection;
 
     @BeforeEach
@@ -63,6 +70,10 @@ public class SqlServerChangeTableSetIT extends AbstractAsyncEngineConnectorTest 
     @AfterEach
     void after() throws SQLException {
         if (connection != null) {
+            // The capture job has to be stopped, or the drop of the database in the next test waits for the
+            // transaction of the capture job. The next test creates a new database, whose capture job is started
+            // by sp_cdc_enable_db.
+            stopCaptureJob();
             connection.close();
         }
     }
@@ -718,6 +729,222 @@ public class SqlServerChangeTableSetIT extends AbstractAsyncEngineConnectorTest 
                             .field("newcolb", Schema.OPTIONAL_STRING_SCHEMA)
                             .build());
         });
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2940")
+    void captureInstanceReplacedBeforeTheFirstPollIsMigrated() throws Exception {
+        // The connector detects a new capture instance through the LSN window, which is empty when the connector's
+        // offset carries no commit LSN. A capture job that has published nothing gives the connector such an offset,
+        // and the capture instance is replaced before the connector's first successful poll.
+        startConnectorWithoutCommitLsn();
+
+        // The capture instance is replaced while the connector is running but before its first successful poll
+        connection.execute("ALTER TABLE orders ADD amount int");
+        TestHelper.disableTableCdc(connection, "orders");
+        TestHelper.enableTableCdc(connection, "orders", "orders_amount");
+        connection.execute("INSERT INTO orders VALUES (2, 'paid', 20)");
+        startCaptureJob();
+
+        SourceRecords records = consumeRecordsByTopic(1);
+        assertSingleOrderRecord(records, ordersValueSchema("amount"));
+        // The snapshot creates the table and the replaced capture instance migrates it once
+        assertThat(countSchemaChanges("CREATE")).isEqualTo(1);
+        assertThat(countSchemaChanges("ALTER")).isEqualTo(1);
+
+        // The offset carries a commit LSN now, so the LSN window nominates the capture instance as well
+        connection.execute("ALTER TABLE orders ADD quantity int");
+        TestHelper.disableTableCdc(connection, "orders");
+        TestHelper.enableTableCdc(connection, "orders", "orders_quantity");
+        connection.execute("INSERT INTO orders VALUES (3, 'shipped', 30, 5)");
+
+        records = consumeRecordsByTopic(1);
+        assertSingleOrderRecord(records, ordersValueSchema("amount", "quantity"));
+        // The capture instance is nominated twice, but the table is migrated only once
+        assertThat(countSchemaChanges("ALTER")).isEqualTo(2);
+
+        // The capture instance is replaced again, but the schema of the table did not change
+        TestHelper.disableTableCdc(connection, "orders");
+        TestHelper.enableTableCdc(connection, "orders", "orders_unchanged");
+        connection.execute("INSERT INTO orders VALUES (4, 'delivered', 40, 6)");
+
+        records = consumeRecordsByTopic(1);
+        assertSingleOrderRecord(records, ordersValueSchema("amount", "quantity"));
+        assertThat(countSchemaChanges("ALTER")).isEqualTo(2);
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2940")
+    void droppedColumnIsNotMigrated() throws Exception {
+        // A column is dropped from the captured table while the connector streams and CDC is not re-enabled on the
+        // table. The capture instance keeps the dropped column, so the change table still carries it and the connector
+        // must keep decoding it with the schema it has, instead of migrating the table to a schema that no longer
+        // describes the change table.
+        startConnectorWithoutCommitLsn();
+
+        // The column is dropped before the connector's first successful poll, so the capture instance keeps it
+        connection.execute("ALTER TABLE orders DROP COLUMN status");
+        connection.execute("INSERT INTO orders (id) VALUES (1)");
+        startCaptureJob();
+
+        final SourceRecords records = consumeRecordsByTopic(1);
+        // The connector keeps the column in the schema, so it keeps decoding the change table with it
+        assertSingleOrderRecord(records, ordersValueSchema());
+        // The table is not migrated, so the schema keeps the dropped column and no ALTER is emitted
+        assertThat(countSchemaChanges("ALTER")).isZero();
+    }
+
+    /**
+     * Creates the {@code orders} table and starts the connector with an offset that carries no commit LSN, so that the
+     * connector cannot detect a replaced capture instance through the LSN window.
+     */
+    private void startConnectorWithoutCommitLsn() throws Exception {
+        // The capture job has to be stopped before the database is dropped, or the drop waits for the transaction of
+        // the capture job
+        stopCaptureJob();
+        connection.close();
+        TestHelper.createTestDatabase();
+        connection = TestHelper.testConnection();
+        connection.execute("CREATE TABLE orders (id int primary key, status varchar(30))");
+        TestHelper.enableTableCdc(connection, "orders");
+        // The capture job of the new database is started by sp_cdc_enable_db, so it has to be stopped again, or it
+        // publishes changes before the test makes them
+        stopCaptureJob();
+        clearLsnTimeMapping();
+
+        final Configuration config = TestHelper.defaultConfig()
+                .with(SqlServerConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL)
+                .build();
+
+        start(SqlServerConnector.class, config);
+        assertConnectorIsRunning();
+        TestHelper.waitForSnapshotToBeCompleted();
+        // The snapshot stores the maximum LSN as the commit LSN of the connector's offset, and the capture job is
+        // stopped, so the maximum LSN cannot have changed since the snapshot read it
+        assertThat(maxLsn()).as("The maximum LSN must not be available, so that the offset carries no commit LSN").isEqualTo(Lsn.NULL);
+    }
+
+    /**
+     * Stops the CDC capture job, so that it publishes nothing and can be started again.
+     */
+    private void stopCaptureJob() {
+        Awaitility.await("capture job stopped")
+                .atMost(Duration.ofSeconds(60))
+                .pollDelay(Duration.ZERO)
+                .pollInterval(Duration.ofMillis(100))
+                .until(() -> {
+                    try {
+                        connection.execute("EXEC sys.sp_cdc_stop_job");
+                        return true;
+                    }
+                    catch (SQLException e) {
+                        // The SQL Server Agent refuses to stop the capture job while it is idle between its scans.
+                        // An idle capture job publishes nothing, which is the state this method wants, but the Agent
+                        // starts a capture job that has not run yet, so the refusal is a success only once the
+                        // capture job has run.
+                        return isAgentRefusal(e, AGENT_JOB_NOT_RUNNING) && captureJobHasRun();
+                    }
+                });
+    }
+
+    /**
+     * Starts the CDC capture job, so that it publishes the changes the test makes. The Agent refuses the start with a
+     * stale "already running" answer, while it is still finishing the start request of the capture job, so the capture
+     * job is stopped and started again in that case.
+     */
+    private void startCaptureJob() {
+        Awaitility.await("capture job started")
+                .atMost(Duration.ofSeconds(60))
+                .pollDelay(Duration.ZERO)
+                .pollInterval(Duration.ofMillis(100))
+                .until(() -> {
+                    try {
+                        connection.execute("EXEC sys.sp_cdc_start_job");
+                        return true;
+                    }
+                    catch (SQLException e) {
+                        if (!isAgentRefusal(e, AGENT_JOB_ALREADY_RUNNING)) {
+                            return false;
+                        }
+                        // The capture job publishes nothing until it runs, so the stale refusal is answered by stopping
+                        // it, which makes the state of the Agent consistent. The next attempt starts it for real.
+                        stopCaptureJob();
+                        return false;
+                    }
+                });
+    }
+
+    private static boolean isAgentRefusal(SQLException e, String reason) {
+        return e.getMessage() != null && e.getMessage().contains(reason);
+    }
+
+    /**
+     * @return {@code true} if the capture job of the test database has run, which means that the SQL Server Agent has
+     *         started it and will not start it again
+     */
+    private boolean captureJobHasRun() throws SQLException {
+        return connection.prepareQueryAndMap(
+                "SELECT COUNT(*) FROM msdb.dbo.sysjobactivity WHERE job_id = (SELECT job_id FROM msdb.dbo.sysjobs WHERE name = ?) AND start_execution_date IS NOT NULL",
+                preparer -> preparer.setString(1, CAPTURE_JOB_NAME),
+                connection.singleResultMapper(resultSet -> resultSet.getLong(1) > 0, "Cannot read the state of the capture job"));
+    }
+
+    /**
+     * Removes the rows of {@code cdc.lsn_time_mapping}, so that the maximum LSN is not available and the connector's
+     * offset carries no commit LSN. The rows with {@code tran_id = 0x00} have to be removed as well: they carry the
+     * start LSN of the capture instance, and the maximum LSN is taken over all the rows of the table.
+     */
+    private void clearLsnTimeMapping() throws SQLException {
+        Awaitility.await("The capture job published nothing")
+                .atMost(Duration.ofSeconds(30))
+                .pollDelay(Duration.ZERO)
+                .pollInterval(Duration.ofMillis(200))
+                .until(() -> {
+                    connection.execute("DELETE FROM cdc.lsn_time_mapping");
+                    return Lsn.NULL.equals(maxLsn());
+                });
+    }
+
+    /**
+     * @return the maximum LSN the capture job has published, or {@link Lsn#NULL} if it has published nothing
+     */
+    private Lsn maxLsn() throws SQLException {
+        return connection.getMaxLsn(TestHelper.TEST_DATABASE_1);
+    }
+
+    private void assertSingleOrderRecord(SourceRecords records, Schema valueSchema) {
+        final List<SourceRecord> orderRecords = records.recordsForTopic(ORDERS_TOPIC);
+        assertThat(orderRecords).hasSize(1);
+        orderRecords.forEach(record -> assertSchemaMatchesStruct((Struct) ((Struct) record.value()).get("after"), valueSchema));
+    }
+
+    private static Schema ordersValueSchema(String... optionalIntColumns) {
+        final SchemaBuilder builder = SchemaBuilder.struct()
+                .optional()
+                .name(ORDERS_TOPIC + ".Value")
+                .field("id", Schema.INT32_SCHEMA)
+                .field("status", Schema.OPTIONAL_STRING_SCHEMA);
+        for (String column : optionalIntColumns) {
+            builder.field(column, Schema.OPTIONAL_INT32_SCHEMA);
+        }
+        return builder.build();
+    }
+
+    private static int countSchemaChanges(String type) throws IOException {
+        final DocumentReader reader = DocumentReader.defaultReader();
+        final List<Document> changes = new ArrayList<>();
+        IoUtil.readLines(TestHelper.SCHEMA_HISTORY_PATH, line -> {
+            try {
+                changes.add(reader.read(line));
+            }
+            catch (IOException e) {
+                throw new IllegalStateException(e);
+            }
+        });
+        return (int) changes.stream()
+                .flatMap(change -> change.getArray("tableChanges").streamValues())
+                .filter(tableChange -> type.equals(tableChange.asDocument().getString("type")))
+                .count();
     }
 
     @Test
