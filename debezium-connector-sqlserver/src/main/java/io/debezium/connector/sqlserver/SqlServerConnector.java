@@ -52,6 +52,7 @@ public class SqlServerConnector extends RelationalBaseSourceConnector implements
 
     @Override
     public void start(Map<String, String> props) {
+        super.start(props);
         this.properties = Collections.unmodifiableMap(new HashMap<>(props));
     }
 
@@ -113,7 +114,7 @@ public class SqlServerConnector extends RelationalBaseSourceConnector implements
 
     @Override
     public ConfigDef config() {
-        return SqlServerConnectorConfig.configDef();
+        return enrichConfigDef(SqlServerConnectorConfig.configDef());
     }
 
     @Override
