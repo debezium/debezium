@@ -1286,6 +1286,44 @@ public class MongoDbConnectorIT extends AbstractMongoConnectorIT {
     }
 
     @Test
+    @FixFor("debezium/dbz#2745")
+    public void shouldStreamAllEventsInOrderWithSmallCursorBuffer() throws InterruptedException {
+        final LogInterceptor logInterceptor = new LogInterceptor(BufferingChangeStreamCursor.class);
+        final int bufferCapacity = 2;
+        final int documentCount = 25;
+
+        // Keep the default max.batch.size so that only the buffer capacity is reduced
+        config = TestHelper.getConfiguration(mongo).edit()
+                .with(MongoDbConnectorConfig.POLL_INTERVAL_MS, 10)
+                .with(MongoDbConnectorConfig.COLLECTION_INCLUDE_LIST, "dbit.*")
+                .with(CommonConnectorConfig.TOPIC_PREFIX, "mongo")
+                .with(MongoDbConnectorConfig.CURSOR_BUFFER_MAX_EVENTS, bufferCapacity)
+                .build();
+
+        context = new MongoDbTaskContext(config);
+        TestHelper.cleanDatabase(mongo, "dbit");
+
+        start(MongoDbConnector.class, config);
+        waitForStreamingRunning("mongodb", "mongo");
+
+        assertThat(logInterceptor.containsMessage("Change stream fetcher buffer capacity: " + bufferCapacity + " events")).isTrue();
+
+        final Document[] documents = new Document[documentCount];
+        for (int i = 0; i < documentCount; i++) {
+            documents[i] = new Document("_id", i).append("value", "v" + i);
+        }
+        insertDocuments("dbit", "buffered", documents);
+
+        final SourceRecords records = consumeRecordsByTopic(documentCount);
+        final List<SourceRecord> buffered = records.recordsForTopic("mongo.dbit.buffered");
+        assertThat(buffered).hasSize(documentCount);
+        for (int i = 0; i < documentCount; i++) {
+            assertThat(((Struct) buffered.get(i).key()).getString("id")).isEqualTo(String.valueOf(i));
+        }
+        assertNoRecordsToConsume();
+    }
+
+    @Test
     @FixFor("DBZ-1831")
     public void shouldConsumeAllEventsFromDatabaseWithSkippedOperations() throws InterruptedException, IOException {
         // Use the DB configuration to define the connector's configuration ...

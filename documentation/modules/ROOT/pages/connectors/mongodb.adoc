@@ -2177,6 +2177,31 @@ If its first event is split, the connector reads all fragments and records the l
 |0
 |The maximum allowed size **in bytes** of the stored document for which change events are processed. This includes both, the size before and after database operation, more specifically this limits the size of fullDocument and fullDocumentBeforeChange filed of MongoDB change events.
 
+|[[mongodb-property-cursor-buffer-max-events]]<<mongodb-property-cursor-buffer-max-events, `+cursor.buffer.max.events+`>>
+|Value of xref:mongodb-property-max-batch-size[`max.batch.size`]
+|Specifies the maximum number of change stream events that the connector prefetches from MongoDB and holds in memory before it places them in the blocking queue.
+Buffered events are fully decoded documents, which can occupy several times their BSON size on the heap.
+They are not counted by xref:mongodb-property-max-queue-size-in-bytes[`max.queue.size.in.bytes`].
+
+When the connector captures large documents, especially with full document lookups, set this property to a value lower than `max.batch.size`, or set xref:mongodb-property-cursor-buffer-max-bytes[`cursor.buffer.max.bytes`], to limit the memory used by the buffer without reducing the size of the batches that the connector processes.
+If the property is not set, or is set to `0`, the connector uses the value of `max.batch.size`.
+Negative values are not permitted.
+
+When the buffer is full, the connector waits for buffered events to be consumed before it fetches more.
+If the buffer stays full, the connector periodically logs a warning that reports how often it had to wait, at least every two minutes.
+
+|[[mongodb-property-cursor-buffer-max-bytes]]<<mongodb-property-cursor-buffer-max-bytes, `+cursor.buffer.max.bytes+`>>
+|`0`
+|Specifies the maximum approximate size, in bytes, of the change stream events that the connector prefetches from MongoDB and holds in memory before it places them in the blocking queue.
+The connector estimates the size of each event from its decoded documents.
+The connector stops prefetching when the estimated size of the buffered events reaches this value, so the buffer can exceed the limit by at most one event.
+An event that is larger than the limit is still buffered when the buffer is empty.
+
+This limit applies in addition to xref:mongodb-property-cursor-buffer-max-events[`cursor.buffer.max.events`], and the buffer stops accepting events when it reaches either limit.
+Use this property when the size of captured documents varies widely, so that the memory used by the buffer is bounded regardless of document size.
+The default value (`0`) disables the size limit.
+Negative values are not permitted.
+
 |[[mongodb-property-query-fetch-size]]<<mongodb-property-query-fetch-size, `+query.fetch.size+`>>
 |`0`
 |Specifies the maximum number of change stream documents that MongoDB returns in each cursor response batch.

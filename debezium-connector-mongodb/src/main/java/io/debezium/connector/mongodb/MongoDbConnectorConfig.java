@@ -1241,6 +1241,33 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig implements Sha
                     + "This includes both, the size before and after database operation, "
                     + "more specifically this limits the size of fullDocument and fullDocumentBeforeChange filed of MongoDB change events.");
 
+    public static final Field CURSOR_BUFFER_MAX_EVENTS = Field.create("cursor.buffer.max.events")
+            .withDisplayName("Change stream cursor buffer maximum events")
+            .withType(Type.INT)
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR_ADVANCED))
+            .withWidth(Width.SHORT)
+            .withImportance(Importance.LOW)
+            .withValidation(Field::isNonNegativeInteger)
+            .withDescription("The maximum number of change stream events that the connector prefetches from MongoDB and holds in memory "
+                    + "before they are placed into the change event queue. "
+                    + "Buffered events are fully decoded documents and are not counted by 'max.queue.size.in.bytes', "
+                    + "so lowering this value limits memory usage when capturing large documents. "
+                    + "If not set or set to '0', the value of 'max.batch.size' is used.");
+
+    public static final Field CURSOR_BUFFER_MAX_BYTES = Field.create("cursor.buffer.max.bytes")
+            .withDisplayName("Change stream cursor buffer maximum size in bytes")
+            .withType(Type.LONG)
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR_ADVANCED))
+            .withWidth(Width.LONG)
+            .withImportance(Importance.LOW)
+            .withDefault(0L)
+            .withValidation(Field::isNonNegativeLong)
+            .withDescription("The maximum approximate size in bytes of the change stream events that the connector prefetches from MongoDB "
+                    + "and holds in memory before they are placed into the change event queue. "
+                    + "The size of each event is estimated from its decoded documents. "
+                    + "This limit applies in addition to 'cursor.buffer.max.events'. "
+                    + "Defaults to 0, which means the feature is not enabled.");
+
     public static final Field TOPIC_NAMING_STRATEGY = Field.create("topic.naming.strategy")
             .withDisplayName("Topic naming strategy class")
             .withType(Type.CLASS)
@@ -1273,7 +1300,8 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig implements Sha
                     CAPTURE_SCOPE, CAPTURE_TARGET, JSON_SERIALIZATION_MODE,
                     SCHEMA_NAME_ADJUSTMENT_MODE, SOURCE_INFO_STRUCT_MAKER, CAPTURE_START_OP_TIME, CAPTURE_START_TIMESTAMP)
             .group(Field.Group.CONNECTOR_ADVANCED, QUERY_FETCH_SIZE, CURSOR_PIPELINE, CURSOR_PIPELINE_ORDER, CURSOR_OVERSIZE_HANDLING_MODE,
-                    CURSOR_OVERSIZE_SKIP_THRESHOLD, CAPTURE_MODE_FULL_UPDATE_TYPE)
+                    CURSOR_OVERSIZE_SKIP_THRESHOLD, CURSOR_BUFFER_MAX_EVENTS, CURSOR_BUFFER_MAX_BYTES,
+                    CAPTURE_MODE_FULL_UPDATE_TYPE)
             .create();
 
     /**
@@ -1318,6 +1346,8 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig implements Sha
     private final OversizeHandlingMode oversizeHandlingMode;
     private final FiltersMatchMode filtersMatchMode;
     private final int oversizeSkipThreshold;
+    private final int cursorBufferMaxEvents;
+    private final long cursorBufferMaxBytes;
 
     public MongoDbConnectorConfig(Configuration config) {
         super(config, DEFAULT_SNAPSHOT_FETCH_SIZE);
@@ -1386,6 +1416,8 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig implements Sha
         String oversizeHandlingModeValue = config.getString(MongoDbConnectorConfig.CURSOR_OVERSIZE_HANDLING_MODE);
         this.oversizeHandlingMode = OversizeHandlingMode.parse(oversizeHandlingModeValue, MongoDbConnectorConfig.CURSOR_OVERSIZE_HANDLING_MODE.defaultValueAsString());
         this.oversizeSkipThreshold = config.getInteger(CURSOR_OVERSIZE_SKIP_THRESHOLD);
+        this.cursorBufferMaxEvents = config.getInteger(CURSOR_BUFFER_MAX_EVENTS, 0);
+        this.cursorBufferMaxBytes = config.getLong(CURSOR_BUFFER_MAX_BYTES);
 
         String filterMatchModeValue = config.getString(MongoDbConnectorConfig.FILTERS_MATCH_MODE);
         this.filtersMatchMode = FiltersMatchMode.parse(filterMatchModeValue, MongoDbConnectorConfig.FILTERS_MATCH_MODE.defaultValueAsString());
@@ -1717,6 +1749,19 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig implements Sha
 
     public int getOversizeSkipThreshold() {
         return oversizeSkipThreshold;
+    }
+
+    /**
+     * Returns the maximum number of change stream events held in the prefetch buffer.
+     *
+     * @return the configured buffer capacity, or {@link #getMaxBatchSize()} if not configured
+     */
+    public int getCursorBufferMaxEvents() {
+        return cursorBufferMaxEvents > 0 ? cursorBufferMaxEvents : getMaxBatchSize();
+    }
+
+    public long getCursorBufferMaxBytes() {
+        return cursorBufferMaxBytes;
     }
 
     public FiltersMatchMode getFiltersMatchMode() {

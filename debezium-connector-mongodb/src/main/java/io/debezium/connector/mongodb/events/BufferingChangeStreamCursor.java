@@ -7,6 +7,7 @@ package io.debezium.connector.mongodb.events;
 
 import java.io.Closeable;
 import java.time.Duration;
+import java.time.Instant;
 import java.util.NoSuchElementException;
 import java.util.Objects;
 import java.util.Optional;
@@ -15,6 +16,7 @@ import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.Lock;
@@ -38,6 +40,8 @@ import io.debezium.connector.mongodb.MongoDbTaskContext;
 import io.debezium.connector.mongodb.metrics.MongoDbStreamingChangeEventSourceMetrics;
 import io.debezium.util.Clock;
 import io.debezium.util.DelayStrategy;
+import io.debezium.util.ElapsedTimeStrategy;
+import io.debezium.util.Strings;
 import io.debezium.util.Threads;
 
 /**
@@ -128,10 +132,19 @@ public class BufferingChangeStreamCursor<TResult> implements MongoChangeStreamCu
         }
 
         public static final long QUEUE_OFFER_TIMEOUT_MS = 100;
+        private static final Duration INITIAL_BUFFER_FULL_LOG_PERIOD = Duration.ofSeconds(5);
+        private static final Duration MAX_BUFFER_FULL_LOG_PERIOD = Duration.ofMinutes(2);
+
+        private record BufferedEvent<TResult>(ResumableChangeStreamEvent<TResult> event, long sizeInBytes) {
+        }
 
         private final ChangeStreamIterable<TResult> stream;
         private final Semaphore capacity;
-        private final Queue<ResumableChangeStreamEvent<TResult>> queue;
+        private final long maxBufferSizeInBytes;
+        private final AtomicLong bufferSizeInBytes = new AtomicLong();
+        private final String eventLimitDescription;
+        private final String sizeLimitDescription;
+        private final Queue<BufferedEvent<TResult>> queue;
         private final DelayStrategy throttler;
         private final AtomicReference<State> state;
         private final AtomicReference<MongoChangeStreamCursor<ChangeStreamDocument<TResult>>> cursorRef;
@@ -142,16 +155,26 @@ public class BufferingChangeStreamCursor<TResult> implements MongoChangeStreamCu
         private final Lock lock = new ReentrantLock();
         private final Condition resumed = lock.newCondition();
         private final Condition eventAvailable = lock.newCondition();
+        private final Condition bufferSpaceAvailable = lock.newCondition();
         private volatile boolean paused;
         private volatile boolean consumerWaiting;
+        private volatile boolean producerWaiting;
+        // Only accessed by the fetching thread; null while the buffer accepts events
+        private ElapsedTimeStrategy bufferFullLogDelay;
+        private Instant bufferFullSince;
+        private long bufferFullCount = 0;
 
         public EventFetcher(ChangeStreamIterable<TResult> stream,
                             int capacity,
+                            long maxBufferSizeInBytes,
                             MongoDbStreamingChangeEventSourceMetrics metrics,
                             Clock clock,
                             DelayStrategy throttler) {
             this.stream = stream;
             this.capacity = new Semaphore(capacity);
+            this.maxBufferSizeInBytes = maxBufferSizeInBytes;
+            this.eventLimitDescription = "limit of " + capacity + " events";
+            this.sizeLimitDescription = "size limit of " + maxBufferSizeInBytes + " bytes";
             this.metrics = metrics;
             this.clock = clock;
             this.throttler = throttler;
@@ -163,10 +186,11 @@ public class BufferingChangeStreamCursor<TResult> implements MongoChangeStreamCu
 
         public EventFetcher(ChangeStreamIterable<TResult> stream,
                             int capacity,
+                            long maxBufferSizeInBytes,
                             MongoDbStreamingChangeEventSourceMetrics metrics,
                             Clock clock,
                             Duration throttleMaxSleep) {
-            this(stream, capacity, metrics, clock, DelayStrategy.constant(throttleMaxSleep));
+            this(stream, capacity, maxBufferSizeInBytes, metrics, clock, DelayStrategy.constant(throttleMaxSleep));
         }
 
         /**
@@ -207,6 +231,7 @@ public class BufferingChangeStreamCursor<TResult> implements MongoChangeStreamCu
             lock.lock();
             try {
                 eventAvailable.signalAll();
+                bufferSpaceAvailable.signalAll();
             }
             finally {
                 lock.unlock();
@@ -248,16 +273,53 @@ public class BufferingChangeStreamCursor<TResult> implements MongoChangeStreamCu
         }
 
         public ResumableChangeStreamEvent<TResult> poll() {
-            var event = queue.poll();
-            if (event == null) {
+            var buffered = queue.poll();
+            if (buffered == null) {
                 if (hasError()) {
                     throw new DebeziumException("Unable to fetch change stream events", getError());
                 }
+                return null;
             }
-            else {
-                capacity.release();
+            capacity.release();
+            if (maxBufferSizeInBytes > 0) {
+                bufferSizeInBytes.addAndGet(-buffered.sizeInBytes());
+                signalBufferSpaceAvailable();
             }
-            return event;
+            return buffered.event();
+        }
+
+        private void signalBufferSpaceAvailable() {
+            // Avoid taking a lock for every event unless the fetcher waits for buffer space.
+            if (producerWaiting) {
+                lock.lock();
+                try {
+                    bufferSpaceAvailable.signal();
+                }
+                finally {
+                    lock.unlock();
+                }
+            }
+        }
+
+        private boolean awaitBufferSpace() throws InterruptedException {
+            if (maxBufferSizeInBytes <= 0 || bufferSizeInBytes.get() < maxBufferSizeInBytes) {
+                return true;
+            }
+            lock.lockInterruptibly();
+            try {
+                // Register before checking the size so that a release cannot be missed
+                // between the size check and releasing the lock in awaitNanos().
+                producerWaiting = true;
+                long remainingNanos = TimeUnit.MILLISECONDS.toNanos(QUEUE_OFFER_TIMEOUT_MS);
+                while (bufferSizeInBytes.get() >= maxBufferSizeInBytes && !isClosed() && remainingNanos > 0) {
+                    remainingNanos = bufferSpaceAvailable.awaitNanos(remainingNanos);
+                }
+                return bufferSizeInBytes.get() < maxBufferSizeInBytes;
+            }
+            finally {
+                producerWaiting = false;
+                lock.unlock();
+            }
         }
 
         void awaitEvent(long timeoutMillis) throws InterruptedException {
@@ -337,6 +399,7 @@ public class BufferingChangeStreamCursor<TResult> implements MongoChangeStreamCu
 
         private void fetchEvents(MongoChangeStreamCursor<ChangeStreamDocument<TResult>> cursor) throws InterruptedException {
             ResumableChangeStreamEvent<TResult> lastEvent = null;
+            long lastEventSize = 0;
             var repeat = false;
             while (isRunning()) {
                 if (!repeat) {
@@ -349,8 +412,10 @@ public class BufferingChangeStreamCursor<TResult> implements MongoChangeStreamCu
                         continue;
                     }
                     lastEvent = maybeEvent.get();
+                    // Estimate the size once, the event may be offered repeatedly while the buffer is full
+                    lastEventSize = maxBufferSizeInBytes > 0 ? ApproximateBsonSizeCalculator.getApproximateEventSize(lastEvent) : 0;
                 }
-                repeat = !enqueue(lastEvent);
+                repeat = !enqueue(lastEvent, lastEventSize);
             }
         }
 
@@ -379,16 +444,45 @@ public class BufferingChangeStreamCursor<TResult> implements MongoChangeStreamCu
             }
         }
 
-        private boolean enqueue(ResumableChangeStreamEvent<TResult> event) throws InterruptedException {
+        private boolean enqueue(ResumableChangeStreamEvent<TResult> event, long sizeInBytes) throws InterruptedException {
             var available = this.capacity.tryAcquire(QUEUE_OFFER_TIMEOUT_MS, TimeUnit.MILLISECONDS);
             if (!available) {
-                LOGGER.warn("Unable to acquire buffer lock, buffer queue is likely full");
+                logBufferFull(eventLimitDescription);
                 return false;
             }
+            // An event is accepted while the buffer is below the byte limit, so a single
+            // event larger than the limit can still be buffered and the fetcher never stalls.
+            if (!awaitBufferSpace()) {
+                capacity.release();
+                logBufferFull(sizeLimitDescription);
+                return false;
+            }
+            bufferFullLogDelay = null;
+            if (maxBufferSizeInBytes > 0) {
+                bufferSizeInBytes.addAndGet(sizeInBytes);
+            }
             // ConcurrentLinkedQueue.offer() always succeeds.
-            queue.offer(event);
+            queue.offer(new BufferedEvent<>(event, sizeInBytes));
             signalEventAvailable();
             return true;
+        }
+
+        private void logBufferFull(String limit) {
+            // A small buffer with a slow consumer is full most of the time, so only report a stall periodically.
+            // Each stall starts a new reporting schedule so that the warning reflects the current stall.
+            if (bufferFullLogDelay == null) {
+                bufferFullLogDelay = ElapsedTimeStrategy.exponential(clock, INITIAL_BUFFER_FULL_LOG_PERIOD, MAX_BUFFER_FULL_LOG_PERIOD);
+                bufferFullSince = clock.currentTime();
+                bufferFullCount = 0;
+            }
+            bufferFullCount++;
+            if (bufferFullLogDelay.hasElapsed()) {
+                final Instant currentTime = clock.currentTime();
+                LOGGER.warn("Change stream buffer reached its {}, unable to buffer an event {} times during previous {}", limit, bufferFullCount,
+                        Strings.duration(Duration.between(bufferFullSince, currentTime).toMillis()));
+                bufferFullSince = currentTime;
+                bufferFullCount = 0;
+            }
         }
     }
 
@@ -398,9 +492,17 @@ public class BufferingChangeStreamCursor<TResult> implements MongoChangeStreamCu
                                                                               MongoDbStreamingChangeEventSourceMetrics metrics,
                                                                               Clock clock) {
         var config = taskContext.getConfig();
+        var capacity = config.getCursorBufferMaxEvents();
+        var maxSizeInBytes = config.getCursorBufferMaxBytes();
+        if (maxSizeInBytes > 0) {
+            LOGGER.info("Change stream fetcher buffer capacity: {} events, {} bytes", capacity, maxSizeInBytes);
+        }
+        else {
+            LOGGER.info("Change stream fetcher buffer capacity: {} events", capacity);
+        }
 
         return new BufferingChangeStreamCursor<>(
-                new EventFetcher<>(stream, config.getMaxBatchSize(), metrics, clock, config.getPollInterval()),
+                new EventFetcher<>(stream, capacity, maxSizeInBytes, metrics, clock, config.getPollInterval()),
                 Threads.newFixedThreadPool(MongoDbConnector.class, taskContext.getServerName(), "replicator-fetcher", 1),
                 config.getPollInterval());
     }
