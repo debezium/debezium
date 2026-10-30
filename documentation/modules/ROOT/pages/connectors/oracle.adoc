@@ -558,6 +558,9 @@ INSERT INTO debezium.debezium_signal VALUES('drop-tx-1', 'drop-transaction', '{"
 }
 ----
 
+// Type: procedure
+// ModuleID: debezium-oracle-connector-logging-pending-transactions
+// Title: Logging pending transactions in the {prodname} Oracle connector
 [id="oracle-log-pending-transactions-signal"]
 === Logging pending transactions
 
@@ -1075,6 +1078,9 @@ The following example shows a typical transaction event message:
 }
 ----
 
+// Type: assembly
+// ModuleID: oracle-logminer-mining-strategies
+// Title: {prodname} Oracle connector LogMiner mining strategies
 [[oracle-logminer-mining-strategies]]
 === LogMiner Mining Strategies
 
@@ -1086,6 +1092,9 @@ The {prodname} Oracle connector uses the xref:oracle-property-log-mining-strateg
 In certain situations, one log mining strategy might prove more reliable than another with regard to schema changes.
 However, before you choose a log mining strategy, it's important to consider the implications it might have on performance and overhead.
 
+// Type: concept
+// ModuleID: oracle-logminer-writing-data-dictionary-to-redo-logs
+// Title: Writing the Oracle data dictionary to redo logs
 ==== Writing the data dictionary to redo logs
 
 The `redo_log_catalog` mining strategy provides reliable schema change tracking at the cost of higher redo log volume and archive log consumption.
@@ -1109,6 +1118,9 @@ If you intend to use this mode, coordinate with your database administrators to 
 If you configure the connector to use the `redo_log_catalog` mode, do not use multiple {prodname} Oracle connectors to capture changes from the same logical database.
 ====
 
+// Type: concept
+// ModuleID: oracle-logminer-using-the-online-catalog-directly
+// Title: Using the Oracle online catalog mining strategy
 ==== Using the online catalog directly
 
 The default strategy mode, `online_catalog`, works differently from the `redo_log_catalog` mode.
@@ -1129,6 +1141,9 @@ If the {prodname} connector is configured to use the `online_catalog` mode, and 
 
 Following this procedure helps to ensure that Oracle LogMiner can safely reconstruct the SQL for all data changes.
 
+// Type: concept
+// ModuleID: oracle-logminer-hybrid-mining-strategy
+// Title: Oracle LogMiner hybrid mining strategy
 ==== Hybrid approach
 
 You can enable this strategy by setting the value of the xref:oracle-property-log-mining-strategy[`log.mining.strategy`] configuration property to `hybrid`.
@@ -1145,6 +1160,9 @@ You cannot use the `hybrid` mining strategy if the xref:oracle-property-lob-enab
 If you require streaming `CLOB`, `BLOB`, or `XML` data, only the `online_catalog` or `redo_log_catalog` (deprecated) strategies can be used.
 ====
 
+// Type: concept
+// ModuleID: oracle-logminer-and-private-redo-threads
+// Title: {prodname} Oracle connector LogMiner and private redo threads
 [[oracle-logminer-private-redo-threads]]
 === LogMiner and Private Redo Threads
 
@@ -1199,6 +1217,9 @@ The connector configuration includes following key properties:
 `secondary.port`:: Specifies the port of the downstream mining database instance.
 `secondary.url`:: Specifies the full JDBC connection string to the downstream mining database. Use this as an alternative to `secondary.hostname`, `secondary.port`, and `secondary.dbname`.
 
+// Type: concept
+// ModuleID: how-the-oracle-connector-uses-a-downstream-mining-database
+// Title: How the {prodname} Oracle connector uses a downstream mining database
 ==== How this works
 
 When {prodname} Oracle connector is configured to capture changes from a downstream mining database, the connector operates as follows:
@@ -1208,14 +1229,17 @@ When {prodname} Oracle connector is configured to capture changes from a downstr
 3. The connector connects to the downstream mining database to read the transaction logs.
 4. Changes are captured with minimal impact to the primary database performance.
 
+// Type: concept
+// ModuleID: considerations-for-using-the-oracle-connector-with-a-downstream-mining-database
+// Title: Considerations for using the {prodname} Oracle connector with a downstream mining database
 ==== Important considerations when the connector uses a downstream mining database
 
 To use the connector with a downstream mining database, you must first register transaction logs with that database.
 
-When Oracle Remove File Server (RFS) replicates changes, the replication should happen automatically when using a real-time downstream mining configuration. 
+When Oracle Remove File Server (RFS) replicates changes, the replication should happen automatically when using a real-time downstream mining configuration.
 {prodname} does not perform any log registration.
 
-If a log fails to register and a gap in log sequences occurs, the {prodname} connector pauses capture. A database administrator must review the registered logs and register any missing logs to close the gap. 
+If a log fails to register and a gap in log sequences occurs, the {prodname} connector pauses capture. A database administrator must review the registered logs and register any missing logs to close the gap.
 Typically, this should be necessary only during the initial set up and synchronization with the primary.
 
 endif::community[]
@@ -1265,6 +1289,9 @@ The connector drops change events that are discarded by a rollback.
 
 You can configure the buffering mechanism that the connector uses by setting the property xref:oracle-property-log-mining-buffer-type[`log.mining.buffer.type`].
 
+// Type: concept
+// ModuleID: oracle-connector-heap-buffer-for-transaction-event-data
+// Title: Oracle connector heap buffer for transaction event data
 ==== Heap buffering
 
 The heap buffer stores in-progress transaction data in the JVM process memory, making it suitable for environments where transactions are short-lived and transaction volume is moderate.
@@ -1699,7 +1726,9 @@ For more information about change event values, see the following topics:
 endif::product[]
 
 
-// Type: continue
+// Type: reference
+// ModuleID: oracle-create-events
+// Title: {prodname} Oracle connector _create_ change events
 [[oracle-create-events]]
 === _create_ events
 
@@ -1941,7 +1970,9 @@ The larger size is due to the JSON representation including both the schema and 
 You can use the {link-prefix}:{link-avro-serialization}#avro-serialization[Avro Converter] to decrease the size of messages that the connector writes to Kafka topics.
 ====
 
-// Type: continue
+// Type: reference
+// ModuleID: oracle-update-events
+// Title: {prodname} Oracle connector _update_ change events
 [[oracle-update-events]]
 === _update_ events
 
@@ -2015,7 +2046,9 @@ As a result, {prodname} emits _three_ events after such an update:
 * An `INSERT` event that provides the new key for the row.
 ====
 
-// Type: continue
+// Type: reference
+// ModuleID: oracle-delete-events
+// Title: {prodname} Oracle connector _delete_ change events
 [[oracle-delete-events]]
 === _delete_ events
 
@@ -2081,7 +2114,9 @@ The message value must be set to `null` to instruct Kafka to remove _all message
 To make this possible, by default, {prodname}'s Oracle connector always follows a _delete_ event with a special _tombstone_ event that has the same key but `null` value.
 You can change the default behavior by setting the connector property xref:oracle-property-tombstones-on-delete[`tombstones.on.delete`].
 
-// Type: continue
+// Type: reference
+// ModuleID: oracle-truncate-events
+// Title: {prodname} Oracle connector _truncate_ change events
 [[oracle-truncate-events]]
 === _truncate_ events
 
@@ -2211,6 +2246,9 @@ Support for further data types is planned for subsequent releases.
 Please file a {issues-url}[GitHub issue] for any specific types that might be missing.
 endif::community[]
 
+// Type: reference
+// ModuleID: oracle-unsupported-data-types
+// Title: Unsupported data types for the {prodname} Oracle connector
 [id="oracle-unsupported-types"]
 === Unsupported data types
 
@@ -2232,6 +2270,9 @@ The connector cannot process columns that include the following types of data:
 If the connector attempts to capture an event that includes a column with one of these unsupported data types, it skips the event and then continues to process subsequent events.
 The connector continues to process other columns and tables that are configured for capture, but data from the unsupported column is lost.
 
+// Type: reference
+// ModuleID: oracle-character-data-type-mappings
+// Title: {prodname} Oracle connector character data type mappings
 [id="oracle-character-types"]
 === Character types
 
@@ -2266,6 +2307,9 @@ The following table describes how the connector maps basic character types.
 
 |===
 
+// Type: reference
+// ModuleID: oracle-binary-and-character-lob-data-type-mappings
+// Title: {prodname} Oracle connector binary and character LOB data type mappings
 [id="oracle-binary-character-lob-types"]
 === Binary and Character LOB types
 The following table describes how the connector maps binary and character large object (LOB) data types.
@@ -2327,6 +2371,9 @@ If the value of a `CLOB`, `NCLOB`, or `BLOB` column is updated, the new value is
 The `before` element contains the unavailable value placeholder.
 ====
 
+// Type: reference
+// ModuleID: oracle-numeric-data-type-mappings
+// Title: {prodname} Oracle connector numeric data type mappings
 [id="oracle-numeric-types"]
 === Numeric types
 
@@ -2457,6 +2504,9 @@ zero_scale.decimal.mode=precise
 
 By default, the number is converted to `Decimal` type (`zero_scale.decimal.mode=precise`), but for completeness remaining two supported types (`double` and `string`) are supported as well.
 
+// Type: reference
+// ModuleID: oracle-boolean-data-type-mappings
+// Title: {prodname} Oracle connector Boolean data type mappings
 [id="oracle-boolean-types"]
 === Boolean types
 
@@ -2479,6 +2529,9 @@ boolean.type=io.debezium.connector.oracle.converters.NumberOneToBooleanConverter
 boolean.selector=.*MYTABLE.FLAG,.*.IS_ARCHIVED
 ----
 
+// Type: reference
+// ModuleID: oracle-temporal-data-type-mappings
+// Title: {prodname} Oracle connector temporal data type mappings
 [id="oracle-temporal-types"]
 === Temporal types
 
@@ -2808,6 +2861,9 @@ A string representation of a timestamp in UTC.
 
 |===
 
+// Type: reference
+// ModuleID: oracle-temporal-types-bc-era-and-pre-gregorian-dates
+// Title: {prodname} Oracle connector BC era and pre-Gregorian date handling
 [id="oracle-temporal-types-bc-era"]
 ==== BC era and pre-Gregorian dates
 
@@ -2827,6 +2883,9 @@ BC values stored in `TIMESTAMP(7 - 9)` columns exceed the representable range of
 If a column may contain BC values at nanosecond precision, use `time.precision.mode` set to `isostring` or `structured` to represent the values without loss.
 ====
 
+// Type: reference
+// ModuleID: oracle-rowid-data-type-mappings
+// Title: {prodname} Oracle connector ROWID data type mappings
 [id="oracle-rowid-types"]
 === ROWID types
 
@@ -2850,11 +2909,17 @@ _This data type is not supported when using Oracle XStream._
 
 |===
 
+// Type: reference
+// ModuleID: oracle-vector-data-type-mappings
+// Title: {prodname} Oracle connector vector data type mappings
 [id="oracle-vector-types"]
 === Vector types
 
 The {prodname} connector for Oracle does not support the Oracle VECTOR data type.
 
+// Type: reference
+// ModuleID: oracle-json-data-type-mappings
+// Title: {prodname} Oracle connector JSON data type mappings
 [id="oracle-json-types"]
 === JSON types
 
@@ -2902,6 +2967,9 @@ The following table describes how the connector maps JSON data types.
 
 |===
 
+// Type: reference
+// ModuleID: oracle-xml-data-type-mappings
+// Title: {prodname} Oracle connector XML data type mappings
 [id="oracle-xml-types"]
 === XML types
 
@@ -2939,6 +3007,9 @@ The following table describes how the connector maps XMLTYPE data types.
 
 |===
 
+// Type: reference
+// ModuleID: oracle-user-defined-data-type-mappings
+// Title: {prodname} Oracle connector user-defined data type mappings
 [id="oracle-user-defined-types"]
 === User-defined types
 
@@ -2946,6 +3017,9 @@ Oracle enables you to define custom data types to provide flexibility when the b
 There are a several user-defined types such as Object types, REF data types, Varrays, and Nested Tables.
 At this time, you cannot use the {prodname} Oracle connector with any of these user-defined types.
 
+// Type: reference
+// ModuleID: oracle-supplied-data-type-mappings
+// Title: {prodname} Oracle connector Oracle-supplied data type mappings
 [id="oracle-supplied-types"]
 === Oracle-supplied types
 
@@ -2953,6 +3027,9 @@ Oracle provides SQL-based interfaces that you can use to define new types when t
 Oracle offers several commonly used data types to serve a broad array of purposes such as *Any* or *Spatial* types.
 At this time, you cannot use the {prodname} Oracle connector with any of these data types.
 
+// Type: reference
+// ModuleID: oracle-default-column-values-in-change-events
+// Title: Default column values in {prodname} Oracle connector change events
 [[oracle-default-values]]
 === Default Values
 If a default value is specified for a column in the database schema, the Oracle connector will attempt to propagate this value to the schema of the corresponding Kafka record field.
@@ -2969,6 +3046,9 @@ If a temporal type uses the `SYSDATE` constant to represent the default value, t
 If the column is nullable, no default value will be set; however, if the column isn't nullable then the default value will be resolved as either `0` (for `DATE` or `TIMESTAMP(n)` data types) or `1970-01-01T00:00:00Z` (for `TIMESTAMP WITH TIME ZONE` or `TIMESTAMP WITH LOCAL TIME ZONE` data types).
 The default value type will be numeric except if the column is a `TIMESTAMP WITH TIME ZONE` or `TIMESTAMP WITH LOCAL TIME ZONE` in which case its emitted as a string.
 
+// Type: assembly
+// ModuleID: debezium-oracle-connector-custom-converters
+// Title: {prodname} Oracle connector custom converters
 [[debezium-oracle-connector-converters]]
 == Custom converters
 
@@ -2983,6 +3063,9 @@ The {prodname} Oracle connector provides the following custom converters:
 * xref:debezium-oracle-connector-custom-converters-raw-to-string[`RAW` to String]
 
 
+// Type: reference
+// ModuleID: debezium-oracle-connector-number-one-to-boolean-converter
+// Title: {prodname} Oracle connector `NUMBER(1)` to Boolean converter
 [id="debezium-oracle-connector-custom-converters-number-to-boolean"]
 === `NUMBER(1)` to Boolean
 
@@ -3004,6 +3087,9 @@ In the preceding example, the `selector` property is optional.
 The `selector` property specifies a regular expression that designates which tables or columns the converter applies to.
 If you omit the `selector` property, when {prodname} emits an event, every column with the `NUMBER(1)` data type is converted to a field that uses the logical `BOOL` type.
 
+// Type: reference
+// ModuleID: debezium-oracle-connector-number-to-zero-scale-converter
+// Title: {prodname} Oracle connector `NUMBER` to zero scale converter
 [id="debezium-oracle-connector-custom-converters-number-to-zero-scale"]
 === `NUMBER` To Zero Scale
 
@@ -3024,6 +3110,9 @@ In the preceding example, the `decimal.mode` property specifies how the connecto
 This property is optional.
 If you omit the `decimal.mode` property, the converter defaults to using the `PRECISE` decimal handling mode.
 
+// Type: reference
+// ModuleID: debezium-oracle-connector-raw-to-string-converter
+// Title: {prodname} Oracle connector `RAW` to String converter
 [id="debezium-oracle-connector-custom-converters-raw-to-string"]
 === `RAW` to String
 
@@ -3063,7 +3152,7 @@ For example, if the database encoding is `WE8ISO8859P1`, this field would need t
 
 // Type: assembly
 // ModuleID: setting-up-oracle-to-work-with-debezium
-//Title: Setting up Oracle to work with {prodname}
+// Title: Setting up Oracle to work with {prodname}
 [[setting-up-oracle]]
 == Setting up Oracle
 
@@ -3912,6 +4001,9 @@ For non-CDB installation, do *not* specify the `database.pdb.name` property.
 
 endif::community[]
 
+// Type: assembly
+// ModuleID: oracle-connector-using-mtls-secure-connections
+// Title: Using mTLS secure connections with the {prodname} Oracle connector
 [[using-mtls-secure-connections]]
 === Using mTLS secure connections
 
@@ -4024,6 +4116,9 @@ Information about the properties is organized as follows:
 ** xref:debezium-oracle-connector-pass-through-kafka-sink-notification-configuration-properties[Pass-through sink notification configuration properties]
 ** xref:debezium-oracle-connector-pass-through-database-driver-configuration-properties[Pass-through database driver configuration properties]
 
+// Type: reference
+// ModuleID: required-debezium-oracle-connector-configuration-properties
+// Title: Required {prodname} Oracle connector configuration properties
 [id="required-debezium-{context}-connector-configuration-properties"]
 === Required {prodname} Oracle connector configuration properties
 
@@ -5347,40 +5442,61 @@ The property adds following headers:
 `__debezium.context.connectorName`::  The name of the {prodname} connector.
 |===
 
+// Type: reference
+// ModuleID: debezium-oracle-connector-database-history-configuration-properties
+// Title: {prodname} Oracle connector database schema history configuration properties
 [id="debezium-oracle-connector-database-history-configuration-properties"]
 ==== {prodname} Oracle connector database schema history configuration properties
 include::{partialsdir}/modules/all-connectors/ref-connector-configuration-database-history-properties.adoc[leveloffset=+1]
 
+// Type: reference
+// ModuleID: debezium-oracle-connector-pass-through-properties
+// Title: Pass-through {prodname} Oracle connector configuration properties
 [id="debezium-oracle-connector-pass-through-properties"]
 ==== Pass-through Oracle connector configuration properties
 
 The connector supports _pass-through_ properties that enable {prodname} to specify custom configuration options for fine-tuning the behavior of the Apache Kafka producer and consumer.
 For information about the full range of configuration properties for Kafka producers and consumers, see the {link-kafka-docs}/#configuration[Kafka documentation].
 
+// Type: reference
+// ModuleID: debezium-oracle-pass-through-database-history-properties-for-configuring-producer-and-consumer-clients
+// Title: Pass-through {prodname} Oracle connector properties for configuring producer and consumer clients
 [id="debezium-oracle-pass-through-database-history-properties-for-configuring-producer-and-consumer-clients"]
 ===== Pass-through properties for configuring how producer and consumer clients interact with schema history topics
 
 include::{partialsdir}/modules/all-connectors/ref-connector-pass-through-database-history-properties-for-configuring-producer-and-consumer-clients.adoc[leveloffset=+1]
 
 
+// Type: reference
+// ModuleID: debezium-oracle-connector-pass-through-kafka-signals-configuration-properties
+// Title: Pass-through {prodname} Oracle connector properties for the Kafka signaling topic
 [id="debezium-oracle-connector-pass-through-kafka-signals-configuration-properties"]
 ===== Pass-through properties for configuring how the Oracle connector interacts with the Kafka signaling topic
 
 include::{partialsdir}/modules/all-connectors/ref-connector-pass-through-kafka-signals-configuration-properties.adoc[leveloffset=+1]
 
 
+// Type: reference
+// ModuleID: debezium-oracle-connector-pass-through-signals-kafka-consumer-client-configuration-properties
+// Title: Pass-through {prodname} Oracle connector properties for the Kafka signals consumer client
 [id="debezium-oracle-connector-pass-through-signals-kafka-consumer-client-configuration-properties"]
 ===== Pass-through properties for configuring the Kafka consumer client for the signaling channel
 
 include::{partialsdir}/modules/all-connectors/ref-connector-pass-through-signals-kafka-consumer-client-configuration-properties.adoc[leveloffset=+1]
 
 
+// Type: reference
+// ModuleID: debezium-oracle-connector-pass-through-kafka-sink-notification-configuration-properties
+// Title: Pass-through {prodname} Oracle connector properties for the sink notification channel
 [id="debezium-oracle-connector-pass-through-kafka-sink-notification-configuration-properties"]
 ===== Pass-through properties for configuring the Oracle connector sink notification channel
 
 include::{partialsdir}/modules/all-connectors/ref-connector-pass-through-kafka-sink-notification-configuration-properties.adoc[leveloffset=+1]
 
 
+// Type: reference
+// ModuleID: debezium-oracle-connector-pass-through-database-driver-configuration-properties
+// Title: {prodname} Oracle connector pass-through database driver configuration properties
 [id="debezium-oracle-connector-pass-through-database-driver-configuration-properties"]
 ===== {prodname} connector pass-through database driver configuration properties
 
@@ -5423,7 +5539,7 @@ include::{partialsdir}/modules/all-connectors/ref-connector-monitoring-snapshot-
 
 include::{partialsdir}/modules/all-connectors/ref-connector-monitoring-incremental-snapshot-metrics.adoc[leveloffset=+1]
 
-// Type: reference
+// Type: assembly
 // ModuleID: debezium-oracle-connector-streaming-metrics
 // Title: {prodname} Oracle connector streaming metrics
 [[oracle-streaming-metrics]]
@@ -5432,10 +5548,18 @@ include::{partialsdir}/modules/all-connectors/ref-connector-monitoring-increment
 [[oracle-monitoring-streaming]]
 include::{partialsdir}/modules/all-connectors/frag-common-mbean-name.adoc[leveloffset=+1,tags=common-streaming]
 
+// Type: reference
+// ModuleID: debezium-oracle-connector-common-streaming-metrics
+// Title: Common streaming metrics for the {prodname} Oracle connector
+[id="oracle-connector-common-streaming-metrics"]
 ==== Common streaming metrics
 
 include::{partialsdir}/modules/all-connectors/ref-connector-monitoring-streaming-metrics.adoc[leveloffset=+1]
 
+// Type: reference
+// ModuleID: debezium-oracle-connector-logminer-streaming-metrics
+// Title: LogMiner streaming metrics for the {prodname} Oracle connector
+[id="oracle-connector-logminer-streaming-metrics"]
 ==== LogMiner streaming metrics
 
 The {prodname} Oracle connector also provides the following additional streaming metrics:
@@ -5914,7 +6038,7 @@ To configure the connector to use OpenLogReplicator, you must apply specific dat
 .Prerequisites
 
 * Download and compile OpenLogReplicator for your database environment.
-* OpenLogReplicator is installed with direct access to the archive and redo log files. 
+* OpenLogReplicator is installed with direct access to the archive and redo log files.
 This does not necessarily require installation on the physical database server if the archive and redo logs can be accessed via some shared filesystem.
 
 === How OpenLogReplicator works
