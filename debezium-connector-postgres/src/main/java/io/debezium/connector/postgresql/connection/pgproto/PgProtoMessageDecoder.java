@@ -43,16 +43,17 @@ public class PgProtoMessageDecoder extends AbstractMessageDecoder {
     private boolean warnedOnUnkownOp = false;
 
     /**
-     * The buffer {@link #parsedMessage} was parsed from. The driver allocates a new buffer for
-     * every message it receives, so the buffer identifies the message. One decoder serves one
-     * replication connection, read by the single thread of the connector task, so the two fields
-     * need no synchronization.
+     * The buffer the {@link #parsedMessage} was parsed from. The skip decision sets the two fields
+     * and the processing of the message reads them, so that a message is parsed only once. The two
+     * fields are always set and cleared together, so a buffer that is set has a message with it.
+     * One decoder serves one replication connection, read by the single thread of the connector
+     * task, so the two fields need no synchronization.
      */
     private ByteBuffer parsedBuffer;
 
     /**
-     * The message parsed from {@link #parsedBuffer}, kept so that a message is parsed only once,
-     * although both the skip decision and the processing of the message need it.
+     * The message parsed from {@link #parsedBuffer}, kept only while the message is between the
+     * skip decision and its processing.
      */
     private RowMessage parsedMessage;
 
@@ -63,27 +64,40 @@ public class PgProtoMessageDecoder extends AbstractMessageDecoder {
             // operation to read and the decision is the one the base class makes.
             return super.shouldMessageBeSkipped(buffer, lastReceivedLsn, startLsn, walPosition);
         }
-        switch (parseMessage(buffer).getOp()) {
-            case BEGIN, COMMIT:
+        final RowMessage message = parseMessage(buffer);
+        parsedBuffer = buffer;
+        parsedMessage = message;
+        final boolean skipped = switch (message.getOp()) {
+            case BEGIN, COMMIT -> {
                 // BEGIN and COMMIT are not events lsn_events_processed counts, so they must not use
                 // up a skip meant for the already-processed rows at the stored LSN. They are always
                 // reprocessed because they carry the per-transaction boundary state.
                 walPosition.skipMessage(lastReceivedLsn, false);
-                return false;
-            case INSERT, UPDATE, DELETE:
-                return super.shouldMessageBeSkipped(buffer, lastReceivedLsn, startLsn, walPosition);
-            default:
-                // An operation this version does not know is not an event lsn_events_processed
-                // counts, so it must not use up a skip meant for the already-processed rows at the
-                // stored LSN.
-                return walPosition.skipMessage(lastReceivedLsn, false);
+                yield false;
+            }
+            case INSERT, UPDATE, DELETE -> super.shouldMessageBeSkipped(buffer, lastReceivedLsn, startLsn, walPosition);
+            // An operation this version does not know is not an event lsn_events_processed
+            // counts, so it must not use up a skip meant for the already-processed rows at the
+            // stored LSN.
+            default -> walPosition.skipMessage(lastReceivedLsn, false);
+        };
+        if (skipped) {
+            // The message is not processed, so the message parsed for the decision is not needed
+            // any more.
+            parsedBuffer = null;
+            parsedMessage = null;
         }
+        return skipped;
     }
 
     @Override
     public void processNotEmptyMessage(final ByteBuffer buffer, ReplicationMessageProcessor processor, TypeRegistry typeRegistry)
             throws SQLException, InterruptedException {
-        final RowMessage message = parseMessage(buffer);
+        // The skip decision parsed the message of this buffer, so it is parsed only once. A
+        // message that was not decided upon by the skip decision is parsed here.
+        final RowMessage message = buffer == parsedBuffer ? parsedMessage : parseMessage(buffer);
+        parsedBuffer = null;
+        parsedMessage = null;
         LOGGER.trace("Received protobuf message from the server {}", message);
         if (!message.getNewTypeinfoList().isEmpty() && message.getNewTupleCount() != message.getNewTypeinfoCount()) {
             throw new ConnectException(String.format("Message from transaction {} has {} data columns but only {} of type info",
@@ -107,9 +121,6 @@ public class PgProtoMessageDecoder extends AbstractMessageDecoder {
     }
 
     private RowMessage parseMessage(ByteBuffer buffer) {
-        if (buffer == parsedBuffer) {
-            return parsedMessage;
-        }
         if (!buffer.hasArray()) {
             throw new IllegalStateException(
                     "Invalid buffer received from Postgres server during streaming replication");
@@ -123,8 +134,6 @@ public class PgProtoMessageDecoder extends AbstractMessageDecoder {
         catch (InvalidProtocolBufferException e) {
             throw new ConnectException(e);
         }
-        parsedBuffer = buffer;
-        parsedMessage = message;
         return message;
     }
 }
