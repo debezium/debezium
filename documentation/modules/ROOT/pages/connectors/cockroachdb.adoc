@@ -185,7 +185,9 @@ In `initial_only` snapshot mode, the matching changefeed must have been created 
 Otherwise, the connector fails to start and returns an error that names the changefeed job.
 If the connector configuration enables xref:cockroachdb-property-include-diff[`cockroachdb.changefeed.include.diff`] and the matching changefeed does not use the `diff` option, the connector also fails to start, because update events from that changefeed cannot carry a before image.
 The same applies to `cockroachdb.changefeed.include.mvcc.timestamp` and the `mvcc_timestamp` option.
-To add the missing option to the existing changefeed, pause the changefeed job, run `ALTER CHANGEFEED _<job_id>_ SET diff` (or `SET mvcc_timestamp`), resume the job, and then restart the connector.
+To add the missing option to the existing changefeed, pause the changefeed job, wait until its status is `paused`, run `ALTER CHANGEFEED _<job_id>_ SET diff` (or `SET mvcc_timestamp`), resume the job, and then restart the connector.
+`PAUSE JOB` returns before the job is paused, and `ALTER CHANGEFEED` rejects a job that is not paused yet.
+If the connector uses more than one changefeed, the error lists every job that lacks the option.
 Alternatively, cancel the job so that the connector creates a new changefeed, or disable the property.
 
 [NOTE]
