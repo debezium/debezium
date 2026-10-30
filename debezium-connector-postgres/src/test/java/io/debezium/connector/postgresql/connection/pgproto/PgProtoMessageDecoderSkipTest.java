@@ -251,6 +251,43 @@ class PgProtoMessageDecoderSkipTest {
 
     @Test
     @FixFor("debezium/dbz#2894")
+    void opIsReadFromTheContentOfTheBuffer() {
+        final WalPositionLocator locator = locatorWithTwoProcessedRowsAtStoredLsn();
+        final PgProtoMessageDecoder decoder = new PgProtoMessageDecoder();
+
+        // The driver may hand out the same buffer again with another message in it. The messages
+        // below carry the operation only, so that they have the same size and can replace each
+        // other in the buffer.
+        final byte[] beginMessage = messageWithOperationOnly(Op.BEGIN);
+        final byte[] insertMessage = messageWithOperationOnly(Op.INSERT);
+        assertThat(insertMessage.length).isEqualTo(beginMessage.length);
+
+        final ByteBuffer buffer = ByteBuffer.wrap(beginMessage);
+        assertThat(decoder.shouldMessageBeSkipped(buffer, SHARED_LSN, SHARED_LSN, locator))
+                .as("The BEGIN must always be reprocessed")
+                .isFalse();
+
+        // The buffer holds a row now, in the same instance the decision above was taken for.
+        System.arraycopy(insertMessage, 0, buffer.array(), 0, insertMessage.length);
+
+        // The decision has to be taken from the content of the buffer, not from the message that
+        // was parsed before.
+        assertThat(decoder.shouldMessageBeSkipped(buffer, SHARED_LSN, SHARED_LSN, locator))
+                .as("The row in the buffer must be skipped")
+                .isTrue();
+
+        // The row spent one of the two skips, so one more row at the stored LSN is skipped and the
+        // row that was not processed before is emitted.
+        assertThat(decoder.shouldMessageBeSkipped(buffer(Op.INSERT), SHARED_LSN, SHARED_LSN, locator))
+                .as("The next row at the stored LSN must be skipped")
+                .isTrue();
+        assertThat(decoder.shouldMessageBeSkipped(buffer(Op.INSERT), SHARED_LSN, SHARED_LSN, locator))
+                .as("The row that was not processed must be emitted")
+                .isFalse();
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2894")
     void processedMessageIsTheOneOfItsOwnBuffer() throws Exception {
         final WalPositionLocator locator = locatorWithTwoProcessedRowsAtStoredLsn();
         final PgProtoMessageDecoder decoder = new PgProtoMessageDecoder();
@@ -312,6 +349,20 @@ class PgProtoMessageDecoderSkipTest {
                     .addNewTuple(PgProto.DatumMessage.newBuilder().setColumnName("id").setColumnType(23).setDatumInt32(1));
         }
         return builder.build().toByteArray();
+    }
+
+    /**
+     * Builds a message that carries the operation only, without the tuples of a row message, so
+     * that the messages of two operations have the same size and can replace each other in one
+     * buffer.
+     */
+    private byte[] messageWithOperationOnly(Op op) {
+        return PgProto.RowMessage.newBuilder()
+                .setOp(op)
+                .setTransactionId(1)
+                .setCommitTime(0)
+                .build()
+                .toByteArray();
     }
 
     private ByteBuffer bufferWithoutOp() {
