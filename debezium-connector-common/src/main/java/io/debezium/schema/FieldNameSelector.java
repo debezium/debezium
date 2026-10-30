@@ -17,7 +17,11 @@ import io.debezium.util.BoundedConcurrentHashMap.Eviction;
 public class FieldNameSelector {
 
     public static FieldNamer<Column> defaultSelector(SchemaNameAdjuster fieldNameAdjuster) {
-        return new FieldNameCache<>(new FieldNameSanitizer<>(Column::name, fieldNameAdjuster));
+        // The field name depends only on the column name, so cache by name rather than by the whole Column.
+        // Column keys hash by name only but compare all attributes, so same-named columns of many tables
+        // collide and make cache lookups and evictions very expensive.
+        final FieldNamer<String> fieldNamesByColumnName = defaultNonRelationalSelector(fieldNameAdjuster);
+        return column -> fieldNamesByColumnName.fieldNameFor(column.name());
     }
 
     public static FieldNamer<String> defaultNonRelationalSelector(SchemaNameAdjuster fieldNameAdjuster) {
