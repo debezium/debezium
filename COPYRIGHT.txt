@@ -211,6 +211,7 @@ David Chen
 David Feinblum
 David Haglund
 David Jerome
+David Kim
 David Leibovic
 David Remy
 David Seapy

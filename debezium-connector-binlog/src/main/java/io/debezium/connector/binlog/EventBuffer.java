@@ -236,15 +236,19 @@ public class EventBuffer<T extends BinlogStreamingChangeEventSource<P, O>, P ext
             streamingChangeEventSource.handleEvent(partition, offsetContext, changeEventSourceContext, e);
         }
         LOGGER.debug("Executing events from binlog that have not fit into buffer");
-        if (isInBufferFullMode()) {
+        final BinlogPosition rewindPosition = isInBufferFullMode() ? largeTxNotBufferedPosition : null;
+        if (rewindPosition != null) {
             forwardTillPosition = streamingChangeEventSource.getCurrentBinlogPosition();
-            streamingChangeEventSource.rewindBinaryLogClient(changeEventSourceContext, largeTxNotBufferedPosition);
         }
         streamingChangeEventSource.getMetrics().onCommittedTransaction();
         if (!wellFormed) {
             streamingChangeEventSource.getMetrics().onNotWellFormedTransaction();
         }
+        // clear before the rewind, the replayed events are handled on another thread
         clear();
+        if (rewindPosition != null) {
+            streamingChangeEventSource.rewindBinaryLogClient(changeEventSourceContext, rewindPosition);
+        }
     }
 
     /**
