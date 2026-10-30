@@ -13,7 +13,7 @@ import io.debezium.doc.FixFor;
 
 /**
  * Tests for the way the SQL Server CDC {@code __$update_mask} is read. The mask decides whether a
- * max-type column that is null in an UPDATE image was really set to null or was only left out of
+ * max-type column that is null in an UPDATE before image was really null or was only left out of
  * the update, in which case the unavailable value placeholder is emitted instead of the null.
  */
 public class SqlServerChangeTablePointerTest {
@@ -93,6 +93,37 @@ public class SqlServerChangeTablePointerTest {
                 }
             }
         }
+    }
+
+    @Test
+    @FixFor("dbz#2974")
+    void shouldReportUntouchedColumnAsUnavailableOnlyInUpdateBeforeImage() {
+        final byte[] mask = updateMask(WIDE_TABLE_COLUMNS, REVISION_ORDINAL);
+        final int legalTextIndex = LEGAL_TEXT_ORDINAL - 1;
+
+        assertThat(SqlServerChangeTablePointer.isUnavailableValue(SqlServerChangeRecordEmitter.OP_UPDATE_BEFORE, mask, legalTextIndex)).isTrue();
+        // The after image always holds the current value of the column, so a null there is real.
+        assertThat(SqlServerChangeTablePointer.isUnavailableValue(SqlServerChangeRecordEmitter.OP_UPDATE_AFTER, mask, legalTextIndex)).isFalse();
+    }
+
+    @Test
+    @FixFor("dbz#2974")
+    void shouldNotReportChangedColumnAsUnavailableInEitherUpdateImage() {
+        final byte[] mask = updateMask(WIDE_TABLE_COLUMNS, LEGAL_TEXT_ORDINAL);
+        final int legalTextIndex = LEGAL_TEXT_ORDINAL - 1;
+
+        assertThat(SqlServerChangeTablePointer.isUnavailableValue(SqlServerChangeRecordEmitter.OP_UPDATE_BEFORE, mask, legalTextIndex)).isFalse();
+        assertThat(SqlServerChangeTablePointer.isUnavailableValue(SqlServerChangeRecordEmitter.OP_UPDATE_AFTER, mask, legalTextIndex)).isFalse();
+    }
+
+    @Test
+    @FixFor("dbz#2974")
+    void shouldNotReportColumnAsUnavailableForInsertOrDelete() {
+        final byte[] mask = updateMask(WIDE_TABLE_COLUMNS);
+        final int legalTextIndex = LEGAL_TEXT_ORDINAL - 1;
+
+        assertThat(SqlServerChangeTablePointer.isUnavailableValue(SqlServerChangeRecordEmitter.OP_DELETE, mask, legalTextIndex)).isFalse();
+        assertThat(SqlServerChangeTablePointer.isUnavailableValue(SqlServerChangeRecordEmitter.OP_INSERT, mask, legalTextIndex)).isFalse();
     }
 
     /**
