@@ -50,6 +50,13 @@ include::{partialsdir}/modules/all-connectors/shared-mariadb-mysql.adoc[leveloff
 include::{partialsdir}/modules/all-connectors/shared-mariadb-mysql.adoc[leveloffset=+1,tags=schema-history]
 
 // Type: concept
+// Title: Understanding how the MySQL schema history and binlog metadata modes differ
+[id="mysql-comparing-schema-history-and-binlog-metadata-modes"]
+=== Comparing MySQL schema history and binlog metadata modes
+
+include::{partialsdir}/modules/all-connectors/shared-mariadb-mysql.adoc[leveloffset=+1,tags=compare-schema-history-binlog-metadata]
+
+// Type: concept
 // Title: How {prodname} MySQL connectors expose database schema changes
 [id="mysql-schema-change-topic"]
 === Schema change topic
