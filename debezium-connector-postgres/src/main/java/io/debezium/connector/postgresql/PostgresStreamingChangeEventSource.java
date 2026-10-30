@@ -8,6 +8,7 @@ package io.debezium.connector.postgresql;
 import static io.debezium.connector.postgresql.PostgresConnectorConfig.LsnFlushTimeoutAction;
 
 import java.sql.SQLException;
+import java.time.Duration;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
@@ -19,6 +20,7 @@ import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.BooleanSupplier;
 
 import org.apache.kafka.connect.errors.ConnectException;
 import org.postgresql.core.BaseConnection;
@@ -67,6 +69,8 @@ public class PostgresStreamingChangeEventSource implements StreamingChangeEventS
     // We thus try to read the message multiple times before we make poll pause
     private static final int THROTTLE_NO_MESSAGE_BEFORE_PAUSE = 5;
 
+    private static final String SQL_STATE_ADMIN_SHUTDOWN = "57P01";
+
     private final PostgresConnection connection;
     private final PostgresEventDispatcher<TableId> dispatcher;
     private final ErrorHandler errorHandler;
@@ -107,6 +111,14 @@ public class PostgresStreamingChangeEventSource implements StreamingChangeEventS
     private ElapsedTimeStrategy refreshXmin;
     private Long lastXmin;
 
+    private final Duration databaseShutdownDrainTimeout;
+    private volatile RecordPosition lastCommittedRecord;
+    private RecordPosition lastEmittedRecord;
+    private SQLException drainCause;
+    private Threads.TimeSince drainElapsed;
+    private Thread drainWatchdog;
+    private long lastDrainActivityMillis;
+
     public PostgresStreamingChangeEventSource(PostgresConnectorConfig connectorConfig, SnapshotterService snapshotterService,
                                               PostgresConnection connection, PostgresEventDispatcher<TableId> dispatcher, ErrorHandler errorHandler, Clock clock,
                                               PostgresSchema schema, PostgresTaskContext taskContext, ReplicationConnection replicationConnection) {
@@ -126,6 +138,78 @@ public class PostgresStreamingChangeEventSource implements StreamingChangeEventS
             this.refreshXmin = ElapsedTimeStrategy.constant(Clock.SYSTEM, connectorConfig.xminFetchInterval().toMillis());
         }
         this.offsetActivityMonitorService = OffsetActivityMonitorService.lookup(connectorConfig.getServiceRegistry());
+        this.databaseShutdownDrainTimeout = resolveDatabaseShutdownDrainTimeout(connectorConfig);
+    }
+
+    private static Duration resolveDatabaseShutdownDrainTimeout(PostgresConnectorConfig connectorConfig) {
+        final Duration timeout = connectorConfig.databaseShutdownDrainTimeout();
+        if (!timeout.isZero() && !connectorConfig.isFlushLsnOnSource()) {
+            LOGGER.warn("Ignoring '{}' because '{}' is '{}'; the connector does not confirm LSNs to the server in this mode",
+                    PostgresConnectorConfig.DATABASE_SHUTDOWN_DRAIN_TIMEOUT_MS.name(), PostgresConnectorConfig.LSN_FLUSH_MODE.name(),
+                    connectorConfig.getLsnFlushMode().getValue());
+            return Duration.ZERO;
+        }
+        if (!timeout.isZero() && timeout.compareTo(connectorConfig.statusUpdateInterval()) <= 0) {
+            LOGGER.warn("'{}' ({} ms) is not greater than '{}' ({} ms); the drain can end only by timeout, so it does not confirm the last processed commit LSN",
+                    PostgresConnectorConfig.DATABASE_SHUTDOWN_DRAIN_TIMEOUT_MS.name(), timeout.toMillis(),
+                    PostgresConnectorConfig.STATUS_UPDATE_INTERVAL_MS.name(), connectorConfig.statusUpdateInterval().toMillis());
+        }
+        return timeout;
+    }
+
+    private boolean isDatabaseShutdownDrainEnabled() {
+        return !databaseShutdownDrainTimeout.isZero();
+    }
+
+    private boolean isDrainTimedOut() {
+        return drainElapsed.elapsedTime() >= databaseShutdownDrainTimeout.toMillis();
+    }
+
+    /**
+     * Preserves the original retriable shutdown error once the drain deadline has expired.
+     * Failures before the deadline keep their normal classification.
+     */
+    private Throwable drainFailure(Throwable failure) {
+        if (drainCause == null || !isDrainTimedOut()) {
+            return failure;
+        }
+        LOGGER.warn("The replication stream drain did not complete within {} ms; stopping streaming", databaseShutdownDrainTimeout.toMillis());
+        if (failure != drainCause) {
+            drainCause.addSuppressed(failure);
+        }
+        return drainCause;
+    }
+
+    private void stopDrainWatchdog() {
+        if (drainWatchdog != null) {
+            stopWatchdog(drainWatchdog, this::isDrainTimedOut);
+            drainWatchdog = null;
+        }
+    }
+
+    /**
+     * Stops the watchdog and waits until it has terminated, so that it cannot interrupt the calling thread afterwards.
+     * Clears the interrupt status after a drain timeout so that cleanup can close the connections.
+     * Interrupts before the drain deadline are preserved.
+     */
+    static void stopWatchdog(Thread watchdog, BooleanSupplier drainTimedOut) {
+        watchdog.interrupt();
+        boolean interrupted = false;
+        while (true) {
+            try {
+                watchdog.join();
+                break;
+            }
+            catch (InterruptedException e) {
+                interrupted = true;
+            }
+        }
+        if (drainTimedOut.getAsBoolean()) {
+            Thread.interrupted();
+        }
+        else if (interrupted) {
+            Thread.currentThread().interrupt();
+        }
     }
 
     @Override
@@ -219,10 +303,12 @@ public class PostgresStreamingChangeEventSource implements StreamingChangeEventS
             processMessages(context, partition, this.effectiveOffset, stream);
         }
         catch (Throwable e) {
-            errorHandler.setProducerThrowable(e);
+            errorHandler.setProducerThrowable(drainFailure(e));
         }
         finally {
-            cleanUpStreamingOnStop(offsetContext);
+            stopDrainWatchdog();
+            // After a drain, close the replication connection even without a stored offset, so that the walsender can exit.
+            cleanUpStreamingOnStop(drainCause != null ? effectiveOffset : offsetContext);
         }
     }
 
@@ -243,6 +329,11 @@ public class PostgresStreamingChangeEventSource implements StreamingChangeEventS
                     if (!isInPreSnapshotCatchUpStreaming(offsetContext)) {
                         connection.commit();
                     }
+                }
+                catch (Exception e) {
+                    LOGGER.debug("Exception while committing the regular connection", e);
+                }
+                try {
                     replicationConnection.close();
                 }
                 catch (Exception e) {
@@ -267,7 +358,17 @@ public class PostgresStreamingChangeEventSource implements StreamingChangeEventS
                 && !commitOffsetFailure) {
             boolean receivedMessage = stream.readPending(message -> processReplicationMessages(partition, offsetContext, stream, message));
 
-            probeConnectionIfNeeded();
+            if (drainCause == null) {
+                try {
+                    probeConnectionIfNeeded();
+                }
+                catch (SQLException e) {
+                    startDrainOrThrow(e, offsetContext);
+                }
+            }
+            else {
+                continueDrainOrThrow(offsetContext, receivedMessage);
+            }
 
             if (receivedMessage) {
                 noMessageIterations = 0;
@@ -284,7 +385,7 @@ public class PostgresStreamingChangeEventSource implements StreamingChangeEventS
 
             offsetActivityMonitorService.pulse(partition, offsetContext);
 
-            if (!isInPreSnapshotCatchUpStreaming(offsetContext)) {
+            if (drainCause == null && !isInPreSnapshotCatchUpStreaming(offsetContext)) {
                 // During catch up streaming, the streaming phase needs to hold a transaction open so that
                 // the phase can stream event up to a specific lsn and the snapshot that occurs after the catch up
                 // streaming will not lose the current view of data. Since we need to hold the transaction open
@@ -362,7 +463,12 @@ public class PostgresStreamingChangeEventSource implements StreamingChangeEventS
             else if (message.getOperation() == Operation.COMMIT) {
                 offsetContext.resetLsnEventsProcessed();
                 commitMessage(partition, offsetContext, lsn);
+                // The END event carries this commit LSN, so the final drain confirmation waits until its source offset is acknowledged
+                final boolean emitsTransactionEnd = isDatabaseShutdownDrainEnabled() && offsetContext.getTransactionContext().isTransactionInProgress();
                 dispatcher.dispatchTransactionCommittedEvent(partition, offsetContext, message.getCommitTime());
+                if (emitsTransactionEnd) {
+                    lastEmittedRecord = RecordPosition.of(offsetContext);
+                }
             }
             maybeWarnAboutGrowingWalBacklog(true);
         }
@@ -383,6 +489,9 @@ public class PostgresStreamingChangeEventSource implements StreamingChangeEventS
                     offsetContext,
                     clock.currentTimeAsInstant().toEpochMilli(),
                     logicalMessage);
+            if (isDatabaseShutdownDrainEnabled() && connectorConfig.getMessageFilter().isIncluded(logicalMessage.getPrefix())) {
+                lastEmittedRecord = RecordPosition.of(offsetContext);
+            }
 
             maybeWarnAboutGrowingWalBacklog(true);
         }
@@ -424,6 +533,9 @@ public class PostgresStreamingChangeEventSource implements StreamingChangeEventS
                             connection,
                             tableId,
                             message));
+            if (dispatched && isDatabaseShutdownDrainEnabled()) {
+                lastEmittedRecord = RecordPosition.of(offsetContext);
+            }
 
             maybeWarnAboutGrowingWalBacklog(dispatched);
         }
@@ -465,6 +577,55 @@ public class PostgresStreamingChangeEventSource implements StreamingChangeEventS
             connection.prepareQuery("SELECT 1");
             connection.commit();
         }
+    }
+
+    private void startDrainOrThrow(SQLException e, PostgresOffsetContext offsetContext) throws SQLException {
+        if (!isDatabaseShutdownDrainEnabled()
+                || !SQL_STATE_ADMIN_SHUTDOWN.equals(e.getSQLState())
+                || isInPreSnapshotCatchUpStreaming(offsetContext)) {
+            throw e;
+        }
+        LOGGER.warn("The database server terminated the connector's regular connection ({}). "
+                + "Continuing to read the replication stream for up to {} ms so that delivered changes can be confirmed before the server shuts down.",
+                e.getMessage(), databaseShutdownDrainTimeout.toMillis());
+        drainCause = e;
+        drainElapsed = Threads.timeSince(clock);
+        drainElapsed.reset();
+        lastDrainActivityMillis = clock.currentTimeInMillis();
+        // Dispatching blocks while the queue is full, so the timeout check in the loop might never run.
+        // The watchdog interrupts the streaming thread when the timeout expires. Only this thread resets drainElapsed.
+        final Thread streamingThread = Thread.currentThread();
+        drainWatchdog = Threads.timeout("database-shutdown-drain", databaseShutdownDrainTimeout.toMillis(), TimeUnit.MILLISECONDS,
+                100, TimeUnit.MILLISECONDS, drainElapsed::elapsedTime, null, streamingThread::interrupt);
+        drainWatchdog.setDaemon(true);
+        drainWatchdog.start();
+    }
+
+    private void continueDrainOrThrow(PostgresOffsetContext offsetContext, boolean receivedMessage) throws SQLException {
+        final long now = clock.currentTimeInMillis();
+        if (receivedMessage) {
+            lastDrainActivityMillis = now;
+        }
+        if (isDrainTimedOut()) {
+            throw drainCause;
+        }
+        if (now - lastDrainActivityMillis < connectorConfig.statusUpdateInterval().toMillis()) {
+            return;
+        }
+        final RecordPosition emitted = lastEmittedRecord;
+        final RecordPosition committed = lastCommittedRecord;
+        if (emitted != null && (committed == null || !committed.isAtOrAfter(emitted))) {
+            // The last tracked source offset has not been acknowledged yet.
+            return;
+        }
+        final Lsn commitLsn = offsetContext.lastCommitLsn();
+        if (commitLsn != null) {
+            // Data records carry the previous transaction's commit LSN, so offset commits stop one transaction short.
+            // Confirm the last processed commit through the regular flush path.
+            commitOffset(Map.of(), Map.of(PostgresOffsetContext.LAST_COMMIT_LSN_KEY, commitLsn.asLong()));
+            LOGGER.info("The replication stream is drained; confirming commit LSN '{}' to the server", commitLsn);
+        }
+        throw drainCause;
     }
 
     private void commitMessage(PostgresPartition partition, PostgresOffsetContext offsetContext, final Lsn lsn) throws SQLException, InterruptedException {
@@ -516,6 +677,9 @@ public class PostgresStreamingChangeEventSource implements StreamingChangeEventS
         final Lsn commitLsn = Lsn.valueOf((Long) offset.get(PostgresOffsetContext.LAST_COMMIT_LSN_KEY));
         final Lsn changeLsn = Lsn.valueOf((Long) offset.get(PostgresOffsetContext.LAST_COMPLETELY_PROCESSED_LSN_KEY));
         final Lsn lsn = (commitLsn != null) ? commitLsn : changeLsn;
+        if (isDatabaseShutdownDrainEnabled()) {
+            lastCommittedRecord = RecordPosition.of(offset);
+        }
 
         LOGGER.debug("Received offset commit request on commit LSN '{}' and change LSN '{}'", commitLsn, changeLsn);
         if (replicationStream != null && lsn != null) {
@@ -660,6 +824,40 @@ public class PostgresStreamingChangeEventSource implements StreamingChangeEventS
 
     private String toString(OptionalLong l) {
         return l.isPresent() ? String.valueOf(l.getAsLong()) : null;
+    }
+
+    /**
+     * Tracks source offset fields used to gate the drain's final confirmation.
+     */
+    private record RecordPosition(Long commitLsn, Long processedLsn, long eventsProcessed, String messageType) {
+
+        static RecordPosition of(PostgresOffsetContext offsetContext) {
+            return new RecordPosition(
+                    offsetContext.lastCommitLsn() == null ? null : offsetContext.lastCommitLsn().asLong(),
+                    offsetContext.lastCompletelyProcessedLsn() == null ? null : offsetContext.lastCompletelyProcessedLsn().asLong(),
+                    offsetContext.lsnEventsProcessed(),
+                    offsetContext.lastProcessedMessageType() == null ? null : offsetContext.lastProcessedMessageType().toString());
+        }
+
+        static RecordPosition of(Map<String, ?> offset) {
+            final Object eventsProcessed = offset.get(PostgresOffsetContext.LSN_EVENTS_PROCESSED_KEY);
+            return new RecordPosition(
+                    asLong(offset.get(PostgresOffsetContext.LAST_COMMIT_LSN_KEY)),
+                    asLong(offset.get(PostgresOffsetContext.LAST_COMPLETELY_PROCESSED_LSN_KEY)),
+                    eventsProcessed == null ? 0L : ((Number) eventsProcessed).longValue(),
+                    (String) offset.get(SourceInfo.MSG_TYPE_KEY));
+        }
+
+        private static Long asLong(Object value) {
+            return value == null ? null : ((Number) value).longValue();
+        }
+
+        /**
+         * Whether this committed position has the same offset fields or belongs to a later transaction.
+         */
+        boolean isAtOrAfter(RecordPosition emitted) {
+            return equals(emitted) || (commitLsn != null && (emitted.commitLsn() == null || Long.compareUnsigned(commitLsn, emitted.commitLsn()) > 0));
+        }
     }
 
     @FunctionalInterface
