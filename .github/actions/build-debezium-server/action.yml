@@ -8,6 +8,9 @@ inputs:
   path-quarkus:
     description: "Debezium Quarkus repository checkout path"
     required: true
+  path-elasticsearch:
+    description: "Debezium Elasticsearch connector repository checkout path"
+    required: true
   path-server:
     description: "Debezium Server repository checkout path"
     required: true
@@ -49,6 +52,19 @@ runs:
         -DskipTests=true
         -DskipITs=true
         -DskipNonCore
+
+    # This is needed for the debezium-server-elasticsearch sink
+    - name: Build Elasticsearch
+      shell: ${{ inputs.shell }}
+      run: >
+        ./${{ inputs.path-core }}/mvnw -B -ntp clean install -f ${{ inputs.path-elasticsearch }}/pom.xml
+        -Dformat.skip=true
+        -Dcheckstyle.skip=true
+        -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn
+        -Dmaven.wagon.http.pool=false
+        -Dmaven.wagon.httpconnectionManager.ttlSeconds=120
+        -DskipTests=true
+        -DskipITs=true
 
     - name: Build Server
       shell: ${{ inputs.shell }}
