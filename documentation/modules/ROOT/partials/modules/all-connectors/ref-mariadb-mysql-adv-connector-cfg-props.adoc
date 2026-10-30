@@ -578,7 +578,7 @@ This mode works with any `snapshot.mode`.
 For modes that do not snapshot data (for example `no_data`), a fresh connector records the current binlog position before it begins streaming, so it captures only changes that occur from that point forward, rather than replaying the earliest available binlog.
 +
 The two modes are not fully equivalent: schema attributes that exist only in DDL statements (for example, column default values and the integer display width) are not part of the reconstructed schema.
-For the advantages and limitations of each mode, see xref:{context}-comparison-schema-history-binlog-metadata[the comparison between the schema history and the binlog metadata mode].
+For the advantages and limitations of each mode, see xref:{context}-comparing-schema-history-and-binlog-metadata-modes[the comparison between the schema history and the binlog metadata mode].
 
 [id="{context}-property-signal-data-collection"]
 xref:{context}-property-signal-data-collection[`signal.data.collection`]::
