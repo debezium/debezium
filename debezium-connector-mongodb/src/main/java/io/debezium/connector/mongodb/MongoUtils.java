@@ -12,6 +12,7 @@ import java.util.function.Consumer;
 import java.util.function.Predicate;
 
 import org.bson.BsonDocument;
+import org.bson.BsonInt32;
 import org.bson.BsonTimestamp;
 import org.bson.Document;
 import org.bson.conversions.Bson;
@@ -19,6 +20,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.mongodb.MongoException;
+import com.mongodb.ReadConcern;
 import com.mongodb.client.ChangeStreamIterable;
 import com.mongodb.client.MongoClient;
 import com.mongodb.client.MongoCollection;
@@ -32,8 +34,6 @@ import com.mongodb.connection.ClusterDescription;
 import com.mongodb.connection.ClusterType;
 import com.mongodb.connection.ServerDescription;
 
-import io.debezium.function.BlockingConsumer;
-
 /**
  * Utilities for working with MongoDB.
  *
@@ -42,28 +42,7 @@ import io.debezium.function.BlockingConsumer;
 public class MongoUtils {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(MongoUtils.class);
-
-    /**
-     * Perform the given operation on each of the database names.
-     *
-     * @param client the MongoDB client; may not be null
-     * @param operation the operation to perform; may not be null
-     */
-    public static void forEachDatabaseName(MongoClient client, Consumer<String> operation) {
-        forEach(client.listDatabaseNames(), operation);
-    }
-
-    /**
-     * Perform the given operation on each of the collection names in the named database.
-     *
-     * @param client the MongoDB client; may not be null
-     * @param databaseName the name of the database; may not be null
-     * @param operation the operation to perform; may not be null
-     */
-    public static void forEachCollectionNameInDatabase(MongoClient client, String databaseName, Consumer<String> operation) {
-        MongoDatabase db = client.getDatabase(databaseName);
-        forEach(db.listCollectionNames(), operation);
-    }
+    private static final String ADMIN_DATABASE = "admin";
 
     /**
      * Perform the given operation on each of the values in the iterable container.
@@ -105,33 +84,6 @@ public class MongoUtils {
         onDatabase(client, dbName, db -> {
             if (contains(db.listCollectionNames(), collectionName)) {
                 collectionOperation.accept(db.getCollection(collectionName));
-            }
-        });
-    }
-
-    /**
-     * Perform the given operation on all of the documents inside the named collection in the named database, if the database and
-     * collection both exist. The operation is called once for each document, so if the collection exists but is empty then the
-     * function will not be called.
-     *
-     * @param client the MongoDB client; may not be null
-     * @param dbName the name of the database; may not be null
-     * @param collectionName the name of the collection; may not be null
-     * @param documentOperation the operation to perform; may not be null
-     */
-    public static void onCollectionDocuments(MongoClient client, String dbName, String collectionName,
-                                             BlockingConsumer<Document> documentOperation) {
-        onCollection(client, dbName, collectionName, collection -> {
-            try (MongoCursor<Document> cursor = collection.find().iterator()) {
-                while (cursor.hasNext()) {
-                    try {
-                        documentOperation.accept(cursor.next());
-                    }
-                    catch (InterruptedException e) {
-                        Thread.currentThread().interrupt();
-                        break;
-                    }
-                }
             }
         });
     }
@@ -191,7 +143,7 @@ public class MongoUtils {
 
         if (description.getType() == ClusterType.UNKNOWN) {
             // force the connection and try again
-            client.listDatabaseNames().first(); // force the connection
+            runHelloCommand(client, ADMIN_DATABASE);
             description = client.getClusterDescription();
         }
 
@@ -271,16 +223,25 @@ public class MongoUtils {
     }
 
     public static BsonTimestamp hello(MongoClient client, String dbName) {
-        var database = client.getDatabase(dbName);
+        return runHelloCommand(client, dbName).getTimestamp("operationTime");
+    }
+
+    private static BsonDocument runHelloCommand(MongoClient client, String dbName) {
         BsonDocument result;
         try {
-            result = database.runCommand(new Document("hello", 1), BsonDocument.class);
+            result = runReadCommand(client, dbName, new BsonDocument("hello", new BsonInt32(1)));
         }
         catch (MongoException e) {
             LOGGER.error(e.getMessage(), e);
-            result = database.runCommand(new Document("isMaster", 1), BsonDocument.class);
+            result = runReadCommand(client, dbName, new BsonDocument("isMaster", new BsonInt32(1)));
         }
-        return result.getTimestamp("operationTime");
+        return result;
+    }
+
+    private static BsonDocument runReadCommand(MongoClient client, String databaseName, BsonDocument command) {
+        return client.getDatabase(databaseName)
+                .withReadConcern(ReadConcern.DEFAULT)
+                .runCommand(command, client.getReadPreference(), BsonDocument.class);
     }
 
     /**
