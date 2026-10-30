@@ -97,6 +97,7 @@ public class MongoDbConnectorConfigTest {
                 MongoDbConnectorConfig.SSL_TRUSTSTORE_TYPE, MongoDbConnectorConfig.AUTH_PROVIDER_CLASS, MongoDbConnectorConfig.FILTERS_MATCH_MODE,
                 MongoDbConnectorConfig.CAPTURE_MODE_FULL_UPDATE_TYPE, MongoDbConnectorConfig.CURSOR_PIPELINE_ORDER,
                 MongoDbConnectorConfig.CURSOR_OVERSIZE_HANDLING_MODE, MongoDbConnectorConfig.CURSOR_OVERSIZE_SKIP_THRESHOLD,
+                MongoDbConnectorConfig.CURSOR_BUFFER_MAX_EVENTS, MongoDbConnectorConfig.CURSOR_BUFFER_MAX_BYTES,
                 MongoDbConnectorConfig.TOPIC_NAMING_STRATEGY }) {
             assertThat(MongoDbConnectorConfig.ALL_FIELDS.fieldWithName(field.name())).isNotNull();
             assertThat(configDef.configKeys()).containsKey(field.name());
@@ -396,6 +397,79 @@ public class MongoDbConnectorConfigTest {
         final var validation = new ConnectionValidationConnector().validate(config.asMap());
         assertThat(validationErrors(validation, MongoDbConnectorConfig.CURSOR_OVERSIZE_SKIP_THRESHOLD))
                 .containsExactly("The 'cursor.oversize.skip.threshold' value is invalid: Invalid threshold value for skipped document size");
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2745")
+    void shouldRejectNegativeCursorBufferMaxEvents() {
+        final var config = TestHelper.getConfiguration().edit()
+                .with(MongoDbConnectorConfig.CURSOR_BUFFER_MAX_EVENTS, -1)
+                .build();
+        final var validation = new ConnectionValidationConnector().validate(config.asMap());
+        assertThat(validationErrors(validation, MongoDbConnectorConfig.CURSOR_BUFFER_MAX_EVENTS))
+                .containsExactly("The 'cursor.buffer.max.events' value is invalid: An non-negative integer is expected");
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2745")
+    void shouldNotDeclareStaticDefaultForCursorBufferMaxEvents() {
+        final var configDef = new MongoDbConnector().config();
+        assertThat(configDef.configKeys().get(MongoDbConnectorConfig.CURSOR_BUFFER_MAX_EVENTS.name()).defaultValue).isNull();
+    }
+
+    @ParameterizedTest
+    @FixFor("debezium/dbz#2745")
+    @NullSource
+    @ValueSource(strings = "0")
+    void shouldDefaultCursorBufferMaxEventsToMaxBatchSize(String value) {
+        final var builder = TestHelper.getConfiguration().edit()
+                .with(MongoDbConnectorConfig.MAX_BATCH_SIZE, 512);
+        if (value != null) {
+            builder.with(MongoDbConnectorConfig.CURSOR_BUFFER_MAX_EVENTS, value);
+        }
+        final var config = builder.build();
+        assertThat(config.validate(MongoDbConnectorConfig.ALL_FIELDS).get(MongoDbConnectorConfig.CURSOR_BUFFER_MAX_EVENTS.name()).errorMessages()).isEmpty();
+        assertThat(new MongoDbConnectorConfig(config).getCursorBufferMaxEvents()).isEqualTo(512);
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2745")
+    void shouldDisableCursorBufferMaxBytesByDefault() {
+        final var configDef = new MongoDbConnector().config();
+        assertThat(configDef.configKeys().get(MongoDbConnectorConfig.CURSOR_BUFFER_MAX_BYTES.name()).defaultValue).isEqualTo(0L);
+        assertThat(new MongoDbConnectorConfig(TestHelper.getConfiguration()).getCursorBufferMaxBytes()).isZero();
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2745")
+    void shouldUseConfiguredCursorBufferMaxBytes() {
+        final var config = TestHelper.getConfiguration().edit()
+                .with(MongoDbConnectorConfig.CURSOR_BUFFER_MAX_BYTES, 268435456L)
+                .build();
+        assertThat(config.validate(MongoDbConnectorConfig.ALL_FIELDS).get(MongoDbConnectorConfig.CURSOR_BUFFER_MAX_BYTES.name()).errorMessages()).isEmpty();
+        assertThat(new MongoDbConnectorConfig(config).getCursorBufferMaxBytes()).isEqualTo(268435456L);
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2745")
+    void shouldRejectNegativeCursorBufferMaxBytes() {
+        final var config = TestHelper.getConfiguration().edit()
+                .with(MongoDbConnectorConfig.CURSOR_BUFFER_MAX_BYTES, -1)
+                .build();
+        final var validation = new ConnectionValidationConnector().validate(config.asMap());
+        assertThat(validationErrors(validation, MongoDbConnectorConfig.CURSOR_BUFFER_MAX_BYTES))
+                .containsExactly("The 'cursor.buffer.max.bytes' value is invalid: A non-negative long value is expected");
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2745")
+    void shouldUseConfiguredCursorBufferMaxEvents() {
+        final var config = TestHelper.getConfiguration().edit()
+                .with(MongoDbConnectorConfig.MAX_BATCH_SIZE, 512)
+                .with(MongoDbConnectorConfig.CURSOR_BUFFER_MAX_EVENTS, 16)
+                .build();
+        assertThat(config.validate(MongoDbConnectorConfig.ALL_FIELDS).get(MongoDbConnectorConfig.CURSOR_BUFFER_MAX_EVENTS.name()).errorMessages()).isEmpty();
+        assertThat(new MongoDbConnectorConfig(config).getCursorBufferMaxEvents()).isEqualTo(16);
     }
 
     private static void verifyCursorPipelineValidateError(String value, String expectedError) {

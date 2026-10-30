@@ -17,12 +17,14 @@ import java.util.concurrent.Callable;
 import java.util.concurrent.Executors;
 import java.util.concurrent.FutureTask;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.ReentrantLock;
 
 import org.bson.BsonDocument;
 import org.bson.BsonDocumentReader;
+import org.bson.BsonInt32;
 import org.bson.BsonString;
 import org.bson.BsonTimestamp;
 import org.bson.codecs.DecoderContext;
@@ -37,7 +39,9 @@ import io.debezium.DebeziumException;
 import io.debezium.connector.mongodb.events.BufferingChangeStreamCursor.EventFetcher;
 import io.debezium.connector.mongodb.events.BufferingChangeStreamCursor.EventFetcher.State;
 import io.debezium.connector.mongodb.events.BufferingChangeStreamCursor.ResumableChangeStreamEvent;
+import io.debezium.doc.FixFor;
 import io.debezium.function.ThrowingRunnable;
+import io.debezium.junit.logging.LogInterceptor;
 import io.debezium.util.Clock;
 
 class BufferingChangeStreamCursorTest {
@@ -119,6 +123,141 @@ class BufferingChangeStreamCursorTest {
             assertThat(fixture.cursor.tryNext()).isSameAs(second);
             assertThat(fixture.cursor.available()).isZero();
         }
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2745")
+    void shouldRateLimitBufferFullWarningsWhileTheConsumerIsStalled() throws Exception {
+        final var logInterceptor = new LogInterceptor(BufferingChangeStreamCursor.class);
+        final var capacity = 2;
+        final var now = new AtomicLong();
+        try (var fixture = new CursorFixture(capacity, POLL_INTERVAL, now::get)) {
+            for (int i = 1; i <= capacity; i++) {
+                assertThat(fixture.enqueue(event(i, true))).isTrue();
+            }
+
+            // The consumer does not poll, so the buffer stays at its capacity
+            // and repeated rejections within the log period are not reported.
+            assertThat(fixture.enqueue(event(capacity + 1, false))).isFalse();
+            assertThat(fixture.enqueue(event(capacity + 1, false))).isFalse();
+            assertThat(fixture.cursor.available()).isEqualTo(capacity);
+            assertThat(logInterceptor.getLogEntriesThatContainsMessage("Change stream buffer reached")).isEmpty();
+
+            now.addAndGet(Duration.ofSeconds(5).toMillis());
+            assertThat(fixture.enqueue(event(capacity + 1, false))).isFalse();
+            assertThat(logInterceptor.getLogEntriesThatContainsMessage("Change stream buffer reached"))
+                    .containsExactly("Change stream buffer reached its limit of 2 events, unable to buffer an event 3 times during previous 00:00:05.0");
+
+            assertThat(fixture.enqueue(event(capacity + 1, false))).isFalse();
+            assertThat(fixture.cursor.available()).isEqualTo(capacity);
+            assertThat(logInterceptor.getLogEntriesThatContainsMessage("Change stream buffer reached")).hasSize(1);
+
+            // Draining the buffer ends the stall, a later stall is reported on its own schedule
+            assertThat(fixture.cursor.tryNext()).isNotNull();
+            assertThat(fixture.enqueue(event(capacity + 1, false))).isTrue();
+            logInterceptor.clear();
+
+            now.addAndGet(Duration.ofHours(3).toMillis());
+            assertThat(fixture.enqueue(event(capacity + 2, false))).isFalse();
+            assertThat(logInterceptor.getLogEntriesThatContainsMessage("Change stream buffer reached")).isEmpty();
+
+            now.addAndGet(Duration.ofSeconds(5).toMillis());
+            assertThat(fixture.enqueue(event(capacity + 2, false))).isFalse();
+            assertThat(logInterceptor.getLogEntriesThatContainsMessage("Change stream buffer reached"))
+                    .containsExactly("Change stream buffer reached its limit of 2 events, unable to buffer an event 2 times during previous 00:00:05.0");
+
+            // A long stall keeps being reported at least every two minutes
+            for (int i = 2; i <= 10; i++) {
+                now.addAndGet(Duration.ofMinutes(2).toMillis());
+                assertThat(fixture.enqueue(event(capacity + 2, false))).isFalse();
+                assertThat(logInterceptor.getLogEntriesThatContainsMessage("Change stream buffer reached")).hasSize(i);
+            }
+            assertThat(fixture.cursor.available()).isEqualTo(capacity);
+        }
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2745")
+    void shouldLimitBufferedEventsBySize() throws Exception {
+        final var logInterceptor = new LogInterceptor(BufferingChangeStreamCursor.class);
+        final var now = new AtomicLong();
+        try (var fixture = new CursorFixture(10, 100, POLL_INTERVAL, now::get)) {
+            final var first = event(1, true);
+            final var second = event(2, false);
+            final var third = event(3, true);
+            assertThat(fixture.enqueue(first, 60)).isTrue();
+            assertThat(fixture.enqueue(second, 60)).isTrue();
+
+            // The buffer reached its size limit although event permits remain
+            assertThat(fixture.enqueue(third, 1)).isFalse();
+            now.addAndGet(Duration.ofSeconds(5).toMillis());
+            assertThat(fixture.enqueue(third, 1)).isFalse();
+            assertThat(fixture.cursor.available()).isEqualTo(2);
+            assertThat(logInterceptor.getLogEntriesThatContainsMessage("Change stream buffer reached"))
+                    .containsExactly("Change stream buffer reached its size limit of 100 bytes, unable to buffer an event 2 times during previous 00:00:05.0");
+
+            // Consuming an event releases its size
+            assertThat(fixture.cursor.tryNext()).isSameAs(first);
+            assertThat(fixture.enqueue(third, 1)).isTrue();
+            assertThat(fixture.cursor.tryNext()).isSameAs(second);
+            assertThat(fixture.cursor.tryNext()).isSameAs(third);
+            assertThat(fixture.cursor.available()).isZero();
+        }
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2745")
+    void shouldBufferAnEventLargerThanTheSizeLimitWhenEmpty() throws Exception {
+        try (var fixture = new CursorFixture(10, 100, POLL_INTERVAL, Clock.SYSTEM)) {
+            final var large = event(1, true);
+            assertThat(fixture.enqueue(large, 1_000)).isTrue();
+            assertThat(fixture.enqueue(event(2, false), 1)).isFalse();
+
+            assertThat(fixture.cursor.tryNext()).isSameAs(large);
+            assertThat(fixture.enqueue(event(2, false), 1)).isTrue();
+        }
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2745")
+    void shouldWakeAFetcherWaitingForBufferSpace() throws Exception {
+        try (var fixture = new CursorFixture(10, 100, POLL_INTERVAL, Clock.SYSTEM)) {
+            final var first = event(1, true);
+            final var second = event(2, false);
+            assertThat(fixture.enqueue(first, 100)).isTrue();
+            // Retry like the fetching loop does, each attempt waits a bounded time for buffer space
+            try (var waiting = new AsyncOperation<>(() -> {
+                while (!fixture.enqueue(second, 1)) {
+                    // retry
+                }
+                return true;
+            })) {
+                fixture.whenWaiting(fixture.bufferSpaceAvailable, () -> assertThat(fixture.cursor.tryNext()).isSameAs(first));
+
+                assertThat(waiting.get()).isTrue();
+            }
+            assertThat(fixture.cursor.tryNext()).isSameAs(second);
+        }
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2745")
+    void shouldEstimateTheSizeOfDecodedDocuments() {
+        final var small = event(1, true);
+        final var large = new ResumableChangeStreamEvent<>(ChangeStreamDocument.createCodec(BsonDocument.class, MongoClientSettings.getDefaultCodecRegistry())
+                .decode(new BsonDocumentReader(BsonDocument.parse("{ns:{db:'test',coll:'names'},documentKey:{_id:1}}")
+                        .append("_id", new BsonDocument("_data", new BsonString("token-2")))
+                        .append("operationType", new BsonString("insert"))
+                        .append("clusterTime", new BsonTimestamp(100, 2))
+                        .append("fullDocument", new BsonDocument("_id", new BsonInt32(1)).append("value", new BsonString("x".repeat(10_000))))),
+                        DecoderContext.builder().build()));
+
+        final var smallSize = ApproximateBsonSizeCalculator.getApproximateEventSize(small);
+        final var largeSize = ApproximateBsonSizeCalculator.getApproximateEventSize(large);
+        assertThat(smallSize).isPositive();
+        assertThat(largeSize).isGreaterThan(smallSize + 10_000);
+        assertThat(ApproximateBsonSizeCalculator.getApproximateEventSize(new ResumableChangeStreamEvent<BsonDocument>(small.resumeToken)))
+                .isPositive().isLessThan(smallSize);
     }
 
     @Test
@@ -421,14 +560,23 @@ class BufferingChangeStreamCursorTest {
         private final ReentrantLock lock;
         private final Condition eventAvailable;
         private final Condition resumed;
+        private final Condition bufferSpaceAvailable;
 
         private CursorFixture(int capacity, Duration pollInterval) throws ReflectiveOperationException {
+            this(capacity, pollInterval, Clock.SYSTEM);
+        }
+
+        private CursorFixture(int capacity, Duration pollInterval, Clock clock) throws ReflectiveOperationException {
+            this(capacity, 0, pollInterval, clock);
+        }
+
+        private CursorFixture(int capacity, long maxSizeInBytes, Duration pollInterval, Clock clock) throws ReflectiveOperationException {
             // Exercise the real buffer and cursor without opening a server connection.
             // This fixture supplies already fetched events; run() and its collaborators
             // are deliberately not used.
-            fetcher = new EventFetcher<>(null, capacity, null, Clock.SYSTEM, Duration.ofMillis(1));
+            fetcher = new EventFetcher<>(null, capacity, maxSizeInBytes, null, clock, Duration.ofMillis(1));
             cursor = new BufferingChangeStreamCursor<>(fetcher, Executors.newSingleThreadExecutor(), pollInterval);
-            enqueue = EventFetcher.class.getDeclaredMethod("enqueue", ResumableChangeStreamEvent.class);
+            enqueue = EventFetcher.class.getDeclaredMethod("enqueue", ResumableChangeStreamEvent.class, long.class);
             enqueue.setAccessible(true);
             final var lockField = EventFetcher.class.getDeclaredField("lock");
             lockField.setAccessible(true);
@@ -439,6 +587,9 @@ class BufferingChangeStreamCursorTest {
             final var resumedField = EventFetcher.class.getDeclaredField("resumed");
             resumedField.setAccessible(true);
             resumed = (Condition) resumedField.get(fetcher);
+            final var bufferSpaceAvailableField = EventFetcher.class.getDeclaredField("bufferSpaceAvailable");
+            bufferSpaceAvailableField.setAccessible(true);
+            bufferSpaceAvailable = (Condition) bufferSpaceAvailableField.get(fetcher);
         }
 
         @SuppressWarnings("unchecked")
@@ -483,8 +634,12 @@ class BufferingChangeStreamCursorTest {
         }
 
         private boolean enqueue(ResumableChangeStreamEvent<BsonDocument> event) throws Exception {
+            return enqueue(event, 0);
+        }
+
+        private boolean enqueue(ResumableChangeStreamEvent<BsonDocument> event, long sizeInBytes) throws Exception {
             try {
-                return (boolean) enqueue.invoke(fetcher, event);
+                return (boolean) enqueue.invoke(fetcher, event, sizeInBytes);
             }
             catch (InvocationTargetException e) {
                 if (e.getCause() instanceof Exception exception) {
