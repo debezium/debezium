@@ -41,11 +41,13 @@ import io.debezium.pipeline.notification.NotificationService;
 import io.debezium.pipeline.source.spi.ChangeTableResultSet;
 import io.debezium.pipeline.source.spi.StreamingChangeEventSource;
 import io.debezium.relational.ChangeTable;
+import io.debezium.relational.Column;
 import io.debezium.relational.Table;
 import io.debezium.relational.TableId;
 import io.debezium.schema.SchemaChangeEvent.SchemaChangeEventType;
 import io.debezium.snapshot.SnapshotterService;
 import io.debezium.util.Clock;
+import io.debezium.util.ColumnUtils;
 import io.debezium.util.ElapsedTimeStrategy;
 
 /**
@@ -255,10 +257,10 @@ public class SqlServerStreamingChangeEventSource implements StreamingChangeEvent
                     migrateTable(partition, schemaChangeCheckpoints, offsetContext);
                 }
                 if (!dataConnection.getNewChangeTables(databaseName, fromLsn, toLsn).isEmpty()) {
-                    final SqlServerChangeTable[] tables = getChangeTablesToQuery(partition, offsetContext, toLsn);
+                    final SqlServerChangeTable[] tables = getChangeTablesToQuery(partition, offsetContext, toLsn, schemaChangeCheckpoints);
                     tablesSlot.set(tables);
                     for (SqlServerChangeTable table : tables) {
-                        if (table.getStartLsn().isBetween(fromLsn, toLsn)) {
+                        if (table.getStartLsn().isBetween(fromLsn, toLsn) && !schemaChangeCheckpoints.contains(table)) {
                             LOGGER.info("Schema will be changed for {}", table);
                             schemaChangeCheckpoints.add(table);
                         }
@@ -266,7 +268,7 @@ public class SqlServerStreamingChangeEventSource implements StreamingChangeEvent
                     collectChangeTablesWithKnownStopLsn(partition, tables);
                 }
                 if (tablesSlot.get() == null) {
-                    tablesSlot.set(getChangeTablesToQuery(partition, offsetContext, toLsn));
+                    tablesSlot.set(getChangeTablesToQuery(partition, offsetContext, toLsn, schemaChangeCheckpoints));
                     collectChangeTablesWithKnownStopLsn(partition, tablesSlot.get());
                 }
 
@@ -521,7 +523,7 @@ public class SqlServerStreamingChangeEventSource implements StreamingChangeEvent
     }
 
     private SqlServerChangeTable[] getChangeTablesToQuery(SqlServerPartition partition, SqlServerOffsetContext offsetContext,
-                                                          Lsn toLsn)
+                                                          Lsn toLsn, Queue<SqlServerChangeTable> schemaChangeCheckpoints)
             throws SQLException, InterruptedException {
         final String databaseName = partition.getDatabaseName();
         final List<SqlServerChangeTable> changeTables = dataConnection.getChangeTables(databaseName, toLsn);
@@ -552,21 +554,23 @@ public class SqlServerStreamingChangeEventSource implements StreamingChangeEvent
         final List<SqlServerChangeTable> tables = new ArrayList<>();
         for (List<SqlServerChangeTable> captures : includeListChangeTables.values()) {
             SqlServerChangeTable currentTable = captures.get(0);
+            SqlServerChangeTable newestTable = currentTable;
             if (captures.size() > 1) {
-                SqlServerChangeTable futureTable;
                 if (captures.get(0).getStartLsn().compareTo(captures.get(1).getStartLsn()) < 0) {
-                    futureTable = captures.get(1);
+                    newestTable = captures.get(1);
                 }
                 else {
                     currentTable = captures.get(1);
-                    futureTable = captures.get(0);
+                    newestTable = captures.get(0);
                 }
-                currentTable.setStopLsn(futureTable.getStartLsn());
-                futureTable.setSourceTable(dataConnection.getTableSchemaFromTable(databaseName, futureTable));
-                tables.add(futureTable);
-                LOGGER.info("Multiple capture instances present for the same table: {} and {}", currentTable, futureTable);
+                currentTable.setStopLsn(newestTable.getStartLsn());
+                newestTable.setSourceTable(dataConnection.getTableSchemaFromTable(databaseName, newestTable));
+                tables.add(newestTable);
+                LOGGER.info("Multiple capture instances present for the same table: {} and {}", currentTable, newestTable);
             }
-            if (schema.tableFor(currentTable.getSourceTableId()) == null) {
+
+            final Table cachedSchema = schema.tableFor(currentTable.getSourceTableId());
+            if (cachedSchema == null) {
                 LOGGER.info("Table {} is new to be monitored by capture instance {}", currentTable.getSourceTableId(), currentTable.getCaptureInstance());
                 // We need to read the source table schema - nullability information cannot be obtained from change table
                 // There might be no start LSN in the new change table at this time so current timestamp is used
@@ -585,6 +589,11 @@ public class SqlServerStreamingChangeEventSource implements StreamingChangeEvent
                                 schema,
                                 SchemaChangeEventType.CREATE));
             }
+            else if (hasColumnMissingFromSchema(cachedSchema, newestTable)) {
+                LOGGER.info("The capture instance {} of table {} captures a column that the cached schema does not have, so the table will be migrated",
+                        newestTable.getCaptureInstance(), newestTable.getSourceTableId());
+                schemaChangeCheckpoints.add(newestTable);
+            }
 
             // If a column was renamed, then the old capture instance had been dropped and a new one
             // created. In consequence, a table with out-dated schema might be assigned here.
@@ -594,6 +603,20 @@ public class SqlServerStreamingChangeEventSource implements StreamingChangeEvent
         }
 
         return tables.toArray(new SqlServerChangeTable[tables.size()]);
+    }
+
+    /**
+     * Checks whether the change table of the capture instance contains a column that the cached schema of the source
+     * table does not have. Such a column cannot be decoded, because the change table and the schema do not describe
+     * the same set of columns.
+     *
+     * @param cachedSchema the schema the connector has cached for the source table
+     * @param changeTable the change table of the capture instance to check
+     * @return {@code true} if the change table contains a column the cached schema does not have
+     */
+    private static boolean hasColumnMissingFromSchema(Table cachedSchema, SqlServerChangeTable changeTable) {
+        final Map<String, Column> sourceTableColumns = ColumnUtils.toMap(cachedSchema).getSourceTableColumns();
+        return changeTable.getCapturedColumns().stream().anyMatch(column -> !sourceTableColumns.containsKey(column));
     }
 
     /**
