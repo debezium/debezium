@@ -16,7 +16,9 @@ import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceConnector;
+import org.apache.kafka.connect.source.SourceRecord;
 import org.awaitility.Awaitility;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -284,6 +286,73 @@ public abstract class ZZZBinlogGtidSetIT<C extends SourceConnector> extends Abst
         assertThat(records.recordsForTopic(database.topicForTable("customers")).size()).isEqualTo(12);
         assertThat(records.topics().size()).isEqualTo(1 + 1);
         assertThat(records.ddlRecordsForDatabase(database.getDatabaseName()).size()).isEqualTo(11);
+        stopConnector();
+    }
+
+    @Test
+    public void shouldProcessPurgedLogsWhenDownAndSnapshotNeededNoData() throws SQLException, InterruptedException {
+        Files.delete(SCHEMA_HISTORY_PATH);
+
+        purgeDatabaseLogs();
+        final UniqueDatabase database = TestHelper.getUniqueDatabase("myServer1", "connector_test")
+                .withDbHistoryPath(SCHEMA_HISTORY_PATH);
+        database.createAndInitialize();
+
+        config = database.defaultConfig()
+                .with(BinlogConnectorConfig.SNAPSHOT_MODE, SnapshotMode.WHEN_NEEDED_NO_DATA)
+                .with(BinlogConnectorConfig.INCLUDE_SCHEMA_CHANGES, false)
+                .with(BinlogConnectorConfig.TABLE_INCLUDE_LIST, database.qualifiedTableName("customers"))
+                .build();
+
+        // Start the connector ...
+        start(getConnectorClass(), config);
+        waitForStreamingRunning(getConnectorName(), database.getServerName());
+
+        try (BinlogTestConnection db = getTestDatabaseConnection(database.getDatabaseName())) {
+            db.execute(
+                    "INSERT INTO customers VALUES(default,5,5,5)");
+        }
+
+        SourceRecords records = consumeRecordsByTopic(1);
+        assertThat(records.recordsForTopic(database.topicForTable("customers")).size()).isEqualTo(1);
+        records.forEach(this::validate);
+
+        SourceRecord record = records.recordsForTopic(database.topicForTable("customers")).get(0);
+        Struct after = ((Struct) record.value()).getStruct("after");
+        assertThat(after.getString("first_name")).isEqualTo("5");
+        assertThat(after.getString("last_name")).isEqualTo("5");
+        assertThat(after.getString("email")).isEqualTo("5");
+
+        stopConnector();
+
+        // Insert rows while down, then purge so the stored offset becomes invalid once restarted
+        try (BinlogTestConnection db = getTestDatabaseConnection(database.getDatabaseName())) {
+            db.execute(
+                    "INSERT INTO customers VALUES(default,6,6,6)",
+                    "INSERT INTO customers VALUES(default,7,7,7)");
+        }
+
+        purgeDatabaseLogs();
+
+        start(getConnectorClass(), config);
+        waitForStreamingRunning(getConnectorName(), database.getServerName());
+
+        // Insert after restart to ensure connector is still working, can consume new records and nothing leaked
+        try (BinlogTestConnection db = getTestDatabaseConnection(database.getDatabaseName())) {
+            db.execute(
+                    "INSERT INTO customers VALUES(default,8,8,8)");
+        }
+
+        records = consumeRecordsByTopic(1);
+        assertThat(records.recordsForTopic(database.topicForTable("customers")).size()).isEqualTo(1);
+        records.forEach(this::validate);
+
+        record = records.recordsForTopic(database.topicForTable("customers")).get(0);
+        after = ((Struct) record.value()).getStruct("after");
+        assertThat(after.getString("first_name")).isEqualTo("8");
+        assertThat(after.getString("last_name")).isEqualTo("8");
+        assertThat(after.getString("email")).isEqualTo("8");
+
         stopConnector();
     }
 }

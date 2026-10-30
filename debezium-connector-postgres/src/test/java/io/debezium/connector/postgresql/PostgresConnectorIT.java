@@ -2318,6 +2318,42 @@ public class PostgresConnectorIT extends AbstractAsyncEngineConnectorTest {
     }
 
     @Test
+    public void shouldProcessPurgedLogsWhenDownAndSnapshotNeededNoData() throws InterruptedException {
+        TestHelper.execute(SETUP_TABLES_STMT);
+        Configuration.Builder configBuilder = TestHelper.defaultConfig()
+                .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL.getValue())
+                .with(PostgresConnectorConfig.DROP_SLOT_ON_STOP, Boolean.TRUE);
+
+        start(PostgresConnector.class, configBuilder.build());
+        assertConnectorIsRunning();
+        waitForSnapshotToBeCompleted();
+
+        // check the records from the snapshot
+        assertRecordsFromSnapshot(2, 1, 1);
+        // insert and verify 2 new records
+        TestHelper.execute(INSERT_STMT);
+        assertRecordsAfterInsert(2, 2, 2);
+
+        stopConnector();
+        assertNoRecordsToConsume();
+
+        // insert while down: this rows must not leak out once restart under WHEN_NEEDED_NO_DATA
+        TestHelper.execute(INSERT_STMT);
+
+        // restart the connector, ensures that can consume new records and nothing leaked
+        start(PostgresConnector.class, configBuilder
+                .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.WHEN_NEEDED_NO_DATA.getValue())
+                .with(PostgresConnectorConfig.DROP_SLOT_ON_STOP, Boolean.TRUE).build());
+
+        waitForStreamingRunning();
+
+        assertNoRecordsToConsume();
+
+        TestHelper.execute(INSERT_STMT);
+        assertRecordsAfterInsert(2, 4, 4);
+    }
+
+    @Test
     @FixFor("DBZ-1242")
     public void testEmptySchemaWarningAfterApplyingFilters() throws Exception {
         // This captures all logged messages, allowing us to verify log message was written.

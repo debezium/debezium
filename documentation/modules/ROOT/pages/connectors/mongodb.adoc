@@ -331,6 +331,9 @@ but it does not create `READ` events to represent the data set at the point of t
 * It cannot detect any topic offsets.
 * A previously recorded offset specifies a log position that is not available on the server.
 
+|`when_needed_no_data`
+|Combines `when_needed` and `no_data`. For this connector, no snapshot (not even schema) is ever performed; if recovery is needed, the connector resumes streaming directly.
+
 ifdef::community[]
 |`configuration_based`
 |Set the snapshot mode to `configuration_based` to control snapshot behavior through the set of connector properties that have the prefix 'snapshot.mode.configuration.based'.
@@ -2049,6 +2052,8 @@ but it does not create `READ` events to represent the data set at the point of t
 
 * It cannot detect any topic offsets.
 * A previously recorded offset specifies a log position that is not available on the server.
+
+`when_needed_no_data`:: Combines `when_needed` and `no_data`. For this connector, no snapshot (not even schema) is ever performed; if recovery is needed, the connector resumes streaming directly.
 
 ifdef::community[]
 `configuration_based`:: With this option, you control snapshot behavior through a set of connector properties that have the prefix 'snapshot.mode.configuration.based'.

@@ -769,6 +769,58 @@ public class MongoDbConnectorIT extends AbstractMongoConnectorIT {
     }
 
     @Test
+    void shouldRecoverFromInvalidOffsetWithSnapshotModeWhenNeededNoData() throws InterruptedException {
+        config = TestHelper.getConfiguration(mongo).edit()
+                .with(MongoDbConnectorConfig.POLL_INTERVAL_MS, 10)
+                .with(MongoDbConnectorConfig.COLLECTION_INCLUDE_LIST, "dbit.*")
+                .with(CommonConnectorConfig.TOPIC_PREFIX, "mongo")
+                .with(MongoDbConnectorConfig.SNAPSHOT_MODE, MongoDbConnectorConfig.SnapshotMode.WHEN_NEEDED_NO_DATA)
+                .build();
+
+        // create invalid offset captured from some previous runn
+        Map<Map<String, ?>, Map<String, ?>> offset = Map.of(
+                Collect.hashMapOf("server_id", "mongo"),
+                Collect.hashMapOf(
+                        SourceInfo.TIMESTAMP, 0,
+                        SourceInfo.ORDER, -1,
+                        SourceInfo.RESUME_TOKEN, "826617AF13000000012B022C0100296E5A1004DF2AABE77A714014A9E60EFF70AFF1DC46645F696400646617AF13E337477353A2CE830004"));
+        storeOffsets(config, offset);
+
+        context = new MongoDbTaskContext(config);
+
+        // cleanup database
+        TestHelper.cleanDatabase(mongo, "dbit");
+
+        // add data before starting the connector
+        insertDocuments("dbit", "colA", new Document("value", "foo"));
+        insertDocuments("dbit", "colB", new Document("value", "bar"));
+
+        // start the connector
+        start(MongoDbConnector.class, config);
+        waitForStreamingRunning("mongodb", "mongo");
+
+        // only this document should be captured
+        insertDocuments("dbit", "colA", new Document("value", "baz"));
+
+        List<SourceRecord> records = consumeRecordsByTopic(1).allRecordsInOrder();
+        final Set<String> foundValues = new HashSet<>();
+        records.forEach(record -> {
+            VerifyRecord.isValid(record);
+
+            final Struct value = (Struct) record.value();
+            final String after = value.getString(Envelope.FieldName.AFTER);
+
+            final Document document = Document.parse(after);
+            foundValues.add(document.getString("value"));
+
+            final Operation operation = Operation.forCode(value.getString(Envelope.FieldName.OPERATION));
+            assertThat(operation).isEqualTo(Operation.CREATE);
+        });
+        assertNoRecordsToConsume();
+        assertThat(foundValues).containsOnly("baz");
+    }
+
+    @Test
     void shouldConsumeAllEventsFromDatabase() throws InterruptedException, IOException {
         // Use the DB configuration to define the connector's configuration ...
         config = TestHelper.getConfiguration(mongo).edit()
