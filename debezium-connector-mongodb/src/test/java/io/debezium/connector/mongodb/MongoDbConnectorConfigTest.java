@@ -23,7 +23,12 @@ import org.apache.kafka.common.config.ConfigValue;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.data.Struct;
+import org.bson.BsonDocument;
+import org.bson.BsonObjectId;
+import org.bson.BsonString;
 import org.bson.BsonTimestamp;
+import org.bson.BsonValue;
+import org.bson.types.ObjectId;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -39,6 +44,9 @@ import io.debezium.config.Field;
 import io.debezium.connector.mongodb.connection.MongoDbConnectionContext;
 import io.debezium.data.Envelope;
 import io.debezium.doc.FixFor;
+import io.debezium.pipeline.signal.SignalRecord;
+import io.debezium.pipeline.signal.actions.snapshotting.CloseIncrementalSnapshotWindow;
+import io.debezium.pipeline.signal.channels.SourceSignalChannel;
 import io.debezium.schema.DefaultTopicNamingStrategy;
 
 public class MongoDbConnectorConfigTest {
@@ -336,6 +344,38 @@ public class MongoDbConnectorConfigTest {
         Assertions.assertEquals("test-1", result[0]);
         Assertions.assertEquals("execute-snapshot", result[1]);
         Assertions.assertEquals("{\"data-collections\": [\"database.collection\"], \"type\": \"incremental\"}", result[2]);
+    }
+
+    @Test
+    @FixFor("debezium/dbz#1410")
+    void deleteOfOpenWindowSignalShouldProduceCloseWindowSignal() throws InterruptedException {
+        final var channel = new SourceSignalChannel();
+        channel.init(new MongoDbConnectorConfig(TestHelper.getConfiguration()));
+
+        // A delete event without pre-images has neither before nor after, only the key
+        final var valueSchema = SchemaBuilder.struct()
+                .field(Envelope.FieldName.BEFORE, Schema.OPTIONAL_STRING_SCHEMA)
+                .field(Envelope.FieldName.AFTER, Schema.OPTIONAL_STRING_SCHEMA)
+                .field(Envelope.FieldName.OPERATION, Schema.OPTIONAL_STRING_SCHEMA)
+                .build();
+        final var deleteValue = new Struct(valueSchema).put(Envelope.FieldName.OPERATION, Envelope.Operation.DELETE.code());
+
+        assertThat(channel.process(signalKey(new BsonString("8e1b8636-1467-4b59-84a9-18631d64b86e-open")), deleteValue)).isTrue();
+        final List<SignalRecord> signals = channel.read();
+        assertThat(signals).hasSize(1);
+        assertThat(signals.get(0).getId()).isEqualTo("8e1b8636-1467-4b59-84a9-18631d64b86e-close");
+        assertThat(signals.get(0).getType()).isEqualTo(CloseIncrementalSnapshotWindow.NAME);
+
+        // Deleting any other signal, e.g. an execute-snapshot signal with a generated id, must not produce a close signal
+        assertThat(channel.process(signalKey(new BsonObjectId(new ObjectId())), deleteValue)).isFalse();
+        assertThat(channel.process(signalKey(new BsonString("ad-hoc-1")), deleteValue)).isFalse();
+        assertThat(channel.read()).isEmpty();
+    }
+
+    private static Struct signalKey(BsonValue documentId) {
+        final var keySchema = SchemaBuilder.struct().field("id", Schema.STRING_SCHEMA).build();
+        final var serialization = new JsonSerialization(MongoDbConnectorConfig.JsonSerializationMode.LEGACY);
+        return new Struct(keySchema).put("id", serialization.getDocumentId(new BsonDocument("_id", documentId)));
     }
 
     @Test

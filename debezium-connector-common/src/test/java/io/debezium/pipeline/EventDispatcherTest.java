@@ -8,9 +8,12 @@ package io.debezium.pipeline;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.lenient;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import java.util.EnumSet;
 import java.util.List;
 import java.util.UUID;
 import java.util.stream.StreamSupport;
@@ -28,6 +31,7 @@ import org.mockito.Captor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import io.debezium.config.CommonConnectorConfig;
 import io.debezium.connector.AbstractSourceInfo;
 import io.debezium.connector.SourceInfoStructMaker;
 import io.debezium.connector.base.ChangeEventQueue;
@@ -40,6 +44,7 @@ import io.debezium.pipeline.signal.channels.SourceSignalChannel;
 import io.debezium.pipeline.source.spi.DataChangeEventListener;
 import io.debezium.pipeline.source.spi.EventMetadataProvider;
 import io.debezium.pipeline.spi.ChangeEventCreator;
+import io.debezium.pipeline.spi.ChangeRecordEmitter;
 import io.debezium.pipeline.spi.OffsetContext;
 import io.debezium.pipeline.spi.Partition;
 import io.debezium.pipeline.txmetadata.TransactionStructMaker;
@@ -250,6 +255,72 @@ public class EventDispatcherTest {
         dispatcher.dispatchSnapshotEvent(partition, dataCollectionId, changeRecordEmitter, new PartitionSnapshotReceiver());
 
         assertThat(connectHeaders).isNull();
+    }
+
+    @Test
+    @FixFor("debezium/dbz#1410")
+    public void signalOfSkippedOperationShouldBeProcessedButNotEmitted() throws InterruptedException {
+
+        DebeziumHeaderProducer debeziumHeaderProducer = new DebeziumHeaderProducer(cdcSourceTaskContext);
+        when(config.getServiceRegistry()).thenReturn(serviceRegistry);
+        when(config.getSourceInfoStructMaker()).thenReturn(sourceInfoStructMaker);
+        when(sourceInfoStructMaker.schema()).thenReturn(schema);
+        when(config.supportsOperationFiltering()).thenReturn(true);
+        when(config.getSkippedOperations()).thenReturn(EnumSet.of(Envelope.Operation.DELETE));
+        when(signalProcessor.getSignalChannel(any())).thenReturn(sourceSignalChannel);
+        when(config.getTransactionMetadataFactory()).thenReturn(transactionMetadataFactory);
+        when(config.getTransactionMetadataFactory().getTransactionStructMaker()).thenReturn(transactionStructMaker);
+        when(dataCollectionFilters.isIncluded(dataCollectionId)).thenReturn(true);
+        when(databaseSchema.schemaFor(dataCollectionId)).thenReturn(dataCollectionSchema);
+        when(config.getIncrementalSnapshotWatermarkingStrategy()).thenReturn(CommonConnectorConfig.WatermarkStrategy.INSERT_DELETE);
+        when(config.isSignalDataCollection(dataCollectionId)).thenReturn(true);
+        // Only used if the event is wrongly sent on, so the failure is NeverWantedButInvoked instead of an NPE
+        lenient().when(dataCollectionSchema.getEnvelopeSchema()).thenReturn(envelope);
+
+        dispatcher = new EventDispatcher<>(config, topicNamingStrategy, databaseSchema, changeEventQueue, dataCollectionFilters, changeEventCreator,
+                eventMetadataProvider,
+                schemaNameAdjuster, signalProcessor, debeziumHeaderProducer);
+
+        // A connector that filters operations at the source still delivers the delete of an open window signal
+        dispatcher.dispatchDataChangeEvent(partition, dataCollectionId, new SignalDeleteRecordEmitter(partition, offsetContext, struct));
+
+        verify(sourceSignalChannel).process(SignalDeleteRecordEmitter.KEY, struct);
+        verify(changeEventCreator, never()).createDataChangeEvent(any());
+    }
+
+    private static class SignalDeleteRecordEmitter implements ChangeRecordEmitter<Partition> {
+
+        private static final String KEY = "open-window-signal";
+
+        private final Partition partition;
+        private final OffsetContext offset;
+        private final Struct value;
+
+        SignalDeleteRecordEmitter(Partition partition, OffsetContext offset, Struct value) {
+            this.partition = partition;
+            this.offset = offset;
+            this.value = value;
+        }
+
+        @Override
+        public void emitChangeRecords(DataCollectionSchema schema, Receiver<Partition> receiver) throws InterruptedException {
+            receiver.changeRecord(partition, schema, Envelope.Operation.DELETE, KEY, value, offset, null);
+        }
+
+        @Override
+        public Partition getPartition() {
+            return partition;
+        }
+
+        @Override
+        public OffsetContext getOffset() {
+            return offset;
+        }
+
+        @Override
+        public Envelope.Operation getOperation() {
+            return Envelope.Operation.DELETE;
+        }
     }
 
     private static class PartitionSnapshotReceiver implements EventDispatcher.SnapshotReceiver<Partition> {
