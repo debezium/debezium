@@ -244,9 +244,7 @@ public class EventBuffer<T extends BinlogStreamingChangeEventSource<P, O>, P ext
         if (!wellFormed) {
             streamingChangeEventSource.getMetrics().onNotWellFormedTransaction();
         }
-        // The buffer state has to be reset before the rewind: BinaryLogClient#connect() blocks and reads the replayed events
-        // (and every later event) on this thread, so rewindBinaryLogClient() only returns once the client is disconnected.
-        // Resetting afterwards would leave txStarted, the buffer and largeTxNotBufferedPosition set for the next transaction.
+        // clear before the rewind, the replayed events are handled on another thread
         clear();
         if (rewindPosition != null) {
             streamingChangeEventSource.rewindBinaryLogClient(changeEventSourceContext, rewindPosition);

@@ -13,10 +13,13 @@ import java.sql.Connection;
 import java.sql.SQLException;
 import java.sql.Savepoint;
 import java.sql.Statement;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicReference;
 
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceConnector;
 import org.apache.kafka.connect.source.SourceRecord;
+import org.awaitility.Awaitility;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -29,6 +32,7 @@ import io.debezium.connector.binlog.util.BinlogTestConnection;
 import io.debezium.connector.binlog.util.TestHelper;
 import io.debezium.connector.binlog.util.UniqueDatabase;
 import io.debezium.doc.FixFor;
+import io.debezium.engine.DebeziumEngine;
 import io.debezium.jdbc.JdbcConnection;
 import io.debezium.junit.SkipWhenDatabaseVersion;
 import io.debezium.storage.file.history.FileSchemaHistory;
@@ -375,6 +379,151 @@ public abstract class BinlogReaderBufferIT<C extends SourceConnector> extends Ab
             assertThat(after.getString("email")).isEqualTo("after");
             assertNoRecordsToConsume();
         }
+    }
+
+    @Test
+    @SkipWhenGtidModeIs(value = SkipWhenGtidModeIs.GtidMode.OFF, reason = "Every rewind re-reads the transaction with the GTID dump command")
+    @SkipWhenDatabaseIs(value = SkipWhenDatabaseIs.Type.MARIADB, reason = "The rewind change targets the MySQL GTID dump command")
+    void shouldKeepStreamingAfterManyBufferRewindsWithGtids() throws SQLException, InterruptedException {
+        String primaryPort = System.getProperty("database.port", "3306");
+        String replicaPort = System.getProperty("database.replica.port", "3306");
+        boolean replicaIsPrimary = primaryPort.equals(replicaPort);
+        if (!replicaIsPrimary) {
+            // Give time for the replica to catch up to the primary ...
+            Thread.sleep(5000L);
+        }
+
+        config = DATABASE.defaultConfig()
+                .with(BinlogConnectorConfig.HOSTNAME, System.getProperty("database.replica.hostname", "localhost"))
+                .with(BinlogConnectorConfig.PORT, System.getProperty("database.replica.port", "3306"))
+                .with(BinlogConnectorConfig.USER, "snapper")
+                .with(BinlogConnectorConfig.PASSWORD, "snapperpass")
+                .with(BinlogConnectorConfig.SERVER_ID, 18765)
+                .with(CommonConnectorConfig.TOPIC_PREFIX, DATABASE.getServerName())
+                .with(BinlogConnectorConfig.POLL_INTERVAL_MS, 10)
+                .with(BinlogConnectorConfig.DATABASE_INCLUDE_LIST, DATABASE.getDatabaseName())
+                .with(BinlogConnectorConfig.SCHEMA_HISTORY, FileSchemaHistory.class)
+                .with(BinlogConnectorConfig.INCLUDE_SCHEMA_CHANGES, true)
+                .with(BinlogConnectorConfig.BUFFER_SIZE_FOR_BINLOG_READER, 2)
+                .with(FileSchemaHistory.FILE_PATH, SCHEMA_HISTORY_PATH)
+                .build();
+
+        start(getConnectorClass(), config);
+
+        consumeRecordsByTopic(5 + 9 + 9 + 4 + 11 + 1); // 11 schema change records + 1 SET statement
+
+        // Each transaction rewinds. The read loops of the rewinds must not nest, or the stack overflows after a few
+        // hundred of them and the connector stops emitting
+        final int transactions = 1_000;
+        final int rowsPerTransaction = 3;
+        try (BinlogTestConnection db = getTestDatabaseConnection(DATABASE.getDatabaseName());
+                JdbcConnection connection = db.connect()) {
+            final Connection jdbc = connection.connection();
+            connection.setAutoCommit(false);
+            final Statement statement = jdbc.createStatement();
+            int expectedEmail = 0;
+            for (int t = 0; t < transactions; t++) {
+                for (int r = 0; r < rowsPerTransaction; r++) {
+                    final int id = t * rowsPerTransaction + r;
+                    statement.executeUpdate(String.format("INSERT INTO customers VALUES (default,\"%s\",\"%s\",\"%s\")", id, id, id));
+                }
+                jdbc.commit();
+
+                // every transaction must arrive complete and in order
+                final SourceRecords records = consumeRecordsByTopic(rowsPerTransaction);
+                assertThat(records.allRecordsInOrder()).hasSize(rowsPerTransaction);
+                for (SourceRecord record : records.allRecordsInOrder()) {
+                    final Struct after = ((Struct) record.value()).getStruct("after");
+                    assertThat(after.getString("email")).isEqualTo(Integer.toString(expectedEmail++));
+                }
+            }
+            connection.setAutoCommit(true);
+            assertNoRecordsToConsume();
+        }
+    }
+
+    @Test
+    @SkipWhenGtidModeIs(value = SkipWhenGtidModeIs.GtidMode.OFF, reason = "Every rewind re-reads the transaction with the GTID dump command")
+    @SkipWhenDatabaseIs(value = SkipWhenDatabaseIs.Type.MARIADB, reason = "The rewind change targets the MySQL GTID dump command")
+    void shouldStopWhileBufferRewindsAreRunning() throws SQLException, InterruptedException {
+        startWithBufferOfTwo(null);
+        consumeRecordsByTopic(5 + 9 + 9 + 4 + 11 + 1); // 11 schema change records + 1 SET statement
+
+        // Queue up enough transactions that the connector is rewinding when it is stopped
+        try (BinlogTestConnection db = getTestDatabaseConnection(DATABASE.getDatabaseName());
+                JdbcConnection connection = db.connect()) {
+            final Connection jdbc = connection.connection();
+            connection.setAutoCommit(false);
+            final Statement statement = jdbc.createStatement();
+            for (int t = 0; t < 300; t++) {
+                for (int r = 0; r < 3; r++) {
+                    final int id = t * 3 + r;
+                    statement.executeUpdate(String.format("INSERT INTO customers VALUES (default,\"%s\",\"%s\",\"%s\")", id, id, id));
+                }
+                jdbc.commit();
+            }
+            connection.setAutoCommit(true);
+        }
+        Awaitility.await().atMost(30, TimeUnit.SECONDS).until(this::isRewindThreadAlive);
+
+        stopConnector();
+
+        // the rewind thread must not outlive the connector
+        Awaitility.await().atMost(10, TimeUnit.SECONDS).until(() -> !isRewindThreadAlive());
+    }
+
+    @Test
+    @SkipWhenGtidModeIs(value = SkipWhenGtidModeIs.GtidMode.OFF, reason = "Every rewind re-reads the transaction with the GTID dump command")
+    @SkipWhenDatabaseIs(value = SkipWhenDatabaseIs.Type.MARIADB, reason = "The rewind change targets the MySQL GTID dump command")
+    void shouldFailTheTaskWhenReconnectingForARewindFails() throws SQLException, InterruptedException {
+        final AtomicReference<Boolean> success = new AtomicReference<>();
+        startWithBufferOfTwo((s, message, error) -> success.set(s));
+        consumeRecordsByTopic(5 + 9 + 9 + 4 + 11 + 1); // 11 schema change records + 1 SET statement
+
+        // The connected client keeps working, but the reconnect of the rewind cannot log in, and nothing else reads the binlog
+        try (BinlogTestConnection admin = getTestDatabaseConnection("mysql");
+                JdbcConnection adminConnection = admin.connect()) {
+            adminConnection.execute("ALTER USER 'snapper'@'%' ACCOUNT LOCK");
+            try (BinlogTestConnection db = getTestDatabaseConnection(DATABASE.getDatabaseName());
+                    JdbcConnection connection = db.connect()) {
+                connection.execute("INSERT INTO customers VALUES (default, 'a', 'a', 'a')",
+                        "INSERT INTO customers VALUES (default, 'b', 'b', 'b')",
+                        "INSERT INTO customers VALUES (default, 'c', 'c', 'c')");
+                Awaitility.await().atMost(30, TimeUnit.SECONDS).until(() -> success.get() != null);
+                assertThat(success.get()).isFalse();
+            }
+            finally {
+                adminConnection.execute("ALTER USER 'snapper'@'%' ACCOUNT UNLOCK");
+            }
+        }
+    }
+
+    private void startWithBufferOfTwo(DebeziumEngine.CompletionCallback callback) throws InterruptedException {
+        config = DATABASE.defaultConfig()
+                .with(BinlogConnectorConfig.HOSTNAME, System.getProperty("database.replica.hostname", "localhost"))
+                .with(BinlogConnectorConfig.PORT, System.getProperty("database.replica.port", "3306"))
+                .with(BinlogConnectorConfig.USER, "snapper")
+                .with(BinlogConnectorConfig.PASSWORD, "snapperpass")
+                .with(BinlogConnectorConfig.SERVER_ID, 18765)
+                .with(CommonConnectorConfig.TOPIC_PREFIX, DATABASE.getServerName())
+                .with(BinlogConnectorConfig.POLL_INTERVAL_MS, 10)
+                .with(BinlogConnectorConfig.DATABASE_INCLUDE_LIST, DATABASE.getDatabaseName())
+                .with(BinlogConnectorConfig.SCHEMA_HISTORY, FileSchemaHistory.class)
+                .with(BinlogConnectorConfig.INCLUDE_SCHEMA_CHANGES, true)
+                .with(BinlogConnectorConfig.BUFFER_SIZE_FOR_BINLOG_READER, 2)
+                .with(FileSchemaHistory.FILE_PATH, SCHEMA_HISTORY_PATH)
+                .build();
+        if (callback == null) {
+            start(getConnectorClass(), config);
+        }
+        else {
+            start(getConnectorClass(), config, callback);
+        }
+    }
+
+    private boolean isRewindThreadAlive() {
+        return Thread.getAllStackTraces().keySet().stream()
+                .anyMatch(t -> t.isAlive() && t.getName().endsWith("-binlog-rewind") && t.getName().contains(DATABASE.getServerName()));
     }
 
     @FixFor("DBZ-411")
