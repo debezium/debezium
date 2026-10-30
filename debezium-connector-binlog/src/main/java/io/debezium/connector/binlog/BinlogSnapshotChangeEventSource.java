@@ -77,7 +77,7 @@ public abstract class BinlogSnapshotChangeEventSource<P extends BinlogPartition,
     private static final Duration LOCK_HEARTBEAT_INTERVAL = Duration.ofSeconds(30);
 
     private final BinlogConnectorConfig connectorConfig;
-    private final BinlogConnectorConnection connection;
+    protected final BinlogConnectorConnection connection;
     private final RelationalTableFilters filters;
     private final BinlogSnapshotChangeEventSourceMetrics<P> metrics;
     private final BinlogDatabaseSchema<P, O, ?, ?> databaseSchema;
