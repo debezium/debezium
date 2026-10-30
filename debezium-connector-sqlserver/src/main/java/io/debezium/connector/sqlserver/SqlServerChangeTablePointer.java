@@ -150,10 +150,12 @@ public class SqlServerChangeTablePointer extends ChangeTableResultSet<SqlServerC
      * accordingly.
      *
      * <p>For UPDATE operations, max-type columns ({@code varchar(max)}, {@code nvarchar(max)},
-     * {@code varbinary(max)}) that were not modified are stored as NULL in the CDC capture table.
-     * This method uses the {@code __$update_mask} bitmask to detect such columns and replaces
-     * their NULL values with {@link SqlServerValueConverters#UNAVAILABLE_VALUE} so that they
-     * are emitted using the configured {@code unavailable.value.placeholder}.
+     * {@code varbinary(max)}) that were not modified are stored as NULL in the before image
+     * ({@code __$operation = 3}) of the CDC capture table. This method uses the
+     * {@code __$update_mask} bitmask to detect such columns and replaces their NULL values with
+     * {@link SqlServerValueConverters#UNAVAILABLE_VALUE} so that they are emitted using the
+     * configured {@code unavailable.value.placeholder}. The after image ({@code __$operation = 4})
+     * always holds the current value of the column and is emitted as recorded, including NULL.
      *
      * @param table original table
      * @return a mapper which adjusts order of values in case the capture instance contains only
@@ -207,10 +209,8 @@ public class SqlServerChangeTablePointer extends ChangeTableResultSet<SqlServerC
                 }
                 data[index] = getColumnData(resultSet, COL_DATA + i);
 
-                if (maxColumns[i] && data[index] == null
-                        && isUpdateOperation(operation)
-                        && !isColumnChanged(updateMask, i)) {
-                    LOGGER.trace("Column at index {} for table '{}' was not changed in UPDATE, replacing with unavailable value placeholder",
+                if (maxColumns[i] && data[index] == null && isUnavailableValue(operation, updateMask, i)) {
+                    LOGGER.trace("Column at index {} for table '{}' was not changed in UPDATE, replacing before image value with unavailable value placeholder",
                             i, table.id());
                     data[index] = SqlServerValueConverters.UNAVAILABLE_VALUE;
                 }
@@ -220,14 +220,19 @@ public class SqlServerChangeTablePointer extends ChangeTableResultSet<SqlServerC
     }
 
     /**
-     * Check whether the given operation is an UPDATE (before or after image).
+     * Check whether a NULL max-type column value in a CDC row stands for a value SQL Server did not
+     * record. That is only the case for the before image of an UPDATE ({@code __$operation = 3})
+     * when the column was not changed. The after image ({@code __$operation = 4}) always holds the
+     * current value of the column, so a NULL there is the real value.
      *
      * @param operation the CDC operation code
-     * @return {@code true} if the operation is an UPDATE
+     * @param updateMask the raw update mask bytes from the CDC result set
+     * @param columnIndex the 0-based index of the column in the captured column list
+     * @return {@code true} if the value should be replaced with the unavailable value placeholder
      */
-    private static boolean isUpdateOperation(int operation) {
-        return operation == SqlServerChangeRecordEmitter.OP_UPDATE_BEFORE
-                || operation == SqlServerChangeRecordEmitter.OP_UPDATE_AFTER;
+    @VisibleForTesting
+    static boolean isUnavailableValue(int operation, byte[] updateMask, int columnIndex) {
+        return operation == SqlServerChangeRecordEmitter.OP_UPDATE_BEFORE && !isColumnChanged(updateMask, columnIndex);
     }
 
     /**
