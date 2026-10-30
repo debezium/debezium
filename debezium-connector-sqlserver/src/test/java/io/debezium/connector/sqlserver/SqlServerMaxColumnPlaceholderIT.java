@@ -35,8 +35,9 @@ import io.debezium.util.Testing;
  * <p>
  * SQL Server records no before-image value for a max-type column an update did not touch, and
  * records a null for one the update set to null. Only the {@code __$update_mask} bits tell the two
- * apart, so an untouched column is reported with the unavailable value placeholder while a column
- * the update did change keeps its recorded value, including null. The mask spans more than one
+ * apart, so an untouched column is reported with the unavailable value placeholder in the before
+ * image while a column the update did change keeps its recorded value, including null. The after
+ * image always holds the current value of every column, so it is emitted as recorded. The mask spans more than one
  * byte only once a capture instance covers more than eight columns, which is why the table used
  * here is deliberately wider than that.
  */
@@ -132,7 +133,7 @@ public class SqlServerMaxColumnPlaceholderIT extends AbstractAsyncEngineConnecto
 
     @ParameterizedTest(name = "data.query.mode = {0}")
     @EnumSource(DataQueryMode.class)
-    @FixFor("dbz#1164")
+    @FixFor({ "dbz#1164", "dbz#2974" })
     void shouldEmitPlaceholderForMaxColumnUntouchedByUpdate(DataQueryMode mode) throws Exception {
         start(SqlServerConnector.class, config(mode));
         assertConnectorIsRunning();
@@ -152,10 +153,10 @@ public class SqlServerMaxColumnPlaceholderIT extends AbstractAsyncEngineConnecto
         assertThat(before(statusChanged).getString(STATUS)).isEqualTo("NEW");
         assertThat(after(statusChanged).getString(STATUS)).isEqualTo("PROCESSED");
 
-        // legal_text is null in the row and took no part in the update, so neither image may report
-        // it as a null this update wrote.
+        // legal_text is null in the row and took no part in the update. SQL Server does not record
+        // its before image value, but the after image holds the current value, which is null.
         assertThat(before(statusChanged).getString(LEGAL_TEXT)).isEqualTo(PLACEHOLDER);
-        assertThat(after(statusChanged).getString(LEGAL_TEXT)).isEqualTo(PLACEHOLDER);
+        assertThat(after(statusChanged).getString(LEGAL_TEXT)).isNull();
 
         // payload holds a value the update did not touch, so only its before image is reported as
         // unavailable.
