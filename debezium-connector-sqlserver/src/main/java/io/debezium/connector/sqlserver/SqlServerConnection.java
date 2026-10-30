@@ -31,6 +31,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.OptionalLong;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.regex.Matcher;
@@ -50,11 +51,14 @@ import io.debezium.config.Field;
 import io.debezium.data.Envelope;
 import io.debezium.jdbc.JdbcConfiguration;
 import io.debezium.jdbc.JdbcConnection;
+import io.debezium.pipeline.source.snapshot.incremental.ChunkQueryBuilder;
 import io.debezium.pipeline.spi.OffsetContext;
 import io.debezium.pipeline.spi.Partition;
 import io.debezium.relational.Column;
+import io.debezium.relational.RelationalDatabaseConnectorConfig;
 import io.debezium.relational.Table;
 import io.debezium.relational.TableId;
+import io.debezium.spi.schema.DataCollectionId;
 
 /**
  * {@link JdbcConnection} extension to be used with Microsoft SQL Server
@@ -127,6 +131,16 @@ public class SqlServerConnection extends JdbcConnection {
             " ORDER BY tables.object_id, columns.column_id";
 
     /**
+     * Queries the names of the HIDDEN columns of a table. The JDBC driver does not expose the IS_HIDDEN flag of a
+     * column, so the catalog has to be asked.
+     */
+    private static final String GET_HIDDEN_COLUMNS = "SELECT columns.name" +
+            " FROM #db.sys.columns columns" +
+            " INNER JOIN #db.sys.tables tables ON tables.object_id = columns.object_id" +
+            " INNER JOIN #db.sys.schemas schemas ON schemas.schema_id = tables.schema_id" +
+            " WHERE columns.is_hidden = 1 AND schemas.name = ? AND tables.name = ?";
+
+    /**
      * Queries the list of capture instances in the given database.
      *
      * If two or more capture instances with the same start LSN are available for a given source table,
@@ -158,6 +172,8 @@ public class SqlServerConnection extends JdbcConnection {
     private final int queryFetchSize;
 
     private final SqlServerDefaultValueConverter defaultValueConverter;
+
+    private final Map<TableId, Set<String>> hiddenColumns = new ConcurrentHashMap<>();
 
     private boolean optionRecompile;
 
@@ -939,6 +955,42 @@ public class SqlServerConnection extends JdbcConnection {
 
     private String replaceDatabaseNamePlaceholder(String sql, String databaseName) {
         return sql.replace(DATABASE_NAME_PLACEHOLDER, quoteIdentifier(databaseName));
+    }
+
+    /**
+     * Returns the names of the HIDDEN columns of the given table, as reported by the SQL Server catalog.
+     * <p>
+     * The JDBC driver does not expose the IS_HIDDEN flag of a column, so the catalog has to be asked. The answer is
+     * cached for the lifetime of the connection, so it costs one query per table.
+     *
+     * @param tableId the table to read the hidden columns of
+     * @return the names of the hidden columns, empty when the table has none
+     */
+    Set<String> getHiddenColumns(TableId tableId) {
+        return hiddenColumns.computeIfAbsent(tableId, id -> {
+            try {
+                return prepareQueryAndMap(replaceDatabaseNamePlaceholder(GET_HIDDEN_COLUMNS, id.catalog()),
+                        statement -> {
+                            statement.setString(1, id.schema());
+                            statement.setString(2, id.table());
+                        },
+                        rs -> {
+                            final Set<String> columns = new HashSet<>();
+                            while (rs.next()) {
+                                columns.add(rs.getString(1));
+                            }
+                            return columns;
+                        });
+            }
+            catch (SQLException e) {
+                throw new DebeziumException("Unable to read the hidden columns of table " + tableId, e);
+            }
+        });
+    }
+
+    @Override
+    public <T extends DataCollectionId> ChunkQueryBuilder<T> chunkQueryBuilder(RelationalDatabaseConnectorConfig connectorConfig) {
+        return new SqlServerChunkQueryBuilder<>(connectorConfig, this);
     }
 
     public SqlServerDefaultValueConverter getDefaultValueConverter() {
