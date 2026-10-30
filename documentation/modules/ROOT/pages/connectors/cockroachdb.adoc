@@ -114,6 +114,8 @@ Useful for one-time data migration.
 CockroachDB does not allow the `updated`, `diff`, or `mvcc_timestamp` options together with `initial_scan='only'`.
 In this mode, the connector ignores xref:cockroachdb-property-include-updated[`cockroachdb.changefeed.include.updated`] and xref:cockroachdb-property-include-diff[`cockroachdb.changefeed.include.diff`], and logs a warning.
 After the snapshot completes, the connector does not repeat it when it restarts.
+If every captured table is empty, no event records the completed snapshot, so the connector repeats the empty scan after a restart unless heartbeats are enabled (xref:cockroachdb-property-heartbeat-interval[`heartbeat.interval.ms`]).
+If the connector stops before it has read the whole scan, it runs the scan again after it restarts, so some rows can be emitted more than once.
 
 |`no_data` / `never`
 |`no`
