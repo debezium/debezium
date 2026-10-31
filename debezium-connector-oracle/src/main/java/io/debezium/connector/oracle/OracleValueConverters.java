@@ -953,18 +953,22 @@ public class OracleValueConverters extends JdbcValueConverters {
         final Matcher m = INTERVAL_DAY_SECOND_PATTERN.matcher(interval);
         if (m.matches()) {
             final int sign = "-".equals(m.group(1)) ? -1 : 1;
+            final int nanos = Integer.parseInt(Strings.pad(m.group(6), 9, '0'));
             if (intervalHandlingMode == OracleConnectorConfig.IntervalHandlingMode.STRING) {
-                double seconds = sign * ((double) (Integer.parseInt(m.group(5)))
-                        + (double) Integer.parseInt(Strings.pad(m.group(6), 6, '0')) / 1_000_000D);
+                BigDecimal seconds = BigDecimal.valueOf(Long.parseLong(m.group(5))).add(BigDecimal.valueOf(nanos, 9));
+                if (sign < 0) {
+                    seconds = seconds.negate();
+                }
                 r.deliver(Interval.toIsoString(
                         0,
                         0,
                         sign * Integer.valueOf(m.group(2)),
                         sign * Integer.valueOf(m.group(3)),
                         sign * Integer.valueOf(m.group(4)),
-                        BigDecimal.valueOf(seconds)));
+                        seconds));
             }
             else {
+                // The schema holds whole microseconds, so any sub-microsecond digits are truncated toward zero
                 r.deliver(MicroDuration.durationMicros(
                         0,
                         0,
@@ -972,7 +976,7 @@ public class OracleValueConverters extends JdbcValueConverters {
                         sign * Integer.valueOf(m.group(3)),
                         sign * Integer.valueOf(m.group(4)),
                         sign * Integer.valueOf(m.group(5)),
-                        sign * Integer.valueOf(Strings.pad(m.group(6), 6, '0')),
+                        sign * (nanos / 1_000),
                         MicroDuration.DAYS_PER_MONTH_AVG));
             }
         }
