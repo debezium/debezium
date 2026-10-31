@@ -97,11 +97,35 @@ public final class ConnectionStrings {
 
         return credentials == null ? connectionString
                 : Strings.mask(
-                        connectionString,
+                        maskUserInfo(connectionString),
                         "***",
                         credentials.getUserName(),
                         credentials.getSource(),
                         credentials.getPassword() != null ? String.valueOf(credentials.getPassword()) : null);
+    }
+
+    /**
+     * Mask the user information section of the connection string as it is written. The credentials
+     * provided by {@link ConnectionString#getCredential()} are decoded, so they cannot be found in
+     * the connection string when they contain percent-encoded characters.
+     *
+     * @param connectionString original connection string
+     * @return connection string with masked user information
+     */
+    private static String maskUserInfo(String connectionString) {
+        var schemeEnd = connectionString.indexOf("://");
+        if (schemeEnd == -1) {
+            return connectionString;
+        }
+        var userInfoStart = schemeEnd + 3;
+        var hostsEnd = connectionString.indexOf('/', userInfoStart);
+        var authority = hostsEnd == -1 ? connectionString.substring(userInfoStart) : connectionString.substring(userInfoStart, hostsEnd);
+        var userInfoEnd = authority.lastIndexOf('@');
+        if (userInfoEnd == -1) {
+            return connectionString;
+        }
+        var maskedUserInfo = authority.substring(0, userInfoEnd).contains(":") ? "***:***" : "***";
+        return connectionString.substring(0, userInfoStart) + maskedUserInfo + connectionString.substring(userInfoStart + userInfoEnd);
     }
 
     public static String mask(ConnectionString connectionString) {
