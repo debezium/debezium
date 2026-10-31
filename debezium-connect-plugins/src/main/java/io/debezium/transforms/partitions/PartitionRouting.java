@@ -49,6 +49,7 @@ public class PartitionRouting<R extends ConnectRecord<R>> implements Transformat
     private static final MurmurHash3 MURMUR_HASH_3 = MurmurHash3.getInstance();
     public static final String NESTING_SEPARATOR = "\\.";
     public static final String CHANGE_SPECIAL_FIELD = "change";
+    public static final String KEY_SPECIAL_FIELD = "key";
     public static final String FIELD_PAYLOAD_FIELD_CONF = "partition.payload.fields";
     public static final String FIELD_TOPIC_PARTITION_NUM_CONF = "partition.topic.num";
     public static final String FIELD_HASH_FUNCTION = "partition.hash.function";
@@ -101,6 +102,7 @@ public class PartitionRouting<R extends ConnectRecord<R>> implements Transformat
             .withDescription("Payload fields to use to calculate the partition. Supports Struct nesting using dot notation." +
                     "To access fields related to data collections, you can use: after, before or change, " +
                     "where 'change' is a special field that will automatically choose, based on operation, the 'after' or 'before'. " +
+                    "To read a field from the record key, use the 'key' prefix, e.g. key.id. " +
                     "If a field not exist for the current record it will simply not used" +
                     "e.g. after.name,source.table,change.name")
             .required();
@@ -154,20 +156,23 @@ public class PartitionRouting<R extends ConnectRecord<R>> implements Transformat
 
         LOGGER.trace("Starting PartitionRouting SMT with conf: {} {}", payloadFields, partitionNumber);
 
-        if (originalRecord.value() == null || !smtManager.isValidEnvelope(originalRecord)) {
-            LOGGER.trace("Skipping tombstone or message without envelope");
+        final boolean isEnvelope = originalRecord.value() != null && smtManager.isValidEnvelope(originalRecord);
+
+        if (originalRecord.value() != null && !isEnvelope) {
+            LOGGER.trace("Skipping message without envelope");
             return originalRecord;
         }
 
+        final Struct key = originalRecord.key() instanceof Struct ? (Struct) originalRecord.key() : null;
         final Struct envelope = (Struct) originalRecord.value();
         try {
 
-            if (SmtManager.isGenericOrTruncateMessage((SourceRecord) originalRecord)) {
+            if (isEnvelope && SmtManager.isGenericOrTruncateMessage((SourceRecord) originalRecord)) {
                 return originalRecord;
             }
 
             List<Object> fieldsValue = payloadFields.stream()
-                    .map(fieldName -> toValue(fieldName, envelope))
+                    .map(fieldName -> toValue(fieldName, key, envelope))
                     .filter(Optional::isPresent)
                     .map(Optional::get)
                     .collect(Collectors.toList());
@@ -183,20 +188,30 @@ public class PartitionRouting<R extends ConnectRecord<R>> implements Transformat
 
         }
         catch (Exception e) {
-            throw new DebeziumException(String.format("Unprocessable message %s", envelope), e);
+            throw new DebeziumException(String.format("Unprocessable message %s", envelope != null ? envelope : key), e);
         }
     }
 
-    private Optional<Object> toValue(String fieldName, Struct envelope) {
+    private Optional<Object> toValue(String fieldName, Struct key, Struct envelope) {
+
+        String[] subFields = Arrays.stream(fieldName.split(NESTING_SEPARATOR)).map(String::trim).toArray(String[]::new);
+
+        Struct fieldsSource = envelope;
+        if (subFields.length > 1 && KEY_SPECIAL_FIELD.equals(subFields[0])) {
+            fieldsSource = key;
+            subFields = Arrays.copyOfRange(subFields, 1, subFields.length);
+        }
+
+        if (fieldsSource == null) {
+            return Optional.empty();
+        }
 
         try {
-            String[] subFields = Arrays.stream(fieldName.split(NESTING_SEPARATOR)).map(String::trim).toArray(String[]::new);
-
             if (subFields.length == 1) {
-                return Optional.ofNullable(envelope.get(subFields[0]));
+                return Optional.ofNullable(fieldsSource.get(subFields[0]));
             }
 
-            Struct lastStruct = getLastStruct(envelope, subFields);
+            Struct lastStruct = getLastStruct(fieldsSource, subFields);
             if (lastStruct == null) {
                 return Optional.empty();
             }
@@ -204,7 +219,7 @@ public class PartitionRouting<R extends ConnectRecord<R>> implements Transformat
             return Optional.ofNullable(lastStruct.get(subFields[subFields.length - 1]));
         }
         catch (DataException e) {
-            LOGGER.trace("Field {} not found on payload {}. It will not be considered", fieldName, maybeRedactSensitiveData(envelope));
+            LOGGER.trace("Field {} not found on payload {}. It will not be considered", fieldName, maybeRedactSensitiveData(fieldsSource));
             return Optional.empty();
         }
 

@@ -153,6 +153,23 @@ The preceding configuration does not specify how to re-route events so that they
 For information about how to send events to topics other than their default destination topics, see the {link-prefix}:{link-topic-routing}[Topic Routing SMT]., see the {link-prefix}:{link-topic-routing}[Topic Routing SMT].
 
 // Type: concept
+// Title: Routing tombstone events with the {prodname} partition routing SMT
+// ModuleID: routing-tombstone-events-with-the-debezium-partition-routing-smt
+[[partition-routing-tombstones]]
+== Routing tombstone events
+
+A tombstone event has the same key as its delete event, but a `null` value.
+The SMT cannot read value fields from a tombstone, so the tombstone might be sent to a different partition than its delete event.
+
+To route tombstones to the same partition as their delete events, read the fields from the record key by using the `key` prefix, for example, `key.id`.
+To route by a column that is not part of the primary key, add it to the key by setting the `message.key.columns` connector property.
+
+If you combine `key` fields with value fields, for example, `key.id,change.name`, the SMT can read only the `key` fields from a tombstone, so the tombstone might be sent to a different partition than its delete event.
+
+If you also use the `ExtractNewRecordState` SMT, place it after `PartitionRouting` when you use `key` fields.
+Otherwise, the flattened records are not routed and can end up in a different partition than their tombstones.
+
+// Type: concept
 // Title: Migrating from the {prodname} ComputePartition SMT
 // ModuleID: migrate-debezium-compute-partition-smt
 [[migrate-debezium-compute-partition-smt]]
@@ -263,6 +280,8 @@ The following table lists the configuration options that you can set for the par
 Use dot notation if you want the SMT to add fields from the original payload to specific levels in the output data structure.
 To access fields related to data collections, you can use: `after`, `before`, or `change`.
 The 'change' field is a special field that results in the SMT automatically populating content in the 'after' or 'before' elements, depending on type of operation.
+To read a field from the record key, use the `key` prefix, for example, `key.id`.
+For more information, see xref:partition-routing-tombstones[Routing tombstone events].
 If a specified field is not present in a record, the SMT skips it.
 For example, `after.name,source.table,change.name`
 

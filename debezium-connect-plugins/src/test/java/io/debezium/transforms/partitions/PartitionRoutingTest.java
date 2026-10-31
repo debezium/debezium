@@ -35,6 +35,12 @@ public class PartitionRoutingTest {
             .field("product", Schema.OPTIONAL_STRING_SCHEMA)
             .build();
 
+    private static final Schema KEY_SCHEMA = SchemaBuilder.struct()
+            .name("server1.inventory.products.Key")
+            .field("tenant_id", Schema.INT64_SCHEMA)
+            .field("id", Schema.INT64_SCHEMA)
+            .build();
+
     private final PartitionRouting<SourceRecord> partitionRoutingTransformation = new PartitionRouting<>();
 
     @Test
@@ -259,7 +265,84 @@ public class PartitionRoutingTest {
         assertThat(transformed.kafkaPartition()).isZero();
     }
 
+    @Test
+    @FixFor("debezium/dbz#990")
+    public void keyFieldRoutesCreateDeleteAndTombstoneToSamePartition() {
+
+        partitionRoutingTransformation.configure(Map.of(
+                "partition.payload.fields", "key.id",
+                "partition.topic.num", 3));
+
+        final SourceRecord create = buildSourceRecord(productKey(7L, 1L), productRow(1L, 1.0F, "APPLE"), CREATE);
+        final SourceRecord delete = buildSourceRecord(productKey(7L, 1L), productRow(1L, 1.0F, "APPLE"), DELETE);
+
+        final Integer partition = partitionRoutingTransformation.apply(create).kafkaPartition();
+
+        assertThat(partition).isNotNull();
+        assertThat(partitionRoutingTransformation.apply(delete).kafkaPartition()).isEqualTo(partition);
+        assertThat(partitionRoutingTransformation.apply(tombstoneOf(delete)).kafkaPartition()).isEqualTo(partition);
+    }
+
+    @Test
+    @FixFor("debezium/dbz#990")
+    public void keyFieldOnPartOfCompositeKeyRoutesAllRowsOfTenantTogether() {
+
+        partitionRoutingTransformation.configure(Map.of(
+                "partition.payload.fields", "key.tenant_id",
+                "partition.topic.num", 3));
+
+        final SourceRecord delete1 = buildSourceRecord(productKey(7L, 1L), productRow(1L, 1.0F, "APPLE"), DELETE);
+        final SourceRecord delete2 = buildSourceRecord(productKey(7L, 2L), productRow(2L, 1.0F, "ORANGE"), DELETE);
+
+        final Integer partition = partitionRoutingTransformation.apply(delete1).kafkaPartition();
+
+        assertThat(partition).isNotNull();
+        assertThat(partitionRoutingTransformation.apply(tombstoneOf(delete1)).kafkaPartition()).isEqualTo(partition);
+        assertThat(partitionRoutingTransformation.apply(delete2).kafkaPartition()).isEqualTo(partition);
+        assertThat(partitionRoutingTransformation.apply(tombstoneOf(delete2)).kafkaPartition()).isEqualTo(partition);
+    }
+
+    @Test
+    @FixFor("debezium/dbz#990")
+    public void keyAndValueFieldsAreBothUsedForPartitionComputation() {
+
+        partitionRoutingTransformation.configure(Map.of(
+                "partition.payload.fields", "key.tenant_id,change.id",
+                "partition.topic.num", 3));
+
+        final SourceRecord create = buildSourceRecord(productKey(7L, 1L), productRow(1L, 1.0F, "APPLE"), CREATE);
+
+        assertThat(partitionRoutingTransformation.apply(create).kafkaPartition()).isEqualTo(2);
+    }
+
+    @Test
+    @FixFor("debezium/dbz#990")
+    public void deleteIsRoutedButItsTombstoneIsPassedThroughWhenRoutingByValueFields() {
+
+        partitionRoutingTransformation.configure(Map.of(
+                "partition.payload.fields", "change.product",
+                "partition.topic.num", 3));
+
+        final SourceRecord delete = buildSourceRecord(productKey(7L, 1L), productRow(1L, 1.0F, "APPLE"), DELETE);
+        final SourceRecord tombstone = tombstoneOf(delete);
+
+        assertThat(partitionRoutingTransformation.apply(delete).kafkaPartition()).isNotNull();
+        assertThat(partitionRoutingTransformation.apply(tombstone)).isEqualTo(tombstone);
+    }
+
+    private static Struct productKey(long tenantId, long id) {
+        return new Struct(KEY_SCHEMA).put("tenant_id", tenantId).put("id", id);
+    }
+
+    private static SourceRecord tombstoneOf(SourceRecord delete) {
+        return delete.newRecord(delete.topic(), delete.kafkaPartition(), delete.keySchema(), delete.key(), null, null, delete.timestamp());
+    }
+
     private SourceRecord buildSourceRecord(Struct row, Envelope.Operation operation) {
+        return buildSourceRecord(null, row, operation);
+    }
+
+    private SourceRecord buildSourceRecord(Struct key, Struct row, Envelope.Operation operation) {
 
         SchemaBuilder sourceSchemaBuilder = SchemaBuilder.struct()
                 .name("source")
@@ -300,6 +383,8 @@ public class PartitionRoutingTest {
                 new HashMap<>(),
                 new HashMap<>(),
                 "prefix.inventory.products",
+                null,
+                key == null ? null : key.schema(), key,
                 createEnvelope.schema(), payload);
     }
 
