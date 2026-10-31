@@ -115,6 +115,17 @@ public interface ColumnEditor {
     boolean isGenerated();
 
     /**
+     * Determine whether this column is invisible to clients. See {@link Column#isInvisible()}.
+     *
+     * <p>Default implementation returns {@code false} to preserve binary compatibility with custom editors.</p>
+     *
+     * @return {@code true} if the column is invisible, or {@code false} otherwise
+     */
+    default boolean isInvisible() {
+        return false;
+    }
+
+    /**
      * Get the database-specific complete expression defining the column's default value.
      *
      * @return the complete type expression
@@ -239,6 +250,18 @@ public interface ColumnEditor {
      * @return this editor so callers can chain methods together
      */
     ColumnEditor generated(boolean generated);
+
+    /**
+     * Set whether the column is invisible to clients. See {@link Column#isInvisible()}.
+     *
+     * <p>Default implementation is a no-op returning {@code this} to preserve binary compatibility with custom editors.</p>
+     *
+     * @param invisible {@code true} if the column is invisible, or {@code false} otherwise
+     * @return this editor so callers can chain methods together
+     */
+    default ColumnEditor invisible(boolean invisible) {
+        return this;
+    }
 
     /**
      * Set the position of the column within the table definition.

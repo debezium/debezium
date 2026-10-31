@@ -129,6 +129,21 @@ public interface Column extends Comparable<Column> {
     boolean isGenerated();
 
     /**
+     * Determine whether the database marks this column invisible. Examples include Oracle {@code INVISIBLE} and
+     * MySQL {@code INVISIBLE} columns, which are part of the table definition but excluded from {@code SELECT *}
+     * at the database level. This property only records that flag; Debezium does not yet consult it when building
+     * chunk projections or change event payloads.
+     *
+     * <p>This is declared as a default method returning {@code false} to preserve binary compatibility with custom
+     * {@link Column} implementations.</p>
+     *
+     * @return {@code true} if the column is invisible, or {@code false} otherwise
+     */
+    default boolean isInvisible() {
+        return false;
+    }
+
+    /**
      * Get the database-specific complete expression defining the column's default value.
      *
      * @return the complete type expression
