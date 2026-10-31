@@ -34,6 +34,7 @@ import io.debezium.relational.history.SchemaHistory;
 import io.debezium.relational.history.SchemaHistoryListener;
 import io.debezium.schema.DefaultTopicNamingStrategy;
 import io.debezium.util.Collect;
+import io.debezium.util.Strings;
 
 /**
  * Configuration properties for binlog-based connectors.
@@ -794,6 +795,15 @@ public abstract class BinlogConnectorConfig extends HistorizedRelationalDatabase
     @Override
     public TemporalPrecisionMode getTemporalPrecisionMode() {
         return temporalPrecisionMode;
+    }
+
+    @Override
+    public byte[] getUnavailableValuePlaceholder() {
+        String placeholder = getConfig().getString(UNAVAILABLE_VALUE_PLACEHOLDER);
+        if (placeholder.startsWith("hex:")) {
+            return Strings.hexStringToByteArray(placeholder.substring(4));
+        }
+        return placeholder.getBytes();
     }
 
     /**

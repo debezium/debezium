@@ -52,6 +52,7 @@ public class MariaDbValueConverters extends BinlogValueConverters {
      * @param adjuster a temporal adjuster to make a database specific time before conversion
      * @param eventConvertingFailureHandlingMode how to handle conversion failures
      * @param serviceRegistry the service registry, should not be {@code null}
+     * @param unavailableValuePlaceholder the placeholder bytes for unavailable column values; may be null
      */
     public MariaDbValueConverters(DecimalMode decimalMode,
                                   TemporalPrecisionMode temporalPrecisionMode,
@@ -59,8 +60,10 @@ public class MariaDbValueConverters extends BinlogValueConverters {
                                   BinaryHandlingMode binaryHandlingMode,
                                   TemporalAdjuster adjuster,
                                   EventConvertingFailureHandlingMode eventConvertingFailureHandlingMode,
-                                  ServiceRegistry serviceRegistry) {
-        super(decimalMode, temporalPrecisionMode, bigIntUnsignedMode, binaryHandlingMode, adjuster, eventConvertingFailureHandlingMode, serviceRegistry);
+                                  ServiceRegistry serviceRegistry,
+                                  byte[] unavailableValuePlaceholder) {
+        super(decimalMode, temporalPrecisionMode, bigIntUnsignedMode, binaryHandlingMode, adjuster, eventConvertingFailureHandlingMode, serviceRegistry,
+                unavailableValuePlaceholder);
     }
 
     @Override
