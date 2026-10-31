@@ -6,7 +6,6 @@
 package io.debezium.connector.oracle;
 
 import java.time.Instant;
-import java.util.Collections;
 import java.util.Map;
 
 import io.debezium.config.CommonConnectorConfig;
@@ -39,7 +38,7 @@ public class OracleSchemaHistoryTest extends AbstractSchemaHistoryTest {
     protected HistoryRecord getRenameCreateHistoryRecord() {
         return new HistoryRecord(
                 Map.of("server", TestHelper.SERVER_NAME),
-                Map.of("snapshot_scn", "1", "snapshot", true, "scn", "1", "snapshot_completed", false),
+                Map.of("snapshot_commit_scn", "1", "snapshot", true, "scn", "1", "snapshot_completed", false),
                 TestHelper.getDatabaseName(),
                 "DEBEZIUM",
                 "CREATE TABLE \"DEBEZIUM\".\"DBZ4451A\" (\"ID\" NUMBER(9,0), PRIMARY KEY(\"ID\");",
@@ -55,7 +54,7 @@ public class OracleSchemaHistoryTest extends AbstractSchemaHistoryTest {
 
         return new HistoryRecord(
                 Map.of("server", TestHelper.SERVER_NAME),
-                Map.of("snapshot_scn", "2", "scn", "2", "commit_scn", "2"),
+                Map.of("scn", "2", "commit_scn", "2"),
                 TestHelper.getDatabaseName(),
                 "DEBEZIUM",
                 "ALTER TABLE DBZ4451A RENAME TO DBZ4451B;",
@@ -79,8 +78,6 @@ public class OracleSchemaHistoryTest extends AbstractSchemaHistoryTest {
                 .logicalName(new OracleConnectorConfig(config))
                 .scn(Scn.valueOf(999))
                 .commitScn(CommitScn.valueOf(999L))
-                .snapshotScn(Scn.valueOf(999))
-                .snapshotPendingTransactions(Collections.emptyMap())
                 .snapshotCompleted(true)
                 .transactionContext(new TransactionContext())
                 .incrementalSnapshotContext(new SignalBasedIncrementalSnapshotContext<>())
