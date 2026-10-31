@@ -35,14 +35,13 @@ import org.slf4j.LoggerFactory;
 
 import io.debezium.DebeziumException;
 import io.debezium.annotation.NotThreadSafe;
-import io.debezium.data.SpecialValueDecimal;
-import io.debezium.data.ValueWrapper;
 import io.debezium.jdbc.JdbcConnection;
 import io.debezium.pipeline.EventDispatcher;
 import io.debezium.pipeline.notification.IncrementalSnapshotNotificationService.TableScanCompletionStatus;
 import io.debezium.pipeline.notification.NotificationService;
 import io.debezium.pipeline.signal.SignalPayload;
 import io.debezium.pipeline.signal.actions.snapshotting.SnapshotConfiguration;
+import io.debezium.pipeline.source.snapshot.SnapshotKeyColumns;
 import io.debezium.pipeline.source.spi.DataChangeEventListener;
 import io.debezium.pipeline.source.spi.SnapshotProgressListener;
 import io.debezium.pipeline.spi.ChangeRecordEmitter;
@@ -863,24 +862,9 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<P extends Par
         final List<Column> keyColumns = chunkQueryBuilder.getQueryColumns(context, currentTable);
         final Object[] key = new Object[keyColumns.size()];
         for (int i = 0; i < keyColumns.size(); i++) {
-            key[i] = unwrapKeyValue(row[keyColumns.get(i).position() - 1]);
+            key[i] = SnapshotKeyColumns.unwrapKeyValue(row[keyColumns.get(i).position() - 1]);
         }
         return key;
-    }
-
-    @SuppressWarnings("unchecked")
-    static Object unwrapKeyValue(Object fieldValue) {
-        if (fieldValue instanceof SpecialValueDecimal specialValueDecimal) {
-            final Optional<BigDecimal> decimalValue = specialValueDecimal.getDecimalValue();
-            if (decimalValue.isPresent()) {
-                return decimalValue.get();
-            }
-            // NaN and the infinities have no BigDecimal form: getWrappedValue() would degrade them to null,
-            // which the chunk query cannot bind. Their double form stays bindable and PostgreSQL orders it
-            // consistently with the numeric column (NaN above everything).
-            return specialValueDecimal.toDouble();
-        }
-        return fieldValue instanceof ValueWrapper<?> ? ((ValueWrapper<Object>) fieldValue).getWrappedValue() : fieldValue;
     }
 
     protected void setContext(IncrementalSnapshotContext<T> context) {
