@@ -233,9 +233,11 @@ public abstract class BinlogDatabaseSchema<P extends BinlogPartition, O extends 
     public boolean assignTableNumber(long tableNumber, TableId id) {
         final TableSchema tableSchema = schemaFor(id);
         if (tableSchema == null) {
+            tableIdsByTableNumber.remove(tableNumber);
             excludeTableIdsByTableNumber.put(tableNumber, id);
             return false;
         }
+        excludeTableIdsByTableNumber.remove(tableNumber);
         tableIdsByTableNumber.put(tableNumber, id);
         return true;
     }
