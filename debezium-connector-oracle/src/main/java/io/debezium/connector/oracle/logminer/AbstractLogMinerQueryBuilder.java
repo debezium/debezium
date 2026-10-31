@@ -30,11 +30,11 @@ import io.debezium.util.Strings;
  */
 public abstract class AbstractLogMinerQueryBuilder implements LogMinerQueryBuilder {
 
-    private static final String EMPTY = "";
-    private static final String LOGMNR_CONTENTS_VIEW = "V$LOGMNR_CONTENTS";
-    private static final String UNKNOWN_USERNAME = "UNKNOWN";
-    private static final String UNKNOWN_SCHEMA_NAME = "UNKNOWN";
-    private static final String UNKNOWN_TABLE_NAME_PREFIX = "OBJ#";
+    public static final String EMPTY = "";
+    public static final String LOGMNR_CONTENTS_VIEW = "V$LOGMNR_CONTENTS";
+    public static final String UNKNOWN_USERNAME = "UNKNOWN";
+    public static final String UNKNOWN_SCHEMA_NAME = "UNKNOWN";
+    public static final String UNKNOWN_TABLE_NAME_PREFIX = "OBJ#";
 
     public static final Integer IN_CLAUSE_MAX_ELEMENTS = 1000;
 
@@ -90,7 +90,7 @@ public abstract class AbstractLogMinerQueryBuilder implements LogMinerQueryBuild
      *
      * @return the column list string, ending with a trailing space
      */
-    private String buildColumnList() {
+    protected String buildColumnList() {
         final List<String> columns = new ArrayList<>();
 
         // NOTE: Mandatory columns (positions 1-21, always present), and should be placed before optional columns
@@ -388,14 +388,14 @@ public abstract class AbstractLogMinerQueryBuilder implements LogMinerQueryBuild
         }
     }
 
-    private static Optional<TableId> getSignalDataCollectionId(OracleConnectorConfig connectorConfig) {
+    public static Optional<TableId> getSignalDataCollectionId(OracleConnectorConfig connectorConfig) {
         if (!connectorConfig.getSignalingDataCollectionIds().isEmpty()) {
             return Optional.of(TableId.parse(connectorConfig.getSignalingDataCollectionIds().get(0)));
         }
         return Optional.empty();
     }
 
-    private static boolean tableIncludeListContains(Collection<String> values, TableId searchValue) {
+    public static boolean tableIncludeListContains(Collection<String> values, TableId searchValue) {
         for (String value : values) {
             final TableId tableId = TableId.parse(value, false);
             if (tableId.schema().equalsIgnoreCase(searchValue.schema()) &&
@@ -406,7 +406,7 @@ public abstract class AbstractLogMinerQueryBuilder implements LogMinerQueryBuild
         return false;
     }
 
-    private static boolean matches(Collection<Pattern> patterns, String searchValue) {
+    public static boolean matches(Collection<Pattern> patterns, String searchValue) {
         for (Pattern pattern : patterns) {
             if (pattern.matcher(searchValue).matches()) {
                 return true;
@@ -421,7 +421,7 @@ public abstract class AbstractLogMinerQueryBuilder implements LogMinerQueryBuild
      * @param fieldName the query field name the predicate applies to, should never be {@code null}
      * @return the predicate
      */
-    private static String resolveExcludedSchemaPredicate(String fieldName) {
+    public static String resolveExcludedSchemaPredicate(String fieldName) {
         // There are some common schemas that we automatically ignore when building the runtime Filter
         // predicates, and we put that same list of schemas here and apply those in the generated SQL.
         final List<String> schemas = getBuiltInExcludedSchemas();
@@ -435,15 +435,15 @@ public abstract class AbstractLogMinerQueryBuilder implements LogMinerQueryBuild
         return EMPTY;
     }
 
-    private static List<String> getBuiltInExcludedSchemas() {
+    public static List<String> getBuiltInExcludedSchemas() {
         return toUpperCase(OracleConnectorConfig.EXCLUDED_SCHEMAS);
     }
 
-    private static List<String> getTableIncludeExcludeListAsInValueList(String list) {
+    public static List<String> getTableIncludeExcludeListAsInValueList(String list) {
         return Strings.listOfTrimmed(list, s -> s.split("[,]"), v -> v.replaceAll("\\\\", ""));
     }
 
-    private static List<String> toUpperCase(Collection<String> values) {
+    public static List<String> toUpperCase(Collection<String> values) {
         return values.stream().map(String::toUpperCase).collect(Collectors.toList());
     }
 
@@ -541,7 +541,7 @@ public abstract class AbstractLogMinerQueryBuilder implements LogMinerQueryBuild
     /**
      * Query helper to construct a SQL in-clause based a tuple of include/exclude value lists
      */
-    private static class IncludeExcludeInClause {
+    public static class IncludeExcludeInClause {
         private String fieldName;
         private boolean caseInsensitive;
         private LogMiningQueryFilterMode mode;
@@ -636,7 +636,7 @@ public abstract class AbstractLogMinerQueryBuilder implements LogMinerQueryBuild
     /**
      * Query helper to construct an Oracle SQL REGEXP_LIKE list based on include/exclude value lists
      */
-    private static class IncludeExcludeRegExpLike {
+    public static class IncludeExcludeRegExpLike {
         private String fieldName;
         private LogMiningQueryFilterMode mode;
         private List<Pattern> includeValues;
