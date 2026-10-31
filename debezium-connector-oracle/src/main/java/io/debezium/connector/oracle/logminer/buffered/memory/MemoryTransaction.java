@@ -40,6 +40,11 @@ public class MemoryTransaction extends AbstractTransaction {
     }
 
     @Override
+    public void rewindEvents(int numberOfEvents) {
+        this.numberOfEvents = numberOfEvents;
+    }
+
+    @Override
     public String toString() {
         return "MemoryTransaction{" +
                 "numberOfEvents=" + numberOfEvents +

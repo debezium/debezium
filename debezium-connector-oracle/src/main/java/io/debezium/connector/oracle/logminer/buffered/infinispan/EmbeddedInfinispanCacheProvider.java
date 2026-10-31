@@ -7,7 +7,6 @@ package io.debezium.connector.oracle.logminer.buffered.infinispan;
 
 import static io.debezium.connector.oracle.OracleConnectorConfig.LOG_MINING_BUFFER_INFINISPAN_CACHE_EVENTS;
 import static io.debezium.connector.oracle.OracleConnectorConfig.LOG_MINING_BUFFER_INFINISPAN_CACHE_PROCESSED_TRANSACTIONS;
-import static io.debezium.connector.oracle.OracleConnectorConfig.LOG_MINING_BUFFER_INFINISPAN_CACHE_SCHEMA_CHANGES;
 import static io.debezium.connector.oracle.OracleConnectorConfig.LOG_MINING_BUFFER_INFINISPAN_CACHE_TRANSACTIONS;
 
 import java.util.Map;
@@ -46,7 +45,6 @@ public class EmbeddedInfinispanCacheProvider extends AbstractCacheProvider<Infin
     private final EmbeddedCacheManager cacheManager;
     private final InfinispanLogMinerTransactionCache transactionCache;
     private final InfinispanLogMinerCache<String, String> processedTransactionsCache;
-    private final InfinispanLogMinerCache<String, String> schemaChangesCache;
 
     public EmbeddedInfinispanCacheProvider(OracleConnectorConfig connectorConfig) {
         LOGGER.info("Using Infinispan in embedded mode to buffer transactions");
@@ -56,19 +54,13 @@ public class EmbeddedInfinispanCacheProvider extends AbstractCacheProvider<Infin
 
         this.transactionCache = createTransactionCache(connectorConfig);
         this.processedTransactionsCache = createProcessedTransactionsCache(connectorConfig);
-        this.schemaChangesCache = createSchemaChangesCache(connectorConfig);
-
+        clearRetainedState();
         displayCacheStatistics();
     }
 
     @Override
     public LogMinerTransactionCache<InfinispanTransaction> getTransactionCache() {
         return transactionCache;
-    }
-
-    @Override
-    public LogMinerCache<String, String> getSchemaChangesCache() {
-        return schemaChangesCache;
     }
 
     @Override
@@ -83,13 +75,11 @@ public class EmbeddedInfinispanCacheProvider extends AbstractCacheProvider<Infin
             if (dropBufferOnStop) {
                 LOGGER.info("Clearing infinispan caches");
                 transactionCache.clear();
-                schemaChangesCache.clear();
                 processedTransactionsCache.clear();
 
                 // this block should only be used by tests, should we wrap this in case admin rights aren't given?
                 cacheManager.administration().removeCache(TRANSACTIONS_CACHE_NAME);
                 cacheManager.administration().removeCache(PROCESSED_TRANSACTIONS_CACHE_NAME);
-                cacheManager.administration().removeCache(SCHEMA_CHANGES_CACHE_NAME);
                 cacheManager.administration().removeCache(EVENTS_CACHE_NAME);
             }
             LOGGER.info("Shutting down infinispan embedded caches");
@@ -105,17 +95,13 @@ public class EmbeddedInfinispanCacheProvider extends AbstractCacheProvider<Infin
     private InfinispanLogMinerTransactionCache createTransactionCache(OracleConnectorConfig connectorConfig) {
         return new InfinispanLogMinerTransactionCache(
                 createCache(TRANSACTIONS_CACHE_NAME, connectorConfig, LOG_MINING_BUFFER_INFINISPAN_CACHE_TRANSACTIONS),
-                createCache(EVENTS_CACHE_NAME, connectorConfig, LOG_MINING_BUFFER_INFINISPAN_CACHE_EVENTS));
+                createCache(EVENTS_CACHE_NAME, connectorConfig, LOG_MINING_BUFFER_INFINISPAN_CACHE_EVENTS),
+                connectorConfig.getLogMiningBufferGrowthMax());
     }
 
     private InfinispanLogMinerCache<String, String> createProcessedTransactionsCache(OracleConnectorConfig connectorConfig) {
         return new InfinispanLogMinerCache<>(
                 createCache(PROCESSED_TRANSACTIONS_CACHE_NAME, connectorConfig, LOG_MINING_BUFFER_INFINISPAN_CACHE_PROCESSED_TRANSACTIONS));
-    }
-
-    private InfinispanLogMinerCache<String, String> createSchemaChangesCache(OracleConnectorConfig connectorConfig) {
-        return new InfinispanLogMinerCache<>(
-                createCache(SCHEMA_CHANGES_CACHE_NAME, connectorConfig, LOG_MINING_BUFFER_INFINISPAN_CACHE_SCHEMA_CHANGES));
     }
 
     private <K, V> BasicCache<K, V> createCache(String cacheName, OracleConnectorConfig connectorConfig, Field field) {

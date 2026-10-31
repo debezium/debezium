@@ -12,7 +12,7 @@ import java.util.function.Function;
 import java.util.stream.Stream;
 
 import io.debezium.connector.oracle.Scn;
-import io.debezium.connector.oracle.logminer.events.LogMinerEvent;
+import io.debezium.connector.oracle.logminer.events.LogMinerRedoEvent;
 
 /**
  * A cache implementation that stores transactions and their respective events.
@@ -118,16 +118,20 @@ public interface LogMinerTransactionCache<T extends Transaction> {
      * @param predicate the consumer, should not be {@code null}
      * @throws InterruptedException thrown if the thread is interrupted
      */
-    void forEachEvent(T transaction, InterruptiblePredicate<LogMinerEvent> predicate) throws InterruptedException;
+    void forEachEvent(T transaction, InterruptiblePredicate<LogMinerRedoEvent> predicate) throws InterruptedException;
 
     /**
      * Add a transaction event to the cache.
+     * <p>
+     * Events are positional: the key is the number of events the transaction has, as its next event id reports
+     * it, and a position is never reused while the transaction is open. Adding an event under a key the
+     * transaction already has is ignored, since {@link #containsTransactionEvent} is checked first.
      *
      * @param transaction the transaction, should not be {@code null}
-     * @param eventKey the event key, should not be {@code null}
+     * @param eventKey the event's position, the transaction's next event id
      * @param event the event, should not be {@code null}
      */
-    void addTransactionEvent(T transaction, int eventKey, LogMinerEvent event);
+    void addTransactionEvent(T transaction, int eventKey, LogMinerRedoEvent event);
 
     /**
      * Removes all events for a given transaction.
@@ -185,27 +189,39 @@ public interface LogMinerTransactionCache<T extends Transaction> {
     boolean isAbandoned(String transactionId);
 
     /**
-     * Records the given event as the most recently enqueued event for the specified transaction.
+     * Returns the metadata columns of the transaction's stored events. Every cache keeps these on the heap,
+     * so reading them never touches the event store; they describe the events in storage order, including
+     * the ones a rollback to a savepoint undid.
      *
-     * @param transactionId the transaction identifier, should not be {@code null}
-     * @param event the event to track, should not be {@code null}
-     * @return the previously tracked event for the transaction, or {@code null} if there was none
+     * @param transaction the transaction, should not be {@code null}
+     * @return the metadata columns, or {@code null} when the transaction has no stored events
      */
-    LogMinerEvent putLastEnqueuedEvent(String transactionId, LogMinerEvent event);
-
-    /**
-     * Removes the tracked last enqueued event for the specified transaction. This should be done
-     * whenever the transaction is removed from the cache, e.g. on commit, rollback, or abandonment.
-     *
-     * @param transactionId the transaction identifier, should not be {@code null}
-     * @return the removed event, or {@code null} if none was tracked
-     */
-    LogMinerEvent removeLastEnqueuedEvent(String transactionId);
+    EventMetadataColumns getEventMetadata(T transaction);
 
     /**
      * Clears the contents of the cache.
      */
     void clear();
+
+    /**
+     * Starts a mining pass. From now on the first event added to a transaction records how many events the
+     * transaction had, so that {@link #discardBatch()} can drop what the pass added.
+     */
+    void beginBatch();
+
+    /**
+     * Ends a mining pass that read every row it was given; the pass can no longer be discarded.
+     */
+    void completeBatch();
+
+    /**
+     * Ends a mining pass that failed part-way, for example with {@code ORA-00310}: the events the pass added
+     * are dropped from every transaction it touched, so that mining the same range again rebuilds them without
+     * duplicates. Partial rollbacks are resolved when a transaction is read, so nothing else has to be undone.
+     * The event ids the touched transactions hand out are rewound with their events; a transaction the pass
+     * created stays in the cache, empty, and is filled again by the re-mine.
+     */
+    void discardBatch();
 
     /**
      * Resets the transaction state as if it has no transaction events.

@@ -205,6 +205,11 @@
                 <version>${version.zstd-jni}</version>
             </dependency>
             <dependency>
+                <groupId>at.yawk.lz4</groupId>
+                <artifactId>lz4-java</artifactId>
+                <version>${version.lz4-java}</version>
+            </dependency>
+            <dependency>
                 <groupId>io.confluent</groupId>
                 <artifactId>kafka-connect-avro-converter</artifactId>
                 <version>${version.confluent.platform}</version>

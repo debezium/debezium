@@ -56,7 +56,7 @@ public class EhcacheIT extends AbstractAsyncEngineConnectorTest {
     }
 
     @Test
-    @FixFor("DBZ-8874")
+    @FixFor({ "DBZ-8874", "debezium/dbz#2943" })
     public void shouldNotSilentlyEvictEventsOverThreshold() throws Exception {
         TestHelper.dropTable(connection, "dbz8874");
         try {
@@ -72,7 +72,6 @@ public class EhcacheIT extends AbstractAsyncEngineConnectorTest {
                     // Specifically overrides the default with an extremely limited cache size
                     .with(OracleConnectorConfig.LOG_MINING_BUFFER_EHCACHE_TRANSACTIONS_CONFIG, getSmallCacheSize())
                     .with(OracleConnectorConfig.LOG_MINING_BUFFER_EHCACHE_PROCESSED_TRANSACTIONS_CONFIG, getSmallCacheSize())
-                    .with(OracleConnectorConfig.LOG_MINING_BUFFER_EHCACHE_SCHEMA_CHANGES_CONFIG, getSmallCacheSize())
                     .with(OracleConnectorConfig.LOG_MINING_BUFFER_EHCACHE_EVENTS_CONFIG, getSmallCacheSize())
                     .build();
 
@@ -110,7 +109,7 @@ public class EhcacheIT extends AbstractAsyncEngineConnectorTest {
     }
 
     @Test
-    @FixFor("DBZ-8874")
+    @FixFor({ "DBZ-8874", "debezium/dbz#2943" })
     public void shouldNotCauseEvictionWhenCacheSizedProperly() throws Exception {
         TestHelper.dropTable(connection, "dbz8874");
         try {
@@ -126,7 +125,6 @@ public class EhcacheIT extends AbstractAsyncEngineConnectorTest {
                     // Specifically overrides the default with an extremely limited cache size
                     .with(OracleConnectorConfig.LOG_MINING_BUFFER_EHCACHE_TRANSACTIONS_CONFIG, getLargeCacheSize())
                     .with(OracleConnectorConfig.LOG_MINING_BUFFER_EHCACHE_PROCESSED_TRANSACTIONS_CONFIG, getLargeCacheSize())
-                    .with(OracleConnectorConfig.LOG_MINING_BUFFER_EHCACHE_SCHEMA_CHANGES_CONFIG, getLargeCacheSize())
                     .with(OracleConnectorConfig.LOG_MINING_BUFFER_EHCACHE_EVENTS_CONFIG, getLargeCacheSize())
                     .build();
 

@@ -103,7 +103,6 @@ public class TestHelper {
     static {
         cacheMappings.put(CacheProvider.TRANSACTIONS_CACHE_NAME, OracleConnectorConfig.LOG_MINING_BUFFER_INFINISPAN_CACHE_TRANSACTIONS);
         cacheMappings.put(CacheProvider.PROCESSED_TRANSACTIONS_CACHE_NAME, OracleConnectorConfig.LOG_MINING_BUFFER_INFINISPAN_CACHE_PROCESSED_TRANSACTIONS);
-        cacheMappings.put(CacheProvider.SCHEMA_CHANGES_CACHE_NAME, OracleConnectorConfig.LOG_MINING_BUFFER_INFINISPAN_CACHE_SCHEMA_CHANGES);
         cacheMappings.put(CacheProvider.EVENTS_CACHE_NAME, OracleConnectorConfig.LOG_MINING_BUFFER_INFINISPAN_CACHE_EVENTS);
     }
 
@@ -200,7 +199,6 @@ public class TestHelper {
                 builder.with(OracleConnectorConfig.LOG_MINING_BUFFER_EHCACHE_GLOBAL_CONFIG, getEhcacheGlobalCacheConfig());
                 builder.with(OracleConnectorConfig.LOG_MINING_BUFFER_EHCACHE_TRANSACTIONS_CONFIG, getEhcacheBasicCacheConfig(cacheSize));
                 builder.with(OracleConnectorConfig.LOG_MINING_BUFFER_EHCACHE_PROCESSED_TRANSACTIONS_CONFIG, getEhcacheBasicCacheConfig(cacheSize));
-                builder.with(OracleConnectorConfig.LOG_MINING_BUFFER_EHCACHE_SCHEMA_CHANGES_CONFIG, getEhcacheBasicCacheConfig(cacheSize));
                 builder.with(OracleConnectorConfig.LOG_MINING_BUFFER_EHCACHE_EVENTS_CONFIG, getEhcacheBasicCacheConfig(cacheSize));
             }
             builder.withDefault(OracleConnectorConfig.LOG_MINING_BUFFER_DROP_ON_STOP, true);
@@ -591,13 +589,30 @@ public class TestHelper {
      * @throws RuntimeException if the role cannot be revoked
      */
     public static void revokeRole(String roleName) {
+        revokeRole(roleName, null, testJdbcConfig().getString(JdbcConfiguration.USER));
+    }
+
+    /**
+     * Revokes the specified role from the given user on the specified object, undoing
+     * {@link #grantRole(String, String, String)}.
+     *
+     * @param roleName role to be revoked
+     * @param objectName the object the role was granted against, can be {@code null}
+     * @param userName the user from whom the role is revoked
+     * @throws RuntimeException if the role cannot be revoked
+     */
+    public static void revokeRole(String roleName, String objectName, String userName) {
         final String pdbName = defaultConfig().build().getString(OracleConnectorConfig.PDB_NAME);
-        final String userName = testJdbcConfig().getString(JdbcConfiguration.USER);
         try (OracleConnection connection = adminConnection()) {
             if (pdbName != null) {
                 connection.setSessionToPdb(pdbName);
             }
-            connection.execute("REVOKE " + roleName + " FROM " + userName);
+            final StringBuilder sql = new StringBuilder("REVOKE ").append(roleName);
+            if (!Strings.isNullOrEmpty(objectName)) {
+                sql.append(" ON ").append(objectName);
+            }
+            sql.append(" FROM ").append(userName);
+            connection.execute(sql.toString());
         }
         catch (SQLException e) {
             throw new RuntimeException("Failed to revoke role '" + roleName + "' for user " + userName, e);
@@ -763,7 +778,6 @@ public class TestHelper {
         return List.of(
                 OracleConnectorConfig.LOG_MINING_BUFFER_EHCACHE_TRANSACTIONS_CONFIG,
                 OracleConnectorConfig.LOG_MINING_BUFFER_EHCACHE_PROCESSED_TRANSACTIONS_CONFIG,
-                OracleConnectorConfig.LOG_MINING_BUFFER_EHCACHE_SCHEMA_CHANGES_CONFIG,
                 OracleConnectorConfig.LOG_MINING_BUFFER_EHCACHE_EVENTS_CONFIG);
     }
 

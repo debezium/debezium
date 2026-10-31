@@ -13,6 +13,7 @@ import org.antlr.v4.runtime.tree.ParseTreeListener;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import io.debezium.connector.oracle.antlr.CreateTableAsSelectException;
 import io.debezium.connector.oracle.antlr.OracleDdlParser;
 import io.debezium.ddl.parser.oracle.generated.PlSqlParser;
 import io.debezium.relational.Column;
@@ -50,6 +51,10 @@ public class CreateTableParserListener extends BaseParserListener {
         TableId tableId = new TableId(catalogName, schemaName, getTableName(ctx.table_name()));
         if (parser.getTableFilter().isIncluded(tableId)) {
             if (parser.databaseTables().forTable(tableId) == null) {
+                if (isCreateTableAsSelect(ctx)) {
+                    // The statement names no columns; the caller resolves the definition from the database
+                    throw new CreateTableAsSelectException(tableId);
+                }
                 tableEditor = parser.databaseTables().editOrCreateTable(tableId);
                 super.enterCreate_table(ctx);
             }
@@ -136,5 +141,17 @@ public class CreateTableParserListener extends BaseParserListener {
 
     private Table getTable() {
         return tableEditor != null ? tableEditor.create() : null;
+    }
+
+    private static boolean isCreateTableAsSelect(PlSqlParser.Create_tableContext ctx) {
+        final PlSqlParser.Relational_table_propertiesContext properties = ctx.relational_table().relational_table_properties();
+        if (properties != null) {
+            for (PlSqlParser.Relational_table_propertyContext property : properties.relational_table_property()) {
+                if (property.table_properties() != null && property.table_properties().select_only_statement() != null) {
+                    return true;
+                }
+            }
+        }
+        return false;
     }
 }

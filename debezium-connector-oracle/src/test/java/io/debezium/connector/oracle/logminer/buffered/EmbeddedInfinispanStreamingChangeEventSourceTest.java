@@ -36,9 +36,4 @@ public class EmbeddedInfinispanStreamingChangeEventSourceTest extends AbstractBu
                         .with(OracleConnectorConfig.LOG_MINING_BUFFER_DROP_ON_STOP, true));
     }
 
-    @Override
-    protected boolean isTransactionAbandonmentSupported() {
-        return false;
-    }
-
 }

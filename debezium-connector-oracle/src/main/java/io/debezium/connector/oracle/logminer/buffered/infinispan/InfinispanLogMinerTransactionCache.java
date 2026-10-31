@@ -5,10 +5,9 @@
  */
 package io.debezium.connector.oracle.logminer.buffered.infinispan;
 
+import java.util.BitSet;
 import java.util.HashMap;
-import java.util.Iterator;
 import java.util.Map;
-import java.util.TreeSet;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.stream.Stream;
@@ -16,27 +15,35 @@ import java.util.stream.Stream;
 import org.infinispan.commons.api.BasicCache;
 
 import io.debezium.connector.oracle.logminer.buffered.AbstractLogMinerTransactionCache;
-import io.debezium.connector.oracle.logminer.events.LogMinerEvent;
-import io.debezium.connector.oracle.logminer.events.RollbackToSavepointEvent;
+import io.debezium.connector.oracle.logminer.buffered.EventMetadataColumns;
+import io.debezium.connector.oracle.logminer.buffered.SavepointRollbacks;
+import io.debezium.connector.oracle.logminer.buffered.TableDictionary;
+import io.debezium.connector.oracle.logminer.events.LogMinerRedoEvent;
 
 /**
- * A concrete implementation of {@link AbstractLogMinerTransactionCache} for Infinispan.
+ * A concrete implementation of the {@link AbstractLogMinerTransactionCache} for Infinispan.
+ * <p>
+ * Each event is one entry of the events cache, keyed by transaction id and position. The fields the partial
+ * rollback logic reads are kept on the heap in {@link EventMetadataColumns}, one per transaction, so an undo
+ * is resolved when the transaction is read without reading any entry, and only the surviving entries are read.
  *
  * @author Chris Cranford
  */
 public class InfinispanLogMinerTransactionCache extends AbstractLogMinerTransactionCache<InfinispanTransaction> {
 
     private final BasicCache<String, InfinispanTransaction> transactionCache;
-    private final BasicCache<String, LogMinerEvent> eventCache;
+    private final BasicCache<String, LogMinerRedoEvent> eventCache;
+    private final int growthMax;
 
-    // Heap-backed caches for quick access to specific metadata to speed up processing
-    private final Map<String, TreeSet<Integer>> eventIdsByTransactionId = new HashMap<>();
+    // Heap-backed metadata for quick access to what the rollback logic reads
+    private final Map<String, EventMetadataColumns> metadataByTransactionId = new HashMap<>();
+    private final TableDictionary tables = new TableDictionary();
 
-    public InfinispanLogMinerTransactionCache(BasicCache<String, InfinispanTransaction> transactionCache, BasicCache<String, LogMinerEvent> eventCache) {
+    public InfinispanLogMinerTransactionCache(BasicCache<String, InfinispanTransaction> transactionCache, BasicCache<String, LogMinerRedoEvent> eventCache,
+                                              int growthMax) {
         this.transactionCache = transactionCache;
         this.eventCache = eventCache;
-
-        primeHeapCacheFromOffHeapCaches();
+        this.growthMax = growthMax;
     }
 
     @Override
@@ -47,9 +54,9 @@ public class InfinispanLogMinerTransactionCache extends AbstractLogMinerTransact
     @Override
     public void addTransaction(InfinispanTransaction transaction) {
         transactionCache.put(transaction.getTransactionId(), transaction);
-        final TreeSet<Integer> previousEventIds = eventIdsByTransactionId.put(transaction.getTransactionId(), new TreeSet<>());
-        if (previousEventIds != null) {
-            transactionEvents -= previousEventIds.size();
+        final EventMetadataColumns previous = metadataByTransactionId.put(transaction.getTransactionId(), new EventMetadataColumns(tables, growthMax));
+        if (previous != null) {
+            transactionEvents -= previous.count();
         }
     }
 
@@ -60,17 +67,17 @@ public class InfinispanLogMinerTransactionCache extends AbstractLogMinerTransact
 
     @Override
     public boolean containsTransaction(String transactionId) {
-        return eventIdsByTransactionId.containsKey(transactionId);
+        return metadataByTransactionId.containsKey(transactionId);
     }
 
     @Override
     public boolean isEmpty() {
-        return eventIdsByTransactionId.isEmpty();
+        return metadataByTransactionId.isEmpty();
     }
 
     @Override
     public int getTransactionCount() {
-        return eventIdsByTransactionId.size();
+        return metadataByTransactionId.size();
     }
 
     @Override
@@ -95,11 +102,13 @@ public class InfinispanLogMinerTransactionCache extends AbstractLogMinerTransact
     }
 
     @Override
-    public void forEachEvent(InfinispanTransaction transaction, InterruptiblePredicate<LogMinerEvent> predicate) throws InterruptedException {
-        final var events = eventIdsByTransactionId.get(transaction.getTransactionId());
-        if (events != null) {
-            for (int eventId : events) {
-                if (!predicate.test(eventCache.get(transaction.getEventId(eventId)))) {
+    public void forEachEvent(InfinispanTransaction transaction, InterruptiblePredicate<LogMinerRedoEvent> predicate) throws InterruptedException {
+        final String transactionId = transaction.getTransactionId();
+        final EventMetadataColumns metadata = metadataByTransactionId.get(transactionId);
+        if (metadata != null) {
+            final BitSet skipped = SavepointRollbacks.resolve(transactionId, metadata, id -> eventCache.get(eventKey(transactionId, id)));
+            for (int id = skipped.nextClearBit(0); id < metadata.count(); id = skipped.nextClearBit(id + 1)) {
+                if (!predicate.test(eventCache.get(eventKey(transactionId, id)))) {
                     break;
                 }
             }
@@ -113,59 +122,71 @@ public class InfinispanLogMinerTransactionCache extends AbstractLogMinerTransact
     }
 
     @Override
-    public void addTransactionEvent(InfinispanTransaction transaction, int eventKey, LogMinerEvent event) {
-        eventCache.put(transaction.getEventId(eventKey), event);
-        final TreeSet<Integer> eventIds = eventIdsByTransactionId.get(transaction.getTransactionId());
-        if (eventIds.add(eventKey)) {
-            transactionEvents++;
+    public void addTransactionEvent(InfinispanTransaction transaction, int eventKey, LogMinerRedoEvent event) {
+        final String transactionId = transaction.getTransactionId();
+        final EventMetadataColumns metadata = metadataByTransactionId.get(transactionId);
+        if (eventKey < metadata.count()) {
+            // Already stored, as containsTransactionEvent reports by position; the entry is refreshed
+            eventCache.put(eventKey(transactionId, eventKey), event);
+            return;
         }
 
-        if (event instanceof RollbackToSavepointEvent) {
-            final Iterator<LogMinerEventEntry> reverseIterator = new LogMinerEventEntryIterator(
-                    eventIds.descendingIterator(), id -> eventCache.get(transaction.getEventId(id)));
-            final LogMinerEventEntryRange range = findRolledBackRange(transaction.getTransactionId(), reverseIterator);
-            if (range != null) {
-                final Iterator<Integer> forwardIterator = eventIds.subSet(range.start().eventId(), range.end().eventId()).iterator();
-                while (forwardIterator.hasNext()) {
-                    eventCache.remove(transaction.getEventId(forwardIterator.next()));
-                    forwardIterator.remove();
-                    transactionEvents--;
-                }
-            }
+        if (eventKey > metadata.count()) {
+            throw new IllegalArgumentException("Event key " + eventKey + " is not the next position of transaction " + transactionId);
         }
+
+        markBatchStart(transactionId, metadata.count());
+        eventCache.put(eventKey(transactionId, eventKey), event);
+
+        metadata.append(event);
+        transactionEvents++;
     }
 
     @Override
     public void removeTransactionEvents(InfinispanTransaction transaction) {
-        final var events = eventIdsByTransactionId.remove(transaction.getTransactionId());
-        if (events != null) {
-            events.descendingSet().stream().map(transaction::getEventId).forEach(eventCache::remove);
-            transactionEvents -= events.size();
+        final EventMetadataColumns metadata = metadataByTransactionId.remove(transaction.getTransactionId());
+        if (metadata != null) {
+            removeEvents(transaction.getTransactionId(), 0, metadata.count());
+            transactionEvents -= metadata.count();
         }
+    }
+
+    @Override
+    protected int truncateTransactionEvents(String transactionId, int count) {
+        final EventMetadataColumns metadata = metadataByTransactionId.get(transactionId);
+        if (metadata == null || count >= metadata.count()) {
+            return 0;
+        }
+        final int dropped = metadata.count() - count;
+        removeEvents(transactionId, count, metadata.count());
+        metadata.truncateTo(count);
+        return dropped;
     }
 
     @Override
     public boolean containsTransactionEvent(InfinispanTransaction transaction, int eventKey) {
-        // Uses the highest event key ever assigned rather than checking for presence directly
-        // since a partial rollback may have removed the event's entry from the cache.
-        final var events = eventIdsByTransactionId.get(transaction.getTransactionId());
-        return events != null && !events.isEmpty() && events.last() >= eventKey;
+        // Positions are never reused, so an event is present when its position was assigned
+        final EventMetadataColumns metadata = metadataByTransactionId.get(transaction.getTransactionId());
+        return metadata != null && metadata.count() > eventKey;
+    }
+
+    @Override
+    public EventMetadataColumns getEventMetadata(InfinispanTransaction transaction) {
+        return metadataByTransactionId.get(transaction.getTransactionId());
     }
 
     @Override
     public int getTransactionEventCount(InfinispanTransaction transaction) {
-        final var events = eventIdsByTransactionId.get(transaction.getTransactionId());
-        if (events != null) {
-            return events.size();
-        }
-        return 0;
+        final EventMetadataColumns metadata = metadataByTransactionId.get(transaction.getTransactionId());
+        return metadata == null ? 0 : metadata.count();
     }
 
     @Override
     public void clear() {
         transactionCache.clear();
         eventCache.clear();
-        eventIdsByTransactionId.clear();
+        metadataByTransactionId.clear();
+        tables.clear();
         transactionEvents = 0;
     }
 
@@ -185,19 +206,10 @@ public class InfinispanLogMinerTransactionCache extends AbstractLogMinerTransact
         transactionCache.put(transaction.getTransactionId(), transaction);
     }
 
-    private void primeHeapCacheFromOffHeapCaches() {
-        // Primes the heap-based cache if the Infinispan disk caches contained data on start-up
-        eventKeys(keyStream -> {
-            keyStream.map(k -> k.split("-", 2))
-                    .filter(parts -> parts.length == 2)
-                    .forEach(parts -> {
-                        final String transactionId = parts[0];
-                        final int eventId = Integer.parseInt(parts[1]);
-                        if (transactionCache.containsKey(transactionId)
-                                && eventIdsByTransactionId.computeIfAbsent(transactionId, k -> new TreeSet<>()).add(eventId)) {
-                            transactionEvents++;
-                        }
-                    });
-        });
+    private void removeEvents(String transactionId, int from, int toExclusive) {
+        // Removed from the newest, so that an interrupted removal leaves a contiguous prefix
+        for (int id = toExclusive - 1; id >= from; id--) {
+            eventCache.remove(eventKey(transactionId, id));
+        }
     }
 }

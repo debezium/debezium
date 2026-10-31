@@ -33,5 +33,4 @@ public class EhcacheFindRolledBackRangeTest extends AbstractFindRolledBackRangeT
                 .with(OracleConnectorConfig.LOG_MINING_BUFFER_DROP_ON_STOP, Boolean.TRUE);
         return TestHelper.withDefaultEhcacheConfigurations(configBuilder, 1024 * 66).build();
     }
-
 }

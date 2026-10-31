@@ -1032,6 +1032,13 @@ public class LogMinerStreamingChangeEventSourceMetrics
             schemaChangeCount++;
         }
 
+        /**
+         * @return the number of schema changes dispatched during the batch
+         */
+        public int getSchemaChangeCount() {
+            return schemaChangeCount;
+        }
+
         public void dataChangeEventObserved(EventType eventType) {
             dataChangeCount++;
 

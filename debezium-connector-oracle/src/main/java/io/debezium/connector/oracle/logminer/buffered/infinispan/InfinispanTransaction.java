@@ -46,6 +46,11 @@ public class InfinispanTransaction extends AbstractTransaction {
         numberOfEvents = 0;
     }
 
+    @Override
+    public void rewindEvents(int numberOfEvents) {
+        this.numberOfEvents = numberOfEvents;
+    }
+
     public String getEventId(int index) {
         if (index < 0 || index >= numberOfEvents) {
             throw new IndexOutOfBoundsException("Index " + index + "outside the transaction " + getTransactionId() + " event list bounds");

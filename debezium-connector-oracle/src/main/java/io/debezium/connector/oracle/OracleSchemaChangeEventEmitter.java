@@ -14,6 +14,7 @@ import java.util.Set;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import io.debezium.connector.oracle.antlr.CreateTableAsSelectException;
 import io.debezium.connector.oracle.antlr.OracleDdlParser;
 import io.debezium.connector.oracle.logminer.AbstractLogMinerStreamingAdapter;
 import io.debezium.pipeline.spi.SchemaChangeEventEmitter;
@@ -55,6 +56,7 @@ public class OracleSchemaChangeEventEmitter implements SchemaChangeEventEmitter 
     private final OracleConnectorConfig connectorConfig;
     private final Long objectId;
     private final Long dataObjectId;
+    private final CreateTableAsSelectResolver createTableAsSelectResolver;
 
     public OracleSchemaChangeEventEmitter(OracleConnectorConfig connectorConfig, OraclePartition partition,
                                           OracleOffsetContext offsetContext, TableId tableId, String sourceDatabaseName,
@@ -71,6 +73,20 @@ public class OracleSchemaChangeEventEmitter implements SchemaChangeEventEmitter 
                                           OracleDatabaseSchema schema, Instant changeTime,
                                           AbstractOracleStreamingChangeEventSourceMetrics streamingMetrics,
                                           TruncateReceiver truncateReceiver) {
+        this(connectorConfig, partition, offsetContext, tableId, sourceDatabaseName, objectOwner, objectId, dataObjectId,
+                ddlText, schema, changeTime, streamingMetrics, truncateReceiver, null);
+    }
+
+    /**
+     * @param createTableAsSelectResolver resolves the definition of a table created by {@code CREATE TABLE AS SELECT},
+     *            or {@code null} when the caller cannot, in which case such a statement is treated as unparsable
+     */
+    public OracleSchemaChangeEventEmitter(OracleConnectorConfig connectorConfig, OraclePartition partition,
+                                          OracleOffsetContext offsetContext, TableId tableId, String sourceDatabaseName,
+                                          String objectOwner, Long objectId, Long dataObjectId, String ddlText,
+                                          OracleDatabaseSchema schema, Instant changeTime,
+                                          AbstractOracleStreamingChangeEventSourceMetrics streamingMetrics,
+                                          TruncateReceiver truncateReceiver, CreateTableAsSelectResolver createTableAsSelectResolver) {
         this.partition = partition;
         this.offsetContext = offsetContext;
         this.tableId = tableId;
@@ -86,6 +102,7 @@ public class OracleSchemaChangeEventEmitter implements SchemaChangeEventEmitter 
         // These are only provided by LogMiner
         this.objectId = objectId;
         this.dataObjectId = dataObjectId;
+        this.createTableAsSelectResolver = createTableAsSelectResolver;
     }
 
     @Override
@@ -96,22 +113,9 @@ public class OracleSchemaChangeEventEmitter implements SchemaChangeEventEmitter 
         final Table tableBefore = schema.tableFor(tableId);
 
         final OracleDdlParser parser = schema.getDdlParser();
-        DdlChanges ddlChanges = new DdlChanges();
-        try {
-            parser.setCurrentDatabase(sourceDatabaseName);
-            parser.setCurrentSchema(objectOwner);
-            ddlChanges = parser.parse(ddlText, schema.getTables());
-        }
-        catch (ParsingException | MultipleParsingExceptions e) {
-            if (schema.skipUnparseableDdlStatements()) {
-                LOGGER.warn("Ignoring unparsable DDL statement '{}':", ddlText, e);
-                streamingMetrics.incrementWarningCount();
-                streamingMetrics.incrementSchemaChangeParseErrorCount();
-            }
-            else {
-                throw e;
-            }
-        }
+        parser.setCurrentDatabase(sourceDatabaseName);
+        parser.setCurrentSchema(objectOwner);
+        final DdlChanges ddlChanges = parse(parser, ddlText);
 
         if (!ddlChanges.isEmpty() && (filters.isIncluded(tableId) || !schema.storeOnlyCapturedTables())) {
             List<SchemaChangeEvent> changeEvents = new ArrayList<>();
@@ -149,6 +153,47 @@ public class OracleSchemaChangeEventEmitter implements SchemaChangeEventEmitter 
                 }
             }
         }
+    }
+
+    /**
+     * Parses the statement, substituting the resolved definition for a {@code CREATE TABLE AS SELECT}.
+     *
+     * @return the changes, empty when the statement is skipped
+     */
+    private DdlChanges parse(OracleDdlParser parser, String ddl) throws InterruptedException {
+        try {
+            return parser.parse(ddl, schema.getTables());
+        }
+        catch (CreateTableAsSelectException e) {
+            if (createTableAsSelectResolver == null) {
+                return skipOrThrow(ddl, e);
+            }
+            final String resolvedDdl = createTableAsSelectResolver.resolveCreateTableDdl(e.getTableId());
+            if (resolvedDdl == null) {
+                // The resolver has applied the failure handling mode
+                return new DdlChanges();
+            }
+            LOGGER.debug("Resolved the definition of table {} created by '{}' as '{}'", e.getTableId(), ddl, resolvedDdl);
+            try {
+                return parser.parse(resolvedDdl, schema.getTables());
+            }
+            catch (ParsingException | MultipleParsingExceptions resolvedException) {
+                return skipOrThrow(resolvedDdl, resolvedException);
+            }
+        }
+        catch (ParsingException | MultipleParsingExceptions e) {
+            return skipOrThrow(ddl, e);
+        }
+    }
+
+    private DdlChanges skipOrThrow(String ddl, RuntimeException e) {
+        if (schema.skipUnparseableDdlStatements()) {
+            LOGGER.warn("Ignoring unparsable DDL statement '{}':", ddl, e);
+            streamingMetrics.incrementWarningCount();
+            streamingMetrics.incrementSchemaChangeParseErrorCount();
+            return new DdlChanges();
+        }
+        throw e;
     }
 
     private SchemaChangeEvent createTableEvent(OraclePartition partition, TableCreatedEvent event) {

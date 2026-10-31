@@ -18,6 +18,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import io.debezium.DebeziumException;
+import io.debezium.connector.oracle.FlashbackCreateTableAsSelectResolver;
 import io.debezium.connector.oracle.OracleConnection;
 import io.debezium.connector.oracle.OracleConnection.NonRelationalTableException;
 import io.debezium.connector.oracle.OracleConnectorConfig;
@@ -26,6 +27,7 @@ import io.debezium.connector.oracle.OracleOffsetContext;
 import io.debezium.connector.oracle.OraclePartition;
 import io.debezium.connector.oracle.OracleSchemaChangeEventEmitter;
 import io.debezium.connector.oracle.OracleValueConverters;
+import io.debezium.connector.oracle.Scn;
 import io.debezium.connector.oracle.xstream.XstreamStreamingChangeEventSource.PositionAndScn;
 import io.debezium.pipeline.ErrorHandler;
 import io.debezium.pipeline.EventDispatcher;
@@ -137,7 +139,7 @@ class LcrEventHandler implements XStreamLCRCallbackHandler {
                 processRowLCR((RowLCR) lcr);
             }
             else if (lcr instanceof DDLLCR) {
-                dispatchSchemaChangeEvent((DDLLCR) lcr);
+                dispatchSchemaChangeEvent((DDLLCR) lcr, lcrPosition.getCommitScn());
             }
         }
         // nothing to be done here if interrupted; the event loop will be stopped in the streaming source
@@ -294,7 +296,15 @@ class LcrEventHandler implements XStreamLCRCallbackHandler {
                         clock));
     }
 
-    private void dispatchSchemaChangeEvent(DDLLCR ddlLcr) throws InterruptedException {
+    /**
+     * Dispatches the schema change of a DDL LCR. XStream delivers committed changes only, so the commit is
+     * known when the statement arrives and a {@code CREATE TABLE AS SELECT} is resolved at once.
+     *
+     * @param ddlLcr the DDL LCR, should not be {@code null}
+     * @param commitScn the system change number at which the LCR's transaction committed, should not be {@code null}
+     * @throws InterruptedException if the thread is interrupted
+     */
+    private void dispatchSchemaChangeEvent(DDLLCR ddlLcr, Scn commitScn) throws InterruptedException {
         if (LOGGER.isDebugEnabled()) {
             LOGGER.debug("Processing DDL event {}", ddlLcr.getDDLText());
         }
@@ -312,11 +322,14 @@ class LcrEventHandler implements XStreamLCRCallbackHandler {
                         tableId,
                         ddlLcr.getSourceDatabaseName(),
                         ddlLcr.getObjectOwner(),
+                        null,
+                        null,
                         ddlLcr.getDDLText(),
                         schema,
                         ddlLcr.getSourceTime().timestampValue().toInstant(),
                         streamingMetrics,
-                        () -> processTruncateEvent(ddlLcr)));
+                        () -> processTruncateEvent(ddlLcr),
+                        new FlashbackCreateTableAsSelectResolver(connectorConfig, eventSource.getConnectionFactory(), streamingMetrics, commitScn)));
     }
 
     private void processTruncateEvent(DDLLCR ddlLcr) {

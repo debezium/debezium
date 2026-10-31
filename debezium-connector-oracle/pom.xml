@@ -38,6 +38,12 @@
             <scope>provided</scope>
         </dependency>
         <dependency>
+            <!-- Seals the heap transaction buffer's payload chunks; Kafka clients bring it at runtime -->
+            <groupId>at.yawk.lz4</groupId>
+            <artifactId>lz4-java</artifactId>
+            <scope>provided</scope>
+        </dependency>
+        <dependency>
             <groupId>org.slf4j</groupId>
             <artifactId>slf4j-api</artifactId>
             <scope>provided</scope>

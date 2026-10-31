@@ -43,4 +43,9 @@ public class EhcacheTransaction extends AbstractTransaction {
     public void start() {
         numberOfEvents = 0;
     }
+
+    @Override
+    public void rewindEvents(int numberOfEvents) {
+        this.numberOfEvents = numberOfEvents;
+    }
 }

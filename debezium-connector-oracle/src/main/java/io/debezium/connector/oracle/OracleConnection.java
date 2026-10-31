@@ -5,6 +5,7 @@
  */
 package io.debezium.connector.oracle;
 
+import java.math.BigDecimal;
 import java.sql.CallableStatement;
 import java.sql.Clob;
 import java.sql.DatabaseMetaData;
@@ -347,6 +348,31 @@ public class OracleConnection extends JdbcConnection {
             if (currentAutoCommit) {
                 setAutoCommit(true);
             }
+        }
+    }
+
+    /**
+     * Returns the table's DDL as the data dictionary described it at the given system change number.
+     * <p>
+     * The session is placed in flashback mode for the duration of the call, which requires the
+     * {@code EXECUTE} privilege on {@code DBMS_FLASHBACK}. This is how the definition of a table
+     * created by {@code CREATE TABLE AS SELECT} is read: the table is first visible at its
+     * transaction's commit, and may have been altered since.
+     *
+     * @param tableId the table identifier, should not be {@code null}
+     * @param scn the system change number to read the dictionary at, should not be {@code null}
+     * @return generated DDL
+     * @throws SQLException if the session cannot be placed in flashback mode or the DDL cannot be read
+     * @throws NonRelationalTableException the table is not a relational table
+     */
+    public String getTableMetadataDdlAsOfScn(TableId tableId, Scn scn) throws SQLException, NonRelationalTableException {
+        prepareUpdate("BEGIN DBMS_FLASHBACK.ENABLE_AT_SYSTEM_CHANGE_NUMBER(?); END;",
+                st -> st.setBigDecimal(1, new BigDecimal(scn.asBigInteger())));
+        try {
+            return getTableMetadataDdl(tableId);
+        }
+        finally {
+            executeWithoutCommitting("BEGIN DBMS_FLASHBACK.DISABLE; END;");
         }
     }
 

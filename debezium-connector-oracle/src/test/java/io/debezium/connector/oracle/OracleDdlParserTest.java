@@ -19,6 +19,7 @@ import jakarta.validation.constraints.NotNull;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
+import io.debezium.connector.oracle.antlr.CreateTableAsSelectException;
 import io.debezium.connector.oracle.antlr.OracleDdlParser;
 import io.debezium.connector.oracle.util.TestHelper;
 import io.debezium.doc.FixFor;
@@ -137,6 +138,34 @@ public class OracleDdlParserTest {
         ddl = "drop table " + TABLE_NAME + " cascade constrains purge;";
         ddl = "ALTER TABLE " + TABLE_NAME + " ADD CONSTRAINT FKB97209E040C4205 FOREIGN KEY (col1) REFERENCES debezium_ref(ID);";
         ddl = "ALTER TABLE " + TABLE_NAME + " MODIFY COL1 varchar2(50) not null;";
+    }
+
+    @Test
+    @FixFor("debezium/dbz#801")
+    void shouldRaiseCreateTableAsSelectForCapturedTable() {
+        parser = new OracleDdlParser(true, null, Tables.TableFilter.includeAll());
+        parser.setCurrentDatabase(PDB_NAME);
+        parser.setCurrentSchema("DEBEZIUM");
+
+        final TableId tableId = new TableId(PDB_NAME, "DEBEZIUM", "CUSTOMER_BAK");
+        assertThatThrownBy(() -> parser.parse("create table debezium.customer_bak as select id, upper(name) as label from debezium.customer", tables))
+                .isInstanceOf(CreateTableAsSelectException.class)
+                .satisfies(e -> assertThat(((CreateTableAsSelectException) e).getTableId()).isEqualTo(tableId));
+
+        // No column-less table is left behind
+        assertThat(tables.forTable(tableId)).isNull();
+    }
+
+    @Test
+    @FixFor("debezium/dbz#801")
+    void shouldIgnoreCreateTableAsSelectForNonCapturedTable() {
+        parser = new OracleDdlParser(true, null, Tables.TableFilter.fromPredicate(id -> !id.table().equals("CUSTOMER_BAK")));
+        parser.setCurrentDatabase(PDB_NAME);
+        parser.setCurrentSchema("DEBEZIUM");
+
+        final DdlChanges changes = parser.parse("create table debezium.customer_bak as select id, name from debezium.customer", tables);
+        assertThat(changes.isEmpty()).isTrue();
+        assertThat(tables.forTable(new TableId(PDB_NAME, "DEBEZIUM", "CUSTOMER_BAK"))).isNull();
     }
 
     /**
