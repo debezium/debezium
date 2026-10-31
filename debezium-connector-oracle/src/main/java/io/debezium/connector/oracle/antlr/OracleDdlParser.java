@@ -19,6 +19,7 @@ import io.debezium.antlr.DataTypeResolver;
 import io.debezium.antlr.DataTypeResolver.DataTypeEntry;
 import io.debezium.connector.oracle.OracleValueConverters;
 import io.debezium.connector.oracle.antlr.listener.OracleDdlParserListener;
+import io.debezium.connector.oracle.relational.OracleRelationalMetadataFactory;
 import io.debezium.ddl.parser.oracle.generated.PlSqlLexer;
 import io.debezium.ddl.parser.oracle.generated.PlSqlParser;
 import io.debezium.relational.Column;
@@ -73,6 +74,11 @@ public class OracleDdlParser extends AntlrDdlParser<PlSqlLexer, PlSqlParser> {
             strippedDdl = strippedDdl + ";";
         }
         return super.parse(strippedDdl, databaseTables);
+    }
+
+    @Override
+    public OracleRelationalMetadataFactory metadataFactory() {
+        return OracleRelationalMetadataFactory.INSTANCE;
     }
 
     @Override

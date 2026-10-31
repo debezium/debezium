@@ -13,6 +13,8 @@ import java.sql.Types;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
+import io.debezium.doc.FixFor;
+
 public class ColumnEditorTest {
 
     private ColumnEditor editor;
@@ -70,5 +72,14 @@ public class ColumnEditorTest {
         createColumnWithAllFieldsSetToNonDefaults();
         assertThat(editor.toString()).isEqualTo(column.toString());
         assertThat(editor.toString()).isNotEmpty();
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2843")
+    public void shouldHaveSameHashCodeForColumnsThatDifferOnlyInNameCase() {
+        createColumnWithAllFieldsSetToNonDefaults();
+        final Column upperCased = column.edit().name("PRICE").create();
+        assertThat(upperCased).isEqualTo(column);
+        assertThat(upperCased.hashCode()).isEqualTo(column.hashCode());
     }
 }

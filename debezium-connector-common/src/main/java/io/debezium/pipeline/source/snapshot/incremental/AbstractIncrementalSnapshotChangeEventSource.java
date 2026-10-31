@@ -51,6 +51,7 @@ import io.debezium.pipeline.spi.Partition;
 import io.debezium.relational.Column;
 import io.debezium.relational.RelationalDatabaseConnectorConfig;
 import io.debezium.relational.RelationalDatabaseSchema;
+import io.debezium.relational.RelationalMetadataFactory;
 import io.debezium.relational.RelationalSnapshotChangeEventSource;
 import io.debezium.relational.SnapshotChangeRecordEmitter;
 import io.debezium.relational.Table;
@@ -790,10 +791,11 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<P extends Par
     }
 
     private Table getTable(ResultSet rs) throws SQLException {
+        final RelationalMetadataFactory metadataFactory = connectorConfig.getRelationalMetadataFactory();
         final ResultSetMetaData metaData = rs.getMetaData();
         List<Column> columns = new ArrayList<>();
         for (int i = 1; i <= metaData.getColumnCount(); i++) {
-            Column column = Column.editor()
+            Column column = metadataFactory.columnEditor()
                     .name(metaData.getColumnName(i))
                     .jdbcType(metaData.getColumnType(i))
                     .type(metaData.getColumnTypeName(i))
@@ -804,7 +806,7 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<P extends Par
             columns.add(column);
         }
         Collections.sort(columns);
-        return Table.editor()
+        return metadataFactory.tableEditor()
                 .tableId(currentTable.id())
                 .addColumns(columns)
                 .create();
@@ -925,7 +927,7 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<P extends Par
      * This method can be overridden if custom schema retrieval logic is required.
      */
     protected Table readSchemaForTable(TableId tableId) throws SQLException {
-        Tables tempTables = new Tables();
+        Tables tempTables = new Tables(false, connectorConfig.getRelationalMetadataFactory());
         try {
             jdbcConnection.readSchema(
                     tempTables,

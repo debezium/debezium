@@ -158,6 +158,7 @@ public final class Tables {
     private final TablesById tablesByTableId;
     private final TableIds changes;
     private final boolean tableIdCaseInsensitive;
+    private final RelationalMetadataFactory metadataFactory;
 
     /**
      * Create an empty set of definitions.
@@ -165,7 +166,18 @@ public final class Tables {
      * @param tableIdCaseInsensitive - true if lookup is case insensitive (typical for MySQL on Windows)
      */
     public Tables(boolean tableIdCaseInsensitive) {
+        this(tableIdCaseInsensitive, DefaultRelationalMetadataFactory.INSTANCE);
+    }
+
+    /**
+     * Create an empty set of definitions whose tables are created by the given factory.
+     *
+     * @param tableIdCaseInsensitive - true if lookup is case insensitive (typical for MySQL on Windows)
+     * @param metadataFactory - the factory that creates table editors; may not be null
+     */
+    public Tables(boolean tableIdCaseInsensitive, RelationalMetadataFactory metadataFactory) {
         this.tableIdCaseInsensitive = tableIdCaseInsensitive;
+        this.metadataFactory = Objects.requireNonNull(metadataFactory, "metadataFactory");
         TableMappingStorage<Table> storage = new ConcurrentMapTableMappingStorage<>();
         storage.configure(null, tableIdCaseInsensitive, TableMappingStorage.Type.TABLES);
         this.tablesByTableId = new TablesById(storage);
@@ -176,10 +188,11 @@ public final class Tables {
      * Create an empty set of definitions with connector configuration.
      *
      * @param tableIdCaseInsensitive - true if lookup is case insensitive (typical for MySQL on Windows)
-     * @param config - connector configuration for creating storage instances
+     * @param config - connector configuration for creating storage instances and the metadata factory
      */
     public Tables(boolean tableIdCaseInsensitive, RelationalDatabaseConnectorConfig config) {
         this.tableIdCaseInsensitive = tableIdCaseInsensitive;
+        this.metadataFactory = config.getRelationalMetadataFactory();
         this.tablesByTableId = new TablesById(config.createTableStorage(tableIdCaseInsensitive));
         this.changes = new TableIds(tableIdCaseInsensitive);
     }
@@ -192,7 +205,7 @@ public final class Tables {
     }
 
     protected Tables(Tables other, boolean tableIdCaseInsensitive) {
-        this(tableIdCaseInsensitive);
+        this(tableIdCaseInsensitive, other.metadataFactory);
         this.tablesByTableId.putAll(other.tablesByTableId);
     }
 
@@ -248,7 +261,7 @@ public final class Tables {
     public Table overwriteTable(TableId tableId, List<Column> columnDefs, List<String> primaryKeyColumnNames,
                                 String defaultCharsetName, List<Attribute> attributes) {
         return lock.write(() -> {
-            Table updated = Table.editor()
+            Table updated = metadataFactory.tableEditor()
                     .tableId(tableId)
                     .addColumns(columnDefs)
                     .setPrimaryKeyNames(primaryKeyColumnNames)
@@ -274,7 +287,8 @@ public final class Tables {
      */
     public Table overwriteTable(Table table) {
         return lock.write(() -> {
-            TableImpl updated = Interner.intern(new TableImpl(table));
+            // keep a connector's subclass intact; only copy foreign Table implementations
+            Table updated = Interner.intern(table instanceof TableImpl ? table : new TableImpl(table));
             try {
                 return tablesByTableId.put(updated.id(), updated);
             }
@@ -320,8 +334,7 @@ public final class Tables {
                 return null;
             }
             tablesByTableId.remove(existing.id());
-            TableImpl updated = Interner.intern(new TableImpl(newTableId, existing.columns(),
-                    existing.primaryKeyColumnNames(), existing.defaultCharsetName(), existing.comment(), existing.attributes()));
+            Table updated = existing.edit().tableId(newTableId).create();
             try {
                 return tablesByTableId.put(updated.id(), updated);
             }
@@ -345,8 +358,7 @@ public final class Tables {
             Table existing = tablesByTableId.get(tableId);
             Table updated = changer.apply(existing);
             if (updated != existing) {
-                tablesByTableId.put(tableId, Interner.intern(new TableImpl(tableId, updated.columns(),
-                        updated.primaryKeyColumnNames(), updated.defaultCharsetName(), updated.comment(), updated.attributes())));
+                tablesByTableId.put(tableId, Interner.intern(updated));
             }
             changes.add(tableId);
             return existing;
@@ -422,7 +434,7 @@ public final class Tables {
      */
     public TableEditor editOrCreateTable(TableId tableId) {
         Table table = forTable(tableId);
-        return table == null ? Table.editor().tableId(tableId) : table.edit();
+        return table == null ? metadataFactory.tableEditor().tableId(tableId) : table.edit();
     }
 
     @Override
@@ -447,7 +459,7 @@ public final class Tables {
             return this;
         }
         return lock.read(() -> {
-            Tables result = new Tables(tableIdCaseInsensitive);
+            Tables result = new Tables(tableIdCaseInsensitive, metadataFactory);
             tablesByTableId.forEach((tableId, table) -> {
                 if (filter.isIncluded(tableId)) {
                     result.overwriteTable(table);

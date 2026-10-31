@@ -10,6 +10,7 @@ import java.util.List;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
+import io.debezium.DebeziumException;
 import io.debezium.annotation.Immutable;
 
 /**
@@ -23,7 +24,7 @@ public interface Table {
      * @return the editor; never null
      */
     static TableEditor editor() {
-        return new TableEditorImpl();
+        return DefaultRelationalMetadataFactory.INSTANCE.tableEditor();
     }
 
     /**
@@ -158,6 +159,25 @@ public interface Table {
     default boolean isOptional(String columnName) {
         Column column = columnWithName(columnName);
         return column == null ? false : column.isOptional();
+    }
+
+    /**
+     * Return an object of the specified {@code clazz} type to allow access to a provider-specific API. If the
+     * provider implementation of {@link Table} does not support the given type, a {@link DebeziumException}
+     * is thrown.
+     *
+     * @param clazz the class the object to be returned. This is usually either the underlying class that
+     *              implements {@link Table} or an interface that it implements.
+     * @return an instance of the specified class
+     * @throws DebeziumException if the table does not support the given type
+     */
+    default <T extends Table> T unwrap(Class<T> clazz) {
+        if (!clazz.isInstance(this)) {
+            throw new DebeziumException(
+                    "Table '%s' is a %s, not a %s; was it created through the connector's RelationalMetadataFactory?".formatted(
+                            id(), getClass().getSimpleName(), clazz.getSimpleName()));
+        }
+        return clazz.cast(this);
     }
 
     /**
