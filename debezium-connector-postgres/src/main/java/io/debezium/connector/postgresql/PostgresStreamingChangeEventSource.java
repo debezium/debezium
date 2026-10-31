@@ -35,6 +35,7 @@ import io.debezium.connector.postgresql.connection.ReplicationMessage;
 import io.debezium.connector.postgresql.connection.ReplicationMessage.Operation;
 import io.debezium.connector.postgresql.connection.ReplicationStream;
 import io.debezium.connector.postgresql.connection.WalPositionLocator;
+import io.debezium.heartbeat.DatabaseHeartbeatImpl;
 import io.debezium.heartbeat.Heartbeat;
 import io.debezium.pipeline.ErrorHandler;
 import io.debezium.pipeline.monitor.OffsetActivityMonitor;
@@ -434,14 +435,27 @@ public class PostgresStreamingChangeEventSource implements StreamingChangeEventS
             throws SQLException, InterruptedException {
         AtomicReference<Lsn> resumeLsn = new AtomicReference<>();
         int noMessageIterations = 0;
+        final var progressTracker = new WalSearchProgressTracker(clock, connectorConfig.getWalSearchWarningInterval());
 
         LOGGER.info("Searching for WAL resume position");
         while (context.isRunning() && resumeLsn.get() == null) {
 
             boolean receivedMessage = stream.readPending(message -> {
                 final Lsn lsn = stream.lastReceivedLsn();
+                progressTracker.lsnReceived(lsn);
                 resumeLsn.set(walPosition.resumeFromLsn(lsn, message).orElse(null));
             });
+
+            if (resumeLsn.get() == null && progressTracker.shouldWarn()) {
+                final Lsn lastReceivedLsn = progressTracker.lastReceivedLsn();
+                LOGGER.warn("The search for the WAL resume position has been running for {} ms and has not received a new LSN from the server for {} ms "
+                        + "(last received LSN '{}', {}). The replication slot may have confirmed a position past the stored offset, or the stored offset "
+                        + "may be past the server's current WAL position; in both cases the search only ends once new changes are written to the WAL. "
+                        + "Consider generating WAL traffic (for example with '{}') or setting '{}'.",
+                        progressTracker.elapsed().toMillis(), progressTracker.timeWithoutProgress().toMillis(),
+                        lastReceivedLsn == null ? "none" : lastReceivedLsn, walPosition,
+                        DatabaseHeartbeatImpl.HEARTBEAT_ACTION_QUERY_PROPERTY_NAME, PostgresConnectorConfig.OFFSET_SLOT_MISMATCH_STRATEGY.name());
+            }
 
             if (receivedMessage) {
                 noMessageIterations = 0;
