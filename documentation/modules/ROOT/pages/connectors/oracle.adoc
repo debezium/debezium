@@ -4478,6 +4478,7 @@ You can set one of the following options:
 | Specifies how the connector should handle values for `interval` columns:
 
 `numeric` represents intervals using approximate number of microseconds.
+For `INTERVAL DAY TO SECOND` columns with a fractional seconds precision greater than 6, digits beyond microseconds are truncated.
 
 `string` represents intervals exactly by using the string pattern representation `P<years>Y<months>M<days>DT<hours>H<minutes>M<seconds>S`. For example: `P1Y2M3DT4H5M6.78S`.
 

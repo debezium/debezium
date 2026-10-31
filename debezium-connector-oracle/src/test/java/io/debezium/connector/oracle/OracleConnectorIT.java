@@ -1131,6 +1131,7 @@ public class OracleConnectorIT extends AbstractAsyncEngineConnectorTest {
         }
     }
 
+    @Test
     @FixFor("DBZ-1539")
     public void shouldHandleIntervalTypesAsInt64() throws Exception {
         // Drop table if it exists
@@ -1184,7 +1185,7 @@ public class OracleConnectorIT extends AbstractAsyncEngineConnectorTest {
             assertThat(after.getInt64("INTYM")).isEqualTo(63115200000000L);
             assertThat(after.getInt64("INTYM2")).isEqualTo(17524987200000000L);
             assertThat(after.getInt64("INTDS")).isEqualTo(259200000000L);
-            assertThat(after.getInt64("INTDS2")).isEqualTo(9627503444333L);
+            assertThat(after.getInt64("INTDS2")).isEqualTo(9626948555444L);
 
             after = ((Struct) records.get(1).value()).getStruct(AFTER);
             assertThat(after.getInt64("INTYM")).isEqualTo(0L);
@@ -1215,7 +1216,7 @@ public class OracleConnectorIT extends AbstractAsyncEngineConnectorTest {
             assertThat(after.getInt64("INTYM")).isEqualTo(63115200000000L);
             assertThat(after.getInt64("INTYM2")).isEqualTo(17524987200000000L);
             assertThat(after.getInt64("INTDS")).isEqualTo(259200000000L);
-            assertThat(after.getInt64("INTDS2")).isEqualTo(9627503444333L);
+            assertThat(after.getInt64("INTDS2")).isEqualTo(9626948555444L);
 
             after = ((Struct) records.get(1).value()).getStruct(AFTER);
             assertThat(after.get("ID")).isEqualTo(4);
@@ -1291,7 +1292,7 @@ public class OracleConnectorIT extends AbstractAsyncEngineConnectorTest {
             assertThat(after.getString("INTYM")).isEqualTo("P2Y0M0DT0H0M0S");
             assertThat(after.getString("INTYM2")).isEqualTo("P555Y4M0DT0H0M0S");
             assertThat(after.getString("INTDS")).isEqualTo("P0Y0M3DT0H0M0S");
-            assertThat(after.getString("INTDS2")).isEqualTo("P0Y0M111DT10H9M563.444333S");
+            assertThat(after.getString("INTDS2")).isEqualTo("P0Y0M111DT10H9M8.555444333S");
 
             after = ((Struct) records.get(1).value()).getStruct(AFTER);
             assertThat(after.get("ID")).isEqualTo(2);
@@ -1334,7 +1335,7 @@ public class OracleConnectorIT extends AbstractAsyncEngineConnectorTest {
             assertThat(after.getString("INTYM")).isEqualTo("P2Y0M0DT0H0M0S");
             assertThat(after.getString("INTYM2")).isEqualTo("P555Y4M0DT0H0M0S");
             assertThat(after.getString("INTDS")).isEqualTo("P0Y0M3DT0H0M0S");
-            assertThat(after.getString("INTDS2")).isEqualTo("P0Y0M111DT10H9M563.444333S");
+            assertThat(after.getString("INTDS2")).isEqualTo("P0Y0M111DT10H9M8.555444333S");
 
             after = ((Struct) records.get(1).value()).getStruct(AFTER);
             assertThat(after.get("ID")).isEqualTo(5);
