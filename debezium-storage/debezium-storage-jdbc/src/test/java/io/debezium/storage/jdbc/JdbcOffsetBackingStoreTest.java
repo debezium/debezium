@@ -5,6 +5,8 @@
  */
 package io.debezium.storage.jdbc;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.entry;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import java.io.File;
@@ -14,6 +16,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
 
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Assertions;
@@ -22,6 +25,8 @@ import org.junit.jupiter.api.Test;
 
 import io.debezium.config.Configuration;
 import io.debezium.doc.FixFor;
+import io.debezium.pipeline.txmetadata.TransactionContext;
+import io.debezium.spi.storage.OffsetStorageWriter;
 import io.debezium.spi.storage.OffsetStore;
 import io.debezium.storage.jdbc.offset.JdbcOffsetBackingStore;
 
@@ -121,6 +126,28 @@ public class JdbcOffsetBackingStoreTest {
         assertEquals(store.toByteBuffer("value"), values.get(store.toByteBuffer("key")));
         assertEquals(store.toByteBuffer("value1secondSet"), values2.get(store.toByteBuffer("key1secondSet")));
         assertEquals(store.toByteBuffer("value2secondSet"), values3.get(store.toByteBuffer("key2secondSet")));
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2786")
+    public void shouldLoadTransactionContextFromOffsetsReadByDefaultReader() throws Exception {
+        final Map<String, Object> partition = Map.of("server", "test");
+        final Map<String, Object> offset = new HashMap<>();
+        offset.put(TransactionContext.OFFSET_TRANSACTION_ID, "tx-1");
+        // Small per-table event count: JsonConverter returned it as Long, plain Jackson returns Integer
+        offset.put("transaction_data_collection_order_public.foo", 5L);
+
+        final OffsetStorageWriter writer = store.createWriter("test-namespace");
+        writer.offset(partition, offset);
+        assertThat(writer.beginFlush(1, TimeUnit.SECONDS)).isTrue();
+        writer.doFlush(null).get();
+
+        final Map<String, Object> readBack = store.createReader("test-namespace").offset(partition);
+        assertThat(readBack).containsEntry(TransactionContext.OFFSET_TRANSACTION_ID, "tx-1");
+
+        final TransactionContext context = TransactionContext.load(readBack);
+        assertThat(context.getPerTableEventCount()).containsExactly(entry("public.foo", 5L));
+        assertThat(context.getTotalEventCount()).isEqualTo(5L);
     }
 
 }

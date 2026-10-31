@@ -17,6 +17,7 @@ import org.slf4j.LoggerFactory;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 import io.debezium.DebeziumException;
@@ -37,7 +38,10 @@ import io.debezium.DebeziumException;
 public class DefaultOffsetStorageReader implements OffsetStorageReader {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(DefaultOffsetStorageReader.class);
-    private static final ObjectMapper MAPPER = new ObjectMapper();
+    // Kafka Connect's JsonConverter returns every integral number as Long; keep that contract so
+    // offset loaders that cast to Long keep working with non-Kafka offset stores
+    private static final ObjectMapper MAPPER = new ObjectMapper()
+            .enable(DeserializationFeature.USE_LONG_FOR_INTS);
     private static final TypeReference<Map<String, Object>> MAP_TYPE_REF = new TypeReference<>() {
     };
 
