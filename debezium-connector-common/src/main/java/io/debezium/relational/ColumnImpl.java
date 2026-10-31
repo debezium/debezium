@@ -25,6 +25,7 @@ final class ColumnImpl implements Column, Comparable<Column> {
     private final boolean optional;
     private final boolean autoIncremented;
     private final boolean generated;
+    private final boolean synthetic;
     private final String defaultValueExpression;
     private final boolean hasDefaultValue;
     private final List<String> enumValues;
@@ -34,19 +35,41 @@ final class ColumnImpl implements Column, Comparable<Column> {
                          String charsetName, String defaultCharsetName, int columnLength, Integer columnScale,
                          boolean optional, boolean autoIncremented, boolean generated) {
         this(columnName, position, jdbcType, componentType, typeName, typeExpression, charsetName,
-                defaultCharsetName, columnLength, columnScale, null, optional, autoIncremented, generated, null, false, null);
+                defaultCharsetName, columnLength, columnScale, null, optional, autoIncremented, generated, false, null, false, null);
+    }
+
+    protected ColumnImpl(String columnName, int position, int jdbcType, int componentType, String typeName, String typeExpression,
+                         String charsetName, String defaultCharsetName, int columnLength, Integer columnScale,
+                         boolean optional, boolean autoIncremented, boolean generated, boolean synthetic) {
+        this(columnName, position, jdbcType, componentType, typeName, typeExpression, charsetName,
+                defaultCharsetName, columnLength, columnScale, null, optional, autoIncremented, generated, synthetic, null, false, null);
     }
 
     protected ColumnImpl(String columnName, int position, int jdbcType, int nativeType, String typeName, String typeExpression,
                          String charsetName, String defaultCharsetName, int columnLength, Integer columnScale,
                          boolean optional, boolean autoIncremented, boolean generated, String defaultValueExpression, boolean hasDefaultValue) {
         this(columnName, position, jdbcType, nativeType, typeName, typeExpression, charsetName,
-                defaultCharsetName, columnLength, columnScale, null, optional, autoIncremented, generated, defaultValueExpression, hasDefaultValue, null);
+                defaultCharsetName, columnLength, columnScale, null, optional, autoIncremented, generated, false, defaultValueExpression, hasDefaultValue, null);
+    }
+
+    protected ColumnImpl(String columnName, int position, int jdbcType, int nativeType, String typeName, String typeExpression,
+                         String charsetName, String defaultCharsetName, int columnLength, Integer columnScale,
+                         boolean optional, boolean autoIncremented, boolean generated, boolean synthetic, String defaultValueExpression, boolean hasDefaultValue) {
+        this(columnName, position, jdbcType, nativeType, typeName, typeExpression, charsetName,
+                defaultCharsetName, columnLength, columnScale, null, optional, autoIncremented, generated, synthetic, defaultValueExpression, hasDefaultValue, null);
     }
 
     protected ColumnImpl(String columnName, int position, int jdbcType, int nativeType, String typeName, String typeExpression,
                          String charsetName, String defaultCharsetName, int columnLength, Integer columnScale,
                          List<String> enumValues, boolean optional, boolean autoIncremented, boolean generated,
+                         String defaultValueExpression, boolean hasDefaultValue, String comment) {
+        this(columnName, position, jdbcType, nativeType, typeName, typeExpression, charsetName, defaultCharsetName, columnLength, columnScale, enumValues,
+                optional, autoIncremented, generated, false, defaultValueExpression, hasDefaultValue, comment);
+    }
+
+    protected ColumnImpl(String columnName, int position, int jdbcType, int nativeType, String typeName, String typeExpression,
+                         String charsetName, String defaultCharsetName, int columnLength, Integer columnScale,
+                         List<String> enumValues, boolean optional, boolean autoIncremented, boolean generated, boolean synthetic,
                          String defaultValueExpression, boolean hasDefaultValue, String comment) {
         this.name = columnName;
         this.position = position;
@@ -65,6 +88,7 @@ final class ColumnImpl implements Column, Comparable<Column> {
         this.optional = optional;
         this.autoIncremented = autoIncremented;
         this.generated = generated;
+        this.synthetic = synthetic;
         this.defaultValueExpression = defaultValueExpression;
         this.hasDefaultValue = hasDefaultValue;
         this.enumValues = enumValues == null ? new ArrayList<>() : enumValues;
@@ -133,6 +157,11 @@ final class ColumnImpl implements Column, Comparable<Column> {
     }
 
     @Override
+    public boolean isSynthetic() {
+        return synthetic;
+    }
+
+    @Override
     public Optional<String> defaultValueExpression() {
         return Optional.ofNullable(defaultValueExpression);
     }
@@ -175,6 +204,7 @@ final class ColumnImpl implements Column, Comparable<Column> {
                     this.isOptional() == that.isOptional() &&
                     this.isAutoIncremented() == that.isAutoIncremented() &&
                     this.isGenerated() == that.isGenerated() &&
+                    this.isSynthetic() == that.isSynthetic() &&
                     Objects.equals(this.defaultValueExpression(), that.defaultValueExpression()) &&
                     this.hasDefaultValue() == that.hasDefaultValue() &&
                     this.enumValues().equals(that.enumValues());
@@ -205,6 +235,9 @@ final class ColumnImpl implements Column, Comparable<Column> {
         if (generated) {
             sb.append(" GENERATED");
         }
+        if (synthetic) {
+            sb.append(" SYNTHETIC");
+        }
         if (hasDefaultValue() && defaultValueExpression == null) {
             sb.append(" DEFAULT VALUE NULL");
         }
@@ -231,6 +264,7 @@ final class ColumnImpl implements Column, Comparable<Column> {
                 .optional(isOptional())
                 .autoIncremented(isAutoIncremented())
                 .generated(isGenerated())
+                .synthetic(isSynthetic())
                 .enumValues(enumValues)
                 .comment(comment);
         if (hasDefaultValue()) {
