@@ -371,7 +371,7 @@ public abstract class AbstractBufferedLogMinerStreamingChangeEventSourceTest ext
             final BufferedLogMinerStreamingChangeEventSource mock = Mockito.spy(source);
             Mockito.doReturn(ps).when(mock).createQueryStatement();
 
-            final ProcessResult result = mock.process(Scn.valueOf(100), Scn.valueOf(100), Scn.valueOf(200));
+            final ProcessResult result = mock.process(Scn.valueOf(100), Scn.valueOf(200));
             assertThat(result.readStartScn()).isEqualTo(Scn.valueOf(100));
         }
     }
@@ -415,7 +415,7 @@ public abstract class AbstractBufferedLogMinerStreamingChangeEventSourceTest ext
                     .when(mock)
                     .dispatchSchemaChangeEventAndGetTableForNewConfiguredTable(Mockito.any(TableId.class));
 
-            final ProcessResult result = mock.process(Scn.valueOf(100), Scn.valueOf(100), Scn.valueOf(200));
+            final ProcessResult result = mock.process(Scn.valueOf(100), Scn.valueOf(200));
             assertThat(result.miningSessionStartScn()).isEqualTo(Scn.valueOf(100));
             assertThat(result.readStartScn()).isEqualTo(Scn.valueOf(101));
         }
@@ -669,7 +669,7 @@ public abstract class AbstractBufferedLogMinerStreamingChangeEventSourceTest ext
             mock.processEvent(getStartLogMinerEventRow(5, TRANSACTION_ID_2, secondStart));
             mock.processEvent(getInsertLogMinerEventRow(6, TRANSACTION_ID_2));
 
-            mock.process(Scn.valueOf(100), Scn.valueOf(100), Scn.valueOf(200));
+            mock.process(Scn.valueOf(100), Scn.valueOf(200));
 
             assertThat(logInterceptor.messageMatches("All active transactions: "
                     + TRANSACTION_ID_2 + " \\(startScn=5, changeTime=" + secondStart + ", userName=.*, clientId=.*, redoThread=\\d+, events=1\\), "

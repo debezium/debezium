@@ -207,7 +207,7 @@ public class BufferedLogMinerStreamingChangeEventSource extends AbstractLogMiner
                 if (startMiningSession(sessionStartScn, sessionEndScn, miningStartAttempts)) {
                     miningStartAttempts = 1;
 
-                    final ProcessResult result = process(sessionStartScn, readScn, sessionEndScn);
+                    final ProcessResult result = process(readScn, sessionEndScn);
                     LOGGER.debug("ProcessResult MineStartScn={} ReadStartScn={}", result.miningSessionStartScn(), result.readStartScn());
 
                     if (!result.miningSessionStartScn.equals(sessionStartScn)) {
@@ -293,7 +293,7 @@ public class BufferedLogMinerStreamingChangeEventSource extends AbstractLogMiner
     }
 
     @VisibleForTesting
-    protected ProcessResult process(Scn sessionStartScn, Scn startScn, Scn endScn) throws SQLException, InterruptedException {
+    protected ProcessResult process(Scn startScn, Scn endScn) throws SQLException, InterruptedException {
         getBatchMetrics().reset();
 
         try (PreparedStatement statement = createQueryStatement()) {
@@ -301,16 +301,8 @@ public class BufferedLogMinerStreamingChangeEventSource extends AbstractLogMiner
             statement.setFetchSize(getConfig().getQueryFetchSize());
             statement.setFetchDirection(ResultSet.FETCH_FORWARD);
 
-            if (getConfig().isLogMiningUseCteQuery()) {
-                statement.setString(1, sessionStartScn.toString());
-                statement.setString(2, endScn.toString());
-                statement.setString(3, startScn.toString());
-                statement.setString(4, endScn.toString());
-            }
-            else {
-                statement.setString(1, startScn.toString());
-                statement.setString(2, endScn.toString());
-            }
+            statement.setString(1, startScn.toString());
+            statement.setString(2, endScn.toString());
 
             getMetrics().setLastMiningFetchRange(startScn, endScn);
 
