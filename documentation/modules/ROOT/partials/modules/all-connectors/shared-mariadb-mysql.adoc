@@ -3030,6 +3030,8 @@ end::cfg-binlog-streaming-timeouts[]
 tag::validate-binlog-row-options[]
 Verify the setting of the `binlog_row_value_options` variable in the database.
 To enable the connector to consume *UPDATE* events, this variable must be set to a value other than `PARTIAL_JSON`.
+If the variable is set to `PARTIAL_JSON`, the connector fails when it tries to start.
+If the connector receives an *UPDATE* event for a captured table that was written with `PARTIAL_JSON`, the event is handled according to the xref:{context}-property-event-processing-failure-handling-mode[`event.processing.failure.handling.mode`] property: with `fail` (the default), the connector stops; with `warn`, the connector logs a warning and skips the event; with `skip`, the connector skips the event.
 
 .Prerequisites
 

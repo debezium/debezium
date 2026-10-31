@@ -73,6 +73,11 @@ public abstract class BinlogSourceTask<P extends Partition, O extends OffsetCont
                         + "required for this connector to work properly. Change the database configuration to use a "
                         + "binlog_row_image=FULL|NOBLOB and restart the connector.");
             }
+            if (connection.isBinlogRowValueOptionsPartialJson()) {
+                throw new DebeziumException("The database server is configured to use binlog_row_value_options=PARTIAL_JSON, "
+                        + "which logs updates that modify only part of a JSON document as JSON diffs that this connector cannot "
+                        + "capture. Change the database configuration to use an empty binlog_row_value_options and restart the connector.");
+            }
             if (connectorConfig.isBinlogMetadataBasedSchema() && !connection.isBinlogRowMetadataFull()) {
                 throw new DebeziumException("The '" + BinlogConnectorConfig.BINLOG_METADATA_BASED_SCHEMA.name()
                         + "' mode is enabled but the database server is not configured to use a FULL binlog_row_metadata, "

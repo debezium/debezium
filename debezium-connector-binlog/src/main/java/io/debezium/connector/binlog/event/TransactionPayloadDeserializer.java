@@ -113,6 +113,7 @@ public class TransactionPayloadDeserializer extends TransactionPayloadEventDataD
         transactionPayloadEventDeserializer.setEventDataDeserializer(EventType.EXT_UPDATE_ROWS,
                 new RowDeserializers.UpdateRowsDeserializer(
                         tableMapEventByTableId, eventDeserializationFailureHandlingMode, preserveInvalidTemporalValues).setMayContainExtraInformation(true));
+        transactionPayloadEventDeserializer.setEventDataDeserializer(EventType.PARTIAL_UPDATE_ROWS_EVENT, new PartialUpdateRowsEventDataDeserializer());
         transactionPayloadEventDeserializer.setEventDataDeserializer(EventType.EXT_DELETE_ROWS,
                 new RowDeserializers.DeleteRowsDeserializer(
                         tableMapEventByTableId, eventDeserializationFailureHandlingMode, preserveInvalidTemporalValues).setMayContainExtraInformation(true));
