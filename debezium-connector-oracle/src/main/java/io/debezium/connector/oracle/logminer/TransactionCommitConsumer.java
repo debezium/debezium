@@ -545,11 +545,19 @@ public class TransactionCommitConsumer implements AutoCloseable {
     }
 
     private void discardCurrentMergeState(ConstructionDetails details) {
-        final RowState state = rows.get(details.rowId);
+        final String rowId = details.rowId;
+        final RowState state = rows.get(rowId);
         if (state != null) {
-            LOGGER.trace("Discarding merge state for row id {}", details.rowId);
-            rows.remove(details.rowId);
-            details.reset();
+            LOGGER.trace("Discarding merge state for row id {}", rowId);
+            rows.remove(rowId);
+            // Reset every construction that still targets the discarded row, not only the one that
+            // triggered the discard, so later write events for that row are ignored rather than
+            // dereferencing the removed row state.
+            for (ConstructionDetails other : List.of(currentLobDetails, currentExtendedStringDetails, currentXmlDetails)) {
+                if (rowId.equals(other.rowId)) {
+                    other.reset();
+                }
+            }
         }
     }
 
