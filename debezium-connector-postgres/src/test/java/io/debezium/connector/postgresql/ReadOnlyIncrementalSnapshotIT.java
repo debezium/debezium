@@ -19,10 +19,13 @@ import java.util.stream.Collectors;
 
 import org.apache.kafka.connect.data.Struct;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.Timeout;
 
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
+import io.debezium.connector.postgresql.junit.SkipWhenDecoderPluginNameIsNot;
 import io.debezium.doc.FixFor;
+import io.debezium.heartbeat.DatabaseHeartbeatImpl;
 import io.debezium.heartbeat.Heartbeat;
 import io.debezium.jdbc.JdbcConnection;
 import io.debezium.junit.SkipWhenDatabaseVersion;
@@ -279,6 +282,25 @@ public class ReadOnlyIncrementalSnapshotIT extends IncrementalSnapshotIT {
 
         assertThat(logInterceptor.countOccurrences("Skipping read chunk because snapshot is not running")).isEqualTo(0L);
 
+    }
+
+    @Test
+    @FixFor("debezium/dbz#1438")
+    @SkipWhenDecoderPluginNameIsNot(value = SkipWhenDecoderPluginNameIsNot.DecoderPluginName.PGOUTPUT, reason = "Only pgoutput delivers logical decoding messages")
+    @Timeout(value = 3, unit = TimeUnit.MINUTES)
+    public void snapshotShouldCompleteWhenHeartbeatEmitsNonTransactionalMessage() throws Exception {
+        populateTable();
+
+        startConnector(x -> x.with(Heartbeat.HEARTBEAT_INTERVAL_PROPERTY_NAME, 100)
+                .with(DatabaseHeartbeatImpl.HEARTBEAT_ACTION_QUERY_PROPERTY_NAME, "SELECT pg_logical_emit_message(false, 'heartbeat', now()::varchar)"),
+                loggingCompletion(), false);
+
+        sendAdHocSnapshotSignal(tableDataCollectionId());
+
+        final Map<Integer, Integer> dbChanges = consumeMixedWithIncrementalSnapshot(ROW_COUNT);
+        for (int i = 0; i < ROW_COUNT; i++) {
+            assertThat(dbChanges).contains(entry(i + 1, i));
+        }
     }
 
     @Override
