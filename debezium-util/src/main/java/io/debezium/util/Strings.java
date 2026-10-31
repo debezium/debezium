@@ -706,22 +706,41 @@ public final class Strings {
                     }
                     catch (NumberFormatException e3) {
                         try {
-                            return Float.valueOf(value);
+                            return new BigInteger(value);
                         }
                         catch (NumberFormatException e4) {
                             try {
-                                return Double.valueOf(value);
-                            }
-                            catch (NumberFormatException e5) {
-                                try {
-                                    return new BigInteger(value);
+                                Double d = Double.valueOf(value);
+                                Float f = Float.valueOf(value);
+                                if (Float.isNaN(f)) {
+                                    return f;
                                 }
-                                catch (NumberFormatException e6) {
+                                if (f.isInfinite() && isInfinity(value)) {
+                                    return f;
+                                }
+                                if (f == 0.0f && isZero(value)) {
+                                    return f;
+                                }
+                                if (!f.isInfinite() && Math.abs(f) >= Float.MIN_NORMAL && Double.valueOf(Float.toString(f)).equals(d)) {
+                                    return f;
+                                }
+                                if (!d.isInfinite() && (d != 0.0d || isZero(value)) && Math.abs(d) >= Double.MIN_NORMAL) {
                                     try {
-                                        return new BigDecimal(value);
+                                        if (new BigDecimal(value).compareTo(new BigDecimal(Double.toString(d))) == 0) {
+                                            return d;
+                                        }
                                     }
-                                    catch (NumberFormatException e7) {
+                                    catch (Exception ignored) {
+                                        return d;
                                     }
+                                }
+                                return new BigDecimal(value);
+                            }
+                            catch (NumberFormatException ignored) {
+                                try {
+                                    return new BigDecimal(value);
+                                }
+                                catch (NumberFormatException ignored2) {
                                 }
                             }
                         }
@@ -730,6 +749,19 @@ public final class Strings {
             }
         }
         return defaultValueProvider != null ? defaultValueProvider.get() : null;
+    }
+
+    private static boolean isInfinity(String value) {
+        return "Infinity".equals(value) || "-Infinity".equals(value) || "+Infinity".equals(value);
+    }
+
+    private static boolean isZero(String value) {
+        try {
+            return new BigDecimal(value).signum() == 0;
+        }
+        catch (Exception e) {
+            return false;
+        }
     }
 
     /**
