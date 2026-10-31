@@ -10,6 +10,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
@@ -46,11 +47,19 @@ class TableEditorImpl implements TableEditor {
 
     @Override
     public Column columnWithName(String name) {
-        return sortedColumns.get(name.toLowerCase());
+        return sortedColumns.get(key(name));
     }
 
     protected boolean hasColumnWithName(String name) {
         return columnWithName(name) != null;
+    }
+
+    /**
+     * Computes the case-insensitive map key for a column or attribute name. Uses {@link Locale#ROOT}
+     * so the mapping is stable regardless of the default locale (e.g. the Turkish dotless-i rule).
+     */
+    private static String key(String name) {
+        return name.toLowerCase(Locale.ROOT);
     }
 
     @Override
@@ -78,7 +87,7 @@ class TableEditorImpl implements TableEditor {
         if (defn != null) {
             Column existing = columnWithName(defn.name());
             int position = existing != null ? existing.position() : sortedColumns.size() + 1;
-            sortedColumns.put(defn.name().toLowerCase(), defn.edit().position(position).create());
+            sortedColumns.put(key(defn.name()), defn.edit().position(position).create());
         }
         assert positionsAreValid();
     }
@@ -162,7 +171,7 @@ class TableEditorImpl implements TableEditor {
 
     @Override
     public TableEditor removeColumn(String columnName) {
-        Column existing = sortedColumns.remove(columnName.toLowerCase());
+        Column existing = sortedColumns.remove(key(columnName));
         if (existing != null) {
             updatePositions();
             columnName = existing.name();
@@ -188,22 +197,22 @@ class TableEditorImpl implements TableEditor {
         }
         Column afterColumn = afterColumnName == null ? null : columnWithName(afterColumnName);
         if (afterColumn != null && afterColumn.position() == sortedColumns.size()) {
-            // Just append ...
-            sortedColumns.remove(columnName);
-            sortedColumns.put(columnName, columnToMove);
+            // Just append; sortedColumns is keyed by the lower-cased name, like everywhere else.
+            sortedColumns.remove(key(columnName));
+            sortedColumns.put(key(columnToMove.name()), columnToMove);
         }
         else {
             LinkedHashMap<String, Column> newColumns = new LinkedHashMap<>();
-            sortedColumns.remove(columnName.toLowerCase());
+            sortedColumns.remove(key(columnName));
             if (afterColumn == null) {
                 // Then the column to move comes first ...
-                newColumns.put(columnToMove.name().toLowerCase(), columnToMove);
+                newColumns.put(key(columnToMove.name()), columnToMove);
             }
             sortedColumns.forEach((key, defn) -> {
                 newColumns.put(key, defn);
                 if (defn == afterColumn) {
                     // We just added the column that came before, so add our column here ...
-                    newColumns.put(columnToMove.name().toLowerCase(), columnToMove);
+                    newColumns.put(key(columnToMove.name()), columnToMove);
                 }
             });
             sortedColumns = newColumns;
@@ -232,7 +241,7 @@ class TableEditorImpl implements TableEditor {
             removeColumn(existing.name());
         }
         else {
-            sortedColumns.replace(existingName.toLowerCase(), existing, newColumn);
+            sortedColumns.replace(key(existingName), existing, newColumn);
         }
         if (newPkNames != null) {
             setPrimaryKeyNames(newPkNames);
@@ -247,13 +256,13 @@ class TableEditorImpl implements TableEditor {
 
     @Override
     public Attribute attributeWithName(String attributeName) {
-        return attributes.get(attributeName.toLowerCase());
+        return attributes.get(key(attributeName));
     }
 
     @Override
     public TableEditor addAttribute(Attribute attribute) {
         if (attribute != null) {
-            attributes.put(attribute.name().toLowerCase(), attribute);
+            attributes.put(key(attribute.name()), attribute);
         }
         return this;
     }
@@ -269,7 +278,7 @@ class TableEditorImpl implements TableEditor {
     @Override
     public TableEditor removeAttribute(String attributeName) {
         if (attributeName != null) {
-            attributes.remove(attributeName.toLowerCase());
+            attributes.remove(key(attributeName));
         }
         return this;
     }
