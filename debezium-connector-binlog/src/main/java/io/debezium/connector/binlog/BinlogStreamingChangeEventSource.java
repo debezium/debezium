@@ -32,6 +32,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.Predicate;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -161,6 +162,7 @@ public abstract class BinlogStreamingChangeEventSource<P extends BinlogPartition
     private final EnumMap<EventType, BlockingConsumer<Event>> eventHandlers = new EnumMap<>(EventType.class);
     private final float heartbeatIntervalFactor = 0.8f;
     private final OffsetActivityMonitorService offsetActivityMonitorService;
+    private final ReentrantLock heartbeatLock = new ReentrantLock();
 
     private int startingRowNumber = 0;
     private long initialEventsToSkip = 0L;
@@ -394,6 +396,7 @@ public abstract class BinlogStreamingChangeEventSource<P extends BinlogPartition
             while (context.isRunning()) {
                 Thread.sleep(100);
                 waitWhenStreamingPaused(context);
+                dispatchHeartbeatIfIdle(partition, effectiveOffsetContext);
             }
         }
         finally {
@@ -646,71 +649,96 @@ public abstract class BinlogStreamingChangeEventSource<P extends BinlogPartition
             return;
         }
 
-        final EventHeader eventHeader = event.getHeader();
-        offsetContext.setBinlogServerId(eventHeader.getServerId());
-
-        final EventType eventType = eventHeader.getEventType();
-        if (eventType == EventType.ROTATE) {
-            EventData eventData = event.getData();
-            RotateEventData rotateEventData;
-            if (eventData instanceof EventDeserializer.EventDataWrapper) {
-                rotateEventData = (RotateEventData) ((EventDeserializer.EventDataWrapper) eventData).getInternal();
-            }
-            else {
-                rotateEventData = (RotateEventData) eventData;
-            }
-            offsetContext.setBinlogStartPoint(rotateEventData.getBinlogFilename(), rotateEventData.getBinlogPosition());
-        }
-        else if (eventHeader instanceof EventHeaderV4) {
-            EventHeaderV4 trackableEventHeader = (EventHeaderV4) eventHeader;
-            if (trackableEventHeader.getPosition() > 0) {
-                offsetContext.setEventPosition(
-                        trackableEventHeader.getPosition(), trackableEventHeader.getEventLength());
-            }
-        }
-
-        // If there is a handler for this event, forward the event to it ...
+        // The lock is held for the whole body, so that the offset context is never mutated while the
+        // coordinator thread reads it and so that the heartbeat is emitted by one thread at a time.
+        heartbeatLock.lock();
         try {
-            waitWhenStreamingPaused(context);
+            final EventHeader eventHeader = event.getHeader();
+            offsetContext.setBinlogServerId(eventHeader.getServerId());
 
-            // Forward the event to the handler ...
-            eventHandlers.getOrDefault(eventType, (e) -> ignoreEvent(offsetContext, e)).accept(event);
+            final EventType eventType = eventHeader.getEventType();
+            if (eventType == EventType.ROTATE) {
+                EventData eventData = event.getData();
+                RotateEventData rotateEventData;
+                if (eventData instanceof EventDeserializer.EventDataWrapper) {
+                    rotateEventData = (RotateEventData) ((EventDeserializer.EventDataWrapper) eventData).getInternal();
+                }
+                else {
+                    rotateEventData = (RotateEventData) eventData;
+                }
+                offsetContext.setBinlogStartPoint(rotateEventData.getBinlogFilename(), rotateEventData.getBinlogPosition());
+            }
+            else if (eventHeader instanceof EventHeaderV4) {
+                EventHeaderV4 trackableEventHeader = (EventHeaderV4) eventHeader;
+                if (trackableEventHeader.getPosition() > 0) {
+                    offsetContext.setEventPosition(
+                            trackableEventHeader.getPosition(), trackableEventHeader.getEventLength());
+                }
+            }
 
-            // Generate heartbeat message if the time is right
-            eventDispatcher.dispatchHeartbeatEvent(partition, offsetContext);
+            // If there is a handler for this event, forward the event to it ...
+            try {
+                waitWhenStreamingPaused(context);
 
-            // Capture that we've completed another event ...
-            offsetContext.completeEvent();
+                // Forward the event to the handler ...
+                eventHandlers.getOrDefault(eventType, (e) -> ignoreEvent(offsetContext, e)).accept(event);
 
-            // update last offset used for logging
-            lastOffset = offsetContext.getOffset();
+                // Generate heartbeat message if the time is right
+                eventDispatcher.dispatchHeartbeatEvent(partition, offsetContext);
 
-            // Invoked on the binlog client thread; the monitor is registered on the coordinator
-            // thread before the client is connected, so it is safely published by the thread start
-            offsetActivityMonitorService.pulse(partition, offsetContext);
+                // Capture that we've completed another event ...
+                offsetContext.completeEvent();
 
-            if (skipEvent) {
-                // We're in the mode of skipping events and we just skipped this one, so decrement our skip count ...
-                --initialEventsToSkip;
-                skipEvent = initialEventsToSkip > 0;
+                // update last offset used for logging
+                lastOffset = offsetContext.getOffset();
+
+                // Invoked on the binlog client thread; the monitor is registered on the coordinator
+                // thread before the client is connected, so it is safely published by the thread start
+                offsetActivityMonitorService.pulse(partition, offsetContext);
+
+                if (skipEvent) {
+                    // We're in the mode of skipping events and we just skipped this one, so decrement our skip count ...
+                    --initialEventsToSkip;
+                    skipEvent = initialEventsToSkip > 0;
+                }
+            }
+            catch (RuntimeException e) {
+                // There was an error in the event handler, so propagate the failure to Kafka Connect ...
+                logStreamingSourceState();
+                errorHandler.setProducerThrowable(new DebeziumException("Error processing binlog event", e));
+                // Do not stop the client, since Kafka Connect should stop the connector on it's own
+                // (and doing it here may cause problems the second time it is stopped).
+                // We can clear the listeners though so that we ignore all future events ...
+                eventHandlers.clear();
+                LOGGER.info(
+                        "Error processing binlog event, and propagating to Kafka Connect so it stops this connector. Future binlog events read before connector is shutdown will be ignored.");
+            }
+            catch (InterruptedException e) {
+                // Most likely because this reader was stopped and our thread was interrupted ...
+                Thread.currentThread().interrupt();
+                eventHandlers.clear();
+                LOGGER.info("Stopped processing binlog events due to thread interruption");
             }
         }
-        catch (RuntimeException e) {
-            // There was an error in the event handler, so propagate the failure to Kafka Connect ...
-            logStreamingSourceState();
-            errorHandler.setProducerThrowable(new DebeziumException("Error processing binlog event", e));
-            // Do not stop the client, since Kafka Connect should stop the connector on it's own
-            // (and doing it here may cause problems the second time it is stopped).
-            // We can clear the listeners though so that we ignore all future events ...
-            eventHandlers.clear();
-            LOGGER.info(
-                    "Error processing binlog event, and propagating to Kafka Connect so it stops this connector. Future binlog events read before connector is shutdown will be ignored.");
+        finally {
+            heartbeatLock.unlock();
         }
-        catch (InterruptedException e) {
-            // Most likely because this reader was stopped and our thread was interrupted ...
-            Thread.currentThread().interrupt();
-            eventHandlers.clear();
-            LOGGER.info("Stopped processing binlog events due to thread interruption");
+    }
+
+    /**
+     * Evaluates the heartbeat interval while the binlog client is idle, so that the heartbeat record and the
+     * heartbeat action query are emitted on the configured interval even when no binlog event arrives.
+     */
+    private void dispatchHeartbeatIfIdle(P partition, O offsetContext) throws InterruptedException {
+        if (!heartbeatLock.tryLock()) {
+            // The binlog client thread is handling an event and dispatches the heartbeat itself.
+            return;
+        }
+        try {
+            eventDispatcher.dispatchHeartbeatEvent(partition, offsetContext);
+        }
+        finally {
+            heartbeatLock.unlock();
         }
     }
 
