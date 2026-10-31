@@ -80,6 +80,7 @@ public final class SourceInfo extends BaseSourceInfo {
     public static final String TXID_KEY = "txId";
     public static final String XMIN_KEY = "xmin";
     public static final String LSN_KEY = "lsn";
+    public static final String COMMIT_LSN_KEY = "commit_lsn";
     public static final String MSG_TYPE_KEY = "messageType";
     public static final String LAST_SNAPSHOT_RECORD_KEY = "last_snapshot_record";
     public static final String ORIGIN_KEY = "origin";
@@ -91,6 +92,7 @@ public final class SourceInfo extends BaseSourceInfo {
 
     private Lsn lsn;
     private Lsn lastCommitLsn;
+    private Lsn commitLsn;
     private Long txId;
     private Long xmin;
     private Operation messageType;
@@ -163,6 +165,20 @@ public final class SourceInfo extends BaseSourceInfo {
             this.lsn = lsn;
         }
         return this;
+    }
+
+    /**
+     * Updates the source with the commit LSN of the transaction currently being streamed
+     * (pgoutput {@code Begin.final_lsn}). Constant across all events of a transaction; may be
+     * null for snapshot records or when transaction metadata is not available.
+     */
+    protected SourceInfo updateCommitLsn(Lsn commitLsn) {
+        this.commitLsn = commitLsn;
+        return this;
+    }
+
+    public Lsn commitLsn() {
+        return this.commitLsn;
     }
 
     public Lsn lsn() {

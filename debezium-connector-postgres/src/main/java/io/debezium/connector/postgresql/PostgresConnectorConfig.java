@@ -34,8 +34,10 @@ import io.debezium.connector.postgresql.connection.PostgresConnection;
 import io.debezium.connector.postgresql.connection.ReplicationConnection;
 import io.debezium.connector.postgresql.connection.pgoutput.PgOutputMessageDecoder;
 import io.debezium.connector.postgresql.connection.pgproto.PgProtoMessageDecoder;
+import io.debezium.connector.postgresql.pipeline.txmetadata.PostgresTransactionMetadataFactory;
 import io.debezium.heartbeat.Heartbeat;
 import io.debezium.jdbc.JdbcConfiguration;
+import io.debezium.pipeline.txmetadata.spi.TransactionMetadataFactory;
 import io.debezium.relational.ColumnFilterMode;
 import io.debezium.relational.RelationalDatabaseConnectorConfig;
 import io.debezium.relational.TableId;
@@ -1570,6 +1572,13 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
     @Override
     protected SourceInfoStructMaker<? extends AbstractSourceInfo> getSourceInfoStructMaker(Version version) {
         return getSourceInfoStructMaker(SOURCE_INFO_STRUCT_MAKER, Module.name(), Module.version(), this);
+    }
+
+    @Override
+    public TransactionMetadataFactory getTransactionMetadataFactory() {
+        // PostgreSQL defaults the factory to PostgresTransactionMetadataFactory (adds the optional commit_lsn field);
+        // an explicitly configured 'transaction.metadata.factory' still wins.
+        return getTransactionMetadataFactory(TRANSACTION_METADATA_FACTORY.withDefault(PostgresTransactionMetadataFactory.class.getName()));
     }
 
     private static final ConfigDefinition CONFIG_DEFINITION = RelationalDatabaseConnectorConfig.CONFIG_DEFINITION.edit()
