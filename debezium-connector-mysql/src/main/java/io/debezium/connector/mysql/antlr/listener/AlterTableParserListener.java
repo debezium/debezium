@@ -7,6 +7,7 @@
 package io.debezium.connector.mysql.antlr.listener;
 
 import static io.debezium.antlr.AntlrDdlParser.getText;
+import static io.debezium.connector.binlog.jdbc.BinlogDefaultValueConverter.normalizeNumericDefaultValue;
 
 import java.sql.Types;
 import java.util.ArrayList;
@@ -450,7 +451,7 @@ public class AlterTableParserListener extends TableCommonParserListener {
 
         // Handle signed number
         if (signed.ulong_number() != null) {
-            return sign + signed.ulong_number().getText();
+            return normalizeNumericDefaultValue(defaultValueColumnEditor.typeName(), defaultValueColumnEditor.length(), sign + signed.ulong_number().getText());
         }
 
         // Handle literal (text, numeric, temporal, etc.)
@@ -460,6 +461,10 @@ public class AlterTableParserListener extends TableCommonParserListener {
             }
             if (signed.literal().HEX_NUMBER() != null || signed.literal().BIN_NUMBER() != null) {
                 return DefaultValueParserListener.parseBinaryLiteral(signed.literal(), defaultValueColumnEditor, parser);
+            }
+            if (signed.literal().numLiteral() != null) {
+                return normalizeNumericDefaultValue(defaultValueColumnEditor.typeName(), defaultValueColumnEditor.length(),
+                        sign + signed.literal().numLiteral().getText());
             }
             return sign + extractLiteralValue(signed.literal());
         }

@@ -584,7 +584,8 @@ public class RowDeserializers {
      * @throws IOException if there is an error reading from the binlog event data
      */
     protected static Serializable deserializeYear(ByteArrayInputStream inputStream) throws IOException {
-        return Year.of(1900 + inputStream.readInteger(1));
+        final int value = inputStream.readInteger(1);
+        return Year.of(value == 0 ? 0 : 1900 + value);
     }
 
     /**
