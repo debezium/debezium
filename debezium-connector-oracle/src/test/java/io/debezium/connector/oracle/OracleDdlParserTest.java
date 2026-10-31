@@ -18,8 +18,12 @@ import jakarta.validation.constraints.NotNull;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.Mockito;
 
 import io.debezium.connector.oracle.antlr.OracleDdlParser;
+import io.debezium.connector.oracle.relational.OracleColumn;
+import io.debezium.connector.oracle.relational.OracleRelationalMetadataFactory;
+import io.debezium.connector.oracle.relational.OracleTable;
 import io.debezium.connector.oracle.util.TestHelper;
 import io.debezium.doc.FixFor;
 import io.debezium.relational.Column;
@@ -32,6 +36,7 @@ import io.debezium.text.ParsingException;
 import io.debezium.util.IoUtil;
 
 import oracle.jdbc.OracleTypes;
+import oracle.sql.CharacterSet;
 
 /**
  * This is the test suite for Oracle Antlr parser unit testing
@@ -48,7 +53,7 @@ public class OracleDdlParserTest {
     void setUp() {
         final OracleConnectorConfig config = new OracleConnectorConfig(TestHelper.defaultConfig().build());
         parser = new OracleDdlParser(true, null, config.getTableFilters().dataCollectionFilter());
-        tables = new Tables();
+        tables = new Tables(false, config);
     }
 
     @Test
@@ -278,9 +283,9 @@ public class OracleDdlParserTest {
         parser.setCurrentDatabase(PDB_NAME);
         parser.setCurrentSchema("SCOTT");
 
-        Table table = Table.editor()
+        Table table = OracleRelationalMetadataFactory.INSTANCE.tableEditor()
                 .tableId(new TableId(PDB_NAME, "SCOTT", "T_DBZ_TEST1"))
-                .addColumn(Column.editor().name("ID").create())
+                .addColumn(OracleRelationalMetadataFactory.INSTANCE.columnEditor().name("ID").create())
                 .create();
         tables.overwriteTable(table);
 
@@ -294,6 +299,8 @@ public class OracleDdlParserTest {
         assertThat(eventTypes).containsExactly(DdlParserListener.EventType.ALTER_TABLE);
 
         table = tables.forTable(new TableId(PDB_NAME, "SCOTT", "T_DBZ_TEST1"));
+        assertThat(table).isInstanceOf(OracleTable.class);
+        assertThat(table.columns()).allMatch(OracleColumn.class::isInstance);
         List<String> columnNames = table.retrieveColumnNames();
         assertThat(columnNames).contains("ID", "T_VARCHAR2");
         assertThat(table.columnWithName("T_VARCHAR2").typeName()).isEqualTo("VARCHAR2");
@@ -306,10 +313,10 @@ public class OracleDdlParserTest {
         parser.setCurrentDatabase(PDB_NAME);
         parser.setCurrentSchema("SCOTT");
 
-        Table table = Table.editor()
+        Table table = OracleRelationalMetadataFactory.INSTANCE.tableEditor()
                 .tableId(new TableId(PDB_NAME, "SCOTT", "T_DBZ_TEST1"))
-                .addColumn(Column.editor().name("ID").create())
-                .addColumn(Column.editor().name("T_VARCHAR2").type("VARCHAR2").length(10).create())
+                .addColumn(OracleRelationalMetadataFactory.INSTANCE.columnEditor().name("ID").create())
+                .addColumn(OracleRelationalMetadataFactory.INSTANCE.columnEditor().name("T_VARCHAR2").type("VARCHAR2").length(10).create())
                 .create();
         tables.overwriteTable(table);
 
@@ -323,6 +330,8 @@ public class OracleDdlParserTest {
         assertThat(eventTypes).containsExactly(DdlParserListener.EventType.ALTER_TABLE);
 
         table = tables.forTable(new TableId(PDB_NAME, "SCOTT", "T_DBZ_TEST1"));
+        assertThat(table).isInstanceOf(OracleTable.class);
+        assertThat(table.columns()).allMatch(OracleColumn.class::isInstance);
         List<String> columnNames = table.retrieveColumnNames();
         assertThat(columnNames).contains("ID", "T_VARCHAR2");
         assertThat(table.columnWithName("T_VARCHAR2").typeName()).isEqualTo("VARCHAR2");
@@ -335,10 +344,10 @@ public class OracleDdlParserTest {
         parser.setCurrentDatabase(PDB_NAME);
         parser.setCurrentSchema("SCOTT");
 
-        Table table = Table.editor()
+        Table table = OracleRelationalMetadataFactory.INSTANCE.tableEditor()
                 .tableId(new TableId(PDB_NAME, "SCOTT", "T_DBZ_TEST1"))
-                .addColumn(Column.editor().name("ID").create())
-                .addColumn(Column.editor().name("T_VARCHAR2").type("VARCHAR2").length(10).create())
+                .addColumn(OracleRelationalMetadataFactory.INSTANCE.columnEditor().name("ID").create())
+                .addColumn(OracleRelationalMetadataFactory.INSTANCE.columnEditor().name("T_VARCHAR2").type("VARCHAR2").length(10).create())
                 .create();
         tables.overwriteTable(table);
 
@@ -352,6 +361,8 @@ public class OracleDdlParserTest {
         assertThat(eventTypes).containsExactly(DdlParserListener.EventType.ALTER_TABLE);
 
         table = tables.forTable(new TableId(PDB_NAME, "SCOTT", "T_DBZ_TEST1"));
+        assertThat(table).isInstanceOf(OracleTable.class);
+        assertThat(table.columns()).allMatch(OracleColumn.class::isInstance);
         List<String> columnNames = table.retrieveColumnNames();
         assertThat(columnNames).contains("ID");
     }
@@ -671,6 +682,128 @@ public class OracleDdlParserTest {
         Column column = tables.forTable(new TableId(PDB_NAME, "DEBEZIUM", TABLE_NAME)).columnWithName("COL1");
         assertThat(column.jdbcType()).isEqualTo(Types.INTEGER);
         assertThat(column.typeName()).isNull();
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2794")
+    void shouldResolveOctetLengthFromLengthSemanticsAndCharacterSets() {
+        useParserWithConverters(CharacterSet.AL32UTF8_CHARSET, CharacterSet.AL16UTF16_CHARSET, true);
+
+        parser.parse("CREATE TABLE " + TABLE_NAME + " ("
+                + "ID numeric(9,0) primary key, "
+                + "C1 varchar2(2000 char), "
+                + "C2 varchar2(2000 byte), "
+                + "C3 varchar2(2000), "
+                + "C4 nvarchar2(2000), "
+                + "C5 raw(4000), "
+                + "C6 varchar2(10000 char), "
+                + "C7 varchar(100 char))", tables);
+
+        final Table table = tables.forTable(new TableId(PDB_NAME, "DEBEZIUM", TABLE_NAME));
+        assertOctetLength(table, "ID", Column.UNSET_INT_VALUE);
+        assertOctetLength(table, "C1", 8000);
+        assertOctetLength(table, "C2", 2000);
+        assertOctetLength(table, "C3", 2000);
+        assertOctetLength(table, "C4", 4000);
+        // The byte length is only recorded for the string types that can be extended strings
+        assertOctetLength(table, "C5", Column.UNSET_INT_VALUE);
+        // Oracle limits the byte length to the maximum string size
+        assertOctetLength(table, "C6", 32767);
+        assertOctetLength(table, "C7", 400);
+
+        // The declared length is unchanged and stays in characters
+        assertThat(table.columnWithName("C1").length()).isEqualTo(2000);
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2794")
+    void shouldResolveNationalOctetLengthFromNationalCharacterSet() {
+        useParserWithConverters(CharacterSet.AL32UTF8_CHARSET, CharacterSet.UTF8_CHARSET, true);
+
+        parser.parse("CREATE TABLE " + TABLE_NAME + " (ID numeric(9,0) primary key, C1 nvarchar2(2000))", tables);
+
+        assertOctetLength(tables.forTable(new TableId(PDB_NAME, "DEBEZIUM", TABLE_NAME)), "C1", 6000);
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2794")
+    void shouldResolveOctetLengthForMultibyteCharacterSetThatIsNotUnicode() {
+        useParserWithConverters(CharacterSet.ZHS16GBK_CHARSET, CharacterSet.AL16UTF16_CHARSET, true);
+
+        parser.parse("CREATE TABLE " + TABLE_NAME + " (ID numeric(9,0) primary key, C1 varchar2(3000 char), C2 varchar2(3000 byte))", tables);
+
+        final Table table = tables.forTable(new TableId(PDB_NAME, "DEBEZIUM", TABLE_NAME));
+        assertOctetLength(table, "C1", 6000);
+        assertOctetLength(table, "C2", 3000);
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2794")
+    void shouldLimitOctetLengthToStandardMaxStringSize() {
+        useParserWithConverters(CharacterSet.AL32UTF8_CHARSET, CharacterSet.AL16UTF16_CHARSET, false);
+
+        parser.parse("CREATE TABLE " + TABLE_NAME + " ("
+                + "ID numeric(9,0) primary key, "
+                + "C1 varchar2(2000 char), "
+                + "C2 nvarchar2(2000), "
+                + "C3 varchar2(500 char))", tables);
+
+        final Table table = tables.forTable(new TableId(PDB_NAME, "DEBEZIUM", TABLE_NAME));
+        assertOctetLength(table, "C1", 4000);
+        assertOctetLength(table, "C2", 4000);
+        assertOctetLength(table, "C3", 2000);
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2794")
+    void shouldUpdateOctetLengthWhenColumnIsModified() {
+        useParserWithConverters(CharacterSet.AL32UTF8_CHARSET, CharacterSet.AL16UTF16_CHARSET, true);
+        final TableId tableId = new TableId(PDB_NAME, "DEBEZIUM", TABLE_NAME);
+
+        parser.parse("CREATE TABLE " + TABLE_NAME + " (ID numeric(9,0) primary key, C1 varchar2(2000 char))", tables);
+        final Column original = tables.forTable(tableId).columnWithName("C1");
+        assertOctetLength(tables.forTable(tableId), "C1", 8000);
+
+        parser.parse("ALTER TABLE " + TABLE_NAME + " MODIFY (C1 varchar2(2000 byte))", tables);
+        final Column modified = tables.forTable(tableId).columnWithName("C1");
+        assertOctetLength(tables.forTable(tableId), "C1", 2000);
+        // Only the length semantics changed, but that must still be detected as a column change
+        assertThat(modified.length()).isEqualTo(original.length());
+        assertThat(modified).isNotEqualTo(original);
+
+        parser.parse("ALTER TABLE " + TABLE_NAME + " MODIFY (C1 number(9,0))", tables);
+        assertOctetLength(tables.forTable(tableId), "C1", Column.UNSET_INT_VALUE);
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2794")
+    void shouldLeaveOctetLengthUnsetWithoutValueConverters() {
+        parser.setCurrentDatabase(PDB_NAME);
+        parser.setCurrentSchema("DEBEZIUM");
+
+        parser.parse("CREATE TABLE " + TABLE_NAME + " (ID numeric(9,0) primary key, C1 varchar2(2000 char), C2 raw(100))", tables);
+
+        final Table table = tables.forTable(new TableId(PDB_NAME, "DEBEZIUM", TABLE_NAME));
+        assertOctetLength(table, "C1", Column.UNSET_INT_VALUE);
+        assertOctetLength(table, "C2", Column.UNSET_INT_VALUE);
+    }
+
+    private void useParserWithConverters(int databaseCharacterSet, int nationalCharacterSet, boolean extendedStrings) {
+        // The value converters read the character sets and MAX_STRING_SIZE from a connection, which requires a
+        // database, so the connection is mocked like in the other unit tests that create value converters.
+        final OracleConnection connection = Mockito.mock(OracleConnection.class);
+        Mockito.when(connection.getDatabaseCharacterSet()).thenReturn(CharacterSet.make(databaseCharacterSet));
+        Mockito.when(connection.getNationalCharacterSet()).thenReturn(CharacterSet.make(nationalCharacterSet));
+        Mockito.when(connection.hasExtendedStringSupport()).thenReturn(extendedStrings);
+
+        final OracleConnectorConfig config = new OracleConnectorConfig(TestHelper.defaultConfig().build());
+        parser = new OracleDdlParser(true, config.getAdapter().getValueConverter(config, connection), config.getTableFilters().dataCollectionFilter());
+        parser.setCurrentDatabase(PDB_NAME);
+        parser.setCurrentSchema("DEBEZIUM");
+    }
+
+    private static void assertOctetLength(Table table, String columnName, int expected) {
+        assertThat(table.columnWithName(columnName).unwrap(OracleColumn.class).octetLength()).as(columnName).isEqualTo(expected);
     }
 
     private List<DdlParserListener.EventType> getEventTypesFromChanges(DdlChanges changes) {

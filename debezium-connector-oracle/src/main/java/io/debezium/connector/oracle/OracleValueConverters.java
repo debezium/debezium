@@ -117,6 +117,7 @@ public class OracleValueConverters extends JdbcValueConverters {
     private final String unavailableValuePlaceholderString;
     private final CharacterSet nationalCharacterSet;
     private final CharacterSet databaseCharacterSet;
+    private final boolean extendedStringsSupported;
 
     public OracleValueConverters(OracleConnectorConfig config, OracleConnection connection) {
         super(config.getDecimalMode(), config.getTemporalPrecisionMode(), ZoneOffset.UTC, null, null, config.binaryHandlingMode());
@@ -127,6 +128,19 @@ public class OracleValueConverters extends JdbcValueConverters {
         this.unavailableValuePlaceholderString = new String(config.getUnavailableValuePlaceholder());
         this.nationalCharacterSet = connection.getNationalCharacterSet();
         this.databaseCharacterSet = connection.getDatabaseCharacterSet();
+        this.extendedStringsSupported = connection.hasExtendedStringSupport();
+    }
+
+    public CharacterSet getDatabaseCharacterSet() {
+        return databaseCharacterSet;
+    }
+
+    public CharacterSet getNationalCharacterSet() {
+        return nationalCharacterSet;
+    }
+
+    public boolean isExtendedStringsSupported() {
+        return extendedStringsSupported;
     }
 
     public byte[] getUnavailableValuePlaceholderBinary() {
