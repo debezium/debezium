@@ -6,7 +6,6 @@
 package io.debezium.connector.postgresql.connection;
 
 import java.util.EnumSet;
-import java.util.HashSet;
 import java.util.Optional;
 import java.util.Set;
 
@@ -55,7 +54,14 @@ public class WalPositionLocator {
     private boolean passMessages = true;
     private Lsn startStreamingLsn = null;
     private boolean storeLsnAfterLastEventStoredLsn = false;
-    private Set<Lsn> lsnSeen = new HashSet<>(1_000);
+    /**
+     * The lowest and the highest LSN the location phase has seen. They bound the WAL range the
+     * search covered, so a message the replay phase delivers from outside that range means the
+     * stream diverged from the one the search read. The range is kept instead of the set of every
+     * LSN seen so that the memory the search needs does not grow with the size of the transaction.
+     */
+    private Lsn lowestLsnSeen = null;
+    private Lsn highestLsnSeen = null;
     private long currentLsnEventCount = 0;
     private long startStreamingEventsToSkip = 0;
     private boolean skipProcessedLogicalMessage = false;
@@ -94,7 +100,14 @@ public class WalPositionLocator {
     public Optional<Lsn> resumeFromLsn(Lsn currentLsn, ReplicationMessage message) {
         LOGGER.trace("Processing LSN '{}', operation '{}' during WAL position search", currentLsn, message.getOperation());
 
-        lsnSeen.add(currentLsn);
+        if (currentLsn.isValid()) {
+            if (lowestLsnSeen == null || currentLsn.compareTo(lowestLsnSeen) < 0) {
+                lowestLsnSeen = currentLsn;
+            }
+            if (highestLsnSeen == null || currentLsn.compareTo(highestLsnSeen) > 0) {
+                highestLsnSeen = currentLsn;
+            }
+        }
 
         if (firstLsnReceived == null) {
             firstLsnReceived = currentLsn;
@@ -272,24 +285,34 @@ public class WalPositionLocator {
             }
             LOGGER.info("Message with LSN '{}' arrived, switching off the filtering", lsn);
             passMessages = true;
-            lsnSeen = new HashSet<>(); // Empty the Map as it might be large and is no longer needed
+            lowestLsnSeen = null;
+            highestLsnSeen = null;
             return false;
         }
-        if (lsn.isValid() && !lsnSeen.contains(lsn)) {
+        if (lsn.isValid() && !isWithinSeenLsnRange(lsn)) {
             throw new DebeziumException(String.format(
-                    "Message with LSN '%s' not present among LSNs seen in the location phase '%s'. This is unexpected and can lead to an infinite loop or a data loss.",
+                    "Message with LSN '%s' outside the range of LSNs seen in the location phase ('%s' to '%s'). "
+                            + "This is unexpected and can lead to an infinite loop or a data loss.",
                     lsn,
-                    lsnSeen));
+                    lowestLsnSeen,
+                    highestLsnSeen));
         }
         LOGGER.debug("Message with LSN '{}' filtered", lsn);
         return true;
+    }
+
+    private boolean isWithinSeenLsnRange(Lsn lsn) {
+        return lowestLsnSeen != null
+                && lsn.compareTo(lowestLsnSeen) >= 0
+                && lsn.compareTo(highestLsnSeen) <= 0;
     }
 
     public boolean skipProcessedLogicalMessage(Lsn lsn) {
         if (skipProcessedLogicalMessage && startStreamingLsn != null && startStreamingLsn.equals(lsn)) {
             skipProcessedLogicalMessage = false;
             passMessages = true;
-            lsnSeen = new HashSet<>();
+            lowestLsnSeen = null;
+            highestLsnSeen = null;
             LOGGER.info("Processed MESSAGE operation with LSN '{}' skipped, switching off the filtering", lsn);
             return true;
         }
