@@ -11,6 +11,9 @@
     <artifactId>debezium-connect-plugins</artifactId>
     <name>Debezium Kafka Connect Plugins</name>
     <packaging>jar</packaging>
+    <properties>
+        <confluent>true</confluent>
+    </properties>
 
     <dependencies>
         <!-- Debezium dependencies -->

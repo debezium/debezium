@@ -261,18 +261,6 @@
       </snapshotRepository>
     </distributionManagement>
 
-    <repositories>
-        <repository>
-            <id>confluent</id>
-            <name>Confluent</name>
-            <url>https://packages.confluent.io/maven/</url>
-            <snapshots>
-                <enabled>true</enabled>
-                <updatePolicy>never</updatePolicy>
-            </snapshots>
-        </repository>
-    </repositories>
-
     <build>
         <pluginManagement>
             <plugins>
@@ -458,6 +446,25 @@
         </plugins>
     </build>
     <profiles>
+        <profile>
+            <id>confluent</id>
+            <activation>
+                <property>
+                    <name>confluent</name>
+                </property>
+            </activation>
+            <repositories>
+                <repository>
+                    <id>confluent</id>
+                    <name>Confluent</name>
+                    <url>https://packages.confluent.io/maven/</url>
+                    <snapshots>
+                        <enabled>true</enabled>
+                        <updatePolicy>never</updatePolicy>
+                    </snapshots>
+                </repository>
+            </repositories>
+        </profile>
         <profile>
             <id>sonar</id>
             <!--

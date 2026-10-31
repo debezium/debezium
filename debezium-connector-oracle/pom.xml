@@ -238,6 +238,7 @@
     </dependencies>
 
     <properties>
+        <confluent>true</confluent>
         <adapter.name>logminer</adapter.name>
         <log.mining.buffer.type.name>memory</log.mining.buffer.type.name>
         <log.mining.read.only.mode>false</log.mining.read.only.mode>

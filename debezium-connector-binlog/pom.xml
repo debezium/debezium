@@ -165,6 +165,7 @@
     </dependencies>
 
     <properties>
+        <confluent>true</confluent>
         <mockito.argLine>-javaagent:${org.mockito:mockito-core:jar}</mockito.argLine>
     </properties>
 

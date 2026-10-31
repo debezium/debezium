@@ -10,6 +10,9 @@
     <artifactId>debezium-embedded</artifactId>
     <name>Debezium Embedded</name>
     <packaging>jar</packaging>
+    <properties>
+        <confluent>true</confluent>
+    </properties>
     <dependencies>
         <dependency>
             <groupId>io.debezium</groupId>

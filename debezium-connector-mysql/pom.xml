@@ -217,7 +217,8 @@
         </dependency>
     </dependencies>
     <properties>
-        <!-- 
+        <confluent>true</confluent>
+        <!--
         Specify the properties for the various Docker containers.
         -->
         <mysql.user>mysqluser</mysql.user>
