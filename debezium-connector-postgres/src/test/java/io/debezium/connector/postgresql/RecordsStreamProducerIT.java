@@ -25,6 +25,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import java.math.BigDecimal;
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
+import java.sql.SQLException;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDate;
@@ -41,6 +42,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.TimeZone;
 import java.util.UUID;
+import java.util.concurrent.Callable;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -4220,18 +4222,7 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
         // Also make sure that the PG replication slot is COMPLETELY CLEARED. (While manually reproducing DBZ-7316
         // it was noted that sometimes there is still WAL to consume after the connector is stopped. So this is just
         // being extra-safe that the next portion of the test really tests with an empty WAL to consume).
-        TestHelper.execute(getReplicationSlotChangesQuery());
-        try (PostgresConnection connection = TestHelper.create()) {
-            // Assert that the previous statement did indeed clear out the pending changes in the replication slot
-            String query = String.format("SELECT count(*) AS change_count FROM (%s) AS changes", getReplicationSlotChangesQuery());
-            long changeCount = connection.queryAndMap(
-                    query,
-                    rs -> {
-                        assertThat(rs.next()).isTrue();
-                        return rs.getLong(1);
-                    });
-            assertThat(changeCount).isEqualTo(0);
-        }
+        clearReplicationSlotChanges();
 
         // Start the connector again. This time, we're resuming from an existing replication slot,
         // so the searchWalPosition function will be looking for a place to resume. We need to
@@ -4240,6 +4231,54 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
         startConnector(configMapper);
         waitForStreamingToStart();
         waitForSeveralHeartbeats();
+
+        // Manual cleanup, since DROP_SLOT_ON_STOP is false
+        stopConnector();
+        TestHelper.dropDefaultReplicationSlot();
+        TestHelper.dropPublication();
+    }
+
+    @Test
+    @FixFor("debezium/dbz#1337")
+    public void shouldWarnWhenWalPositionSearchIsNotAdvancing() throws Exception {
+        final LogInterceptor logInterceptor = new LogInterceptor(PostgresStreamingChangeEventSource.class);
+
+        Function<Configuration.Builder, Configuration.Builder> configMapper = config -> config
+                .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NO_DATA)
+                .with(Heartbeat.HEARTBEAT_INTERVAL, "100")
+                .with(PostgresConnectorConfig.WAL_SEARCH_WARNING_INTERVAL_MS, 500)
+                .with(PostgresConnectorConfig.DROP_SLOT_ON_STOP, false);
+
+        final String topicName = topicName("public.test_table");
+        final Callable<Boolean> recordReceivedOnTopic = () -> {
+            final SourceRecord record = consumeRecord();
+            return record != null && topicName.equals(record.topic());
+        };
+
+        // Stream one change so that the stored offset has a completely processed position,
+        // which makes the restarted connector search for the WAL resume position
+        startConnector(configMapper);
+        waitForStreamingToStart();
+        TestHelper.execute("INSERT INTO test_table (text) VALUES ('before restart');");
+        Awaitility.await().atMost(TestHelper.waitTimeForRecords() * 5L, TimeUnit.SECONDS).until(recordReceivedOnTopic);
+        waitForSeveralHeartbeats();
+        stopConnector();
+        consumeAvailableRecords(null);
+
+        // Consume everything pending in the slot so the restarted connector waits in the WAL position search
+        clearReplicationSlotChanges();
+
+        startConnector(configMapper);
+        waitForStreamingToStart();
+
+        Awaitility.await()
+                .atMost(TestHelper.waitTimeForRecords() * 5L, TimeUnit.SECONDS)
+                .until(() -> logInterceptor.containsWarnMessage("The search for the WAL resume position has been running for"));
+
+        // New WAL traffic ends the search and streaming resumes
+        TestHelper.execute("INSERT INTO test_table (text) VALUES ('after stalled search');");
+        Awaitility.await().atMost(TestHelper.waitTimeForRecords() * 5L, TimeUnit.SECONDS).until(recordReceivedOnTopic);
+        assertThat(logInterceptor.containsMessage("' discovered")).isTrue();
 
         // Manual cleanup, since DROP_SLOT_ON_STOP is false
         stopConnector();
@@ -4401,6 +4440,21 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
             }
             return heartbeatCount.get() > 10;
         });
+    }
+
+    private void clearReplicationSlotChanges() throws SQLException {
+        TestHelper.execute(getReplicationSlotChangesQuery());
+        try (PostgresConnection connection = TestHelper.create()) {
+            // Assert that the previous statement did indeed clear out the pending changes in the replication slot
+            String query = String.format("SELECT count(*) AS change_count FROM (%s) AS changes", getReplicationSlotChangesQuery());
+            long changeCount = connection.queryAndMap(
+                    query,
+                    rs -> {
+                        assertThat(rs.next()).isTrue();
+                        return rs.getLong(1);
+                    });
+            assertThat(changeCount).isEqualTo(0);
+        }
     }
 
     private String getReplicationSlotChangesQuery() {

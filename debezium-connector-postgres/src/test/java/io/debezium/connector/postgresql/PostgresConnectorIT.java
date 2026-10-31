@@ -3894,40 +3894,10 @@ public class PostgresConnectorIT extends AbstractAsyncEngineConnectorTest {
     @FixFor("DBZ-9688")
     @SkipWhenDatabaseVersion(check = LESS_THAN, major = 11, reason = "pg_replication_slot_advance needed to manually advance slot")
     public void shouldAdvanceOffsetToSlotWithTrustSlotStrategy() throws Exception {
-        TestHelper.execute(SETUP_TABLES_STMT);
-
-        // Start connector, process initial snapshot, then stop
-        Configuration.Builder configBuilder = TestHelper.defaultConfig()
-                .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL.name())
-                .with(CommonConnectorConfig.SNAPSHOT_MODE_TABLES, "s1.a")
-                .with(PostgresConnectorConfig.DROP_SLOT_ON_STOP, Boolean.FALSE);
-
-        start(PostgresConnector.class, configBuilder.build());
-        assertConnectorIsRunning();
-
-        consumeRecordsByTopic(1);
-
-        SlotState slotBeforeStop = getDefaultReplicationSlot();
-        stopConnector();
-        assertConnectorNotRunning();
-
-        // Insert more data
-        TestHelper.execute(INSERT_STMT);
-
-        // Manually advance the replication slot ahead of the stored offset
-        try (PostgresConnection connection = TestHelper.create()) {
-            connection.execute(String.format(
-                    "SELECT pg_replication_slot_advance('%s', pg_current_wal_lsn())",
-                    ReplicationConnection.Builder.DEFAULT_SLOT_NAME));
-        }
-
-        SlotState slotAfterAdvance = getDefaultReplicationSlot();
-        assertThat(slotAfterAdvance.slotLastFlushedLsn())
-                .describedAs("Slot should be advanced past original position")
-                .isGreaterThan(slotBeforeStop.slotLastFlushedLsn());
+        startAndAdvanceSlotPastOffset();
 
         // Restart with TRUST_SLOT strategy - should jump to slot position
-        configBuilder = TestHelper.defaultConfig()
+        final Configuration.Builder configBuilder = TestHelper.defaultConfig()
                 .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NO_DATA.name())
                 .with(PostgresConnectorConfig.DROP_SLOT_ON_STOP, Boolean.TRUE)
                 .with(PostgresConnectorConfig.OFFSET_SLOT_MISMATCH_STRATEGY, "trust_slot");
@@ -3935,6 +3905,48 @@ public class PostgresConnectorIT extends AbstractAsyncEngineConnectorTest {
         start(PostgresConnector.class, configBuilder.build());
         assertConnectorIsRunning();
         waitForStreamingRunning();
+    }
+
+    @Test
+    @FixFor("debezium/dbz#1337")
+    public void shouldWarnWhenSlotIsAheadOfOffset() throws Exception {
+        final LogInterceptor logInterceptor = new LogInterceptor(PostgresReplicationConnection.class);
+
+        startAndAdvanceSlotPastOffset();
+
+        // Restart with the default strategy, which keeps using the stored offset
+        start(PostgresConnector.class, TestHelper.defaultConfig()
+                .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NO_DATA.name())
+                .with(PostgresConnectorConfig.DROP_SLOT_ON_STOP, Boolean.TRUE)
+                .build());
+        assertConnectorIsRunning();
+
+        Awaitility.await()
+                .atMost(TestHelper.waitTimeForRecords(), TimeUnit.SECONDS)
+                .until(() -> logInterceptor.containsWarnMessage("which is past the stored offset LSN"));
+    }
+
+    @Test
+    @FixFor("debezium/dbz#1337")
+    public void shouldNotWarnWhenSlotIsAheadOfOffsetWithTrustSlotStrategy() throws Exception {
+        final LogInterceptor logInterceptor = new LogInterceptor(PostgresReplicationConnection.class);
+        final LogInterceptor streamingInterceptor = new LogInterceptor(PostgresStreamingChangeEventSource.class);
+
+        startAndAdvanceSlotPastOffset();
+
+        start(PostgresConnector.class, TestHelper.defaultConfig()
+                .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NO_DATA.name())
+                .with(PostgresConnectorConfig.DROP_SLOT_ON_STOP, Boolean.TRUE)
+                .with(PostgresConnectorConfig.OFFSET_SLOT_MISMATCH_STRATEGY, "trust_slot")
+                .build());
+        assertConnectorIsRunning();
+
+        // The mismatch check runs before the replication stream is started
+        Awaitility.await()
+                .atMost(TestHelper.waitTimeForRecords(), TimeUnit.SECONDS)
+                .until(() -> streamingInterceptor.containsMessage("Searching for WAL resume position")
+                        || streamingInterceptor.containsMessage("Processing messages"));
+        assertThat(logInterceptor.containsWarnMessage("which is past the stored offset LSN")).isFalse();
     }
 
     @Test
@@ -4452,6 +4464,38 @@ public class PostgresConnectorIT extends AbstractAsyncEngineConnectorTest {
 
     private void waitForStreamingRunning() throws InterruptedException {
         waitForStreamingRunning("postgres", TestHelper.TEST_SERVER);
+    }
+
+    private void startAndAdvanceSlotPastOffset() throws Exception {
+        TestHelper.execute(SETUP_TABLES_STMT);
+
+        // Start connector, process initial snapshot, then stop
+        start(PostgresConnector.class, TestHelper.defaultConfig()
+                .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL.name())
+                .with(CommonConnectorConfig.SNAPSHOT_MODE_TABLES, "s1.a")
+                .with(PostgresConnectorConfig.DROP_SLOT_ON_STOP, Boolean.FALSE)
+                .build());
+        assertConnectorIsRunning();
+
+        consumeRecordsByTopic(1);
+
+        final SlotState slotBeforeStop = getDefaultReplicationSlot();
+        stopConnector();
+        assertConnectorNotRunning();
+
+        // Insert more data
+        TestHelper.execute(INSERT_STMT);
+
+        // Manually advance the replication slot ahead of the stored offset
+        try (PostgresConnection connection = TestHelper.create()) {
+            connection.execute(String.format(
+                    "SELECT pg_replication_slot_advance('%s', pg_current_wal_lsn())",
+                    ReplicationConnection.Builder.DEFAULT_SLOT_NAME));
+        }
+
+        assertThat(getDefaultReplicationSlot().slotLastFlushedLsn())
+                .describedAs("Slot should be advanced past original position")
+                .isGreaterThan(slotBeforeStop.slotLastFlushedLsn());
     }
 
     @Test
