@@ -48,4 +48,34 @@ public class MongoDbConnectionContextTest {
         var masked = connectionContext.getMaskedConnectionString();
         assertThat(masked).isEqualTo("mongodb://***:***@localhost:27017/?authSource=***");
     }
+
+    @Test
+    @FixFor("debezium/dbz#2983")
+    void shouldMaskPercentEncodedPassword() {
+        var config = getConfig("mongodb://debezium:p%40ss%3Aw0rd@localhost:27017/?replicaSet=rs0", false);
+        try (var connectionContext = new MongoDbConnectionContext(config)) {
+            var masked = connectionContext.getMaskedConnectionString();
+            assertThat(masked).isEqualTo("mongodb://***:***@localhost:27017/?replicaSet=rs0");
+        }
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2983")
+    void shouldMaskPercentEncodedUserNameAndPassword() {
+        var config = getConfig("mongodb://deb%40user:s%2Fecret@localhost:27017/?replicaSet=rs0", false);
+        try (var connectionContext = new MongoDbConnectionContext(config)) {
+            var masked = connectionContext.getMaskedConnectionString();
+            assertThat(masked).isEqualTo("mongodb://***:***@localhost:27017/?replicaSet=rs0");
+        }
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2983")
+    void shouldMaskPercentEncodedUserNameWithoutPassword() {
+        var config = getConfig("mongodb://CN%3Dclient%2COU%3Ddebezium@localhost:27017/?authMechanism=MONGODB-X509", false);
+        try (var connectionContext = new MongoDbConnectionContext(config)) {
+            var masked = connectionContext.getMaskedConnectionString();
+            assertThat(masked).isEqualTo("mongodb://***@localhost:27017/?authMechanism=MONGODB-X509");
+        }
+    }
 }
