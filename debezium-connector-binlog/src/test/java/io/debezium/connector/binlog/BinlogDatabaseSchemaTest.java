@@ -573,6 +573,128 @@ public abstract class BinlogDatabaseSchemaTest<C extends BinlogConnectorConfig, 
 
     }
 
+    @Test
+    @FixFor("DBZ-2973")
+    public void shouldClearIncludedMappingWhenTableNumberReassignedToExcludedTable() {
+        final TableId customers = TableId.parse("connector_test.customers");
+        final TableId productsOnHand = TableId.parse("connector_test.products_on_hand");
+        setupCustomerIncludedSchema();
+
+        assertThat(schema.assignTableNumber(42, customers)).isTrue();
+        assertThat(schema.getTableId(42)).isEqualTo(customers);
+
+        assertThat(schema.assignTableNumber(42, productsOnHand)).isFalse();
+        assertThat(schema.getTableId(42)).isNull();
+        assertThat(schema.getExcludeTableId(42)).isEqualTo(productsOnHand);
+    }
+
+    @Test
+    @FixFor("DBZ-2973")
+    public void shouldClearExcludedMappingWhenTableNumberReassignedToIncludedTable() {
+        final TableId customers = TableId.parse("connector_test.customers");
+        final TableId productsOnHand = TableId.parse("connector_test.products_on_hand");
+        setupCustomerIncludedSchema();
+
+        assertThat(schema.assignTableNumber(42, productsOnHand)).isFalse();
+        assertThat(schema.getExcludeTableId(42)).isEqualTo(productsOnHand);
+
+        assertThat(schema.assignTableNumber(42, customers)).isTrue();
+        assertThat(schema.getExcludeTableId(42)).isNull();
+        assertThat(schema.getTableId(42)).isEqualTo(customers);
+    }
+
+    @Test
+    @FixFor("DBZ-2973")
+    public void shouldRestoreIncludedMappingWhenTableNumberReassignedBackFromExcluded() {
+        final TableId customers = TableId.parse("connector_test.customers");
+        final TableId productsOnHand = TableId.parse("connector_test.products_on_hand");
+        setupCustomerIncludedSchema();
+
+        schema.assignTableNumber(42, customers);
+        schema.assignTableNumber(42, productsOnHand);
+        schema.assignTableNumber(42, customers);
+
+        assertThat(schema.getTableId(42)).isEqualTo(customers);
+        assertThat(schema.getExcludeTableId(42)).isNull();
+    }
+
+    @Test
+    @FixFor("DBZ-2973")
+    public void shouldAssignTableNumberWithoutPriorMapping() {
+        final TableId customers = TableId.parse("connector_test.customers");
+        final TableId productsOnHand = TableId.parse("connector_test.products_on_hand");
+        setupCustomerIncludedSchema();
+
+        assertThat(schema.assignTableNumber(7, customers)).isTrue();
+        assertThat(schema.getTableId(7)).isEqualTo(customers);
+        assertThat(schema.getExcludeTableId(7)).isNull();
+
+        assertThat(schema.assignTableNumber(8, productsOnHand)).isFalse();
+        assertThat(schema.getExcludeTableId(8)).isEqualTo(productsOnHand);
+        assertThat(schema.getTableId(8)).isNull();
+    }
+
+    @Test
+    @FixFor("DBZ-2973")
+    public void shouldReassignTableNumberBetweenEqualWidthIncludedTables() {
+        final TableId customers = TableId.parse("connector_test.customers");
+        final TableId products = TableId.parse("connector_test.products");
+        setupCustomerAndProductsIncludedSchema();
+
+        assertThat(schema.assignTableNumber(42, customers)).isTrue();
+        assertThat(schema.getTableId(42)).isEqualTo(customers);
+
+        assertThat(schema.assignTableNumber(42, products)).isTrue();
+        assertThat(schema.getTableId(42)).isEqualTo(products);
+    }
+
+    @Test
+    @FixFor("DBZ-2973")
+    public void shouldClearIncludedMappingWhenTableNumberReusedAcrossDatabases() {
+        final TableId customers = TableId.parse("connector_test.customers");
+        final TableId otherDatabaseTable = TableId.parse("other_db.customers");
+        setupCustomerIncludedSchema();
+
+        assertThat(schema.assignTableNumber(42, customers)).isTrue();
+        assertThat(schema.getTableId(42)).isEqualTo(customers);
+
+        assertThat(schema.assignTableNumber(42, otherDatabaseTable)).isFalse();
+        assertThat(schema.getTableId(42)).isNull();
+        assertThat(schema.getExcludeTableId(42)).isEqualTo(otherDatabaseTable);
+    }
+
+    private void setupCustomerIncludedSchema() {
+        final Configuration config = DATABASE.defaultConfig()
+                .with(BinlogConnectorConfig.TABLE_INCLUDE_LIST, "connector_test.customers")
+                .build();
+        schema = getSchema(config);
+        schema.initializeStorage();
+        final P partition = initializePartition(connectorConfig, config);
+        final O offset = initializeOffset(connectorConfig);
+        offset.setBinlogStartPoint("binlog.001", 400);
+        schema.parseStreamingDdl(partition, ddlStatements, "db1", offset, Instant.now())
+                .forEach(x -> schema.applySchemaChange(x));
+
+        assertTableIncluded("connector_test.customers");
+        assertTableExcluded("connector_test.products_on_hand");
+    }
+
+    private void setupCustomerAndProductsIncludedSchema() {
+        final Configuration config = DATABASE.defaultConfig()
+                .with(BinlogConnectorConfig.TABLE_INCLUDE_LIST, "connector_test.customers,connector_test.products")
+                .build();
+        schema = getSchema(config);
+        schema.initializeStorage();
+        final P partition = initializePartition(connectorConfig, config);
+        final O offset = initializeOffset(connectorConfig);
+        offset.setBinlogStartPoint("binlog.001", 400);
+        schema.parseStreamingDdl(partition, ddlStatements, "db1", offset, Instant.now())
+                .forEach(x -> schema.applySchemaChange(x));
+
+        assertTableIncluded("connector_test.customers");
+        assertTableIncluded("connector_test.products");
+    }
+
     protected void assertTableSchemaComments(String tableName, String column, String comments) {
         TableId tableId = TableId.parse(tableName);
         TableSchema tableSchema = schema.schemaFor(tableId);
