@@ -41,6 +41,10 @@ import io.debezium.junit.logging.LogInterceptor;
 @SkipWhenLogMiningStrategyIs(value = SkipWhenLogMiningStrategyIs.Strategy.HYBRID, reason = "Cannot use lob.enabled with Hybrid")
 public class TransactionCommitConsumerIT extends AbstractAsyncEngineConnectorTest {
 
+    private static final String BINARY_XML_STORAGE = "XMLTYPE COLUMN xmlrecord STORE AS SECUREFILE BINARY XML";
+    private static final String DEFAULT_XML_STORAGE = "";
+    private static final String CLOB_XML_STORAGE = "XMLTYPE COLUMN xmlrecord STORE AS CLOB";
+
     private static OracleConnection connection;
 
     @BeforeAll
@@ -288,6 +292,95 @@ public class TransactionCommitConsumerIT extends AbstractAsyncEngineConnectorTes
         finally {
             TestHelper.dropTable(connection, "dbz2368");
         }
+    }
+
+    // The concatenation reported in debezium/dbz#2159 was fixed by debezium/dbz#2368. The following tests guard
+    // that the last XML document wins when a row is inserted and updated in the same transaction, across the
+    // supported XMLTYPE storage models.
+    @Test
+    @FixFor("debezium/dbz#2159")
+    public void shouldEmitLastXmlValueWhenRowInsertedAndXmlUpdatedInSameTransaction() throws Exception {
+        final String update = createXmlRow("update1");
+        assertThat(getXmlValueForSameTransactionChanges(BINARY_XML_STORAGE, update)).isEqualTo(update);
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2159")
+    public void shouldEmitLastXmlValueWhenRowInsertedAndXmlUpdatedTwiceInSameTransaction() throws Exception {
+        final String update = createXmlRow("update2");
+        assertThat(getXmlValueForSameTransactionChanges(BINARY_XML_STORAGE, createXmlRow("update1"), update)).isEqualTo(update);
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2159")
+    public void shouldEmitLastXmlValueWhenRowInsertedAndXmlUpdatedInSameTransactionWithDefaultStorage() throws Exception {
+        final String update = createXmlRow("update1");
+        assertThat(getXmlValueForSameTransactionChanges(DEFAULT_XML_STORAGE, update)).isEqualTo(update);
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2159")
+    public void shouldEmitLastXmlValueWhenRowInsertedAndXmlUpdatedInSameTransactionWithClobStorage() throws Exception {
+        // With CLOB storage the value is emitted wrapped as XMLType('...'), which is a separate issue, so
+        // only check that the last document replaced the inserted one rather than being appended to it.
+        final String update = createXmlRow("update1");
+        final String value = (String) getXmlValueForSameTransactionChanges(CLOB_XML_STORAGE, update);
+        assertThat(value).containsOnlyOnce(update).doesNotContain(createXmlRow("value1"));
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2159")
+    public void shouldEmitNullXmlValueWhenRowInsertedAndXmlSetToNullInSameTransaction() throws Exception {
+        // Setting the column to NULL is merged as a plain column value rather than as a new XML document
+        assertThat(getXmlValueForSameTransactionChanges(BINARY_XML_STORAGE, (String) null)).isNull();
+    }
+
+    private Object getXmlValueForSameTransactionChanges(String storageClause, String... updateValues) throws Exception {
+        TestHelper.dropTable(connection, "dbz2159");
+        try {
+            connection.execute("CREATE TABLE dbz2159 (recid varchar2(255) primary key, xmlrecord xmltype) " + storageClause);
+            TestHelper.streamTable(connection, "dbz2159");
+
+            Configuration config = TestHelper.defaultConfig()
+                    .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "DEBEZIUM\\.DBZ2159")
+                    .with(OracleConnectorConfig.LOB_ENABLED, "true")
+                    .build();
+
+            start(OracleConnector.class, config);
+            assertConnectorIsRunning();
+
+            waitForStreamingRunning(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
+
+            final String[] statements = new String[updateValues.length + 1];
+            statements[0] = "INSERT INTO dbz2159 (recid, xmlrecord) VALUES ('test3', '" + createXmlRow("value1") + "')";
+            for (int i = 0; i < updateValues.length; i++) {
+                final String value = updateValues[i] == null ? "NULL" : "'" + updateValues[i] + "'";
+                statements[i + 1] = "UPDATE dbz2159 SET xmlrecord = " + value + " WHERE recid = 'test3'";
+            }
+            connection.execute(statements);
+
+            List<SourceRecord> tableRecords = consumeRecordsByTopic(1).recordsForTopic("server1.DEBEZIUM.DBZ2159");
+            assertThat(tableRecords).hasSize(1);
+            VerifyRecord.isValidInsert(tableRecords.get(0), true);
+
+            Struct after = ((Struct) tableRecords.get(0).value()).getStruct(Envelope.FieldName.AFTER);
+            assertThat(after.get("RECID")).isEqualTo("test3");
+
+            assertNoRecordsToConsume();
+            return after.get("XMLRECORD");
+        }
+        finally {
+            TestHelper.dropTable(connection, "dbz2159");
+        }
+    }
+
+    private static String createXmlRow(String firstValue) {
+        final StringBuilder xml = new StringBuilder("<row id=\"test3\">");
+        xml.append("<c1>").append(firstValue).append("</c1>");
+        for (int i = 2; i <= 50; i++) {
+            xml.append("<c").append(i).append(">value").append(i).append("</c").append(i).append(">");
+        }
+        return xml.append("</row>").toString();
     }
 
 }
