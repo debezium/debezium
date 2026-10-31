@@ -7,7 +7,6 @@ package io.debezium.testing.testcontainers;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import java.io.IOException;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.SQLException;
@@ -25,7 +24,6 @@ import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.apache.kafka.common.serialization.StringDeserializer;
-import org.awaitility.Awaitility;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
@@ -40,10 +38,6 @@ import org.testcontainers.lifecycle.Startables;
 import com.jayway.jsonpath.JsonPath;
 
 import io.strimzi.test.container.StrimziKafkaCluster;
-
-import okhttp3.OkHttpClient;
-import okhttp3.Request;
-import okhttp3.Response;
 
 public class DebeziumContainerIT {
 
@@ -80,17 +74,8 @@ public class DebeziumContainerIT {
         debeziumContainer.registerConnector("my-connector-1", getConfiguration(1));
 
         // task initialization happens asynchronously, so we might have to retry until the task is RUNNING
-        Awaitility.await()
-                .pollInterval(Duration.ofMillis(250))
-                .atMost(Duration.ofSeconds(30))
-                .untilAsserted(
-                        () -> {
-                            String status = executeHttpRequest(debeziumContainer.getConnectorStatusUri("my-connector-1"));
-
-                            assertThat(JsonPath.<String> read(status, "$.name")).isEqualTo("my-connector-1");
-                            assertThat(JsonPath.<String> read(status, "$.connector.state")).isEqualTo("RUNNING");
-                            assertThat(JsonPath.<String> read(status, "$.tasks[0].state")).isEqualTo("RUNNING");
-                        });
+        debeziumContainer.ensureConnectorState("my-connector-1", Connector.State.RUNNING);
+        debeziumContainer.ensureConnectorTaskState("my-connector-1", 0, Connector.State.RUNNING);
     }
 
     @Test
@@ -166,15 +151,6 @@ public class DebeziumContainerIT {
         return ConnectorConfiguration.forJdbcContainer(postgresContainer)
                 .with("topic.prefix", "dbserver" + id)
                 .with("slot.name", "debezium_" + id);
-    }
-
-    private String executeHttpRequest(String url) throws IOException {
-        final OkHttpClient client = new OkHttpClient();
-        final Request request = new Request.Builder().url(url).build();
-
-        try (Response response = client.newCall(request).execute()) {
-            return response.body().string();
-        }
     }
 
     @AfterAll
