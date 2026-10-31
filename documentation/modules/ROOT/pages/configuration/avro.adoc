@@ -519,6 +519,10 @@ This can lead to problems during serialization if the column name does not also 
 Each {prodname} connector provides a configuration property, `field.name.adjustment.mode` that you can set to `avro` if you have columns that do not adhere to Avro rules for names.
 Setting `field.name.adjustment.mode` to `avro` allows serialization of non-conformant fields without having to actually modify your schema.
 
+The MongoDB connector is an exception.
+Because the MongoDB connector emits documents as JSON strings, the connector-level `field.name.adjustment.mode` property has no effect on document field names.
+To adjust MongoDB document field names, set the `field.name.adjustment.mode` property of the {link-prefix}:{link-mongodb-event-flattening}#mongodb-extract-new-record-state-field-name-adjustment-mode[MongoDB new document state extraction] SMT.
+
 ifdef::community[]
 == Getting More Information
 
