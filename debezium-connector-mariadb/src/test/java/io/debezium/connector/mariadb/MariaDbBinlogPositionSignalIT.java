@@ -6,9 +6,14 @@
 package io.debezium.connector.mariadb;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.junit.jupiter.api.Assumptions.assumeFalse;
+import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
 import java.nio.file.Path;
 import java.sql.SQLException;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
@@ -18,13 +23,19 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
+import io.debezium.DebeziumException;
 import io.debezium.config.Configuration;
 import io.debezium.connector.binlog.AbstractBinlogConnectorIT;
 import io.debezium.connector.binlog.BinlogConnectorConfig;
 import io.debezium.connector.binlog.util.BinlogTestConnection;
 import io.debezium.connector.binlog.util.TestHelper;
 import io.debezium.connector.binlog.util.UniqueDatabase;
+import io.debezium.connector.mariadb.gtid.MariaDbGtidSet;
+import io.debezium.connector.mariadb.jdbc.MariaDbConnection;
+import io.debezium.connector.mariadb.jdbc.MariaDbConnectionConfiguration;
+import io.debezium.connector.mariadb.jdbc.MariaDbFieldReader;
 import io.debezium.connector.mariadb.signal.SetBinlogPositionSignal;
+import io.debezium.doc.FixFor;
 import io.debezium.util.Testing;
 
 /**
@@ -278,6 +289,61 @@ public class MariaDbBinlogPositionSignalIT extends AbstractBinlogConnectorIT<Mar
         Struct after = value.getStruct("after");
         assertThat(after.getInt32("id")).isEqualTo(5);
         assertThat(after.getString("value")).isEqualTo("value5");
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2731")
+    public void shouldResolveGtidSetAtBinlogPosition() throws Exception {
+        assumeFalse(isInnoDbBinlogEnabled(), "Binlog positions are not meaningful with the InnoDB-based binary log");
+        DATABASE.createAndInitialize();
+        connection = getTestDatabaseConnection(DATABASE.getDatabaseName());
+
+        // Each checkpoint is a binlog position and the GTID position the server had reached there.
+        final List<Map<String, Object>> checkpoints = new ArrayList<>();
+        checkpoints.add(checkpoint());
+        connection.execute("INSERT INTO test_table VALUES (1, 'value1')");
+        checkpoints.add(checkpoint());
+        connection.execute("INSERT INTO test_table VALUES (2, 'value2')", "INSERT INTO test_table VALUES (3, 'value3')");
+        checkpoints.add(checkpoint());
+        // Moves the remaining checkpoints to a new file
+        connection.execute("FLUSH BINARY LOGS");
+        checkpoints.add(checkpoint());
+        connection.execute("INSERT INTO test_table VALUES (4, 'value4')");
+        checkpoints.add(checkpoint());
+
+        final Configuration config = DATABASE.defaultConfig().build();
+        try (MariaDbConnection mariaDbConnection = new MariaDbConnection(new MariaDbConnectionConfiguration(config),
+                new MariaDbFieldReader(new MariaDbConnectorConfig(config)))) {
+            for (Map<String, Object> checkpoint : checkpoints) {
+                final String resolved = mariaDbConnection.gtidSetAtPosition((String) checkpoint.get("file"), (Long) checkpoint.get("position"));
+                assertThat(new MariaDbGtidSet(resolved))
+                        .as("GTID position at %s", checkpoint)
+                        .isEqualTo(new MariaDbGtidSet((String) checkpoint.get("gtids")));
+            }
+        }
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2731")
+    public void shouldRejectBinlogPositionWithInnoDbBinlog() throws Exception {
+        assumeTrue(isInnoDbBinlogEnabled(), "Only applies to the InnoDB-based binary log");
+        DATABASE.createAndInitialize();
+        connection = getTestDatabaseConnection(DATABASE.getDatabaseName());
+        connection.execute("INSERT INTO test_table VALUES (1, 'value1')");
+        final Map<String, Object> position = getCurrentBinlogPosition();
+
+        final Configuration config = DATABASE.defaultConfig().build();
+        try (MariaDbConnection mariaDbConnection = new MariaDbConnection(new MariaDbConnectionConfiguration(config),
+                new MariaDbFieldReader(new MariaDbConnectorConfig(config)))) {
+            assertThatThrownBy(() -> mariaDbConnection.gtidSetAtPosition((String) position.get("file"), (Long) position.get("position")))
+                    .isInstanceOf(DebeziumException.class)
+                    .hasMessageContaining("InnoDB-based binary log");
+        }
+    }
+
+    private Map<String, Object> checkpoint() throws SQLException {
+        final Map<String, Object> position = getCurrentBinlogPosition();
+        return Map.of("file", position.get("file"), "position", position.get("position"), "gtids", getCurrentGtidSet());
     }
 
     private Map<String, Object> getCurrentBinlogPosition() throws SQLException {

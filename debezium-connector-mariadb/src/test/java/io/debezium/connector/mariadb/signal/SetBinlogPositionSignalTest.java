@@ -8,7 +8,9 @@ package io.debezium.connector.mariadb.signal;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 import java.util.Map;
 
@@ -18,6 +20,8 @@ import org.junit.jupiter.api.Test;
 import io.debezium.DebeziumException;
 import io.debezium.connector.mariadb.MariaDbOffsetContext;
 import io.debezium.connector.mariadb.MariaDbPartition;
+import io.debezium.connector.mariadb.jdbc.MariaDbConnection;
+import io.debezium.doc.FixFor;
 import io.debezium.document.Document;
 import io.debezium.document.DocumentReader;
 import io.debezium.pipeline.EventDispatcher;
@@ -35,6 +39,7 @@ public class SetBinlogPositionSignalTest {
     private SetBinlogPositionSignal<MariaDbPartition> signal;
     private MariaDbOffsetContext offsetContext;
     private MariaDbPartition partition;
+    private MariaDbConnection connection;
 
     @BeforeEach
     public void setUp() {
@@ -42,10 +47,13 @@ public class SetBinlogPositionSignalTest {
         offsetContext = mock(MariaDbOffsetContext.class);
         partition = new MariaDbPartition("test-server", "test-db");
 
-        signal = new SetBinlogPositionSignal<>(eventDispatcher);
+        connection = mock(MariaDbConnection.class);
+
+        signal = new SetBinlogPositionSignal<>(eventDispatcher, () -> connection);
     }
 
     @Test
+    @FixFor("debezium/dbz#2731")
     public void shouldSetBinlogFileAndPosition() throws Exception {
         // Given
         String binlogFilename = "mariadb-bin.000003";
@@ -57,13 +65,39 @@ public class SetBinlogPositionSignalTest {
         SignalPayload<MariaDbPartition> payload = new SignalPayload<>(
                 partition, "test-id", "set-binlog-position", data, offsetContext, Map.of());
 
+        when(connection.gtidSetAtPosition(binlogFilename, binlogPosition)).thenReturn("0-1-57");
+
         // When
         boolean result = signal.arrived(payload);
 
         // Then
         assertThat(result).isTrue();
         verify(offsetContext).setBinlogStartPoint(binlogFilename, binlogPosition);
+        verify(offsetContext).resetGtidSet();
+        verify(offsetContext).setCompletedGtidSet("0-1-57");
+        verify(connection).close();
         verify(eventDispatcher).alwaysDispatchHeartbeatEvent(partition, offsetContext);
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2731")
+    public void shouldNotChangeOffsetWhenGtidSetCannotBeResolved() throws Exception {
+        // Given
+        String binlogFilename = "mariadb-bin.000003";
+        Long binlogPosition = 1234L;
+
+        Document data = DocumentReader.defaultReader().read(
+                "{\"binlog_filename\": \"" + binlogFilename + "\", \"binlog_position\": " + binlogPosition + "}");
+
+        SignalPayload<MariaDbPartition> payload = new SignalPayload<>(
+                partition, "test-id", "set-binlog-position", data, offsetContext, Map.of());
+
+        when(connection.gtidSetAtPosition(binlogFilename, binlogPosition)).thenThrow(new DebeziumException("binlog file not found"));
+
+        // When / Then
+        assertThatThrownBy(() -> signal.arrived(payload)).isInstanceOf(DebeziumException.class);
+        verify(offsetContext, never()).setBinlogStartPoint(binlogFilename, binlogPosition);
+        verify(offsetContext, never()).resetGtidSet();
     }
 
     @Test
