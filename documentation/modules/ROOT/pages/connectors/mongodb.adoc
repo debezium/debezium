@@ -1793,13 +1793,20 @@ After a source record is deleted, emitting a tombstone event (the default behavi
 * `avro` replaces the characters that cannot be used in the Avro type name with underscore.
 * `avro_unicode` replaces the underscore or characters that cannot be used in the Avro type name with corresponding unicode like _uxxxx. Note: _ is an escape sequence like backslash in Java
 
+This property applies to the names of the key, envelope, and `source` schemas that the connector produces.
+The {link-prefix}:{link-mongodb-event-flattening}#mongodb-new-document-state-extraction[MongoDB new document state extraction] SMT (`ExtractNewDocumentState`) derives its value schema name from the envelope schema name.
+To make sure that every segment of that name is valid, for example, when a collection name starts with a digit, also set the SMT's {link-prefix}:{link-mongodb-event-flattening}#mongodb-extract-new-record-state-field-name-adjustment-mode[`field.name.adjustment.mode`] property.
+
 |[[mongodb-property-field-name-adjustment-mode]]<<mongodb-property-field-name-adjustment-mode,`+field.name.adjustment.mode+`>>
 |none
-|Specifies how the connector adjusts field names for compatibility with the message converter used by the connector.
-Set one of the following options:
+|This property has no effect on the content of MongoDB change events.
+The connector emits the `before` and `after` documents as JSON strings, so the field names in a document are not Kafka Connect field names that the connector can adjust.
+
+To adjust document field names for compatibility with a message converter, such as Avro, configure the {link-prefix}:{link-mongodb-event-flattening}#mongodb-new-document-state-extraction[MongoDB new document state extraction] SMT, and set its {link-prefix}:{link-mongodb-event-flattening}#mongodb-extract-new-record-state-field-name-adjustment-mode[`field.name.adjustment.mode`] property by using the SMT prefix, for example, `transforms.unwrap.field.name.adjustment.mode`.
+The SMT supports the following options:
 
 `none`:: The connector does not adjust field names.
-`avro`:: The connector replaces characters that cannot are not valid in Avro type names with underscores.
+`avro`:: The connector replaces characters that are not valid in Avro type names with underscores.
 `avro_unicode`:: The connector replaces underscores and characters that are not valid in Avro type names with the equivalent unicode, such as _uxxxx.
 +
 Note: The underscore character ('`_`') represents an escape sequence similar to a backslash in Java.
