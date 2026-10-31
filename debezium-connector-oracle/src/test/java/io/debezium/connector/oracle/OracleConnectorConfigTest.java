@@ -31,6 +31,7 @@ import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
 import io.debezium.config.Field;
 import io.debezium.doc.FixFor;
+import io.debezium.junit.logging.LogInterceptor;
 import io.debezium.storage.kafka.history.KafkaSchemaHistory;
 
 public class OracleConnectorConfigTest {
@@ -585,6 +586,40 @@ public class OracleConnectorConfigTest {
                 .containsExactlyInAnyOrder(
                         OracleConnectorConfig.LogMiningStrategy.HYBRID,
                         OracleConnectorConfig.LogMiningStrategy.DICTIONARY_FROM_FILE);
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2984")
+    @SuppressWarnings("deprecation")
+    public void shouldWarnButPassValidationWhenRemovedCteQueryModeIsEnabled() {
+        final LogInterceptor logInterceptor = new LogInterceptor(OracleConnectorConfig.class);
+        final Configuration config = logMinerConfig("logminer")
+                .with(OracleConnectorConfig.LOG_MINING_USE_CTE_QUERY, true)
+                .with(OracleConnectorConfig.LOG_MINING_QUERY_FILTER_MODE, "none")
+                .build();
+
+        final List<Field> fields = List.of(OracleConnectorConfig.LOG_MINING_USE_CTE_QUERY);
+        assertThat(config.validateAndRecord(fields, LOGGER::error)).isTrue();
+        assertThat(logInterceptor.containsWarnMessage("is no longer supported, the CTE query mode has been removed")).isTrue();
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2984")
+    @SuppressWarnings("deprecation")
+    public void shouldNotDisableWindowMaxMsWhenRemovedCteQueryModeIsEnabled() {
+        final LogInterceptor logInterceptor = new LogInterceptor(OracleConnectorConfig.class);
+        final Configuration config = logMinerConfig("logminer")
+                .with(OracleConnectorConfig.LOG_MINING_USE_CTE_QUERY, true)
+                .with(OracleConnectorConfig.LOG_MINING_QUERY_FILTER_MODE, "in")
+                .with(OracleConnectorConfig.LOG_MINING_WINDOW_MAX_MS, 5000L)
+                .build();
+
+        final OracleConnectorConfig connectorConfig = new OracleConnectorConfig(config);
+        assertThat(connectorConfig.getLogMiningWindowMaxMs()).isEqualTo(Duration.ofMillis(5000L));
+
+        // The removal warning is only raised during validation, not each time the configuration is built
+        assertThat(logInterceptor.containsWarnMessage("CTE query mode")).isFalse();
+        assertThat(logInterceptor.containsWarnMessage("log.mining.use.cte.query")).isFalse();
     }
 
     private static Configuration.Builder logMinerConfig(String adapter) {

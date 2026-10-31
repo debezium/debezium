@@ -27,9 +27,10 @@ import io.debezium.data.Envelope;
 import io.debezium.data.VerifyRecord;
 import io.debezium.doc.FixFor;
 import io.debezium.embedded.async.AbstractAsyncEngineConnectorTest;
+import io.debezium.junit.logging.LogInterceptor;
 
 /**
- * Tests using LogMiner with the internal CTE-based query functionality.
+ * Tests that the removed internal CTE-based query option no longer affects LogMiner streaming.
  *
  * @author Chris Cranford
  */
@@ -51,29 +52,36 @@ public class CteQueryIT extends AbstractAsyncEngineConnectorTest {
     }
 
     @Test
-    @FixFor("DBZ-9272")
-    public void shouldStreamChangesUsingCteBasedQueries() throws Exception {
-        TestHelper.dropTable(connection, "dbz9272");
+    @FixFor("debezium/dbz#2984")
+    @SuppressWarnings("deprecation")
+    public void shouldWarnAndStreamChangesWhenRemovedCteQueryOptionIsEnabled() throws Exception {
+        TestHelper.dropTable(connection, "dbz2984");
         try {
-            connection.execute("CREATE TABLE dbz9272 (id numeric(9,0) primary key, data varchar2(50))");
-            TestHelper.streamTable(connection, "dbz9272");
+            connection.execute("CREATE TABLE dbz2984 (id numeric(9,0) primary key, data varchar2(50))");
+            TestHelper.streamTable(connection, "dbz2984");
 
+            // Before the CTE query mode was removed, this combination failed validation as the
+            // CTE query required a query filter mode other than 'none'.
             Configuration config = TestHelper.defaultConfig()
-                    .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "DEBEZIUM\\.DBZ9272")
+                    .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "DEBEZIUM\\.DBZ2984")
                     .with(OracleConnectorConfig.LOG_MINING_USE_CTE_QUERY, "true")
-                    .with(OracleConnectorConfig.LOG_MINING_QUERY_FILTER_MODE, "in")
+                    .with(OracleConnectorConfig.LOG_MINING_QUERY_FILTER_MODE, "none")
                     .build();
+
+            final LogInterceptor logInterceptor = new LogInterceptor(OracleConnectorConfig.class);
 
             start(OracleConnector.class, config);
             assertConnectorIsRunning();
 
             waitForStreamingRunning(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
 
-            connection.execute("INSERT INTO dbz9272 values (1, 'insert')");
-            connection.execute("UPDATE dbz9272 SET data = 'update' where ID = 1");
-            connection.execute("DELETE FROM dbz9272 WHERE id = 1");
+            assertThat(logInterceptor.containsWarnMessage("is no longer supported, the CTE query mode has been removed")).isTrue();
 
-            List<SourceRecord> records = consumeRecordsByTopic(4).recordsForTopic("server1.DEBEZIUM.DBZ9272");
+            connection.execute("INSERT INTO dbz2984 values (1, 'insert')");
+            connection.execute("UPDATE dbz2984 SET data = 'update' where ID = 1");
+            connection.execute("DELETE FROM dbz2984 WHERE id = 1");
+
+            List<SourceRecord> records = consumeRecordsByTopic(4).recordsForTopic("server1.DEBEZIUM.DBZ2984");
             assertThat(records).hasSize(4);
 
             Struct value = ((Struct) records.get(0).value());
@@ -96,7 +104,7 @@ public class CteQueryIT extends AbstractAsyncEngineConnectorTest {
             VerifyRecord.isValidTombstone(records.get(3));
         }
         finally {
-            TestHelper.dropTable(connection, "dbz9272");
+            TestHelper.dropTable(connection, "dbz2984");
         }
     }
 }
