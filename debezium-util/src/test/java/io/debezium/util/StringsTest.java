@@ -227,6 +227,29 @@ public class StringsTest {
     }
 
     @Test
+    @FixFor("debezium/dbz#2954")
+    public void replaceVariablesShouldNotHangOnSelfReferencingOrCyclicVariables() {
+        assertReplacement("${v1}", vars("v1", "${v1}"), "${v1}");
+        assertReplacement("pre-${v1}-post", vars("v1", "${v1}"), "pre-${v1}-post");
+        assertReplacement("${v1}${v2}", vars("v1", "${v2}", "v2", "${v1}"), "${v1}${v2}");
+        assertReplacement("pwd=${password}", vars("password", "p${ass}word"), "pwd=p${ass}word");
+        assertReplacement("${v1}${v2}", vars("v1", "${v1}", "v2", "value2"), "${v1}value2");
+        assertReplacement("${v1}${v2}", vars("v1", "value1", "v2", "${v2}"), "value1${v2}");
+        assertReplacement("${v1}", vars("v1", "${v1:fallback}"), "fallback");
+        assertReplacement("${v1}", vars("v1", "${v2}", "v2", "${v1:fallback2}"), "fallback2");
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2954")
+    public void replaceVariablesShouldRecursivelyExpandSubstitutedVariablesAndDefaults() {
+        assertReplacement("${v1}", vars("v1", "${v2}", "v2", "x"), "x");
+        assertReplacement("${v1:${v2}}", vars("v2", "2"), "2");
+        assertReplacement("${v1:${v2}}", vars("v1", "foo", "v2", "bar"), "foo");
+        assertReplacement("${a}", Map.of("a", "${b}", "b", "${c}", "c", "${d}", "d", "done"), "done");
+        assertReplacement("${url:${protocol}://${host}:${port}}", Map.of("protocol", "http", "host", "localhost", "port", "8080"), "http://localhost:8080");
+    }
+
+    @Test
     public void isNullOrEmptyReturnsTrueForNull() {
         assertThat(Strings.isNullOrEmpty(null)).isTrue();
     }
