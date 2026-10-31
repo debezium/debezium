@@ -696,6 +696,17 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
             .withImportance(Importance.LOW)
             .withDescription("The timeout in seconds for the creation of the replication slot.");
 
+    public static final Field WAL_SEARCH_WARNING_INTERVAL_MS = Field.createInternal("wal.search.warning.interval.ms")
+            .withDisplayName("WAL resume position search warning interval (ms)")
+            .withType(Type.LONG)
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTION_ADVANCED_REPLICATION))
+            .withWidth(Width.SHORT)
+            .withDefault(60_000L)
+            .withImportance(Importance.LOW)
+            .withDescription("The interval in milliseconds after which a warning is logged when the search for the WAL resume position "
+                    + "has not received any new LSN from the server. The warning is repeated at each interval. A value of 0 disables the warning.")
+            .withValidation(Field::isNonNegativeLong);
+
     public static final Field PUBLICATION_NAME = Field.create("publication.name")
             .withDisplayName("Publication")
             .withType(Type.STRING)
@@ -1515,6 +1526,10 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
 
     protected Duration xminFetchInterval() {
         return Duration.ofMillis(getConfig().getLong(PostgresConnectorConfig.XMIN_FETCH_INTERVAL));
+    }
+
+    protected Duration getWalSearchWarningInterval() {
+        return Duration.ofMillis(getConfig().getLong(PostgresConnectorConfig.WAL_SEARCH_WARNING_INTERVAL_MS));
     }
 
     public LsnFlushMode getLsnFlushMode() {

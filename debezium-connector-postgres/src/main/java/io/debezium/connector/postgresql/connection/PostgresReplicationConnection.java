@@ -88,8 +88,11 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
     private final Properties streamParams;
 
     private Lsn defaultStartingPos;
+    private Lsn slotLatestFlushedLsn;
+    private Lsn serverWalEndLsn;
     private SlotCreationResult slotCreationInfo;
     private boolean hasInitedSlot;
+    private boolean hasCheckedOffsetAgainstSlot;
 
     private final Optional<ReplicaIdentityMapper> replicaIdentityMapper;
 
@@ -640,6 +643,7 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
                 LOGGER.debug("received latest xlogpos '{}'", xlogpos);
                 return Lsn.valueOf(xlogpos);
             });
+            this.serverWalEndLsn = xlogStart;
 
             if (slotCreationInfo != null) {
                 this.defaultStartingPos = slotCreationInfo.startLsn();
@@ -650,6 +654,7 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
             }
             else {
                 Lsn latestFlushedLsn = slotInfo.latestFlushedLsn();
+                this.slotLatestFlushedLsn = latestFlushedLsn;
                 this.defaultStartingPos = latestFlushedLsn.compareTo(xlogStart) < 0 ? latestFlushedLsn : xlogStart;
                 if (LOGGER.isDebugEnabled()) {
                     LOGGER.debug("found previous flushed LSN '{}'", latestFlushedLsn);
@@ -721,6 +726,12 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
         initConnection();
 
         connect();
+
+        if (!hasCheckedOffsetAgainstSlot) {
+            hasCheckedOffsetAgainstSlot = true;
+            warnIfOffsetMismatchesSlot(offset);
+        }
+
         if (shouldIgnoreExistingOffsetPosition(offset)) {
             offset = defaultStartingPos;
         }
@@ -754,6 +765,25 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
                     metronome.pause();
                 }
             }
+        }
+    }
+
+    private void warnIfOffsetMismatchesSlot(Lsn offset) {
+        if (offset == null || !offset.isValid()) {
+            return;
+        }
+        if (slotLatestFlushedLsn != null && slotLatestFlushedLsn.isValid() && slotLatestFlushedLsn.compareTo(offset) > 0
+                && !connectorConfig.offsetSeekToSlotOnStart()) {
+            LOGGER.warn("The replication slot '{}' has confirmed flushed LSN '{}', which is past the stored offset LSN '{}'. "
+                    + "Changes between these positions will not be streamed again, and the search for the WAL resume position may wait "
+                    + "until the next transaction is written to the WAL. Review the '{}' setting if the slot should be trusted.",
+                    slotName, slotLatestFlushedLsn, offset, PostgresConnectorConfig.OFFSET_SLOT_MISMATCH_STRATEGY.name());
+        }
+        if (serverWalEndLsn != null && serverWalEndLsn.isValid() && offset.compareTo(serverWalEndLsn) > 0) {
+            LOGGER.warn("The stored offset LSN '{}' is past the current WAL position '{}' of the server. "
+                    + "The database or the replication slot '{}' may have been restored or recreated. "
+                    + "Streaming will not resume until the server's WAL position passes the stored offset LSN. Review the '{}' setting.",
+                    offset, serverWalEndLsn, slotName, PostgresConnectorConfig.OFFSET_SLOT_MISMATCH_STRATEGY.name());
         }
     }
 
