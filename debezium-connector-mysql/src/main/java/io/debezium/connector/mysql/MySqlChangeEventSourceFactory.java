@@ -99,6 +99,7 @@ public class MySqlChangeEventSourceFactory implements ChangeEventSourceFactory<M
         MySqlStreamingChangeEventSource streamingSource = new MySqlStreamingChangeEventSource(
                 configuration,
                 connectionFactory.mainConnection(),
+                connectionFactory,
                 dispatcher,
                 errorHandler,
                 clock,

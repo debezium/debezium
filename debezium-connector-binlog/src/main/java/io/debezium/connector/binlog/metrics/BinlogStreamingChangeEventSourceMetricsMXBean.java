@@ -6,11 +6,12 @@
 package io.debezium.connector.binlog.metrics;
 
 import io.debezium.pipeline.metrics.StreamingChangeEventSourceMetricsMXBean;
+import io.debezium.pipeline.metrics.traits.ConnectedServerMetricsMXBean;
 
 /**
  * @author Chris Cranford
  */
-public interface BinlogStreamingChangeEventSourceMetricsMXBean extends StreamingChangeEventSourceMetricsMXBean {
+public interface BinlogStreamingChangeEventSourceMetricsMXBean extends StreamingChangeEventSourceMetricsMXBean, ConnectedServerMetricsMXBean {
     /**
      * Name of the current binlog file being read by underlying binlog client.
      */
