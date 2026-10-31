@@ -27,7 +27,11 @@ import io.debezium.connector.oracle.Scn;
 import io.debezium.connector.oracle.StreamingAdapter;
 import io.debezium.connector.oracle.logminer.events.DmlEvent;
 import io.debezium.connector.oracle.logminer.events.EventType;
+import io.debezium.connector.oracle.logminer.events.ExtendedStringBeginEvent;
+import io.debezium.connector.oracle.logminer.events.ExtendedStringWriteEvent;
+import io.debezium.connector.oracle.logminer.events.LobEraseEvent;
 import io.debezium.connector.oracle.logminer.events.LogMinerEvent;
+import io.debezium.connector.oracle.logminer.events.SelectLobLocatorEvent;
 import io.debezium.connector.oracle.logminer.events.XmlBeginEvent;
 import io.debezium.connector.oracle.logminer.events.XmlEndEvent;
 import io.debezium.connector.oracle.logminer.events.XmlWriteEvent;
@@ -45,10 +49,10 @@ import oracle.jdbc.OracleTypes;
 import oracle.sql.CharacterSet;
 
 /**
- * Unit tests for {@link TransactionCommitConsumer} merging of XML events when LOB support is enabled.
+ * Unit tests for {@link TransactionCommitConsumer} merging of XML and extended string events when LOB support is enabled.
  * <p>
  * The concatenation reported in debezium/dbz#2159 was fixed by debezium/dbz#2368. The tests here lock in the merge
- * behavior for that scenario.
+ * behavior for that scenario and harden the discard of a row's merge state.
  *
  * @author Chris Cranford
  */
@@ -59,6 +63,7 @@ public class TransactionCommitConsumerTest {
     private static final String TRANSACTION_ID = "1234567890";
     private static final String XML_COLUMN = "XMLRECORD";
     private static final String CLOB_COLUMN = "DOC";
+    private static final String EXTENDED_STRING_COLUMN = "DATA";
     private static final int DATA_INDEX = 1;
     private static final int XML_INDEX = 2;
 
@@ -138,6 +143,41 @@ public class TransactionCommitConsumerTest {
         assertThat(((DmlEvent) dispatched.get(0)).getNewValues()[DATA_INDEX]).isEqualTo("updated");
     }
 
+    @Test
+    @FixFor("debezium/dbz#2159")
+    public void shouldIgnoreXmlWriteWhenRowMergeStateWasDiscarded() throws Exception {
+        // LOB_ERASE is not supported, so the merged INSERT for the row is dropped on purpose. The test only
+        // checks that the trailing write for the discarded row is ignored rather than failing.
+        try (TransactionCommitConsumer consumer = createConsumer()) {
+            accept(consumer, insert());
+            accept(consumer, xmlBegin());
+            accept(consumer, xmlWrite("<row>a</row>"));
+            accept(consumer, selectClobLocator());
+            accept(consumer, lobErase());
+            accept(consumer, xmlWrite("<row>b</row>"));
+            accept(consumer, xmlEnd());
+        }
+
+        assertThat(dispatched).isEmpty();
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2159")
+    public void shouldIgnoreExtendedStringWriteWhenRowMergeStateWasDiscarded() throws Exception {
+        // LOB_ERASE is not supported, so the merged INSERT for the row is dropped on purpose. The test only
+        // checks that the trailing write for the discarded row is ignored rather than failing.
+        try (TransactionCommitConsumer consumer = createConsumer()) {
+            accept(consumer, insert());
+            accept(consumer, extendedStringBegin());
+            accept(consumer, extendedStringWrite("a"));
+            accept(consumer, selectClobLocator());
+            accept(consumer, lobErase());
+            accept(consumer, extendedStringWrite("b"));
+        }
+
+        assertThat(dispatched).isEmpty();
+    }
+
     private void assertSingleEvent(EventType eventType, String expectedXml) {
         assertThat(dispatched).hasSize(1);
         final DmlEvent event = (DmlEvent) dispatched.get(0);
@@ -170,6 +210,24 @@ public class TransactionCommitConsumerTest {
     private XmlBeginEvent xmlBegin() {
         return new XmlBeginEvent(EventType.XML_BEGIN, nextScn(), TABLE_ID, ROW_ID, "rsId", Instant.now(),
                 new Object[]{ "test3", "data", null, null }, new Object[]{ "test3", "data", null, null }, XML_COLUMN, scn);
+    }
+
+    private ExtendedStringBeginEvent extendedStringBegin() {
+        return new ExtendedStringBeginEvent(EventType.EXTENDED_STRING_BEGIN, nextScn(), TABLE_ID, ROW_ID, "rsId", Instant.now(),
+                new Object[]{ "test3", null, null, null }, new Object[]{ "test3", null, null, null }, EXTENDED_STRING_COLUMN);
+    }
+
+    private ExtendedStringWriteEvent extendedStringWrite(String data) {
+        return new ExtendedStringWriteEvent(EventType.EXTENDED_STRING_WRITE, nextScn(), TABLE_ID, ROW_ID, "rsId", Instant.now(), data);
+    }
+
+    private SelectLobLocatorEvent selectClobLocator() {
+        return new SelectLobLocatorEvent(EventType.SELECT_LOB_LOCATOR, nextScn(), TABLE_ID, ROW_ID, "rsId", Instant.now(),
+                new Object[]{ "test3", "data", null, null }, new Object[]{ "test3", "data", null, null }, CLOB_COLUMN, false);
+    }
+
+    private LobEraseEvent lobErase() {
+        return new LobEraseEvent(EventType.LOB_ERASE, nextScn(), TABLE_ID, ROW_ID, "rsId", Instant.now());
     }
 
     private XmlWriteEvent xmlWrite(String xml) {
