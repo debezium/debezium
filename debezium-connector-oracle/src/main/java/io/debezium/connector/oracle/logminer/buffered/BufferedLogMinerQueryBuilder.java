@@ -24,16 +24,12 @@ public class BufferedLogMinerQueryBuilder extends AbstractLogMinerQueryBuilder {
     private static final List<Integer> OPERATION_CODES_LOB = Arrays.asList(1, 2, 3, 6, 7, 9, 10, 11, 27, 29, 34, 36, 68, 70, 71, 91, 92, 93, 255);
     private static final List<Integer> OPERATION_CODES_NO_LOB = Arrays.asList(1, 2, 3, 6, 7, 27, 34, 36, 255);
 
-    // CTE query excludes START,COMMIT,ROLLBACK markers - only interested in non-transaction marker changes
-    private static final List<Integer> CTE_OPERATION_CODES_LOB = Arrays.asList(1, 2, 3, 9, 10, 11, 27, 29, 34, 68, 70, 71, 91, 92, 93, 255);
-    private static final List<Integer> CTE_OPERATION_CODES_NO_LOB = Arrays.asList(1, 2, 3, 27, 34, 255);
-
     public BufferedLogMinerQueryBuilder(OracleConnectorConfig connectorConfig) {
         super(connectorConfig);
     }
 
     @Override
-    protected String getPredicates(boolean isCteQuery) {
+    protected String getPredicates() {
         final StringBuilder query = new StringBuilder(1024);
 
         // These bind parameters will be bound when the query is executed by the caller.
@@ -54,7 +50,7 @@ public class BufferedLogMinerQueryBuilder extends AbstractLogMinerQueryBuilder {
 
         // Operations predicate
         // This predicate never returns EMPTY; so inline directly.
-        query.append(getOperationCodePredicate(isCteQuery));
+        query.append(getOperationCodePredicate());
 
         // Include/Exclude usernames
         final String userNamePredicate = getUserNamePredicate();
@@ -112,10 +108,9 @@ public class BufferedLogMinerQueryBuilder extends AbstractLogMinerQueryBuilder {
     /**
      * Get the redo entry operation code predicate.
      *
-     * @param isCteQuery whether to build the operation code predicate for CTE
      * @return operation code predicate, never {@code null} nor empty.
      */
-    private String getOperationCodePredicate(boolean isCteQuery) {
+    private String getOperationCodePredicate() {
         // This predicate excepts that if we are limiting data to a pluggable database (PDB) that another
         // predicate has been applied to restrict the operations to only that PDB. This predicate will be
         // generated to capture the following operations as a baseline:
@@ -133,7 +128,7 @@ public class BufferedLogMinerQueryBuilder extends AbstractLogMinerQueryBuilder {
 
         // Handle all operations except DDL changes
         final InClause operationInClause = InClause.builder().withField("OPERATION_CODE");
-        operationInClause.withValues(getOperationCodesList(isCteQuery));
+        operationInClause.withValues(getOperationCodesList());
         predicate.append("(").append(operationInClause.build());
 
         // Handle INTERNAL operations that can contain ROW_IDs for INSERT/UPDATE operations with empty ROW_IDs
@@ -158,11 +153,7 @@ public class BufferedLogMinerQueryBuilder extends AbstractLogMinerQueryBuilder {
         return " OR (OPERATION_CODE = 5 AND INFO NOT LIKE 'INTERNAL DDL%')";
     }
 
-    private List<Integer> getOperationCodesList(boolean isCteQuery) {
-        if (connectorConfig.isLobEnabled()) {
-            return isCteQuery ? CTE_OPERATION_CODES_LOB : OPERATION_CODES_LOB;
-        }
-
-        return isCteQuery ? CTE_OPERATION_CODES_NO_LOB : OPERATION_CODES_NO_LOB;
+    private List<Integer> getOperationCodesList() {
+        return connectorConfig.isLobEnabled() ? OPERATION_CODES_LOB : OPERATION_CODES_NO_LOB;
     }
 }

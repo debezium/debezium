@@ -235,7 +235,7 @@ public class DeferredMemoryStreamingChangeEventSourceTest extends AbstractAsyncE
             mock.processEvent(getInsertLogMinerEventRow(11, TRANSACTION_ID_1));
             mock.processEvent(getStartLogMinerEventRow(5, TRANSACTION_ID_2, deferredStart));
 
-            mock.process(Scn.valueOf(100), Scn.valueOf(100), Scn.valueOf(200));
+            mock.process(Scn.valueOf(100), Scn.valueOf(200));
 
             assertThat(logInterceptor.containsMessage("All active transactions: " + TRANSACTION_ID_1
                     + " (startScn=10, changeTime=" + activeStart + ", userName=" + TestHelper.SCHEMA_USER
@@ -479,7 +479,7 @@ public class DeferredMemoryStreamingChangeEventSourceTest extends AbstractAsyncE
             // the oldest transaction (101 - 1 = 100). In deferred mode, it should advance block-by-block
             // because lastProcessedScn (200) is not less than endScn (200), so endScn stays at 200
             // and miningSessionStartScn = 200 - 1 = 199.
-            final ProcessResult result = mock.process(Scn.valueOf(100), Scn.valueOf(100), Scn.valueOf(200));
+            final ProcessResult result = mock.process(Scn.valueOf(100), Scn.valueOf(200));
 
             assertThat(result.miningSessionStartScn()).isEqualTo(Scn.valueOf(199));
             assertThat(result.readStartScn()).isEqualTo(Scn.valueOf(200));
@@ -558,7 +558,7 @@ public class DeferredMemoryStreamingChangeEventSourceTest extends AbstractAsyncE
             // min(oldestDeferredScn=150, minCacheScn=100) - 1 = 99, not just 150.
             // The subtract(ONE) matches the non-deferred path so the START event at
             // the oldest SCN is included by the mining query's exclusive SCN > ? bound.
-            final ProcessResult result = mock.process(Scn.valueOf(100), Scn.valueOf(100), Scn.valueOf(200));
+            final ProcessResult result = mock.process(Scn.valueOf(100), Scn.valueOf(200));
 
             Mockito.verify(offsetContext).setScn(Scn.valueOf(99));
             assertThat(result.miningSessionStartScn()).isEqualTo(Scn.valueOf(199));
