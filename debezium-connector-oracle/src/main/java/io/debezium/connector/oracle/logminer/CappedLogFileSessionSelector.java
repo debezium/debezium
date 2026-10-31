@@ -134,9 +134,12 @@ public class CappedLogFileSessionSelector implements LogFileSessionSelector {
      * The outcome of measuring the selected window against the logs that were collected.
      *
      * @param allThreadsMineOnline every open redo thread's window ends on the current online redo log,
-     *            so the unbounded upper boundary is covered and every collected log can be mined
-     * @param effectiveUpperBoundary the boundary to mine up to, tightened to the smallest next SCN
-     *            across the threads whose window ends on an archive
+     *            so the unbounded upper boundary is covered and every collected log can be mined; a
+     *            redo thread that is not open and whose window was cut short by the budget keeps the
+     *            session on the capped path, so the budget still limits how many logs a session mines
+     * @param effectiveUpperBoundary the boundary to mine up to, tightened to the smallest last SCN
+     *            across the open threads whose window ends on an archive and the threads that are not
+     *            open whose window was cut short by the budget
      * @param atEndOfAvailableLogs the window already holds every collected log, so the budget is no
      *            longer the binding constraint
      */
@@ -154,6 +157,13 @@ public class CappedLogFileSessionSelector implements LogFileSessionSelector {
      * indication that there is nothing further to mine. The two are kept apart because only the first
      * makes the unbounded upper boundary safe to record.
      *
+     * <p>A redo thread that is not open, such as one whose instance was shut down, crashed and was
+     * recovered by a surviving instance, or was disabled, writes no new redo, yet its remaining logs
+     * are capped by the same budget. When its window drops some of those logs, it tightens the
+     * boundary just like an open thread, otherwise the dropped redo would fall past the boundary and
+     * be skipped by the next session. When its window holds all of its remaining logs, it does not
+     * constrain the boundary, as the window already reaches the end of the thread's redo.
+     *
      * @param logFilesResult the collected logs and the redo thread state they were collected against
      * @param cappedLogsByThread the window selected for this session, grouped by redo thread
      * @param logsByThread every collected log, grouped by redo thread
@@ -167,8 +177,8 @@ public class CappedLogFileSessionSelector implements LogFileSessionSelector {
         Scn effectiveUpperBoundary = upperBoundary;
         boolean allThreadsMineOnline = true;
         for (RedoThread redoThread : logFilesResult.redoThreadState().getThreads()) {
+            final List<LogFile> threadLogs = cappedLogsByThread.get(redoThread.getThreadId());
             if (redoThread.isOpen()) {
-                final List<LogFile> threadLogs = cappedLogsByThread.get(redoThread.getThreadId());
                 if (threadLogs == null) {
                     // Should never happen, just sanity check
                     throw new DebeziumException("Redo thread %d is open, expected logs".formatted(redoThread.getThreadId()));
@@ -179,20 +189,20 @@ public class CappedLogFileSessionSelector implements LogFileSessionSelector {
                 final LogFile lastThreadLog = threadLogs.get(threadLogs.size() - 1);
                 if (!lastThreadLog.isCurrent()) {
                     allThreadsMineOnline = false;
-
-                    // When last log is an archive, cap the upper boundary to the last SCN the log can
-                    // hold, but only if that is less than the current effective upper boundary. This
-                    // guarantees we get the smallest upper position across all threads.
-                    //
-                    // A log's next SCN is exclusive, being the first SCN of the thread's next log, which
-                    // is not in this window. Capping at the next SCN would let other threads return
-                    // changes at that SCN, moving the read position onto it and skipping this thread's
-                    // changes at that same SCN once its next log is mined.
-                    final Scn lastLogLastScn = lastThreadLog.getLastScn();
-                    if (lastLogLastScn.compareTo(effectiveUpperBoundary) < 0) {
-                        effectiveUpperBoundary = lastLogLastScn;
-                    }
+                    effectiveUpperBoundary = narrowToThreadWindow(effectiveUpperBoundary, lastThreadLog);
                 }
+            }
+            else if (threadLogs != null && threadLogs.size() < logsByThread.get(redoThread.getThreadId()).size()) {
+                // A thread that is not open, whether shut down, recovered by a surviving instance, or
+                // disabled, writes no new redo, but its remaining logs are still capped by the budget.
+                // When the window drops some of them, the boundary must not move past the window, or
+                // the dropped part of the thread falls between this session's boundary and the next
+                // session's start and is never mined. A window holding all of the thread's remaining
+                // logs ends where the thread's redo ends, so it places no constraint on the boundary.
+                // A window cut short always ends on an archive, as a window ending on an online redo
+                // log is extended through all of the thread's remaining logs.
+                allThreadsMineOnline = false;
+                effectiveUpperBoundary = narrowToThreadWindow(effectiveUpperBoundary, threadLogs.get(threadLogs.size() - 1));
             }
         }
 
@@ -204,6 +214,25 @@ public class CappedLogFileSessionSelector implements LogFileSessionSelector {
                 && logsByThread.values().stream().flatMap(List::stream).allMatch(LogFile::isArchive);
 
         return new WindowInspection(allThreadsMineOnline, effectiveUpperBoundary, atEndOfAvailableLogs);
+    }
+
+    /**
+     * Narrows the upper boundary so that it does not move past the end of a thread's window.
+     *
+     * <p>The boundary is capped to the last SCN the window's last log can hold, but only if that is
+     * less than the current boundary, which guarantees the smallest upper position across all threads.
+     * A log's next SCN is exclusive, being the first SCN of the thread's next log, which is not in this
+     * window. Capping at the next SCN would let other threads return changes at that SCN, moving the
+     * read position onto it and skipping this thread's changes at that same SCN once its next log is
+     * mined.
+     *
+     * @param effectiveUpperBoundary the boundary to narrow
+     * @param lastThreadLog the last log in the thread's window, never an online current redo log
+     * @return the narrowed boundary
+     */
+    private static Scn narrowToThreadWindow(Scn effectiveUpperBoundary, LogFile lastThreadLog) {
+        final Scn lastLogLastScn = lastThreadLog.getLastScn();
+        return lastLogLastScn.compareTo(effectiveUpperBoundary) < 0 ? lastLogLastScn : effectiveUpperBoundary;
     }
 
     /**
