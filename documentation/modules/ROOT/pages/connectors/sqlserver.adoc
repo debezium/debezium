@@ -1730,6 +1730,10 @@ A string representation of a timestamp with timezone information, where the time
 
 Other data type mappings are described in the following sections.
 
+SQL Server change data capture does not record the previous value of a large object column, such as `VARCHAR(MAX)`, `NVARCHAR(MAX)`, `VARBINARY(MAX)`, `TEXT`, `NTEXT`, or `IMAGE`, when an `UPDATE` operation does not change that column.
+In the `before` field of an update event, the connector represents such a column with the value of the `unavailable.value.placeholder` property.
+The `after` field of an update event always contains the value that SQL Server recorded for the column, including `null`.
+
 If present, a column's default value is propagated to the corresponding field's Kafka Connect schema.
 Change messages will contain the field's default value
 (unless an explicit column value had been given), so there should rarely be the need to obtain the default value from the schema.
