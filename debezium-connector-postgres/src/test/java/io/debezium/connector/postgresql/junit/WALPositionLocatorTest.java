@@ -8,8 +8,11 @@ package io.debezium.connector.postgresql.junit;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import java.lang.reflect.Field;
+import java.lang.reflect.Modifier;
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
+import java.util.Collection;
 import java.util.Optional;
 
 import org.junit.jupiter.api.Test;
@@ -32,13 +35,13 @@ import io.debezium.doc.FixFor;
  *
  * PHASE 1 - SEARCH/LOCATION PHASE:
  * - Multiple calls to resumeFromLsn() to search for the restart point
- * - Each LSN gets added to lsnSeen set during this phase
+ * - The range of LSNs the phase has seen is remembered during this phase
  * - Continue until resumeFromLsn() returns Optional.of(lsn) (found restart point)
  *
  * PHASE 2 - STREAMING PHASE:
  * - Call enableFiltering() to switch to streaming mode
  * - Only call skipMessage() to check if streaming LSNs should be skipped
- * - skipMessage() compares against LSNs stored during the search phase
+ * - skipMessage() compares against the LSNs seen during the search phase
  */
 
 public class WALPositionLocatorTest {
@@ -295,7 +298,7 @@ public class WALPositionLocatorTest {
         assertThatThrownBy(() -> locator.skipMessage(unseenLsn))
                 .isInstanceOf(DebeziumException.class)
                 .hasMessageContaining("Message with LSN")
-                .hasMessageContaining("not present among LSNs seen");
+                .hasMessageContaining("outside the range of LSNs seen in the location phase");
     }
 
     // =============================================================================
@@ -408,7 +411,7 @@ public class WALPositionLocatorTest {
         // Replay phase: enableFiltering then skipMessage should skip first 3 events at this LSN
         locator.enableFiltering();
 
-        // Events before stored LSN are filtered by lsnSeen
+        // Events before stored LSN are filtered by the seen LSN range
         assertThat(locator.skipMessage(beginLsn)).isTrue();
 
         // First 3 events at stored LSN are skipped (already processed)
@@ -692,6 +695,223 @@ public class WALPositionLocatorTest {
         assertThat(locator.skipMessage(sameLsn)).isTrue(); // event #1, already processed
         assertThat(locator.skipMessage(sameLsn)).isTrue(); // event #2, already processed
         assertThat(locator.skipMessage(sameLsn)).isFalse(); // event #3
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2905")
+    void whenLocationPhaseSeesManyMessagesShouldNotRetainThem() {
+        final Lsn lastCommitStoredLsn = Lsn.valueOf(100L);
+        final Lsn lastEventStoredLsn = Lsn.valueOf(140L);
+        final var locator = new WalPositionLocator(lastCommitStoredLsn, lastEventStoredLsn, ReplicationMessage.Operation.INSERT);
+
+        final var beginMessage = createBeginMessage(1L);
+        final var insertMessage = createInsertMessage(1L);
+
+        assertThat(locator.resumeFromLsn(Lsn.valueOf(110L), beginMessage)).isEmpty();
+        assertThat(locator.resumeFromLsn(Lsn.valueOf(140L), insertMessage)).isEmpty();
+        for (int i = 0; i < 100_000; i++) {
+            locator.resumeFromLsn(Lsn.valueOf(1_000L + i), insertMessage);
+        }
+
+        // The memory the location phase needs must not grow with the number of
+        // messages it sees, so the locator must not keep them in a collection.
+        for (Field field : WalPositionLocator.class.getDeclaredFields()) {
+            if (Modifier.isStatic(field.getModifiers())) {
+                continue;
+            }
+            assertThat(Collection.class.isAssignableFrom(field.getType()))
+                    .as("Field '%s' must not hold the LSNs seen", field.getName())
+                    .isFalse();
+        }
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2905")
+    void whenMessageWithLsnBelowTheSeenRangeArrivesShouldThrow() {
+        final Lsn lastCommitStoredLsn = Lsn.valueOf(100L);
+        final Lsn lastEventStoredLsn = Lsn.valueOf(140L);
+        final var locator = new WalPositionLocator(lastCommitStoredLsn, lastEventStoredLsn, ReplicationMessage.Operation.INSERT, 1);
+
+        final var beginMessage = createBeginMessage(1L);
+        final var insertMessage = createInsertMessage(1L);
+
+        assertThat(locator.resumeFromLsn(Lsn.valueOf(110L), beginMessage)).isEmpty();
+        assertThat(locator.resumeFromLsn(Lsn.valueOf(140L), insertMessage)).isEmpty();
+        assertThat(locator.resumeFromLsn(Lsn.valueOf(140L), insertMessage)).isPresent();
+
+        locator.enableFiltering();
+
+        assertThatThrownBy(() -> locator.skipMessage(Lsn.valueOf(50L)))
+                .isInstanceOf(DebeziumException.class)
+                .hasMessageContaining("outside the range of LSNs seen in the location phase")
+                .hasMessageContaining("LSN{0/6E}' to 'LSN{0/8C}");
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2905")
+    void whenMessageWithLsnAboveTheSeenRangeArrivesShouldThrow() {
+        final Lsn lastCommitStoredLsn = Lsn.valueOf(100L);
+        final Lsn lastEventStoredLsn = Lsn.valueOf(140L);
+        final var locator = new WalPositionLocator(lastCommitStoredLsn, lastEventStoredLsn, ReplicationMessage.Operation.INSERT, 1);
+
+        final var beginMessage = createBeginMessage(1L);
+        final var insertMessage = createInsertMessage(1L);
+
+        assertThat(locator.resumeFromLsn(Lsn.valueOf(110L), beginMessage)).isEmpty();
+        assertThat(locator.resumeFromLsn(Lsn.valueOf(140L), insertMessage)).isEmpty();
+        assertThat(locator.resumeFromLsn(Lsn.valueOf(140L), insertMessage)).isPresent();
+
+        locator.enableFiltering();
+
+        assertThatThrownBy(() -> locator.skipMessage(Lsn.valueOf(500L)))
+                .isInstanceOf(DebeziumException.class)
+                .hasMessageContaining("outside the range of LSNs seen in the location phase")
+                .hasMessageContaining("LSN{0/6E}' to 'LSN{0/8C}");
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2905")
+    void whenMessageWithLsnOnTheEdgeOfTheSeenRangeArrivesShouldBeFiltered() {
+        final Lsn lastCommitStoredLsn = Lsn.valueOf(100L);
+        final Lsn lastEventStoredLsn = Lsn.valueOf(140L);
+        final var beginMessage = createBeginMessage(1L);
+        final var insertMessage = createInsertMessage(1L);
+
+        // The resume position is at the top of the seen range
+        final var topLocator = new WalPositionLocator(lastCommitStoredLsn, lastEventStoredLsn, ReplicationMessage.Operation.INSERT, 1);
+        assertThat(topLocator.resumeFromLsn(Lsn.valueOf(110L), beginMessage)).isEmpty();
+        assertThat(topLocator.resumeFromLsn(Lsn.valueOf(140L), insertMessage)).isEmpty();
+        assertThat(topLocator.resumeFromLsn(Lsn.valueOf(140L), insertMessage)).isPresent();
+
+        topLocator.enableFiltering();
+
+        // The lowest LSN of the range is inside it
+        assertThat(topLocator.skipMessage(Lsn.valueOf(110L))).isTrue();
+
+        // The resume position is at the bottom of the seen range
+        final var bottomLocator = new WalPositionLocator(lastCommitStoredLsn, lastEventStoredLsn, ReplicationMessage.Operation.BEGIN);
+        assertThat(bottomLocator.resumeFromLsn(Lsn.valueOf(110L), beginMessage)).isEmpty();
+        assertThat(bottomLocator.resumeFromLsn(Lsn.valueOf(140L), insertMessage)).isEmpty();
+        assertThat(bottomLocator.resumeFromLsn(Lsn.valueOf(140L), insertMessage)).isPresent();
+
+        bottomLocator.enableFiltering();
+
+        // The highest LSN of the range is inside it
+        assertThat(bottomLocator.skipMessage(Lsn.valueOf(140L))).isTrue();
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2905")
+    void whenMessageWithLsnInsideTheSeenRangeThatWasNotSeenArrivesShouldBeFiltered() {
+        final Lsn lastCommitStoredLsn = Lsn.valueOf(100L);
+        final Lsn lastEventStoredLsn = Lsn.valueOf(140L);
+        final var locator = new WalPositionLocator(lastCommitStoredLsn, lastEventStoredLsn, ReplicationMessage.Operation.INSERT);
+
+        final var beginMessage = createBeginMessage(1L);
+        final var insertMessage = createInsertMessage(1L);
+
+        assertThat(locator.resumeFromLsn(Lsn.valueOf(110L), beginMessage)).isEmpty();
+        assertThat(locator.resumeFromLsn(Lsn.valueOf(140L), insertMessage)).isEmpty();
+        assertThat(locator.resumeFromLsn(Lsn.valueOf(300L), insertMessage)).isPresent();
+
+        locator.enableFiltering();
+
+        // The LSN lies between the ones the location phase has seen
+        assertThat(locator.skipMessage(Lsn.valueOf(200L))).isTrue();
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2905")
+    void whenMessageOutsideTheSeenRangeShouldNotListEverySeenLsn() {
+        final Lsn lastCommitStoredLsn = Lsn.valueOf(100L);
+        final Lsn lastEventStoredLsn = Lsn.valueOf(140L);
+        final var locator = new WalPositionLocator(lastCommitStoredLsn, lastEventStoredLsn, ReplicationMessage.Operation.INSERT);
+
+        final var beginMessage = createBeginMessage(1L);
+        final var insertMessage = createInsertMessage(1L);
+
+        assertThat(locator.resumeFromLsn(Lsn.valueOf(110L), beginMessage)).isEmpty();
+        assertThat(locator.resumeFromLsn(Lsn.valueOf(140L), insertMessage)).isEmpty();
+        for (int i = 0; i < 10_000; i++) {
+            locator.resumeFromLsn(Lsn.valueOf(1_000L + i), insertMessage);
+        }
+
+        locator.enableFiltering();
+
+        assertThatThrownBy(() -> locator.skipMessage(Lsn.valueOf(50L)))
+                .isInstanceOf(DebeziumException.class)
+                .hasMessageContaining("outside the range of LSNs seen in the location phase")
+                .satisfies(exception -> assertThat(exception.getMessage()).hasSizeLessThan(1_000));
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2905")
+    void whenInvalidLsnIsReplayedShouldNotThrow() {
+        final Lsn lastCommitStoredLsn = Lsn.valueOf(100L);
+        final Lsn lastEventStoredLsn = Lsn.valueOf(140L);
+        final var locator = new WalPositionLocator(lastCommitStoredLsn, lastEventStoredLsn, ReplicationMessage.Operation.INSERT, 1);
+
+        final var beginMessage = createBeginMessage(1L);
+        final var insertMessage = createInsertMessage(1L);
+
+        assertThat(locator.resumeFromLsn(Lsn.valueOf(110L), beginMessage)).isEmpty();
+        assertThat(locator.resumeFromLsn(Lsn.valueOf(140L), insertMessage)).isEmpty();
+        assertThat(locator.resumeFromLsn(Lsn.valueOf(140L), insertMessage)).isPresent();
+
+        locator.enableFiltering();
+
+        // An invalid LSN is not checked
+        assertThat(locator.skipMessage(Lsn.valueOf(0L))).isTrue();
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2905")
+    void whenNonEventMessageIsReplayedItShouldNotUseUpASkipNorThrow() {
+        final Lsn lastCommitStoredLsn = Lsn.valueOf(100L);
+        final Lsn lastEventStoredLsn = Lsn.valueOf(140L);
+        final var locator = new WalPositionLocator(lastCommitStoredLsn, lastEventStoredLsn, ReplicationMessage.Operation.INSERT, 2);
+
+        final var beginMessage = createBeginMessage(1L);
+        final var insertMessage = createInsertMessage(1L);
+
+        assertThat(locator.resumeFromLsn(Lsn.valueOf(110L), beginMessage)).isEmpty();
+        assertThat(locator.resumeFromLsn(Lsn.valueOf(140L), insertMessage)).isEmpty();
+        assertThat(locator.resumeFromLsn(Lsn.valueOf(140L), insertMessage)).isEmpty();
+        assertThat(locator.resumeFromLsn(Lsn.valueOf(140L), insertMessage)).isPresent();
+
+        locator.enableFiltering();
+
+        // A message of the transaction is filtered
+        assertThat(locator.skipMessage(Lsn.valueOf(110L), false)).isTrue();
+        // It uses up none of the skips meant for the already-processed rows
+        assertThat(locator.skipMessage(Lsn.valueOf(140L), false)).isTrue();
+        assertThat(locator.skipMessage(Lsn.valueOf(140L))).isTrue();
+        assertThat(locator.skipMessage(Lsn.valueOf(140L))).isTrue();
+        assertThat(locator.skipMessage(Lsn.valueOf(140L))).isFalse();
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2905")
+    void whenTheStoredOffsetIsAtTheTransactionStartShouldOnlyAcceptTheMessagesOfThatTransaction() {
+        final Lsn lastCommitStoredLsn = Lsn.valueOf(100L);
+        final Lsn lastEventStoredLsn = Lsn.valueOf(110L);
+        final var locator = new WalPositionLocator(lastCommitStoredLsn, lastEventStoredLsn, ReplicationMessage.Operation.BEGIN);
+
+        final var beginMessage = createBeginMessage(1L);
+        final var insertMessage = createInsertMessage(1L);
+
+        // The stored offset points at the BEGIN of the transaction
+        assertThat(locator.resumeFromLsn(Lsn.valueOf(110L), beginMessage)).isEmpty();
+        assertThat(locator.resumeFromLsn(Lsn.valueOf(120L), insertMessage)).isPresent();
+
+        locator.enableFiltering();
+
+        // A message of the transaction is filtered
+        assertThat(locator.skipMessage(Lsn.valueOf(115L))).isTrue();
+        // A message from outside the transaction is not
+        assertThatThrownBy(() -> locator.skipMessage(Lsn.valueOf(130L)))
+                .isInstanceOf(DebeziumException.class)
+                .hasMessageContaining("outside the range of LSNs seen in the location phase");
     }
 
     // =============================================================================
