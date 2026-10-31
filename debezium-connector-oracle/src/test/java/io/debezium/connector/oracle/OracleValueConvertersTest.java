@@ -50,6 +50,7 @@ public class OracleValueConvertersTest {
     private OracleValueConverters convertersUtf8;
     private OracleValueConverters convertersLatin1;
     private OracleValueConverters convertersStructured;
+    private OracleValueConverters convertersIntervalString;
 
     @BeforeEach
     void setUp() {
@@ -76,6 +77,12 @@ public class OracleValueConvertersTest {
         Mockito.when(structuredConnection.getNationalCharacterSet()).thenReturn(CharacterSet.make(CharacterSet.AL16UTF16_CHARSET));
         Mockito.when(structuredConnection.getDatabaseCharacterSet()).thenReturn(CharacterSet.make(CharacterSet.AL32UTF8_CHARSET));
         convertersStructured = structuredConnectorConfig.getAdapter().getValueConverter(structuredConnectorConfig, structuredConnection);
+
+        final Configuration intervalStringConfiguration = TestHelper.defaultConfig()
+                .with(OracleConnectorConfig.INTERVAL_HANDLING_MODE, OracleConnectorConfig.IntervalHandlingMode.STRING.getValue())
+                .build();
+        final OracleConnectorConfig intervalStringConnectorConfig = new OracleConnectorConfig(intervalStringConfiguration);
+        convertersIntervalString = intervalStringConnectorConfig.getAdapter().getValueConverter(intervalStringConnectorConfig, utf8Connection);
     }
 
     @Test
@@ -338,6 +345,35 @@ public class OracleValueConvertersTest {
         assertThat(daySecond.getInt32(StructuredTemporal.NANOS_FIELD)).isEqualTo(-999_999_999);
     }
 
+    @Test
+    @FixFor("debezium/dbz#2945")
+    public void shouldScaleIntervalDaySecondFractionAsMicrosecondsInNumericMode() {
+        final Column column = intervalDaySecondColumn(9);
+        final Field field = adaptiveFieldFor(column);
+
+        assertThat(convertersUtf8.converter(column, field).convert(new INTERVALDS("0 00:00:00.123456789"))).isEqualTo(123_456L);
+        assertThat(convertersUtf8.converter(column, field).convert(new INTERVALDS("0 00:00:00.123456"))).isEqualTo(123_456L);
+        assertThat(convertersUtf8.converter(column, field).convert(new INTERVALDS("0 00:00:00.000000999"))).isEqualTo(0L);
+        assertThat(convertersUtf8.converter(column, field).convert(new INTERVALDS("111 10:09:08.555444333"))).isEqualTo(9_626_948_555_444L);
+        assertThat(convertersUtf8.converter(column, field).convert(new INTERVALDS("-7 05:12:10.123456789"))).isEqualTo(-623_530_123_456L);
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2945")
+    public void shouldPreserveIntervalDaySecondFractionInStringMode() {
+        final Column column = intervalDaySecondColumn(9);
+        final Field field = new Field(column.name(), 0, convertersIntervalString.schemaBuilder(column).optional().build());
+
+        assertThat(convertersIntervalString.converter(column, field).convert(new INTERVALDS("0 00:00:00.123456789")))
+                .isEqualTo("P0Y0M0DT0H0M0.123456789S");
+        assertThat(convertersIntervalString.converter(column, field).convert(new INTERVALDS("111 10:09:08.555444333")))
+                .isEqualTo("P0Y0M111DT10H9M8.555444333S");
+        assertThat(convertersIntervalString.converter(column, field).convert(new INTERVALDS("-7 05:12:10.0123")))
+                .isEqualTo("P0Y0M-7DT-5H-12M-10.0123S");
+        assertThat(convertersIntervalString.converter(column, field).convert(new INTERVALDS("0 00:00:00.0")))
+                .isEqualTo("P0Y0M0DT0H0M0S");
+    }
+
     private Field fieldFor(Column column) {
         final Schema schema = convertersStructured.schemaBuilder(column).optional().build();
         return new Field(column.name(), 0, schema);
@@ -346,6 +382,16 @@ public class OracleValueConvertersTest {
     private Field adaptiveFieldFor(Column column) {
         final Schema schema = convertersUtf8.schemaBuilder(column).optional().build();
         return new Field(column.name(), 0, schema);
+    }
+
+    private static Column intervalDaySecondColumn(int scale) {
+        return Column.editor()
+                .name("DTS")
+                .type("INTERVAL DAY TO SECOND")
+                .jdbcType(OracleTypes.INTERVALDS)
+                .scale(scale)
+                .optional(true)
+                .create();
     }
 
     private static Column dateColumn() {
