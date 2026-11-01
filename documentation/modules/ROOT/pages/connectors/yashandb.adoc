@@ -1727,6 +1727,32 @@ Incremental logical logs are obtained directly from this queue.
 |`60`
 |The maximum time in seconds that the YStream server waits for the YStream client to respond.
 
+|[[yashandb-property-ystream-retry-max-attempts]]<<yashandb-property-ystream-retry-max-attempts, `+ystream.retry.max.attempts+`>>
+|`30`
+|The maximum number of failed YStream read attempts allowed within the retry window. Failures are counted cumulatively, including failures separated by successful reads.
+Set to `0` to disable retries.
+
+|[[yashandb-property-ystream-retry-backoff-ms]]<<yashandb-property-ystream-retry-backoff-ms, `+ystream.retry.backoff.ms+`>>
+|`2000`
+|The delay in milliseconds between failed YStream read attempts. The value must be positive.
+
+|[[yashandb-property-ystream-retry-window-ms]]<<yashandb-property-ystream-retry-window-ms, `+ystream.retry.window.ms+`>>
+|`180000`
+|The sliding time window in milliseconds used to count failed YStream read attempts. Failures older than this window are discarded. The value must be positive.
+
+|[[yashandb-property-ystream-fault-tolerance]]<<yashandb-property-ystream-fault-tolerance, `+ystream.fault.tolerance+`>>
+|`false`
+|Whether to enable fault-tolerant processing in the YStream client so that it can recover from transient errors during streaming.
+
+|[[yashandb-property-ystream-additional-properties]]<<yashandb-property-ystream-additional-properties, `+ystream.additional.properties.*+`>>
+|No default
+|Passes additional options to the YStream client builder. Replace `*` with the name of a supported YStream builder method that takes one argument.
+For example, `ystream.additional.properties.enable.sequence.next.val=true` calls `setEnableSequenceNextVal(true)`.
+Option names are matched without regard to case, dots, underscores, or hyphens. Values are converted to the builder method's parameter type.
+The connector validates option names and values when it starts.
+Credential and secret options are not accepted; use the dedicated connector settings for connection credentials.
+If an option is also configured by a dedicated connector setting, the dedicated setting takes precedence.
+
 |[[yashandb-property-schema-include-list]]<<yashandb-property-schema-include-list, `+schema.include.list+`>>
 |No default
 |An optional comma-separated list of regular expressions that match the names of schemas for which you want to capture changes.
