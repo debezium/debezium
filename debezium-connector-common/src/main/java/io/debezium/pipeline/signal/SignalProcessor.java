@@ -7,6 +7,7 @@ package io.debezium.pipeline.signal;
 
 import java.io.IOException;
 import java.time.Duration;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
@@ -69,6 +70,8 @@ public class SignalProcessor<P extends Partition, O extends OffsetContext> {
     private final Semaphore semaphore = new Semaphore(1);
 
     private final Queue<DeferredSignal<P>> synchronousSignals = new ConcurrentLinkedQueue<>();
+
+    private final Queue<SignalRecord> pendingRecords = new ConcurrentLinkedQueue<>();
 
     private final int synchronousBatchSize;
 
@@ -160,13 +163,31 @@ public class SignalProcessor<P extends Partition, O extends OffsetContext> {
 
     public void process() {
 
-        executeWithSemaphore(() -> {
-            LOGGER.trace("SignalProcessor processing");
-            enabledChannelReaders.stream()
-                    .map(SignalChannelReader::read)
-                    .flatMap(Collection::stream)
-                    .forEach(signalRecord -> processSignal(signalRecord, null));
-        });
+        LOGGER.trace("SignalProcessor processing");
+
+        // The source signal channel is fed by EventDispatcher#dispatchDataChangeEvent() and drained by
+        // processSourceSignal(P), which knows the partition the signal belongs to. Reading it here would let this
+        // thread win the race with the streaming thread and execute an action that inspects or mutates state owned
+        // by the streaming source.
+        final List<SignalRecord> records = enabledChannelReaders.stream()
+                .filter(isSignal(SourceSignalChannel.class).negate())
+                .map(SignalChannelReader::read)
+                .flatMap(Collection::stream)
+                .collect(Collectors.toList());
+
+        if (records.isEmpty() && pendingRecords.isEmpty()) {
+            return;
+        }
+
+        final List<SignalRecord> toProcess = new ArrayList<>(pendingRecords);
+        pendingRecords.clear();
+        toProcess.addAll(records);
+
+        // The records have already left their channel, so they must not be dropped when the permit is not available;
+        // the next cycle executes them instead.
+        if (!executeWithSemaphore(() -> toProcess.forEach(signalRecord -> processSignal(signalRecord, null)))) {
+            pendingRecords.addAll(toProcess);
+        }
     }
 
     public void processSourceSignal(P partition) {
@@ -238,7 +259,7 @@ public class SignalProcessor<P extends Partition, O extends OffsetContext> {
                 .findFirst().get());
     }
 
-    private void executeWithSemaphore(Runnable operation) {
+    private boolean executeWithSemaphore(Runnable operation) {
 
         final Duration waitTime = connectorConfig.getSignalProcessorSemaphoreWait();
         boolean acquired = false;
@@ -246,9 +267,10 @@ public class SignalProcessor<P extends Partition, O extends OffsetContext> {
             acquired = semaphore.tryAcquire(waitTime.toMillis(), TimeUnit.MILLISECONDS);
             if (!acquired) {
                 LOGGER.warn("Could not acquire the signal processing semaphore within {}, skipping this cycle to preserve mutual exclusion", waitTime);
-                return;
+                return false;
             }
             operation.run();
+            return true;
         }
         catch (InterruptedException e) {
             Thread.currentThread().interrupt();
