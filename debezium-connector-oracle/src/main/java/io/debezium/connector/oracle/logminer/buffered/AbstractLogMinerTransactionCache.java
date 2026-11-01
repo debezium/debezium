@@ -103,6 +103,10 @@ public abstract class AbstractLogMinerTransactionCache<T extends Transaction> im
         // DBMS_LOB procedures are stored in the cache as:
         // 1. SELECT_LOB_LOCATOR with a real ROW_ID
         // 2. one or more LOB_WRITE/LOB_ERASE (LOB_TRIM is not stored) with a real or empty ROW_ID
+        //
+        // Index-organized tables (ORGANIZATION INDEX) are a special case:
+        // 1. INSERTs and DELETEs are rolled back by an event with OPERATION = INTERNAL, ROLLBACK = 1, SEQUENCE# = 1 and ROW_ID LIKE '%AAAAAAAAAAAA'
+        // 2. UPDATEs have no rollback events
         if (!iterator.hasNext()) {
             return null;
         }
@@ -120,6 +124,12 @@ public abstract class AbstractLogMinerTransactionCache<T extends Transaction> im
             final LogMinerEvent event = entry.event();
             if (entry.event() instanceof RollbackToSavepointEvent) {
                 end = entry;
+                continue;
+            }
+            else if (!RowIdCodec.EMPTY_ROW_ID.equals(event.getRowId()) && event.getRowId().hasEmptySuffix()) {
+                LOGGER.debug(
+                        "Skipping an event in transaction '{}' with SCN '{}' on index-organized table '{}' by row-id '{}' while searching for the rolled back range.",
+                        transactionId, event.getScn(), event.getTableId(), event.getRowIdAsString());
                 continue;
             }
             else if (!event.getTableId().equals(rollbackEvent.getTableId())) {

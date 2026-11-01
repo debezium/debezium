@@ -1189,6 +1189,57 @@ public abstract class AbstractBufferedLogMinerStreamingChangeEventSourceIT exten
         assertThat(((Struct) tableRecords.get(1).value()).getStruct(Envelope.FieldName.AFTER).get("ID")).isEqualTo(2);
     }
 
+    @Test
+    @FixFor("debezium/dbz#2785")
+    public void shouldRollbackInOrganizationIndexTable() throws Exception {
+        TestHelper.dropTable(connection, "DBZ2785_1");
+        TestHelper.dropTable(connection, "DBZ2785_1_INDEX");
+        try {
+            connection.execute("CREATE TABLE DBZ2785_1(ID NUMERIC(9,0) PRIMARY KEY, STR0 VARCHAR2(50))");
+            connection.execute("CREATE TABLE DBZ2785_1_INDEX(ID NUMERIC(9,0) PRIMARY KEY, STR0 VARCHAR2(50)) ORGANIZATION INDEX");
+            TestHelper.streamTable(connection, "DBZ2785_1");
+            TestHelper.streamTable(connection, "DBZ2785_1_INDEX");
+
+            Configuration config = getBufferImplementationConfig()
+                    .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "DEBEZIUM\\.DBZ2785_1,DEBEZIUM\\.DBZ2785_1_INDEX")
+                    .build();
+
+            start(OracleConnector.class, config);
+            assertConnectorIsRunning();
+
+            waitForStreamingRunning(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
+
+            connection.execute(new String[]{
+                    "INSERT INTO DBZ2785_1 (ID, STR0) VALUES (1, 'STR0-1-0')",
+                    "INSERT INTO DBZ2785_1_INDEX (ID, STR0) VALUES (1, 'STR0-1-0')",
+                    "SAVEPOINT s1",
+                    "INSERT INTO DBZ2785_1 (ID, STR0) VALUES (2, 'STR0-2-0')",
+                    "INSERT INTO DBZ2785_1_INDEX (ID, STR0) VALUES (2, 'STR0-2-0')",
+                    "ROLLBACK TO SAVEPOINT s1",
+                    "INSERT INTO DBZ2785_1(ID) VALUES (3)",
+                    "INSERT INTO DBZ2785_1_INDEX(ID) VALUES (3)", });
+
+            SourceRecords records = consumeRecordsByTopic(4);
+            List<SourceRecord> mainTableRecords = records.recordsForTopic("server1.DEBEZIUM.DBZ2785_1");
+            assertThat(mainTableRecords).hasSize(2);
+            Struct after = ((Struct) mainTableRecords.get(0).value()).getStruct(Envelope.FieldName.AFTER);
+            assertThat(after.get("ID")).isEqualTo(1);
+            assertThat(after.get("STR0")).isEqualTo("STR0-1-0");
+            assertThat(((Struct) mainTableRecords.get(1).value()).getStruct(Envelope.FieldName.AFTER).get("ID")).isEqualTo(3);
+
+            List<SourceRecord> indexTableRecords = records.recordsForTopic("server1.DEBEZIUM.DBZ2785_1_INDEX");
+            assertThat(indexTableRecords).hasSize(2);
+            after = ((Struct) indexTableRecords.get(0).value()).getStruct(Envelope.FieldName.AFTER);
+            assertThat(after.get("ID")).isEqualTo(1);
+            assertThat(after.get("STR0")).isEqualTo("STR0-1-0");
+            assertThat(((Struct) indexTableRecords.get(1).value()).getStruct(Envelope.FieldName.AFTER).get("ID")).isEqualTo(3);
+        }
+        finally {
+            TestHelper.dropTable(connection, "DBZ2785_1");
+            TestHelper.dropTable(connection, "DBZ2785_1_INDEX");
+        }
+    }
+
     private List<SourceRecord> execute(String tableName, String tableSpec, boolean includeInternalEvents, int numRecords, String[] statements)
             throws Exception {
         TestHelper.dropTable(connection, tableName);
