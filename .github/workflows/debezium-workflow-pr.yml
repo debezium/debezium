@@ -732,6 +732,12 @@ jobs:
           repository: debezium/debezium-quarkus
           path: quarkus
           ref: ${{ github.event.pull_request.base.ref }}
+      - name: Checkout Action (Elasticsearch)
+        uses: actions/checkout@v7
+        with:
+          repository: debezium/debezium-connector-elasticsearch
+          path: elasticsearch
+          ref: ${{ github.event.pull_request.base.ref }}
       - uses: ./core/.github/actions/setup-java
       - uses: ./core/.github/actions/maven-cache
         with:
@@ -741,6 +747,7 @@ jobs:
           path-core: core
           path-quarkus: quarkus
           path-server: server
+          path-elasticsearch: elasticsearch
 
   build_schema_generator:
     name: "Schema Generator"

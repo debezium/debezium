@@ -318,6 +318,12 @@ jobs:
           repository: debezium/debezium-quarkus
           path: quarkus
           ref: main
+      - name: Checkout Action (Elasticsearch)
+        uses: actions/checkout@v7
+        with:
+          repository: debezium/debezium-connector-elasticsearch
+          path: elasticsearch
+          ref: main
       - uses: ./core/.github/actions/setup-java
       - uses: ./core/.github/actions/maven-cache
         with:
@@ -327,6 +333,7 @@ jobs:
           path-core: core
           path-quarkus: quarkus
           path-server: server
+          path-elasticsearch: elasticsearch
           only-build: 'true'
       - name: Upload build artifacts
         uses: actions/upload-artifact@v7

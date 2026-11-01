@@ -492,6 +492,13 @@ jobs:
           path: quarkus
           ref: ${{ github.ref_name }}
 
+      - name: Checkout Action (Elasticsearch)
+        uses: actions/checkout@v7
+        with:
+          repository: debezium/debezium-connector-elasticsearch
+          path: elasticsearch
+          ref: ${{ github.ref_name }}
+
       - uses: ./core/.github/actions/setup-java
 
       - uses: ./core/.github/actions/maven-cache
@@ -504,6 +511,7 @@ jobs:
           path-core: core
           path-quarkus: quarkus
           path-server: server
+          path-elasticsearch: elasticsearch
 
   build_ai:
     name: "Debezium AI module"
