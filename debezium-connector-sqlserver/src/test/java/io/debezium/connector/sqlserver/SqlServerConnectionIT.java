@@ -17,6 +17,7 @@ import java.sql.SQLException;
 import java.time.Instant;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Properties;
@@ -28,6 +29,8 @@ import org.awaitility.Awaitility;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
+import io.debezium.bean.StandardBeanNames;
+import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.CommonConnectorConfig.EventConvertingFailureHandlingMode;
 import io.debezium.config.Configuration;
 import io.debezium.connector.SnapshotType;
@@ -44,6 +47,7 @@ import io.debezium.relational.TableSchemaBuilder;
 import io.debezium.schema.FieldNameSelector;
 import io.debezium.schema.SchemaNameAdjuster;
 import io.debezium.schema.SchemaTopicNamingStrategy;
+import io.debezium.snapshot.SnapshotterServiceProvider;
 import io.debezium.util.Testing;
 
 /**
@@ -740,6 +744,102 @@ public class SqlServerConnectionIT {
             finally {
                 TestHelper.dropTestDatabase(connection, "testDB1");
             }
+        }
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2986")
+    void shouldNotTreatNullStoredLsnAsAvailableInWhenNeededMode() throws Exception {
+        TestHelper.createTestDatabase();
+        try (SqlServerConnection connection = TestHelper.testConnection()) {
+            connection.execute("CREATE TABLE tablea (id int primary key, cola varchar(30))");
+            TestHelper.enableTableCdc(connection, "tablea");
+            TestHelper.waitForMaxLsnPastChangeTablesStartLsn(connection);
+
+            final SqlServerPartition partition = new SqlServerPartition("server1", TestHelper.TEST_DATABASE_1);
+
+            // A NULL offset in initial mode is still accepted, as before (DBZ-9212)
+            final SqlServerConnectorConfig initialConfig = new SqlServerConnectorConfig(Configuration.create()
+                    .with(SqlServerConnectorConfig.SNAPSHOT_MODE, SqlServerConnectorConfig.SnapshotMode.INITIAL)
+                    .build());
+            initialConfig.getBeanRegistry().add(StandardBeanNames.CONNECTOR_CONFIG, initialConfig);
+            initialConfig.getServiceRegistry().registerServiceProvider(new SnapshotterServiceProvider());
+            final SqlServerOffsetContext initialOffset = new SqlServerOffsetContext(initialConfig, TxLogPosition.valueOf(Lsn.NULL, null),
+                    SnapshotType.INITIAL, true);
+            assertThat(connection.validateLogPosition(partition, initialOffset, initialConfig)).isTrue();
+
+            // In when_needed mode, a NULL offset can't prove that no CDC data was purged, so it must trigger a snapshot
+            final SqlServerConnectorConfig whenNeededConfig = new SqlServerConnectorConfig(Configuration.create()
+                    .with(SqlServerConnectorConfig.SNAPSHOT_MODE, SqlServerConnectorConfig.SnapshotMode.WHEN_NEEDED)
+                    .build());
+            whenNeededConfig.getBeanRegistry().add(StandardBeanNames.CONNECTOR_CONFIG, whenNeededConfig);
+            whenNeededConfig.getServiceRegistry().registerServiceProvider(new SnapshotterServiceProvider());
+            final SqlServerOffsetContext whenNeededOffset = new SqlServerOffsetContext(whenNeededConfig, TxLogPosition.valueOf(Lsn.NULL, null),
+                    SnapshotType.INITIAL, true);
+            assertThat(connection.validateLogPosition(partition, whenNeededOffset, whenNeededConfig)).isFalse();
+
+            // A configuration_based snapshotter that snapshots on data errors must also trigger a snapshot
+            final SqlServerConnectorConfig snapshotOnDataErrorConfig = new SqlServerConnectorConfig(Configuration.create()
+                    .with(SqlServerConnectorConfig.SNAPSHOT_MODE, SqlServerConnectorConfig.SnapshotMode.CONFIGURATION_BASED)
+                    .with(CommonConnectorConfig.SNAPSHOT_MODE_CONFIGURATION_BASED_SNAPSHOT_ON_DATA_ERROR, true)
+                    .build());
+            snapshotOnDataErrorConfig.getBeanRegistry().add(StandardBeanNames.CONNECTOR_CONFIG, snapshotOnDataErrorConfig);
+            snapshotOnDataErrorConfig.getServiceRegistry().registerServiceProvider(new SnapshotterServiceProvider());
+            final SqlServerOffsetContext snapshotOnDataErrorOffset = new SqlServerOffsetContext(snapshotOnDataErrorConfig,
+                    TxLogPosition.valueOf(Lsn.NULL, null), SnapshotType.INITIAL, true);
+            assertThat(connection.validateLogPosition(partition, snapshotOnDataErrorOffset, snapshotOnDataErrorConfig)).isFalse();
+
+            // A configuration_based snapshotter that doesn't snapshot on data errors still accepts the NULL offset
+            final SqlServerConnectorConfig noSnapshotOnDataErrorConfig = new SqlServerConnectorConfig(Configuration.create()
+                    .with(SqlServerConnectorConfig.SNAPSHOT_MODE, SqlServerConnectorConfig.SnapshotMode.CONFIGURATION_BASED)
+                    .with(CommonConnectorConfig.SNAPSHOT_MODE_CONFIGURATION_BASED_SNAPSHOT_ON_DATA_ERROR, false)
+                    .build());
+            noSnapshotOnDataErrorConfig.getBeanRegistry().add(StandardBeanNames.CONNECTOR_CONFIG, noSnapshotOnDataErrorConfig);
+            noSnapshotOnDataErrorConfig.getServiceRegistry().registerServiceProvider(new SnapshotterServiceProvider());
+            final SqlServerOffsetContext noSnapshotOnDataErrorOffset = new SqlServerOffsetContext(noSnapshotOnDataErrorConfig,
+                    TxLogPosition.valueOf(Lsn.NULL, null), SnapshotType.INITIAL, true);
+            assertThat(connection.validateLogPosition(partition, noSnapshotOnDataErrorOffset, noSnapshotOnDataErrorConfig)).isTrue();
+        }
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2986")
+    void shouldReturnMaxStartLsnOfChangeTables() throws Exception {
+        TestHelper.createTestDatabase();
+        try (SqlServerConnection connection = TestHelper.testConnection()) {
+            assertThat(connection.getMaxStartLsnOfChangeTables(TestHelper.TEST_DATABASE_1).isAvailable()).isFalse();
+
+            connection.execute(
+                    "CREATE TABLE tablea (id int primary key, cola varchar(30))",
+                    "CREATE TABLE tableb (id int primary key, colb varchar(30))");
+            TestHelper.enableTableCdc(connection, "tablea");
+            TestHelper.enableTableCdc(connection, "tableb");
+
+            // Re-create a capture instance so that the change tables have different start LSNs
+            TestHelper.disableTableCdc(connection, "tablea");
+            TestHelper.enableTableCdc(connection, "tablea");
+            TestHelper.waitForMaxLsnPastChangeTablesStartLsn(connection);
+
+            final List<Lsn> startLsns = connection.queryAndMap(
+                    "SELECT start_lsn FROM [" + TestHelper.TEST_DATABASE_1 + "].cdc.change_tables",
+                    rs -> {
+                        final List<Lsn> lsns = new ArrayList<>();
+                        while (rs.next()) {
+                            lsns.add(Lsn.valueOf(rs.getBytes(1)));
+                        }
+                        return lsns;
+                    });
+            assertThat(startLsns).hasSize(2).allMatch(Lsn::isAvailable);
+
+            final Lsn maxStartLsn = connection.getMaxStartLsnOfChangeTables(TestHelper.TEST_DATABASE_1);
+            assertThat(maxStartLsn).isEqualTo(startLsns.stream().max(Lsn::compareTo).orElseThrow());
+
+            // An offset built from the max start LSN must be considered available
+            final SqlServerConnectorConfig config = new SqlServerConnectorConfig(Configuration.create()
+                    .with(SqlServerConnectorConfig.SNAPSHOT_MODE, SqlServerConnectorConfig.SnapshotMode.WHEN_NEEDED)
+                    .build());
+            final SqlServerOffsetContext offset = new SqlServerOffsetContext(config, TxLogPosition.valueOf(maxStartLsn, null), SnapshotType.INITIAL, true);
+            assertThat(connection.validateLogPosition(new SqlServerPartition("server1", TestHelper.TEST_DATABASE_1), offset, config)).isTrue();
         }
     }
 

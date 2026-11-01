@@ -58,6 +58,7 @@ import org.junit.jupiter.api.Test;
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
 import io.debezium.connector.SnapshotType;
+import io.debezium.connector.common.BaseSourceTask;
 import io.debezium.connector.sqlserver.SqlServerConnectorConfig.SnapshotMode;
 import io.debezium.connector.sqlserver.util.TestHelper;
 import io.debezium.data.Envelope;
@@ -3251,7 +3252,11 @@ public class SqlServerConnectorIT extends AbstractAsyncEngineConnectorTest {
                 "INSERT INTO tablea VALUES(200,'200')");
 
         start(SqlServerConnector.class, config);
+        // Nothing was purged, so the connector must only stream the two new rows without a new snapshot
         records = consumeRecordsByTopic(2);
+        assertThat(records.recordsForTopic("server1.testDB1.dbo.tablea")).hasSize(2);
+        assertThat(records.ddlRecordsForDatabase("testDB1")).isNull();
+        assertNoRecordsToConsume();
         stopConnector();
 
         connection.execute(
@@ -3284,6 +3289,62 @@ public class SqlServerConnectorIT extends AbstractAsyncEngineConnectorTest {
         assertThat(records.recordsForTopic("server1.testDB1.dbo.tablea").size()).isEqualTo(9);
         assertThat(records.topics().size()).isEqualTo(1 + 1);
         assertThat(records.ddlRecordsForDatabase("testDB1").size()).isEqualTo(1);
+        stopConnector();
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2986")
+    void shouldNotSnapshotAgainWhenCaptureInstanceWasRecreatedJustBeforeSnapshot() throws Exception {
+        assertNoSnapshotAgainWhenCaptureInstanceWasRecreatedJustBeforeSnapshot(SqlServerConnectorConfig.DataQueryMode.FUNCTION);
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2986")
+    void shouldNotSnapshotAgainWhenCaptureInstanceWasRecreatedJustBeforeSnapshotInDirectMode() throws Exception {
+        assertNoSnapshotAgainWhenCaptureInstanceWasRecreatedJustBeforeSnapshot(SqlServerConnectorConfig.DataQueryMode.DIRECT);
+    }
+
+    private void assertNoSnapshotAgainWhenCaptureInstanceWasRecreatedJustBeforeSnapshot(SqlServerConnectorConfig.DataQueryMode dataQueryMode)
+            throws Exception {
+
+        Testing.Files.delete(SCHEMA_HISTORY_PATH);
+
+        // Re-create the capture instance and start right away, without waiting for the capture job
+        TestHelper.disableTableCdc(connection, "tablea");
+        TestHelper.disableTableCdc(connection, "tableb");
+        TestHelper.enableTableCdc(connection, "tablea");
+
+        final Configuration config = TestHelper.defaultConfig()
+                .with(SqlServerConnectorConfig.SNAPSHOT_MODE, SnapshotMode.WHEN_NEEDED)
+                .with(SqlServerConnectorConfig.INCLUDE_SCHEMA_CHANGES, true)
+                .with(SqlServerConnectorConfig.STORE_ONLY_CAPTURED_TABLES_DDL, "true")
+                .with(SqlServerConnectorConfig.TABLE_INCLUDE_LIST, "dbo.tablea")
+                .with(SqlServerConnectorConfig.DATA_QUERY_MODE, dataQueryMode)
+                .build();
+
+        start(SqlServerConnector.class, config);
+
+        SourceRecords records = consumeRecordsByTopic(1 + 1);
+        final List<SourceRecord> tableA = records.recordsForTopic("server1.testDB1.dbo.tablea");
+        assertThat(tableA).hasSize(1);
+        assertThat(records.ddlRecordsForDatabase("testDB1")).hasSize(1);
+
+        // The snapshot offset must not be NULL, otherwise a later purge of the change data can't be detected
+        final Object commitLsn = tableA.get(tableA.size() - 1).sourceOffset().get(SourceInfo.COMMIT_LSN_KEY);
+        assertThat(commitLsn).isNotNull();
+        assertThat(Lsn.valueOf(commitLsn.toString()).isAvailable()).isTrue();
+        stopConnector();
+
+        // Nothing was purged, so a restart must stream instead of taking another snapshot
+        final LogInterceptor logInterceptor = new LogInterceptor(BaseSourceTask.class);
+        start(SqlServerConnector.class, config);
+        waitForStreamingStarted();
+
+        connection.execute("INSERT INTO tablea VALUES(100,'100')");
+        records = consumeRecordsByTopic(1);
+        assertThat(records.recordsForTopic("server1.testDB1.dbo.tablea")).hasSize(1);
+        assertThat(records.ddlRecordsForDatabase("testDB1")).isNull();
+        assertThat(logInterceptor.containsMessage("no longer available")).isFalse();
         stopConnector();
     }
 
@@ -3531,6 +3592,7 @@ public class SqlServerConnectorIT extends AbstractAsyncEngineConnectorTest {
         TestHelper.disableTableCdc(connection, "tableb");
 
         TestHelper.enableTableCdc(connection, "tablea");
+        TestHelper.waitForMaxLsnPastChangeTablesStartLsn(connection);
     }
 
     private void shouldStopRetriableRestartsAtConfiguredMaximum(SqlRunnable scenario) throws Exception {
