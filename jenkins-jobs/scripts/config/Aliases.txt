@@ -51,6 +51,7 @@ BigGillyStyle,Andy Pickler
 Binayak490-cyber,Binayak Das
 BinLi1988,Bin Li
 bisbeb,Björn Bärtschi
+bitthal-ladiwal,Bitthal Ladiwal
 Blom-10,A. D. Blom
 bmiedlar,Bartosz Miedlar
 bpaquet,Bertrand Paquet
