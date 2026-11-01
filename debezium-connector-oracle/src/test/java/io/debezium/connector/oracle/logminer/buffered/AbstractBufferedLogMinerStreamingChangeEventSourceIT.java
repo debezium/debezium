@@ -1261,6 +1261,66 @@ public abstract class AbstractBufferedLogMinerStreamingChangeEventSourceIT exten
         assertThat(((Struct) tableRecords.get(3).value()).getStruct(Envelope.FieldName.AFTER).get("ID")).isEqualTo(2);
     }
 
+    @Test
+    @FixFor("debezium/dbz#2666")
+    public void shouldRollbackUpdateScalarAndLobWriteWithLobDisabled() throws Exception {
+        String tableName = "DBZ2666_4";
+        String tableSpec = "(ID NUMERIC(9,0) PRIMARY KEY, VAL VARCHAR2(20), LOB0 CLOB)";
+        String[] statements = new String[]{
+                "INSERT INTO DBZ2666_4 (ID, VAL, LOB0) VALUES (1, 'a', 'LOB0-1-0')",
+                "SAVEPOINT s1",
+                "UPDATE DBZ2666_4 SET VAL = 'b' WHERE ID = 1",
+                "DECLARE\n" +
+                        "  loc CLOB;\n" +
+                        "BEGIN\n" +
+                        "  SELECT LOB0 INTO loc FROM DBZ2666_4 WHERE ID = 1 FOR UPDATE;\n" +
+                        "  DBMS_LOB.WRITE(loc, 1985, 1, RPAD('LOB0-1-', 1985, '1'));\n" +
+                        "END;",
+                "ROLLBACK TO SAVEPOINT s1",
+                "INSERT INTO DBZ2666_4 (ID, VAL) VALUES (2, 'c')", };
+        List<SourceRecord> tableRecords = execute(tableName, tableSpec, false, true, 3, statements);
+        assertThat(tableRecords).hasSize(3);
+
+        for (int i = 0; i < 2; i++) {
+            Struct after = ((Struct) tableRecords.get(i).value()).getStruct(Envelope.FieldName.AFTER);
+            assertThat(after.get("ID")).isEqualTo(1);
+            assertThat(after.get("VAL")).isEqualTo("a");
+        }
+        assertThat(((Struct) tableRecords.get(1).value()).getStruct(Envelope.FieldName.AFTER).get("LOB0")).isEqualTo("LOB0-1-0");
+        Struct insertAfter = ((Struct) tableRecords.get(2).value()).getStruct(Envelope.FieldName.AFTER);
+        assertThat(insertAfter.get("ID")).isEqualTo(2);
+        assertThat(insertAfter.get("VAL")).isEqualTo("c");
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2666")
+    public void shouldRollbackInsertAndLobWriteWithLobDisabled() throws Exception {
+        String tableName = "DBZ2666_5";
+        String tableSpec = "(ID NUMERIC(9,0) PRIMARY KEY, LOB0 CLOB)";
+        String[] statements = new String[]{
+                "INSERT INTO DBZ2666_5 (ID, LOB0) VALUES (1, 'LOB0-1-0')",
+                "SAVEPOINT s1",
+                "INSERT INTO DBZ2666_5 (ID, LOB0) VALUES (2, 'LOB0-2-0')",
+                "DECLARE\n" +
+                        "  loc CLOB;\n" +
+                        "BEGIN\n" +
+                        "  SELECT LOB0 INTO loc FROM DBZ2666_5 WHERE ID = 2 FOR UPDATE;\n" +
+                        "  DBMS_LOB.WRITE(loc, 1985, 1, RPAD('LOB0-2-', 1985, '1'));\n" +
+                        "END;",
+                "ROLLBACK TO SAVEPOINT s1",
+                "INSERT INTO DBZ2666_5 (ID) VALUES (3)", };
+        List<SourceRecord> tableRecords = execute(tableName, tableSpec, false, true, 3, statements);
+        assertThat(tableRecords).hasSize(3);
+
+        Struct insertAfter = ((Struct) tableRecords.get(0).value()).getStruct(Envelope.FieldName.AFTER);
+        assertThat(insertAfter.get("ID")).isEqualTo(1);
+        assertThat(insertAfter.get("LOB0")).isEqualTo(null);
+        Struct updateAfter = ((Struct) tableRecords.get(1).value()).getStruct(Envelope.FieldName.AFTER);
+        assertThat(updateAfter.get("ID")).isEqualTo(1);
+        assertThat(updateAfter.get("LOB0")).isEqualTo("LOB0-1-0");
+        assertThat(((Struct) tableRecords.get(2).value()).getStruct(Envelope.FieldName.AFTER).get("ID")).isEqualTo(3);
+    }
+
     private List<SourceRecord> execute(String tableName, String tableSpec, boolean includeInternalEvents, int numRecords, String[] statements)
             throws Exception {
         return execute(tableName, tableSpec, true, includeInternalEvents, numRecords, statements);
