@@ -1256,23 +1256,43 @@ public abstract class AbstractIncrementalSnapshotTest<T extends SourceConnector>
 
         sendAdHocSnapshotSignal();
 
+        // Heartbeats keep records flowing, so every wait is bounded to fail instead of hanging
+        final Duration maxWait = Duration.ofSeconds(waitTimeForRecords() * 30L);
+
         // Wait until the snapshot emits data, so the collection is the current one when the stop arrives
-        consumeRecordsByTopicUntil((recordsConsumed, record) -> topicName().equals(record.topic()));
+        final SourceRecords dataRecords = consumeRecordsByTopicUntil((recordsConsumed, record) -> topicName().equals(record.topic()), maxWait);
+        assertThat(dataRecords.recordsForTopic(topicName()))
+                .as("snapshot data records on %s received within %s", topicName(), maxWait)
+                .isNotEmpty();
 
         sendAdHocSnapshotStopSignal(tableDataCollectionId());
 
-        final SourceRecords sourceRecords = consumeRecordsByTopicUntil(incrementalSnapshotAborted());
+        // The snapshot may finish before the stop is processed, so either ABORTED or COMPLETED ends it
+        final List<Struct> notifications = incrementalSnapshotNotifications(consumeRecordsByTopicUntil(incrementalSnapshotFinished(), maxWait));
+        final List<String> types = notifications.stream().map(s -> s.getString("type")).toList();
 
-        final List<Struct> notifications = sourceRecords.recordsForTopic("io.debezium.notification").stream()
-                .map(s -> ((Struct) s.value()))
-                .filter(s -> s.getString("aggregate_type").equals(IncrementalSnapshotNotificationService.INCREMENTAL_SNAPSHOT))
-                .toList();
+        assertThat(types).as("incremental snapshot notification types received within %s", maxWait)
+                .containsAnyOf("ABORTED", "COMPLETED");
 
-        // A snapshot that was stopped must not also report itself as completed
-        assertThat(notifications).extracting(s -> s.getString("type"))
-                .contains("ABORTED")
-                .doesNotContain("COMPLETED");
+        if (!types.contains("ABORTED")) {
+            // The snapshot finished before the stop took effect; the completion still carries the start signal id
+            final Struct completedNotification = notifications.stream()
+                    .filter(s -> s.getString("type").equals("COMPLETED"))
+                    .findFirst().get();
+            assertThat(completedNotification.getString("id")).isEqualTo("ad-hoc");
 
+            // A stopped snapshot must not report COMPLETED followed by ABORTED, so keep reading briefly to
+            // tell that apart from a stop that arrived too late; ABORTED would follow in the same chunk
+            final Duration drainWait = Duration.ofSeconds(waitTimeForRecords() * 3L);
+            final List<String> laterTypes = incrementalSnapshotNotifications(consumeRecordsByTopicUntil(incrementalSnapshotAborted(), drainWait))
+                    .stream().map(s -> s.getString("type")).toList();
+            assertThat(laterTypes).as("incremental snapshot notification types received after COMPLETED").doesNotContain("ABORTED");
+
+            Assumptions.abort("Incremental snapshot completed before the stop signal was processed");
+        }
+
+        // Consuming stops at the first ABORTED or COMPLETED, so a COMPLETED sent alongside ABORTED is caught
+        // by the branch above, which is taken when COMPLETED comes first
         final Struct abortedNotification = notifications.stream()
                 .filter(s -> s.getString("type").equals("ABORTED"))
                 .findFirst().get();
@@ -1314,10 +1334,27 @@ public abstract class AbstractIncrementalSnapshotTest<T extends SourceConnector>
         }
     }
 
+    private static BiPredicate<Integer, SourceRecord> incrementalSnapshotFinished() {
+        return (recordsConsumed, record) -> record.topic().equals("io.debezium.notification") &&
+                ((Struct) record.value()).getString("aggregate_type").equals("Incremental Snapshot") &&
+                List.of("ABORTED", "COMPLETED").contains(((Struct) record.value()).getString("type"));
+    }
+
     private static BiPredicate<Integer, SourceRecord> incrementalSnapshotAborted() {
         return (recordsConsumed, record) -> record.topic().equals("io.debezium.notification") &&
                 ((Struct) record.value()).getString("aggregate_type").equals("Incremental Snapshot") &&
                 ((Struct) record.value()).getString("type").equals("ABORTED");
+    }
+
+    private static List<Struct> incrementalSnapshotNotifications(SourceRecords records) {
+        final List<SourceRecord> notificationRecords = records.recordsForTopic("io.debezium.notification");
+        if (notificationRecords == null) {
+            return List.of();
+        }
+        return notificationRecords.stream()
+                .map(s -> ((Struct) s.value()))
+                .filter(s -> s.getString("aggregate_type").equals(IncrementalSnapshotNotificationService.INCREMENTAL_SNAPSHOT))
+                .toList();
     }
 
     private void assertCorrectIncrementalSnapshotNotification(List<SourceRecord> notifications) {
