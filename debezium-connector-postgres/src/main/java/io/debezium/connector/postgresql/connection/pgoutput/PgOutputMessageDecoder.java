@@ -19,6 +19,7 @@ import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -70,6 +71,16 @@ public class PgOutputMessageDecoder extends AbstractMessageDecoder {
 
     private final MessageDecoderContext decoderContext;
     private final PostgresConnection connection;
+
+    /**
+     * Tables built from the RELATION messages of the current replication session, keyed by relation id.
+     * Tuple data is positional and carries exactly the columns announced by the last RELATION message
+     * for the relation (e.g. only the columns of a publication column list, without generated columns),
+     * so it must be decoded against that layout. The table held by the schema cannot be used for this:
+     * it can be replaced from JDBC metadata, e.g. when an incremental snapshot refreshes it, and pgoutput
+     * does not resend the RELATION message afterwards.
+     */
+    private final Map<Integer, Table> relationTables = new HashMap<>();
 
     private Instant commitTimestamp;
 
@@ -419,6 +430,7 @@ public class PgOutputMessageDecoder extends AbstractMessageDecoder {
         primaryKeyColumns.retainAll(columnNames);
 
         Table table = resolveRelationFromMetadata(new PgOutputRelationMetaData(relationId, schemaName, tableName, columns, primaryKeyColumns));
+        relationTables.put(relationId, table);
         decoderContext.getSchema().applySchemaChangesForTable(relationId, table);
     }
 
@@ -684,7 +696,12 @@ public class PgOutputMessageDecoder extends AbstractMessageDecoder {
      * or empty when the table is filtered
      */
     private Optional<Table> resolveRelation(int relationId) {
-        return Optional.ofNullable(decoderContext.getSchema().tableFor(relationId));
+        final Table schemaTable = decoderContext.getSchema().tableFor(relationId);
+        if (schemaTable == null) {
+            return Optional.empty();
+        }
+        // Prefer the layout announced by the RELATION message, see relationTables
+        return Optional.of(relationTables.getOrDefault(relationId, schemaTable));
     }
 
     /**

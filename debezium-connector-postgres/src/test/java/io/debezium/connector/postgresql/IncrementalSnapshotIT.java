@@ -30,6 +30,7 @@ import org.junit.jupiter.api.Test;
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
 import io.debezium.connector.postgresql.PostgresConnectorConfig.SnapshotMode;
+import io.debezium.connector.postgresql.connection.ReplicationConnection;
 import io.debezium.connector.postgresql.junit.SkipWhenDecoderPluginNameIsNot;
 import io.debezium.connector.postgresql.junit.SkipWhenDecoderPluginNameIsNot.DecoderPluginName;
 import io.debezium.converters.CloudEventsConverterTest;
@@ -598,6 +599,53 @@ public class IncrementalSnapshotIT extends AbstractIncrementalSnapshotTest<Postg
         final var data = records.recordsForTopic(topicName);
         assertThat(data).hasSize(1);
         assertThat(data.get(0).valueSchema().field("gencol")).isNull();
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2952")
+    @SkipWhenDecoderPluginNameIsNot(value = DecoderPluginName.PGOUTPUT, reason = "Publication column lists only apply to pgoutput")
+    @SkipWhenDatabaseVersion(check = LESS_THAN, major = 15, reason = "Publication column lists are supported only on Postgres 15+")
+    public void decodeStreamingAgainstPublicationColumnListAfterIncrementalSnapshot() throws Exception {
+        // Testing.Print.enable();
+
+        // the publication column list leaves out 'excl', which sits between published columns
+        TestHelper.execute(
+                "CREATE TABLE s1.collist_table (pk int, aa integer, excl integer, bb integer, PRIMARY KEY(pk));",
+                "CREATE PUBLICATION " + ReplicationConnection.Builder.DEFAULT_PUBLICATION_NAME
+                        + " FOR TABLE s1.debezium_signal, s1.collist_table (pk, aa, bb);");
+
+        startConnector(x -> x
+                .with(PostgresConnectorConfig.PUBLICATION_AUTOCREATE_MODE, PostgresConnectorConfig.AutoCreateMode.DISABLED.getValue())
+                .with(PostgresConnectorConfig.TABLE_INCLUDE_LIST, "s1.collist_table")
+                .with(PostgresConnectorConfig.COLUMN_EXCLUDE_LIST, "s1.collist_table.excl"));
+        waitForConnectorToStart();
+
+        final var topicName = "test_server.s1.collist_table";
+
+        // the first change sends the RELATION message for the table in this replication session
+        try (JdbcConnection connection = databaseConnection()) {
+            connection.execute("INSERT INTO s1.collist_table (pk, aa, excl, bb) VALUES (1, 10, 100, 1000)");
+        }
+        var record = consumeRecord();
+        assertThat(((Struct) record.value()).getStruct("after").getInt32("bb")).isEqualTo(1000);
+
+        // the snapshot refreshes the table from JDBC metadata, with all its columns
+        sendAdHocSnapshotSignal("s1.collist_table");
+        consumeMixedWithIncrementalSnapshot(1, topicName);
+
+        // pgoutput does not resend the RELATION message, so the tuple still holds only the published columns
+        try (JdbcConnection connection = databaseConnection()) {
+            connection.execute("INSERT INTO s1.collist_table (pk, aa, excl, bb) VALUES (2, 20, 200, 2000)");
+        }
+
+        final var records = consumeRecordsByTopicUntil((cnt, r) -> r.topic().equals(topicName));
+        final var data = records.recordsForTopic(topicName);
+        assertThat(data).hasSize(1);
+        final Struct after = ((Struct) data.get(0).value()).getStruct("after");
+        assertThat(after.getInt32("pk")).isEqualTo(2);
+        assertThat(after.getInt32("aa")).isEqualTo(20);
+        assertThat(after.getInt32("bb")).isEqualTo(2000);
+        assertThat(data.get(0).valueSchema().field("excl")).isNull();
     }
 
     @Test
