@@ -48,7 +48,7 @@ public class PostgresSchema extends RelationalDatabaseSchema {
     private final static Logger LOGGER = LoggerFactory.getLogger(PostgresSchema.class);
 
     private final Map<TableId, List<String>> tableIdToToastableColumns;
-    private final Map<Integer, TableId> relationIdToTableId;
+    private final Map<Integer, Table> relationIdToTable;
     private final boolean readToastableColumns;
     private final PostgresConnectorConfig connectorConfig;
 
@@ -67,7 +67,7 @@ public class PostgresSchema extends RelationalDatabaseSchema {
 
         this.connectorConfig = cdcSourceTaskContext.getConfig();
         this.tableIdToToastableColumns = new HashMap<>();
-        this.relationIdToTableId = new HashMap<>();
+        this.relationIdToTable = new HashMap<>();
         this.readToastableColumns = connectorConfig.skipRefreshSchemaOnMissingToastableData();
     }
 
@@ -264,7 +264,7 @@ public class PostgresSchema extends RelationalDatabaseSchema {
             return;
         }
 
-        relationIdToTableId.put(relationId, table.id());
+        relationIdToTable.put(relationId, table);
         refresh(table);
     }
 
@@ -279,13 +279,13 @@ public class PostgresSchema extends RelationalDatabaseSchema {
      * @return the resolved table or null
      */
     public Table tableFor(int relationId) {
-        TableId tableId = relationIdToTableId.get(relationId);
-        if (tableId == null) {
+        Table table = relationIdToTable.get(relationId);
+        if (table == null) {
             LOGGER.debug("Relation '{}' is unknown, cannot resolve to table", relationId);
             return null;
         }
-        LOGGER.debug("Relation '{}' resolved to table '{}'", relationId, tableId);
-        return tableFor(tableId);
+        LOGGER.debug("Relation '{}' resolved to table '{}'", relationId, table.id());
+        return table;
     }
 
     @Override

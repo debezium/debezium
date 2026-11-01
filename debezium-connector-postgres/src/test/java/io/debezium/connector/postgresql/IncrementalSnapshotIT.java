@@ -601,6 +601,68 @@ public class IncrementalSnapshotIT extends AbstractIncrementalSnapshotTest<Postg
     }
 
     @Test
+    @FixFor("debezium/dbz#2952")
+    @SkipWhenDecoderPluginNameIsNot(value = DecoderPluginName.PGOUTPUT, reason = "Only pgoutput has publication column lists")
+    @SkipWhenDatabaseVersion(check = LESS_THAN, major = 15, reason = "Publication column lists are supported only on PostgreSQL 15+")
+    void shouldDecodePublishedColumnsAfterIncrementalSnapshotWhenRelationWasSeen() throws Exception {
+        TestHelper.dropPublication();
+        TestHelper.execute(
+                "CREATE TABLE s1.pubtable (pk integer PRIMARY KEY, aa integer, b text, excluded1 text, created_at text, excluded2 text, client text, updated_at text)");
+        TestHelper.execute("CREATE PUBLICATION dbz_publication FOR TABLE s1.pubtable (pk, aa, b, created_at, client, updated_at), s1.debezium_signal");
+
+        startConnector(x -> x
+                .with(PostgresConnectorConfig.TABLE_INCLUDE_LIST, "s1.pubtable")
+                .with(PostgresConnectorConfig.COLUMN_EXCLUDE_LIST, "s1.pubtable.excluded1,s1.pubtable.excluded2")
+                .with(PostgresConnectorConfig.PUBLICATION_AUTOCREATE_MODE, "disabled"));
+        waitForConnectorToStart();
+
+        TestHelper.execute("INSERT INTO s1.pubtable VALUES (1, 1, 'b1', 'excluded1', 'created-before', 'excluded2', 'client-before', 'updated-before')");
+        final var beforeSnapshotRecords = consumeRecordsByTopicUntil((count, record) -> record.topic().equals("test_server.s1.pubtable"));
+        final var beforeSnapshot = beforeSnapshotRecords.recordsForTopic("test_server.s1.pubtable").get(0);
+        assertPublishedColumnValues(beforeSnapshot, "created-before", "client-before");
+
+        sendAdHocSnapshotSignal("s1.pubtable");
+        consumeMixedWithIncrementalSnapshot(1, "test_server.s1.pubtable");
+
+        TestHelper.execute("INSERT INTO s1.pubtable VALUES (2, 2, 'b2', 'excluded1', 'created-after', 'excluded2', 'client-after', 'updated-after')");
+        final var afterSnapshotRecords = consumeRecordsByTopicUntil((count, record) -> record.topic().equals("test_server.s1.pubtable"));
+        final var afterSnapshot = afterSnapshotRecords.recordsForTopic("test_server.s1.pubtable").get(0);
+        assertPublishedColumnValues(afterSnapshot, "created-after", "client-after");
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2952")
+    @SkipWhenDecoderPluginNameIsNot(value = DecoderPluginName.PGOUTPUT, reason = "Only pgoutput has publication column lists")
+    @SkipWhenDatabaseVersion(check = LESS_THAN, major = 15, reason = "Publication column lists are supported only on PostgreSQL 15+")
+    void shouldDecodePublishedColumnsAfterIncrementalSnapshotWhenRelationWasNotSeen() throws Exception {
+        TestHelper.dropPublication();
+        TestHelper.execute(
+                "CREATE TABLE s1.pubtable (pk integer PRIMARY KEY, aa integer, b text, excluded1 text, created_at text, excluded2 text, client text, updated_at text)");
+        TestHelper.execute("CREATE PUBLICATION dbz_publication FOR TABLE s1.pubtable (pk, aa, b, created_at, client, updated_at), s1.debezium_signal");
+
+        TestHelper.execute("INSERT INTO s1.pubtable VALUES (1, 1, 'b1', 'excluded1', 'created-before', 'excluded2', 'client-before', 'updated-before')");
+        startConnector(x -> x
+                .with(PostgresConnectorConfig.TABLE_INCLUDE_LIST, "s1.pubtable")
+                .with(PostgresConnectorConfig.COLUMN_EXCLUDE_LIST, "s1.pubtable.excluded1,s1.pubtable.excluded2")
+                .with(PostgresConnectorConfig.PUBLICATION_AUTOCREATE_MODE, "disabled"));
+        waitForConnectorToStart();
+
+        sendAdHocSnapshotSignal("s1.pubtable");
+        consumeMixedWithIncrementalSnapshot(1, "test_server.s1.pubtable");
+
+        TestHelper.execute("INSERT INTO s1.pubtable VALUES (2, 2, 'b2', 'excluded1', 'created-after', 'excluded2', 'client-after', 'updated-after')");
+        final var afterSnapshotRecords = consumeRecordsByTopicUntil((count, record) -> record.topic().equals("test_server.s1.pubtable"));
+        final var afterSnapshot = afterSnapshotRecords.recordsForTopic("test_server.s1.pubtable").get(0);
+        assertPublishedColumnValues(afterSnapshot, "created-after", "client-after");
+    }
+
+    private void assertPublishedColumnValues(SourceRecord record, String createdAt, String client) {
+        final var after = ((Struct) record.value()).getStruct("after");
+        assertThat(after.getString("created_at")).isEqualTo(createdAt);
+        assertThat(after.getString("client")).isEqualTo(client);
+    }
+
+    @Test
     @FixFor("DBZ-1329")
     public void snapshotNewTableWithoutTableIncludeList() throws Exception {
         // Testing.Print.enable();
