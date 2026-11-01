@@ -55,6 +55,7 @@ import io.debezium.pipeline.spi.Partition;
 import io.debezium.relational.Column;
 import io.debezium.relational.Table;
 import io.debezium.relational.TableId;
+import io.debezium.snapshot.SnapshotterService;
 
 /**
  * {@link JdbcConnection} extension to be used with Microsoft SQL Server
@@ -147,6 +148,7 @@ public class SqlServerConnection extends JdbcConnection {
 
     private static final String GET_NEW_CHANGE_TABLES = "SELECT * FROM #db.cdc.change_tables WHERE start_lsn BETWEEN ? AND ?";
     private static final String GET_MIN_LSN_FROM_ALL_CHANGE_TABLES = "select min(start_lsn) from #db.cdc.change_tables";
+    private static final String GET_MAX_START_LSN_FROM_ALL_CHANGE_TABLES = "select max(start_lsn) from #db.cdc.change_tables";
     private static final String OPENING_QUOTING_CHARACTER = "[";
     private static final String CLOSING_QUOTING_CHARACTER = "]";
 
@@ -374,6 +376,18 @@ public class SqlServerConnection extends JdbcConnection {
             LOGGER.trace("Current maximum lsn is {}", ret);
             return ret;
         }, "Maximum LSN query must return exactly one value"));
+    }
+
+    /**
+     * @return the largest start log sequence number of all change tables in the database,
+     *         or {@link Lsn#NULL} if there are no change tables
+     */
+    public Lsn getMaxStartLsnOfChangeTables(String databaseName) throws SQLException {
+        return queryAndMap(replaceDatabaseNamePlaceholder(GET_MAX_START_LSN_FROM_ALL_CHANGE_TABLES, databaseName), singleResultMapper(rs -> {
+            final Lsn ret = Lsn.valueOf(rs.getBytes(1));
+            LOGGER.trace("Maximum start lsn of change tables is {}", ret);
+            return ret;
+        }, "Maximum start LSN query must return exactly one value"));
     }
 
     /**
@@ -977,7 +991,18 @@ public class SqlServerConnection extends JdbcConnection {
 
             LOGGER.info("Oldest SCN in logs is '{}'", oldestScn);
             LOGGER.info("Stored LSN is '{}'", storedLsn);
-            return storedLsn == null || Lsn.NULL.equals(storedLsn) || Lsn.valueOf(oldestScn).compareTo(storedLsn) <= 0;
+            if (storedLsn == null || !storedLsn.isAvailable()) {
+                final SnapshotterService snapshotterService = config.getServiceRegistry().tryGetService(SnapshotterService.class);
+                if (snapshotterService != null && snapshotterService.getSnapshotter().shouldSnapshotOnDataError()) {
+                    // A NULL offset can't tell whether CDC data was purged since it was recorded, so let a
+                    // snapshotter that snapshots on data errors take a new snapshot instead of silently missing changes.
+                    LOGGER.warn("Stored LSN is NULL so it cannot be verified that no change data was purged; a new snapshot is needed.");
+                    return false;
+                }
+                LOGGER.warn("Stored LSN is NULL so it cannot be verified that no change data was purged since it was recorded.");
+                return true;
+            }
+            return Lsn.valueOf(oldestScn).compareTo(storedLsn) <= 0;
         }
         catch (SQLException e) {
             throw new DebeziumException("Unable to get last available log position", e);

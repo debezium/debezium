@@ -593,6 +593,31 @@ public class TestHelper {
         }
     }
 
+    /**
+     * Waits until the capture job has caught up with the most recently created capture instance, that is
+     * until the max LSN is available and at least the largest {@code start_lsn} of all change tables.
+     */
+    public static void waitForMaxLsnPastChangeTablesStartLsn(SqlServerConnection connection) {
+        waitForMaxLsnPastChangeTablesStartLsn(connection, TEST_DATABASE_1);
+    }
+
+    public static void waitForMaxLsnPastChangeTablesStartLsn(SqlServerConnection connection, String databaseName) {
+        try {
+            Awaitility.await("Max LSN not past the change tables start LSN")
+                    .atMost(60, TimeUnit.SECONDS)
+                    .pollDelay(Duration.ofSeconds(0))
+                    .pollInterval(Duration.ofMillis(100))
+                    .until(() -> {
+                        final Lsn maxStartLsn = connection.getMaxStartLsnOfChangeTables(databaseName);
+                        final Lsn maxLsn = connection.getMaxLsn(databaseName);
+                        return maxStartLsn.isAvailable() && maxLsn.isAvailable() && maxLsn.compareTo(maxStartLsn) >= 0;
+                    });
+        }
+        catch (ConditionTimeoutException e) {
+            throw new IllegalArgumentException("The max LSN did not reach the change tables start LSN", e);
+        }
+    }
+
     private static ObjectName getObjectName(String context, String serverName) {
         return getObjectName(Collect.linkMapOf(
                 "context", context,

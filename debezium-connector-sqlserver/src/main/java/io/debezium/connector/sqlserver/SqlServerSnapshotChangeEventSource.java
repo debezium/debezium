@@ -158,9 +158,28 @@ public class SqlServerSnapshotChangeEventSource extends RelationalSnapshotChange
         boolean directMode = connectorConfig.getDataQueryMode() == SqlServerConnectorConfig.DataQueryMode.DIRECT;
         ctx.offset = new SqlServerOffsetContext(
                 connectorConfig,
-                TxLogPosition.valueOf(jdbcConnection.getMaxLsn(ctx.partition.getDatabaseName()), directMode ? -1 : null),
+                TxLogPosition.valueOf(getSnapshotLsn(ctx.partition.getDatabaseName()), directMode ? -1 : null),
                 null,
                 false);
+    }
+
+    private Lsn getSnapshotLsn(String databaseName) throws SQLException {
+        // The max LSN follows the asynchronous capture job, so it can be NULL or lag behind the start LSN of a
+        // capture instance that was just created. Both values are already in the transaction log before the
+        // snapshot reads any data, so the larger one is still a safe starting point for streaming, and it can
+        // be validated against the change tables on the next start.
+        final Lsn maxLsn = jdbcConnection.getMaxLsn(databaseName);
+        final Lsn maxStartLsn = jdbcConnection.getMaxStartLsnOfChangeTables(databaseName);
+        // Lsn.compareTo orders NULL before any available LSN
+        final Lsn snapshotLsn = maxLsn.compareTo(maxStartLsn) >= 0 ? maxLsn : maxStartLsn;
+        if (!snapshotLsn.isAvailable()) {
+            LOGGER.warn("No LSN is available for database '{}', the snapshot offset will be NULL and it can't be validated on a later restart.",
+                    databaseName);
+        }
+        else if (!snapshotLsn.equals(maxLsn)) {
+            LOGGER.info("Max LSN '{}' is behind the start LSN '{}' of the change tables, using the start LSN as snapshot offset.", maxLsn, maxStartLsn);
+        }
+        return snapshotLsn;
     }
 
     @Override
