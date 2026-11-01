@@ -11,6 +11,7 @@ import static org.junit.jupiter.api.Assertions.fail;
 import java.io.IOException;
 import java.lang.management.ManagementFactory;
 import java.nio.file.Path;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -626,11 +627,41 @@ public abstract class AbstractConnectorTest implements Testing {
                                       BiFunction<Integer, SourceRecord, String> logMessage, int breakAfterNulls,
                                       Consumer<SourceRecord> recordConsumer, boolean assertRecords)
             throws InterruptedException {
+        return consumeRecordsUntil(condition, logMessage, breakAfterNulls, recordConsumer, assertRecords, null);
+    }
+
+    /**
+     * Try to consume the records from the connector, until a condition is satisfied or the maximum wait time has elapsed.
+     * Unlike {@link #consumeRecordsUntil(BiPredicate, BiFunction, int, Consumer, boolean)}, consuming also stops once
+     * {@code maxWait} has passed, even if records such as heartbeats keep arriving.
+     *
+     * @param condition the condition that decides that consuming has finished
+     * @param logMessage diagnostic message printed
+     * @param breakAfterNulls the number of allowed runs when no records are received
+     * @param recordConsumer the function that should be called with each consumed record
+     * @param assertRecords true if records serialization should be verified
+     * @param maxWait the maximum time to consume records; null means no limit
+     * @return the actual number of records that were consumed
+     * @throws InterruptedException if the thread was interrupted while waiting for a record to be returned
+     */
+    protected int consumeRecordsUntil(BiPredicate<Integer, SourceRecord> condition,
+                                      BiFunction<Integer, SourceRecord, String> logMessage, int breakAfterNulls,
+                                      Consumer<SourceRecord> recordConsumer, boolean assertRecords, Duration maxWait)
+            throws InterruptedException {
+        final long startTime = System.nanoTime();
         int recordsConsumed = 0;
         int nullReturn = 0;
         boolean isLastRecord = false;
         while (!isLastRecord) {
-            SourceRecord record = consumedLines.poll(pollTimeoutInMs, TimeUnit.MILLISECONDS);
+            long pollTimeout = pollTimeoutInMs;
+            if (maxWait != null) {
+                final long remainingMs = maxWait.minusNanos(System.nanoTime() - startTime).toMillis();
+                if (remainingMs <= 0) {
+                    break;
+                }
+                pollTimeout = Math.min(pollTimeout, remainingMs);
+            }
+            SourceRecord record = consumedLines.poll(pollTimeout, TimeUnit.MILLISECONDS);
             if (record != null) {
                 nullReturn = 0;
                 ++recordsConsumed;
@@ -763,13 +794,28 @@ public abstract class AbstractConnectorTest implements Testing {
      * @throws InterruptedException if the thread was interrupted while waiting for a record to be returned
      */
     protected SourceRecords consumeRecordsByTopicUntil(BiPredicate<Integer, SourceRecord> condition) throws InterruptedException {
+        return consumeRecordsByTopicUntil(condition, null);
+    }
+
+    /**
+     * Try to consume and capture records until a condition is satisfied or the maximum wait time has elapsed.
+     * Use this instead of {@link #consumeRecordsByTopicUntil(BiPredicate)} when records such as heartbeats may keep
+     * arriving while the expected record never does.
+     *
+     * @param condition condition that must be satisfied to terminate reading
+     * @param maxWait the maximum time to consume records; null means no limit
+     * @return the collector into which the records were captured; never null
+     * @throws InterruptedException if the thread was interrupted while waiting for a record to be returned
+     */
+    protected SourceRecords consumeRecordsByTopicUntil(BiPredicate<Integer, SourceRecord> condition, Duration maxWait) throws InterruptedException {
         SourceRecords records = new SourceRecords();
         consumeRecordsUntil(
                 condition,
                 (recordsConsumed, record) -> "Consumed " + (condition.test(recordsConsumed, record) ? "last " : "") + "record " + recordsConsumed,
                 waitTimeForRecordsAfterNulls(),
                 records::add,
-                true);
+                true,
+                maxWait);
         return records;
     }
 
