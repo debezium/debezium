@@ -103,6 +103,9 @@ public abstract class AbstractLogMinerTransactionCache<T extends Transaction> im
         // DBMS_LOB procedures are stored in the cache as:
         // 1. SELECT_LOB_LOCATOR with a real ROW_ID
         // 2. one or more LOB_WRITE/LOB_ERASE (LOB_TRIM is not stored) with a real or empty ROW_ID
+        // 3. INTERNAL marker row with a real ROW_ID and the table, followed by the INTERNAL row-piece update
+        // with a real ROW_ID and no table; with lob.enabled=false both are stored, and they are the only
+        // trace of the procedure, otherwise only the marker row is stored
         if (!iterator.hasNext()) {
             return null;
         }
@@ -176,6 +179,9 @@ public abstract class AbstractLogMinerTransactionCache<T extends Transaction> im
             logCannotApplyRollbackToSavepointWarning(transactionId, rollbackEvent, "ROW_ID", event.getRowIdAsString());
             return null;
         }
+
+        boolean pastInternal = false;
+        boolean adjacent = true;
         while (iterator.hasNext()) {
             final LogMinerEventEntry entry = iterator.next();
             final LogMinerEvent event = entry.event();
@@ -183,6 +189,22 @@ public abstract class AbstractLogMinerTransactionCache<T extends Transaction> im
                 logUnexpectedEventWithEmptyRowIdWarning(transactionId, rollbackEvent, "TABLE_NAME", event.getTableId());
                 break;
             }
+
+            if (event.getEventType() == EventType.INTERNAL && event.getRowId().equals(rollbackEvent.getRowId())) {
+                if (adjacent && event.getTableId() != null && rolledBackEntry != null && rolledBackEntry.event().getTableId() == null) {
+                    // A DBMS_LOB block ends in a marker row that carries the table, directly followed by the
+                    // row-piece update that does not; the undo covers both, and with lob.enabled=false the two
+                    // are all the block leaves in the cache
+                    adjacent = false;
+                    rolledBackEntry = entry;
+                    pastInternal = true;
+                    continue;
+                }
+                // The final row of the statement before the undone one
+                break;
+            }
+
+            adjacent = false;
             if (lobStmt) {
                 if (event.getEventType() == EventType.SELECT_LOB_LOCATOR) {
                     if (event.getRowId().equals(rollbackEvent.getRowId())) {
@@ -196,9 +218,15 @@ public abstract class AbstractLogMinerTransactionCache<T extends Transaction> im
                 }
                 lobStmt = false;
             }
+            if (pastInternal) {
+                // No LOB row follows the marker row when the LOB rows are not mined
+                break;
+            }
+
             if (!RowIdCodec.EMPTY_ROW_ID.equals(event.getRowId())) {
                 break;
             }
+
             if (event.getEventType() == EventType.INSERT || event.getEventType() == EventType.UPDATE) {
                 if (lobStartEntry != null && !lobStartEntry.event().getRsId().equals(event.getRsId())) {
                     logUnexpectedEventWithEmptyRowIdWarning(transactionId, rollbackEvent, "RS_ID", event.getRsId());
