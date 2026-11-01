@@ -574,7 +574,7 @@ public abstract class BinlogDatabaseSchemaTest<C extends BinlogConnectorConfig, 
     }
 
     @Test
-    @FixFor("DBZ-2973")
+    @FixFor("debezium/dbz#2973")
     public void shouldClearIncludedMappingWhenTableNumberReassignedToExcludedTable() {
         final TableId customers = TableId.parse("connector_test.customers");
         final TableId productsOnHand = TableId.parse("connector_test.products_on_hand");
@@ -589,7 +589,7 @@ public abstract class BinlogDatabaseSchemaTest<C extends BinlogConnectorConfig, 
     }
 
     @Test
-    @FixFor("DBZ-2973")
+    @FixFor("debezium/dbz#2973")
     public void shouldClearExcludedMappingWhenTableNumberReassignedToIncludedTable() {
         final TableId customers = TableId.parse("connector_test.customers");
         final TableId productsOnHand = TableId.parse("connector_test.products_on_hand");
@@ -604,7 +604,7 @@ public abstract class BinlogDatabaseSchemaTest<C extends BinlogConnectorConfig, 
     }
 
     @Test
-    @FixFor("DBZ-2973")
+    @FixFor("debezium/dbz#2973")
     public void shouldRestoreIncludedMappingWhenTableNumberReassignedBackFromExcluded() {
         final TableId customers = TableId.parse("connector_test.customers");
         final TableId productsOnHand = TableId.parse("connector_test.products_on_hand");
@@ -619,7 +619,7 @@ public abstract class BinlogDatabaseSchemaTest<C extends BinlogConnectorConfig, 
     }
 
     @Test
-    @FixFor("DBZ-2973")
+    @FixFor("debezium/dbz#2973")
     public void shouldAssignTableNumberWithoutPriorMapping() {
         final TableId customers = TableId.parse("connector_test.customers");
         final TableId productsOnHand = TableId.parse("connector_test.products_on_hand");
@@ -635,7 +635,7 @@ public abstract class BinlogDatabaseSchemaTest<C extends BinlogConnectorConfig, 
     }
 
     @Test
-    @FixFor("DBZ-2973")
+    @FixFor("debezium/dbz#2973")
     public void shouldReassignTableNumberBetweenEqualWidthIncludedTables() {
         final TableId customers = TableId.parse("connector_test.customers");
         final TableId products = TableId.parse("connector_test.products");
@@ -649,7 +649,7 @@ public abstract class BinlogDatabaseSchemaTest<C extends BinlogConnectorConfig, 
     }
 
     @Test
-    @FixFor("DBZ-2973")
+    @FixFor("debezium/dbz#2973")
     public void shouldClearIncludedMappingWhenTableNumberReusedAcrossDatabases() {
         final TableId customers = TableId.parse("connector_test.customers");
         final TableId otherDatabaseTable = TableId.parse("other_db.customers");
