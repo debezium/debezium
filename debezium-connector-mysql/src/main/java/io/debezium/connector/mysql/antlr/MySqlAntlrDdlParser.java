@@ -18,6 +18,7 @@ import java.util.stream.Collectors;
 import org.antlr.v4.runtime.CharStream;
 import org.antlr.v4.runtime.CommonTokenStream;
 import org.antlr.v4.runtime.ParserRuleContext;
+import org.antlr.v4.runtime.Token;
 import org.antlr.v4.runtime.misc.Interval;
 import org.antlr.v4.runtime.tree.ParseTree;
 
@@ -85,6 +86,7 @@ public class MySqlAntlrDdlParser extends AntlrDdlParser<MySqlLexer, MySqlParser>
     private final TableFilter tableFilter;
     private final BinlogCharsetRegistry charsetRegistry;
     private final DataTypeResolver dataTypeResolver;
+    private CommonTokenStream tokenStream;
 
     @VisibleForTesting
     public MySqlAntlrDdlParser() {
@@ -138,7 +140,49 @@ public class MySqlAntlrDdlParser extends AntlrDdlParser<MySqlLexer, MySqlParser>
 
     @Override
     protected MySqlParser createNewParserInstance(CommonTokenStream commonTokenStream) {
+        this.tokenStream = commonTokenStream;
         return new MySqlParser(commonTokenStream);
+    }
+
+    /**
+     * The end of a version comment is a hidden token, so it is not part of the statement context when the
+     * comment ends the statement, e.g. a trailing {@code /*!50100 PARTITION BY ...} block in {@code SHOW CREATE TABLE}
+     * output. Extend the statement text to the end of version comments opened within the statement.
+     */
+    @Override
+    protected String getStatementText(ParserRuleContext ctx) {
+        int openComments = 0;
+        for (Token token : tokenStream.get(ctx.start.getTokenIndex(), ctx.stop.getTokenIndex())) {
+            if (isVersionCommentStart(token)) {
+                openComments++;
+            }
+            else if (token.getType() == MySqlLexer.VERSION_COMMENT_END && openComments > 0) {
+                openComments--;
+            }
+        }
+        if (openComments == 0) {
+            return getText(ctx);
+        }
+        int stop = ctx.stop.getStopIndex();
+        final List<Token> hiddenTokens = tokenStream.getHiddenTokensToRight(ctx.stop.getTokenIndex());
+        if (hiddenTokens != null) {
+            for (Token token : hiddenTokens) {
+                if (openComments == 0) {
+                    break;
+                }
+                if (token.getType() == MySqlLexer.VERSION_COMMENT_END) {
+                    stop = token.getStopIndex();
+                    openComments--;
+                }
+            }
+        }
+        return getText(ctx, ctx.start.getStartIndex(), stop);
+    }
+
+    private static boolean isVersionCommentStart(Token token) {
+        // A version comment not applicable to the server version is lexed as a single token including its end
+        return token.getType() == MySqlLexer.MYSQL_COMMENT_START
+                || (token.getType() == MySqlLexer.VERSION_COMMENT_START && !token.getText().endsWith("*/"));
     }
 
     @Override
