@@ -777,6 +777,26 @@ public class OracleDdlParserTest {
 
     @Test
     @FixFor("debezium/dbz#2794")
+    void shouldOnlyResolveOctetLengthForColumnsRedefinedByDdl() {
+        // A table recorded without byte lengths, like schema history written by an earlier version
+        parser.setCurrentDatabase(PDB_NAME);
+        parser.setCurrentSchema("DEBEZIUM");
+        parser.parse("CREATE TABLE " + TABLE_NAME + " (ID numeric(9,0) primary key, C1 varchar2(2000 char))", tables);
+
+        useParserWithConverters(CharacterSet.AL32UTF8_CHARSET, CharacterSet.AL16UTF16_CHARSET, true);
+        final TableId tableId = new TableId(PDB_NAME, "DEBEZIUM", TABLE_NAME);
+
+        // DDL that does not redefine C1 leaves its byte length unknown
+        parser.parse("ALTER TABLE " + TABLE_NAME + " ADD C2 number(9,0)", tables);
+        assertOctetLength(tables.forTable(tableId), "C1", Column.UNSET_INT_VALUE);
+
+        // Redefining the data type of C1 resolves its byte length
+        parser.parse("ALTER TABLE " + TABLE_NAME + " MODIFY (C1 varchar2(2000 char))", tables);
+        assertOctetLength(tables.forTable(tableId), "C1", 8000);
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2794")
     void shouldLeaveOctetLengthUnsetWithoutValueConverters() {
         parser.setCurrentDatabase(PDB_NAME);
         parser.setCurrentSchema("DEBEZIUM");
