@@ -7,12 +7,19 @@ package io.debezium.connector.postgresql;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import java.time.Instant;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 
 import org.awaitility.Awaitility;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
+
+import io.debezium.connector.postgresql.PostgresStreamingChangeEventSource.RecordPosition;
+import io.debezium.connector.postgresql.connection.Lsn;
+import io.debezium.connector.postgresql.connection.ReplicationMessage.Operation;
 
 public class PostgresStreamingChangeEventSourceTest {
 
@@ -86,6 +93,106 @@ public class PostgresStreamingChangeEventSourceTest {
         PostgresStreamingChangeEventSource.stopWatchdog(terminated, () -> false);
 
         assertThat(Thread.currentThread().isInterrupted()).isTrue();
+    }
+
+    @Test
+    void shouldTreatEqualPositionsAsAcknowledged() {
+        assertThat(position(100L, 90L, 2, "INSERT").isAtOrAfter(position(100L, 90L, 2, "INSERT"))).isTrue();
+    }
+
+    @Test
+    void shouldTreatLaterCommitLsnAsAcknowledged() {
+        assertThat(position(200L, 150L, 5, "UPDATE").isAtOrAfter(position(100L, 90L, 2, "INSERT"))).isTrue();
+    }
+
+    @Test
+    void shouldNotTreatEarlierCommitLsnAsAcknowledged() {
+        assertThat(position(100L, 90L, 2, "INSERT").isAtOrAfter(position(200L, 150L, 5, "UPDATE"))).isFalse();
+    }
+
+    @Test
+    void shouldCompareCommitLsnUnsigned() {
+        final RecordPosition high = position(0x8000_0000_0000_0000L, 1L, 0, "INSERT");
+        final RecordPosition low = position(1L, 1L, 0, "INSERT");
+        assertThat(high.isAtOrAfter(low)).isTrue();
+        assertThat(low.isAtOrAfter(high)).isFalse();
+    }
+
+    @Test
+    void shouldHandleNullCommitLsn() {
+        assertThat(position(null, 1L, 0, "INSERT").isAtOrAfter(position(100L, 1L, 0, "INSERT"))).isFalse();
+        assertThat(position(100L, 1L, 0, "INSERT").isAtOrAfter(position(null, 1L, 0, "INSERT"))).isTrue();
+        assertThat(position(null, 1L, 0, "INSERT").isAtOrAfter(position(null, 1L, 0, "INSERT"))).isTrue();
+        assertThat(position(null, 1L, 0, "INSERT").isAtOrAfter(position(null, 2L, 0, "INSERT"))).isFalse();
+    }
+
+    @Test
+    void shouldNotTreatSameCommitWithDifferentProgressAsAcknowledged() {
+        assertThat(position(100L, 90L, 1, "INSERT").isAtOrAfter(position(100L, 90L, 2, "INSERT"))).isFalse();
+        assertThat(position(100L, 90L, 1, "INSERT").isAtOrAfter(position(100L, 90L, 1, "UPDATE"))).isFalse();
+    }
+
+    @Test
+    void shouldNormalizeNumericOffsetValues() {
+        final Map<String, Object> asInteger = new HashMap<>();
+        asInteger.put(PostgresOffsetContext.LAST_COMMIT_LSN_KEY, 100);
+        asInteger.put(PostgresOffsetContext.LAST_COMPLETELY_PROCESSED_LSN_KEY, 90);
+        final Map<String, Object> asLong = new HashMap<>();
+        asLong.put(PostgresOffsetContext.LAST_COMMIT_LSN_KEY, 100L);
+        asLong.put(PostgresOffsetContext.LAST_COMPLETELY_PROCESSED_LSN_KEY, 90L);
+
+        assertThat(RecordPosition.of(asInteger)).isEqualTo(RecordPosition.of(asLong));
+    }
+
+    @Test
+    void shouldRoundTripDataChangePosition() {
+        final PostgresOffsetContext context = dataChangeContext();
+
+        assertThat(context.lsnEventsProcessed()).isPositive();
+        assertThat(RecordPosition.of(context)).isEqualTo(RecordPosition.of(context.getOffset()));
+        assertThat(RecordPosition.of(context.getOffset()).eventsProcessed()).isPositive();
+    }
+
+    @Test
+    void shouldRoundTripCommitPosition() {
+        final PostgresOffsetContext context = dataChangeContext();
+        context.updateCommitPosition(Lsn.valueOf(200L), Lsn.valueOf(200L));
+        context.resetLsnEventsProcessed();
+
+        final Map<String, ?> offset = context.getOffset();
+        assertThat(offset).containsKey(PostgresOffsetContext.LAST_COMPLETELY_PROCESSED_LSN_KEY);
+        assertThat(offset).doesNotContainKey(PostgresOffsetContext.LSN_EVENTS_PROCESSED_KEY);
+        assertThat(RecordPosition.of(context)).isEqualTo(RecordPosition.of(offset));
+    }
+
+    @Test
+    void shouldRoundTripLoadedOffset() {
+        final Map<String, ?> offset = dataChangeContext().getOffset();
+        final PostgresOffsetContext loaded = new PostgresOffsetContext.Loader(connectorConfig()).load(offset);
+
+        assertThat(RecordPosition.of(loaded)).isEqualTo(RecordPosition.of(offset));
+    }
+
+    private static RecordPosition position(Long commitLsn, Long processedLsn, long eventsProcessed, String messageType) {
+        return new RecordPosition(commitLsn, processedLsn, eventsProcessed, messageType);
+    }
+
+    private static PostgresConnectorConfig connectorConfig() {
+        return new PostgresConnectorConfig(TestHelper.defaultConfig().build());
+    }
+
+    private static PostgresOffsetContext dataChangeContext() {
+        final Map<String, Object> initial = new HashMap<>();
+        initial.put(SourceInfo.LSN_KEY, 100L);
+        initial.put(PostgresOffsetContext.LAST_COMMIT_LSN_KEY, 50L);
+        initial.put(PostgresOffsetContext.LAST_COMPLETELY_PROCESSED_LSN_KEY, 50L);
+        final PostgresOffsetContext context = new PostgresOffsetContext.Loader(connectorConfig()).load(initial);
+        // Two messages on the same LSN, as streaming does for a multi-event transaction.
+        context.updateWalPosition(Lsn.valueOf(100L), Lsn.valueOf(50L), Instant.ofEpochSecond(1), 1L, null, null, Operation.UPDATE);
+        context.incrementLsnEventsProcessed(Lsn.valueOf(100L));
+        context.updateWalPosition(Lsn.valueOf(100L), Lsn.valueOf(50L), Instant.ofEpochSecond(1), 1L, null, null, Operation.UPDATE);
+        context.incrementLsnEventsProcessed(Lsn.valueOf(100L));
+        return context;
     }
 
     private static void awaitTermination(Thread thread) {

@@ -308,8 +308,8 @@ public class PostgresStreamingChangeEventSource implements StreamingChangeEventS
         }
         finally {
             stopDrainWatchdog();
-            // After a drain, close the replication connection even without a stored offset, so that the walsender can exit.
-            cleanUpStreamingOnStop(drainCause != null ? effectiveOffset : offsetContext);
+            // Close the replication connection even without a stored offset, so that the walsender can exit.
+            cleanUpStreamingOnStop(effectiveOffset);
         }
     }
 
@@ -846,7 +846,7 @@ public class PostgresStreamingChangeEventSource implements StreamingChangeEventS
     /**
      * Tracks source offset fields used to gate the drain's final confirmation.
      */
-    private record RecordPosition(Long commitLsn, Long processedLsn, long eventsProcessed, String messageType) {
+    record RecordPosition(Long commitLsn, Long processedLsn, long eventsProcessed, String messageType) {
 
         static RecordPosition of(PostgresOffsetContext offsetContext) {
             return new RecordPosition(
