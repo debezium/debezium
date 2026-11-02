@@ -66,62 +66,72 @@ public abstract class BinlogReadOnlyIncrementalSnapshotChangeEventSource<P exten
     @Override
     public void processMessage(P partition, DataCollectionId dataCollectionId, Object key, OffsetContext offsetContext)
             throws InterruptedException {
-        if (getContext() == null) {
-            LOGGER.warn("Context is null, skipping message processing");
-            return;
+        snapshotLock.lock();
+        try {
+            if (getContext() == null) {
+                LOGGER.warn("Context is null, skipping message processing");
+                return;
+            }
+            LOGGER.trace("Checking window for table '{}', key '{}', window contains '{}'", dataCollectionId, key, window);
+            boolean windowClosed = getContext().updateWindowState(offsetContext);
+            if (windowClosed) {
+                sendWindowEvents(partition, offsetContext);
+                readChunk(partition, offsetContext);
+            }
+            else if (!window.isEmpty() && getContext().deduplicationNeeded()) {
+                deduplicateWindow(dataCollectionId, key);
+            }
         }
-        LOGGER.trace("Checking window for table '{}', key '{}', window contains '{}'", dataCollectionId, key, window);
-        boolean windowClosed = getContext().updateWindowState(offsetContext);
-        if (windowClosed) {
-            sendWindowEvents(partition, offsetContext);
-            readChunk(partition, offsetContext);
-        }
-        else if (!window.isEmpty() && getContext().deduplicationNeeded()) {
-            deduplicateWindow(dataCollectionId, key);
+        finally {
+            snapshotLock.unlock();
         }
     }
 
     @Override
     public void processHeartbeat(P partition, OffsetContext offsetContext) throws InterruptedException {
-        if (getContext() == null) {
-            LOGGER.warn("Context is null, skipping message processing");
-            return;
-        }
         readUntilGtidChange(partition, offsetContext);
     }
 
     @Override
     public void processFilteredEvent(P partition, OffsetContext offsetContext) throws InterruptedException {
-        if (getContext() == null) {
-            LOGGER.warn("Context is null, skipping message processing");
-            return;
+        snapshotLock.lock();
+        try {
+            if (getContext() == null) {
+                LOGGER.warn("Context is null, skipping message processing");
+                return;
+            }
+            boolean windowClosed = getContext().updateWindowState(offsetContext);
+            if (windowClosed) {
+                sendWindowEvents(partition, offsetContext);
+                readChunk(partition, offsetContext);
+            }
         }
-        boolean windowClosed = getContext().updateWindowState(offsetContext);
-        if (windowClosed) {
-            sendWindowEvents(partition, offsetContext);
-            readChunk(partition, offsetContext);
+        finally {
+            snapshotLock.unlock();
         }
     }
 
     @Override
     public void processTransactionStartedEvent(P partition, OffsetContext offsetContext) throws InterruptedException {
-        if (getContext() == null) {
-            LOGGER.warn("Context is null, skipping message processing");
-            return;
+        snapshotLock.lock();
+        try {
+            if (getContext() == null) {
+                LOGGER.warn("Context is null, skipping message processing");
+                return;
+            }
+            boolean windowClosed = getContext().updateWindowState(offsetContext);
+            if (windowClosed) {
+                sendWindowEvents(partition, offsetContext);
+                readChunk(partition, offsetContext);
+            }
         }
-        boolean windowClosed = getContext().updateWindowState(offsetContext);
-        if (windowClosed) {
-            sendWindowEvents(partition, offsetContext);
-            readChunk(partition, offsetContext);
+        finally {
+            snapshotLock.unlock();
         }
     }
 
     @Override
     public void processTransactionCommittedEvent(P partition, OffsetContext offsetContext) throws InterruptedException {
-        if (getContext() == null) {
-            LOGGER.warn("Context is null, skipping message processing");
-            return;
-        }
         readUntilGtidChange(partition, offsetContext);
     }
 
@@ -166,14 +176,39 @@ public abstract class BinlogReadOnlyIncrementalSnapshotChangeEventSource<P exten
     }
 
     private void readUntilGtidChange(P partition, OffsetContext offsetContext) throws InterruptedException {
-        String currentGtid = getContext().getCurrentGtid(offsetContext);
-        while (getContext().snapshotRunning() && getContext().reachedHighWatermark(currentGtid)) {
+        final String currentGtid;
+        snapshotLock.lock();
+        try {
+            if (getContext() == null) {
+                LOGGER.warn("Context is null, skipping message processing");
+                return;
+            }
+            currentGtid = getContext().getCurrentGtid(offsetContext);
+        }
+        finally {
+            snapshotLock.unlock();
+        }
+        while (readNextChunk(partition, offsetContext, currentGtid)) {
+            // Allow control signals to run between complete chunk transitions.
+        }
+    }
+
+    private boolean readNextChunk(P partition, OffsetContext offsetContext, String currentGtid) throws InterruptedException {
+        snapshotLock.lock();
+        try {
+            if (getContext() == null || !getContext().snapshotRunning() || !getContext().reachedHighWatermark(currentGtid)) {
+                return false;
+            }
             getContext().closeWindow();
             sendWindowEvents(partition, offsetContext);
             readChunk(partition, offsetContext);
             if (currentGtid == null && getContext().watermarksChanged()) {
-                return;
+                return false;
             }
+            return true;
+        }
+        finally {
+            snapshotLock.unlock();
         }
     }
 
