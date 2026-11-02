@@ -209,6 +209,11 @@ public abstract class AbstractLogMinerTransactionCache<T extends Transaction> im
                         continue;
                     }
                 }
+                else if (rolledBackEntry != null
+                        && rolledBackEntry.event().getEventType() == EventType.INTERNAL
+                        && rolledBackEntry.event().getTableId() != null) {
+                    break;
+                }
                 lobStmt = false;
             }
 
