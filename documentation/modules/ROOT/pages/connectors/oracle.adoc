@@ -3728,7 +3728,10 @@ Earlier versions of the connector compared the declared length of a column with 
 As a result, they did not capture changes to `VARCHAR2` columns that use character length semantics or to `NVARCHAR2` columns whose byte length exceeds 4000 bytes, and emitted the values of such columns as `null`.
 The schema history that earlier versions recorded does not include the byte length of columns.
 If the database parameter `max_string_size` is `EXTENDED`, after you upgrade the connector, run a snapshot with xref:oracle-property-snapshot-mode[`snapshot.mode`] set to `recovery` to rebuild the schema history topic.
-Until you rebuild the schema history, or until a DDL change is made to a table, the connector continues to use the declared length for that table, and logs a warning that the byte length of the column is missing.
+
+Until you rebuild the schema history, the connector continues to use the declared length for columns that were recorded by an earlier version, and logs a warning that the byte length of the column is missing.
+A DDL statement corrects only the columns that it redefines with a data type, for example, `ALTER TABLE ... MODIFY (c1 VARCHAR2(2000 CHAR))`, or all columns of a table that is dropped and re-created.
+Other DDL changes, such as `ALTER TABLE ... ADD`, do not correct the existing columns of the table.
 ====
 
 When set to `EXTENDED`, Oracle performs an implicit conversion of the character data in-flight when the byte length of the string data exceeds the legacy maximums.
