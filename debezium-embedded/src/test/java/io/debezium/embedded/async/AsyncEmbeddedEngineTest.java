@@ -14,6 +14,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
@@ -50,6 +51,7 @@ import io.debezium.embedded.DebeziumEngineTestUtils;
 import io.debezium.embedded.EmbeddedEngineChangeEvent;
 import io.debezium.embedded.EmbeddedEngineConfig;
 import io.debezium.embedded.EmbeddedEngineHeader;
+import io.debezium.embedded.async.DebeziumAsyncEngineTestUtils.OffsetTrackingTask;
 import io.debezium.engine.ChangeEvent;
 import io.debezium.engine.DebeziumEngine;
 import io.debezium.engine.StopEngineException;
@@ -597,6 +599,58 @@ public class AsyncEmbeddedEngineTest {
         finally {
             blockedSink.unlock();
         }
+    }
+
+    @Test
+    void testTaskIsStoppedOnlyAfterProcessedOffsetsAreStored() throws Exception {
+        final Properties props = new Properties();
+
+        props.setProperty(SimpleSourceConnector.BATCH_COUNT, "1");
+        props.setProperty(ConnectorConfig.NAME_CONFIG, "debezium-engine");
+        props.setProperty(SimpleSourceConnector.RECORD_COUNT_PER_BATCH, "2");
+        props.setProperty(StandaloneConfig.OFFSET_STORAGE_FILE_FILENAME_CONFIG, OFFSET_STORE_PATH.toAbsolutePath().toString());
+        props.setProperty(ConnectorConfig.CONNECTOR_CLASS_CONFIG, DebeziumAsyncEngineTestUtils.OffsetTrackingConnector.class.getName());
+
+        OffsetTrackingTask.stopInvoked.set(false);
+
+        final ReentrantLock busySink = new ReentrantLock();
+
+        engine = new AsyncEmbeddedEngine.AsyncEngineBuilder<SourceRecord>()
+                .using(props)
+                .notifying((records, committer) -> {
+                    committer.markProcessed(records.get(0));
+
+                    // still busy with the batch while the engine is closing
+                    busySink.lock();
+                    busySink.unlock();
+                    committer.markProcessed(records.get(1));
+                }).build();
+
+        final CompletableFuture<Void> closing;
+        busySink.lock();
+        try {
+            engineExecSrv.submit(engine);
+
+            Awaitility.await()
+                    .atMost(AbstractConnectorTest.waitTimeForEngine(), TimeUnit.SECONDS)
+                    .until(busySink::hasQueuedThreads);
+
+            closing = CompletableFuture.runAsync(this::stopEngine);
+
+            // the task must not be stopped while its batch is still being processed
+            Awaitility.await()
+                    .during(1, TimeUnit.SECONDS)
+                    .atMost(2, TimeUnit.SECONDS)
+                    .until(() -> !OffsetTrackingTask.stopInvoked.get());
+        }
+        finally {
+            busySink.unlock();
+        }
+        closing.get(AbstractConnectorTest.waitTimeForEngine(), TimeUnit.SECONDS);
+
+        // the task was stopped only after the batch, so every processed offset is stored
+        assertThat(OffsetTrackingTask.stopInvoked.get()).isTrue();
+        assertThat(OffsetTrackingTask.processedOffset.get()).isEqualTo(OffsetTrackingTask.storedOffset.get());
     }
 
     @Test

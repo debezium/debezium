@@ -11,7 +11,9 @@ import java.util.Map;
 import java.util.Random;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
 
+import org.apache.kafka.clients.producer.RecordMetadata;
 import org.apache.kafka.connect.connector.Task;
 import org.apache.kafka.connect.source.SourceRecord;
 
@@ -128,6 +130,40 @@ public class DebeziumAsyncEngineTestUtils {
         public void stop() {
             stopInvoked.set(true);
             super.stop();
+        }
+    }
+
+    public static class OffsetTrackingConnector extends SimpleSourceConnector {
+
+        @Override
+        public Class<? extends Task> taskClass() {
+            return OffsetTrackingTask.class;
+        }
+    }
+
+    public static class OffsetTrackingTask extends SimpleSourceConnector.SimpleConnectorTask {
+
+        public static final AtomicLong storedOffset = new AtomicLong();
+        public static final AtomicLong processedOffset = new AtomicLong();
+        public static final AtomicBoolean stopInvoked = new AtomicBoolean(false);
+
+        private volatile SourceRecord lastProcessed;
+
+        @Override
+        public void commitRecord(SourceRecord record, RecordMetadata metadata) {
+            lastProcessed = record;
+        }
+
+        @Override
+        public void stop() {
+            stopInvoked.set(true);
+            processedOffset.set(id(lastProcessed.sourceOffset()));
+            storedOffset.set(id(context.offsetStorageReader().offset(lastProcessed.sourcePartition())));
+            super.stop();
+        }
+
+        private static long id(Map<String, ?> offset) {
+            return offset == null ? 0 : ((Number) offset.get("id")).longValue();
         }
     }
 }
