@@ -29,6 +29,7 @@ import io.debezium.connector.sqlserver.SqlServerConnectorConfig.SnapshotMode;
 import io.debezium.connector.sqlserver.util.TestHelper;
 import io.debezium.data.Envelope;
 import io.debezium.data.SchemaAndValueField;
+import io.debezium.doc.FixFor;
 import io.debezium.embedded.async.AbstractAsyncEngineConnectorTest;
 import io.debezium.junit.EqualityCheck;
 import io.debezium.junit.SkipWhenKafkaVersion;
@@ -317,6 +318,7 @@ public class TransactionMetadataIT extends AbstractAsyncEngineConnectorTest {
     }
 
     @Test
+    @FixFor("debezium/dbz#2995")
     void restartWithoutNewChangesEndsRestoredTx() throws Exception {
         final Configuration config = TestHelper.defaultConfig()
                 .with(SqlServerConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL)
