@@ -175,15 +175,7 @@ public class TransactionCommitConsumer implements AutoCloseable {
         }
         else {
             prepareAndDispatch(rowState);
-            if (rowId.equals(currentLobDetails.rowId)) {
-                currentLobDetails.reset();
-            }
-            else if (rowId.equals(currentExtendedStringDetails.rowId)) {
-                currentExtendedStringDetails.reset();
-            }
-            else if (rowId.equals(currentXmlDetails.rowId)) {
-                currentXmlDetails.reset();
-            }
+            resetConstructionsForRow(rowId);
             rows.put(rowId, new RowState(event, enqueueEventIndex, transactionId, transactionSequence));
             accumulatorEvent = event;
         }
@@ -550,13 +542,17 @@ public class TransactionCommitConsumer implements AutoCloseable {
         if (state != null) {
             LOGGER.trace("Discarding merge state for row id {}", rowId);
             rows.remove(rowId);
-            // Reset every construction that still targets the discarded row, not only the one that
-            // triggered the discard, so later write events for that row are ignored rather than
-            // dereferencing the removed row state.
-            for (ConstructionDetails other : List.of(currentLobDetails, currentExtendedStringDetails, currentXmlDetails)) {
-                if (rowId.equals(other.rowId)) {
-                    other.reset();
-                }
+            resetConstructionsForRow(rowId);
+        }
+    }
+
+    private void resetConstructionsForRow(String rowId) {
+        // Reset every construction that still targets the row, not only the one that triggered the
+        // reset, so later write events for that row are ignored rather than dereferencing a row
+        // state that was removed or replaced.
+        for (ConstructionDetails details : List.of(currentLobDetails, currentExtendedStringDetails, currentXmlDetails)) {
+            if (rowId.equals(details.rowId)) {
+                details.reset();
             }
         }
     }
