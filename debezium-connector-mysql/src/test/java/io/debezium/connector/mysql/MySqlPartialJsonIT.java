@@ -9,18 +9,16 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import java.nio.file.Path;
 import java.util.List;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicReference;
 
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceRecord;
-import org.awaitility.Awaitility;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
-import io.debezium.config.CommonConnectorConfig;
-import io.debezium.config.CommonConnectorConfig.EventProcessingFailureHandlingMode;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+
 import io.debezium.config.Configuration;
 import io.debezium.connector.binlog.AbstractBinlogConnectorIT;
 import io.debezium.connector.binlog.BinlogConnectorConfig;
@@ -28,18 +26,21 @@ import io.debezium.connector.binlog.util.TestHelper;
 import io.debezium.connector.binlog.util.UniqueDatabase;
 import io.debezium.data.Envelope;
 import io.debezium.doc.FixFor;
+import io.debezium.processors.reselect.ReselectColumnsPostProcessor;
+import io.debezium.relational.RelationalDatabaseConnectorConfig;
 import io.debezium.util.Testing;
 
 /**
- * Verifies that updates written with {@code binlog_row_value_options=PARTIAL_JSON} aren't dropped silently.
+ * Verifies that updates written with {@code binlog_row_value_options=PARTIAL_JSON} are captured.
  */
 public class MySqlPartialJsonIT extends AbstractBinlogConnectorIT<MySqlConnector> implements MySqlCommon {
 
     private static final Path SCHEMA_HISTORY_PATH = Testing.Files.createTestingPath("file-schema-history-partial-json.txt")
             .toAbsolutePath();
-    private static final String CAPTURED_TABLE = "partial_json_captured";
-    private static final String OTHER_TABLE = "partial_json_other";
+    private static final String PLAIN_TABLE = "partial_json_plain";
+    private static final String JSON_TABLE = "partial_json_doc";
     private static final String PARTIAL_JSON = "SET SESSION binlog_row_value_options = 'PARTIAL_JSON'";
+    private static final ObjectMapper MAPPER = new ObjectMapper();
 
     private UniqueDatabase database;
 
@@ -52,10 +53,10 @@ public class MySqlPartialJsonIT extends AbstractBinlogConnectorIT<MySqlConnector
                 .withDbHistoryPath(SCHEMA_HISTORY_PATH);
         database.create();
         executeStatements(database.getDatabaseName(),
-                "CREATE TABLE " + CAPTURED_TABLE + " (id INT PRIMARY KEY, name VARCHAR(20))",
-                "CREATE TABLE " + OTHER_TABLE + " (id INT PRIMARY KEY, name VARCHAR(20))",
-                "INSERT INTO " + CAPTURED_TABLE + " VALUES (1, 'a')",
-                "INSERT INTO " + OTHER_TABLE + " VALUES (1, 'a')");
+                "CREATE TABLE " + PLAIN_TABLE + " (id INT PRIMARY KEY, name VARCHAR(20))",
+                "CREATE TABLE " + JSON_TABLE + " (id INT PRIMARY KEY, v INT, j JSON)",
+                "INSERT INTO " + PLAIN_TABLE + " VALUES (1, 'a')",
+                "INSERT INTO " + JSON_TABLE + " VALUES (1, 10, '{\"a\": 1, \"b\": 2}')");
         initializeConnectorTestFramework();
     }
 
@@ -72,73 +73,82 @@ public class MySqlPartialJsonIT extends AbstractBinlogConnectorIT<MySqlConnector
 
     @Test
     @FixFor("debezium/dbz#2958")
-    void shouldFailAtStartupWhenGlobalValueIsPartialJson() {
-        final AtomicReference<Throwable> failure = new AtomicReference<>();
-        executeStatements(database.getDatabaseName(), "SET GLOBAL binlog_row_value_options = 'PARTIAL_JSON'");
-        try {
-            start(getConnectorClass(), connectorConfig(EventProcessingFailureHandlingMode.FAIL), (success, message, error) -> failure.set(error));
-            Awaitility.await().atMost(60, TimeUnit.SECONDS).until(() -> !isEngineRunning.get());
-        }
-        finally {
-            executeStatements(database.getDatabaseName(), "SET GLOBAL binlog_row_value_options = ''");
-        }
-        assertThat(failure.get()).hasStackTraceContaining("configured to use binlog_row_value_options=PARTIAL_JSON");
+    void shouldCaptureUpdateOfTableWithoutJsonColumns() throws Exception {
+        start(getConnectorClass(), connectorConfig().build());
+        waitForStreamingRunning(getConnectorName(), database.getServerName());
+
+        executeStatements(database.getDatabaseName(), PARTIAL_JSON, "UPDATE " + PLAIN_TABLE + " SET name = 'b' WHERE id = 1");
+
+        assertThat(consumeUpdate(PLAIN_TABLE).getString("name")).isEqualTo("b");
     }
 
     @Test
     @FixFor("debezium/dbz#2958")
-    void shouldFailOnPartialUpdateOfCapturedTable() throws Exception {
-        final AtomicReference<Throwable> failure = new AtomicReference<>();
-        start(getConnectorClass(), connectorConfig(EventProcessingFailureHandlingMode.FAIL), (success, message, error) -> failure.set(error));
+    void shouldTakeUnmodifiedJsonColumnFromBeforeImage() throws Exception {
+        start(getConnectorClass(), connectorConfig().build());
         waitForStreamingRunning(getConnectorName(), database.getServerName());
 
-        executeStatements(database.getDatabaseName(), PARTIAL_JSON, "UPDATE " + CAPTURED_TABLE + " SET name = 'b' WHERE id = 1");
+        executeStatements(database.getDatabaseName(), PARTIAL_JSON, "UPDATE " + JSON_TABLE + " SET v = v + 1 WHERE id = 1");
 
-        Awaitility.await().atMost(60, TimeUnit.SECONDS).until(() -> !isEngineRunning.get());
-        assertThat(failure.get()).hasStackTraceContaining("Encountered update event for table " + database.qualifiedTableName(CAPTURED_TABLE));
+        final Struct after = consumeUpdate(JSON_TABLE);
+        assertThat(after.getInt32("v")).isEqualTo(11);
+        assertJson(after.getString("j"), "{\"a\": 1, \"b\": 2}");
     }
 
     @Test
     @FixFor("debezium/dbz#2958")
-    void shouldSkipPartialUpdateOfTableThatIsNotCaptured() throws Exception {
-        start(getConnectorClass(), connectorConfig(EventProcessingFailureHandlingMode.FAIL));
+    void shouldCaptureJsonColumnReplacedWithNewDocument() throws Exception {
+        start(getConnectorClass(), connectorConfig().build());
         waitForStreamingRunning(getConnectorName(), database.getServerName());
 
-        executeStatements(database.getDatabaseName(), PARTIAL_JSON, "UPDATE " + OTHER_TABLE + " SET name = 'b' WHERE id = 1");
-        executeStatements(database.getDatabaseName(), "UPDATE " + CAPTURED_TABLE + " SET name = 'b' WHERE id = 1");
+        executeStatements(database.getDatabaseName(), PARTIAL_JSON, "UPDATE " + JSON_TABLE + " SET j = '{\"x\": 1}' WHERE id = 1");
 
-        assertUpdate("b");
-        assertConnectorIsRunning();
+        assertJson(consumeUpdate(JSON_TABLE).getString("j"), "{\"x\": 1}");
     }
 
     @Test
     @FixFor("debezium/dbz#2958")
-    void shouldSkipPartialUpdateOfCapturedTableInWarnMode() throws Exception {
-        start(getConnectorClass(), connectorConfig(EventProcessingFailureHandlingMode.WARN));
+    void shouldEmitUnavailableValuePlaceholderForJsonDiff() throws Exception {
+        start(getConnectorClass(), connectorConfig().build());
         waitForStreamingRunning(getConnectorName(), database.getServerName());
 
-        executeStatements(database.getDatabaseName(), PARTIAL_JSON, "UPDATE " + CAPTURED_TABLE + " SET name = 'b' WHERE id = 1");
-        executeStatements(database.getDatabaseName(), "UPDATE " + CAPTURED_TABLE + " SET name = 'c' WHERE id = 1");
+        executeStatements(database.getDatabaseName(), PARTIAL_JSON, "UPDATE " + JSON_TABLE + " SET v = v + 1, j = JSON_SET(j, '$.b', 7) WHERE id = 1");
 
-        // The partial update is skipped, so the next update is the first event
-        assertUpdate("c");
-        assertConnectorIsRunning();
+        final Struct after = consumeUpdate(JSON_TABLE);
+        assertThat(after.getInt32("v")).isEqualTo(11);
+        assertThat(after.getString("j")).isEqualTo(RelationalDatabaseConnectorConfig.DEFAULT_UNAVAILABLE_VALUE_PLACEHOLDER);
     }
 
-    private void assertUpdate(String expectedName) throws InterruptedException {
-        final List<SourceRecord> records = consumeRecordsByTopic(1).recordsForTopic(database.topicForTable(CAPTURED_TABLE));
+    @Test
+    @FixFor("debezium/dbz#2958")
+    void shouldReselectJsonColumnWithJsonDiff() throws Exception {
+        start(getConnectorClass(), connectorConfig()
+                .with(BinlogConnectorConfig.CUSTOM_POST_PROCESSORS, "reselector")
+                .with("post.processors.reselector.type", ReselectColumnsPostProcessor.class.getName())
+                .build());
+        waitForStreamingRunning(getConnectorName(), database.getServerName());
+
+        executeStatements(database.getDatabaseName(), PARTIAL_JSON, "UPDATE " + JSON_TABLE + " SET j = JSON_SET(j, '$.b', 7) WHERE id = 1");
+
+        assertJson(consumeUpdate(JSON_TABLE).getString("j"), "{\"a\": 1, \"b\": 7}");
+    }
+
+    private Struct consumeUpdate(String table) throws InterruptedException {
+        final List<SourceRecord> records = consumeRecordsByTopic(1).recordsForTopic(database.topicForTable(table));
         assertThat(records).hasSize(1);
         final Struct value = (Struct) records.get(0).value();
         assertThat(value.getString(Envelope.FieldName.OPERATION)).isEqualTo(Envelope.Operation.UPDATE.code());
-        assertThat(value.getStruct(Envelope.FieldName.AFTER).getString("name")).isEqualTo(expectedName);
+        return value.getStruct(Envelope.FieldName.AFTER);
     }
 
-    private Configuration connectorConfig(EventProcessingFailureHandlingMode mode) {
+    private static void assertJson(String actual, String expected) throws Exception {
+        final JsonNode actualNode = MAPPER.readTree(actual);
+        assertThat(actualNode).isEqualTo(MAPPER.readTree(expected));
+    }
+
+    private Configuration.Builder connectorConfig() {
         return database.defaultConfig()
                 .with(BinlogConnectorConfig.SNAPSHOT_MODE, BinlogConnectorConfig.SnapshotMode.NO_DATA)
-                .with(BinlogConnectorConfig.TABLE_INCLUDE_LIST, database.qualifiedTableName(CAPTURED_TABLE))
-                .with(BinlogConnectorConfig.INCLUDE_SCHEMA_CHANGES, false)
-                .with(CommonConnectorConfig.EVENT_PROCESSING_FAILURE_HANDLING_MODE, mode)
-                .build();
+                .with(BinlogConnectorConfig.INCLUDE_SCHEMA_CHANGES, false);
     }
 }

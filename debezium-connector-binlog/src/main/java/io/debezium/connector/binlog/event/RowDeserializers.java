@@ -20,14 +20,20 @@ import java.time.OffsetDateTime;
 import java.time.Year;
 import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
+import java.util.AbstractMap;
+import java.util.ArrayList;
+import java.util.BitSet;
 import java.util.Calendar;
+import java.util.List;
 import java.util.Map;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.github.shyiko.mysql.binlog.event.TableMapEventData;
+import com.github.shyiko.mysql.binlog.event.UpdateRowsEventData;
 import com.github.shyiko.mysql.binlog.event.deserialization.AbstractRowsEventDataDeserializer;
+import com.github.shyiko.mysql.binlog.event.deserialization.ColumnType;
 import com.github.shyiko.mysql.binlog.event.deserialization.DeleteRowsEventDataDeserializer;
 import com.github.shyiko.mysql.binlog.event.deserialization.UpdateRowsEventDataDeserializer;
 import com.github.shyiko.mysql.binlog.event.deserialization.WriteRowsEventDataDeserializer;
@@ -35,6 +41,7 @@ import com.github.shyiko.mysql.binlog.io.ByteArrayInputStream;
 
 import io.debezium.DebeziumException;
 import io.debezium.config.CommonConnectorConfig.EventProcessingFailureHandlingMode;
+import io.debezium.connector.binlog.jdbc.BinlogValueConverters;
 
 /**
  * Custom deserializers for the binlog client library.<p></p>
@@ -274,6 +281,112 @@ public class RowDeserializers {
         @Override
         protected Serializable deserializeYear(ByteArrayInputStream inputStream) throws IOException {
             return RowDeserializers.deserializeYear(inputStream);
+        }
+    }
+
+    /**
+     * A specialization of {@link UpdateRowsDeserializer} for MySQL's {@code PARTIAL_UPDATE_ROWS_EVENT}, which the
+     * server writes for every update when {@code binlog_row_value_options=PARTIAL_JSON}, regardless of whether the
+     * table has JSON columns.<p></p>
+     *
+     * The event always uses the v2 rows event header, and each after-image is prefixed with a packed
+     * {@code value_options} integer. When it has the partial JSON updates flag, a bitmap with one bit per JSON column
+     * of the table follows, and the flagged JSON columns hold a JSON diff instead of the full document. An empty diff,
+     * which the server writes for a JSON column the update didn't modify, is replaced with the value from the
+     * before-image. Any other diff can't be turned into a full document, so the column is set to
+     * {@link BinlogValueConverters#UNAVAILABLE_VALUE}.
+     */
+    public static class PartialUpdateRowsDeserializer extends UpdateRowsDeserializer {
+        /**
+         * The {@code value_options} flag of {@code binlog_row_value_options=PARTIAL_JSON}.
+         */
+        private static final int PARTIAL_JSON_UPDATES = 1;
+
+        private final Map<Long, TableMapEventData> tableMapEventByTableId;
+
+        public PartialUpdateRowsDeserializer(Map<Long, TableMapEventData> tableMapEventByTableId,
+                                             EventProcessingFailureHandlingMode eventProcessingFailureHandlingMode,
+                                             boolean preserveInvalidTemporalValues) {
+            super(tableMapEventByTableId, eventProcessingFailureHandlingMode, preserveInvalidTemporalValues);
+            this.tableMapEventByTableId = tableMapEventByTableId;
+        }
+
+        @Override
+        public UpdateRowsEventData deserialize(ByteArrayInputStream inputStream) throws IOException {
+            UpdateRowsEventData eventData = new UpdateRowsEventData();
+            long tableId = inputStream.readLong(6);
+            eventData.setTableId(tableId);
+            inputStream.skip(2); // reserved
+            int extraInfoLength = inputStream.readInteger(2);
+            inputStream.skip(extraInfoLength - 2);
+            int numberOfColumns = inputStream.readPackedInteger();
+            BitSet includedColumnsBeforeUpdate = inputStream.readBitSet(numberOfColumns, true);
+            BitSet includedColumns = inputStream.readBitSet(numberOfColumns, true);
+            eventData.setIncludedColumnsBeforeUpdate(includedColumnsBeforeUpdate);
+            eventData.setIncludedColumns(includedColumns);
+
+            byte[] columnTypes = tableMapEventByTableId.get(tableId).getColumnTypes();
+            int jsonColumnCount = jsonColumnCount(columnTypes);
+            List<Map.Entry<Serializable[], Serializable[]>> rows = new ArrayList<>();
+            while (inputStream.available() > 0) {
+                Serializable[] before = deserializeRow(tableId, includedColumnsBeforeUpdate, inputStream);
+                BitSet partialJsonColumns = readPartialJsonColumns(jsonColumnCount, inputStream);
+                Serializable[] after = deserializeRow(tableId, includedColumns, inputStream);
+                resolvePartialJsonColumns(columnTypes, partialJsonColumns, before, includedColumnsBeforeUpdate, after, includedColumns);
+                rows.add(new AbstractMap.SimpleEntry<>(before, after));
+            }
+            eventData.setRows(rows);
+            return eventData;
+        }
+
+        /**
+         * Reads the {@code value_options} of an after-image and, when partial JSON updates are flagged, the bitmap
+         * with one bit per JSON column of the table that marks the columns holding a JSON diff.
+         */
+        private static BitSet readPartialJsonColumns(int jsonColumnCount, ByteArrayInputStream inputStream) throws IOException {
+            int valueOptions = inputStream.readPackedInteger();
+            if ((valueOptions & PARTIAL_JSON_UPDATES) == 0) {
+                return new BitSet();
+            }
+            return BitSet.valueOf(inputStream.read((jsonColumnCount + 7) / 8));
+        }
+
+        private static int jsonColumnCount(byte[] columnTypes) {
+            int count = 0;
+            for (byte columnType : columnTypes) {
+                if ((columnType & 0xFF) == ColumnType.JSON.getCode()) {
+                    count++;
+                }
+            }
+            return count;
+        }
+
+        /**
+         * Replaces each JSON column flagged in {@code partialJsonColumns} with its value from the before-image when it
+         * carries an empty JSON diff, or with {@link BinlogValueConverters#UNAVAILABLE_VALUE} otherwise.
+         */
+        private static void resolvePartialJsonColumns(byte[] columnTypes, BitSet partialJsonColumns,
+                                                      Serializable[] before, BitSet includedColumnsBeforeUpdate,
+                                                      Serializable[] after, BitSet includedColumns) {
+            if (partialJsonColumns.isEmpty()) {
+                return;
+            }
+            int jsonColumnIndex = 0;
+            for (int column = 0; column < columnTypes.length; column++) {
+                if ((columnTypes[column] & 0xFF) != ColumnType.JSON.getCode()) {
+                    continue;
+                }
+                if (partialJsonColumns.get(jsonColumnIndex++) && includedColumns.get(column)) {
+                    int afterIndex = includedColumns.get(0, column).cardinality();
+                    boolean emptyDiff = after[afterIndex] instanceof byte[] diff && diff.length == 0;
+                    if (emptyDiff && includedColumnsBeforeUpdate.get(column)) {
+                        after[afterIndex] = before[includedColumnsBeforeUpdate.get(0, column).cardinality()];
+                    }
+                    else {
+                        after[afterIndex] = BinlogValueConverters.UNAVAILABLE_VALUE;
+                    }
+                }
+            }
         }
     }
 
