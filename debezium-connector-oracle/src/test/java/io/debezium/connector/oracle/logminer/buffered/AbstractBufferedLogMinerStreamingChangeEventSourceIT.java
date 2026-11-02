@@ -1321,6 +1321,43 @@ public abstract class AbstractBufferedLogMinerStreamingChangeEventSourceIT exten
         assertThat(((Struct) tableRecords.get(2).value()).getStruct(Envelope.FieldName.AFTER).get("ID")).isEqualTo(3);
     }
 
+    @Test
+    @FixFor("debezium/dbz#2666")
+    public void shouldUpdateOutOfLineAndXmlAndRollbackLobWriteWithLobDisabled() throws Exception {
+        String tableName = "DBZ2666_8";
+        String tableSpec = "(ID NUMERIC(9,0) PRIMARY KEY, VAL VARCHAR2(20), LOB0 CLOB, XML0 XMLTYPE)";
+        String[] statements = new String[]{
+                "INSERT INTO DBZ2666_8 (ID, VAL, LOB0, XML0) VALUES (1, 'a', 'LOB0-1-0', XMLTYPE('<XML0><ID>1</ID><V>0</V></XML0>'))",
+                "UPDATE DBZ2666_8 SET VAL = 'b', LOB0 = RPAD('LOB0-1-', 1985, '1'), XML0 = XMLTYPE('<XML0><ID>1</ID><V>1</V></XML0>') WHERE ID = 1",
+                "SAVEPOINT s1",
+                "DECLARE\n" +
+                        "  loc CLOB;\n" +
+                        "BEGIN\n" +
+                        "  SELECT LOB0 INTO loc FROM DBZ2666_8 WHERE ID = 1 FOR UPDATE;\n" +
+                        "  DBMS_LOB.WRITE(loc, 1985, 1, RPAD('LOB0-1-', 1985, '2'));\n" +
+                        "END;",
+                "ROLLBACK TO SAVEPOINT s1",
+                "INSERT INTO DBZ2666_8 (ID, VAL) VALUES (2, 'c')", };
+        List<SourceRecord> tableRecords = execute(tableName, tableSpec, false, true, 5, statements);
+        assertThat(tableRecords).hasSize(5);
+
+        String[] ops = new String[]{ "c", "u", "u", "c", "u" };
+        int[] ids = new int[]{ 1, 1, 1, 2, 2 };
+        String[] vals = new String[]{ "a", "a", "b", "c", "c" };
+        String unavailable = "__debezium_unavailable_value";
+        String[] lobs = new String[]{ null, "LOB0-1-0", unavailable, null, null };
+        String[] xmls = new String[]{ null, unavailable, unavailable, null, unavailable };
+        for (int i = 0; i < 5; i++) {
+            Struct value = (Struct) tableRecords.get(i).value();
+            assertThat(value.get(Envelope.FieldName.OPERATION)).isEqualTo(ops[i]);
+            Struct after = value.getStruct(Envelope.FieldName.AFTER);
+            assertThat(after.get("ID")).isEqualTo(ids[i]);
+            assertThat(after.get("VAL")).isEqualTo(vals[i]);
+            assertThat(after.get("LOB0")).isEqualTo(lobs[i]);
+            assertThat(after.get("XML0")).isEqualTo(xmls[i]);
+        }
+    }
+
     private List<SourceRecord> execute(String tableName, String tableSpec, boolean includeInternalEvents, int numRecords, String[] statements)
             throws Exception {
         return execute(tableName, tableSpec, true, includeInternalEvents, numRecords, statements);
