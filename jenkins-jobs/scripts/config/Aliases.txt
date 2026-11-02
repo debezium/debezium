@@ -352,6 +352,7 @@ rolevinks,Stein Rolevink
 Roshr2211,Roshni R
 rossd-bitquill,Ross Dutkiewicz
 rrh,René Rütter
+russlank,Russlan Kafri
 ryanvanhuuksloot,Ryan van Huuksloot
 s0r01ed,Sagar Rao
 Sage-Pierce,Sage Pierce
