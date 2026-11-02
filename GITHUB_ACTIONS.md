@@ -15,7 +15,7 @@ It is responsible for initial change detection and the conditional dispatch of d
 | Workflow File | Trigger | Significance |
 |---|---|---|
 | `debezium-workflow-pr.yml` | `Pull Request` | Acts as the entry point for all external contributions. It performs initial metadata checks and utilizes the `file_changes` job to calculate the testing scope, ensuring immediate feedback on PR validity. |
-| `debezium-workflow-push.yml` | `Push` | Validates the state of the repository post-merge. It is responsible for refreshing global Maven dependency caches used by PR workflows, maintaining a consistent build environment across the project. |
+| `debezium-workflow-build.yml` | `Workflow Dispatch` | Validates the state of `main` and recently updated `<major>.<minor>` branches, dispatched twice a day by `debezium-workflow-scheduled.yml`, and reports the result to Zulip. It is responsible for refreshing global Maven dependency caches used by PR workflows, maintaining a consistent build environment across the project. |
 | `file-changes-workflow.yml` | `Workflow Call` | Centralizes the "diff" logic for the monorepo. It maps modified file paths to module-specific flags (e.g., `mysql-changed`), preventing the redundant execution of tests for unaffected components. |
 
 ### Sanity and Compliance Layer
