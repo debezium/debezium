@@ -671,7 +671,10 @@ public class SqlServerStreamingChangeEventSource implements StreamingChangeEvent
     private void endTransaction(SqlServerPartition partition, Instant sourceTime) {
         if (endTransactionTimer != null && endTransactionTimer.hasElapsed() && metadataConnection.didTransactionEnd()) {
             try {
-                dispatcher.dispatchTransactionCommittedEvent(partition, getOffsetContext(), sourceTime);
+                // After a restart the source time is unknown until a change is read, but the
+                // transaction restored from the offsets may still be ended by the timer
+                final Instant endTime = sourceTime != null ? sourceTime : clock.currentTimeAsInstant();
+                dispatcher.dispatchTransactionCommittedEvent(partition, getOffsetContext(), endTime);
             }
             catch (InterruptedException e) {
                 Thread.currentThread().interrupt();

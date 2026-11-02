@@ -317,6 +317,54 @@ public class TransactionMetadataIT extends AbstractAsyncEngineConnectorTest {
     }
 
     @Test
+    void restartWithoutNewChangesEndsRestoredTx() throws Exception {
+        final Configuration config = TestHelper.defaultConfig()
+                .with(SqlServerConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL)
+                .with(SqlServerConnectorConfig.PROVIDE_TRANSACTION_METADATA, true)
+                .build();
+
+        start(SqlServerConnector.class, config);
+        assertConnectorIsRunning();
+
+        // Wait for snapshot completion
+        consumeRecordsByTopic(1);
+
+        connection.execute("INSERT INTO tablea VALUES(-1, '-a')");
+
+        // BEGIN, data; stop before the timer ends the transaction
+        final List<SourceRecord> records = consumeRecordsByTopic(2).allRecordsInOrder();
+        final String txId = assertBeginTransaction(records.get(0));
+        stopConnector();
+
+        // No new changes, so the first iterations after the restart read no change and the
+        // source time of the restored transaction stays unknown when the timer ends it
+        start(SqlServerConnector.class, config);
+        assertConnectorIsRunning();
+
+        final AtomicReference<SourceRecord> end = new AtomicReference<>();
+        Awaitility.await().atMost(60, TimeUnit.SECONDS).until(() -> {
+            final SourceRecord record = consumeRecord();
+            if (record != null && "server1.transaction".equals(record.topic())
+                    && "END".equals(((Struct) record.value()).getString("status"))) {
+                end.set(record);
+            }
+            return end.get() != null || !isEngineRunning.get();
+        });
+        assertConnectorIsRunning();
+        assertThat(end.get()).isNotNull();
+
+        final Struct endValue = (Struct) end.get().value();
+        assertThat(endValue.getString("id")).isEqualTo(txId);
+        assertThat(endValue.getInt64("ts_ms")).isNotNull();
+
+        // Streaming goes on
+        connection.execute("INSERT INTO tablea VALUES(-2, '-a')");
+        final SourceRecords afterRestart = consumeRecordsByTopic(2);
+        assertBeginTransaction(afterRestart.recordsForTopic("server1.transaction").get(0));
+        assertThat(afterRestart.recordsForTopic("server1.testDB1.dbo.tablea")).hasSize(1);
+    }
+
+    @Test
     void restartInTheMiddleOfTxAfterSnapshot() throws Exception {
         restartInTheMiddleOfTx(true, false);
     }
