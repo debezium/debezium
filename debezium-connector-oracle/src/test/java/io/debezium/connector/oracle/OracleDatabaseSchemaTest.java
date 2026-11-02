@@ -159,6 +159,42 @@ public class OracleDatabaseSchemaTest {
 
     @Test
     @FixFor("debezium/dbz#2794")
+    public void shouldOnlyWarnAboutMissingOctetLengthWhenColumnMayBeExtendedString() {
+        final LogInterceptor logInterceptor = new LogInterceptor(OracleDatabaseSchema.class);
+        final String message = "has no byte length for column";
+
+        schema.close();
+        schema = createOracleDatabaseSchema(true, true);
+
+        // AL32UTF8 uses up to 4 bytes per character and the national UTF8 up to 3, so none of these columns
+        // can exceed 4000 bytes, and the VARCHAR2(8000) column is detected from its declared length
+        final TableId quietTableId = TableId.parse("ORCLPDB1.DEBEZIUM.DBZ2794A");
+        schema.refresh(OracleRelationalMetadataFactory.INSTANCE.tableEditor()
+                .tableId(quietTableId)
+                .addColumn(column("ID", Types.NUMERIC, "NUMBER", 9, Column.UNSET_INT_VALUE))
+                .addColumn(column("C1", Types.VARCHAR, "VARCHAR2", 10, Column.UNSET_INT_VALUE))
+                .addColumn(column("C2", Types.VARCHAR, "VARCHAR2", 1000, Column.UNSET_INT_VALUE))
+                .addColumn(column("C3", Types.NVARCHAR, "NVARCHAR2", 1333, Column.UNSET_INT_VALUE))
+                .addColumn(column("C4", Types.VARCHAR, "VARCHAR2", 8000, Column.UNSET_INT_VALUE))
+                .setPrimaryKeyNames("ID")
+                .create());
+        assertThat(logInterceptor.containsWarnMessage(message)).isFalse();
+
+        final TableId noisyTableId = TableId.parse("ORCLPDB1.DEBEZIUM.DBZ2794B");
+        schema.refresh(OracleRelationalMetadataFactory.INSTANCE.tableEditor()
+                .tableId(noisyTableId)
+                .addColumn(column("ID", Types.NUMERIC, "NUMBER", 9, Column.UNSET_INT_VALUE))
+                .addColumn(column("C1", Types.VARCHAR, "VARCHAR2", 1001, Column.UNSET_INT_VALUE))
+                .addColumn(column("C2", Types.NVARCHAR, "NVARCHAR2", 1334, Column.UNSET_INT_VALUE))
+                .setPrimaryKeyNames("ID")
+                .create());
+        assertThat(logInterceptor.containsWarnMessage("Table 'ORCLPDB1.DEBEZIUM.DBZ2794B' has no byte length for column 'C1'")).isTrue();
+        // Only one warning per table
+        assertThat(logInterceptor.containsWarnMessage("for column 'C2'")).isFalse();
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2794")
     public void shouldWarnWhenDatabaseCharacterSetIsMultibyteButNotUnicode() {
         final LogInterceptor logInterceptor = new LogInterceptor(OracleDatabaseSchema.class);
         final String message = "is a multibyte character set that is not Unicode";

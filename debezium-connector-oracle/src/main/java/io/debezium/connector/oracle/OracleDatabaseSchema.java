@@ -376,9 +376,11 @@ public class OracleDatabaseSchema extends HistorizedRelationalDatabaseSchema {
                 case OracleTypes.VARCHAR:
                 case OracleTypes.NVARCHAR:
                     if (extendedStringsSupported) {
-                        warnIfOctetLengthIsMissing(table, column);
                         if (isExtendedStringColumn(column)) {
                             lobColumns.add(column);
+                        }
+                        else {
+                            warnIfOctetLengthIsMissing(table, column);
                         }
                     }
                     break;
@@ -401,11 +403,18 @@ public class OracleDatabaseSchema extends HistorizedRelationalDatabaseSchema {
         // Other types reported as VARCHAR, such as ROWID, never have a byte length
         final boolean hasOctetLength = "VARCHAR2".equals(column.typeName()) || "NVARCHAR2".equals(column.typeName());
         if (hasOctetLength && column.length() != Column.UNSET_INT_VALUE && getOctetLength(column) == Column.UNSET_INT_VALUE
-                && tablesWarnedForMissingOctetLength.add(table.id())) {
+                && mayExceedStandardStringSize(column) && tablesWarnedForMissingOctetLength.add(table.id())) {
             LOGGER.warn("Table '{}' has no byte length for column '{}', so its declared length is used instead "
                     + "and it may not be detected as an extended string column.",
                     table.id(), column.name());
         }
+    }
+
+    private boolean mayExceedStandardStringSize(Column column) {
+        final CharacterSet characterSet = column.jdbcType() == OracleTypes.NVARCHAR
+                ? valueConverters.getNationalCharacterSet()
+                : valueConverters.getDatabaseCharacterSet();
+        return (long) column.length() * getMaxBytesPerChar(characterSet) > MAX_STANDARD_STRING_BYTES;
     }
 
     private TableId tableObjectIdToTableId(Long tableObjectId, Long dataObjectId) {
