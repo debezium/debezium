@@ -11,12 +11,14 @@ Adam Strickland
 Addison Higham
 Adham
 Adrian Kreuziger
+Afajal Ansari
 Ahmed Bayraktar
 Ahmed Eljami
 Ahmed Rachid Hazourli
 Aidas
 Akshansh Jain
 Akshat Sapra
+Akshat Vyas
 Akshath Patkar
 Akula
 Alberto Martino
@@ -73,6 +75,7 @@ Ant Kutschera
 Anton Kondratev
 Anton Martynov
 Anton Repin
+Anton Rino Bosco
 Antonio Marino
 Aravind Gm
 Aravind Pedapudi
@@ -668,6 +671,7 @@ Plugaru Tudor
 Poonam Meghnani
 Pradeep Mamillapalli
 Pradeep Nain
+Pranav Raki
 Pranav Tiwari
 Prannoy Mittal
 Praveen Burgu
