@@ -16,6 +16,7 @@ import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 
 import io.debezium.config.Configuration;
+import io.debezium.connector.oracle.jdbc.OracleDatabaseSettings;
 import io.debezium.connector.oracle.logminer.parser.ParserUtils;
 import io.debezium.connector.oracle.relational.OracleColumnEditor;
 import io.debezium.connector.oracle.relational.OracleRelationalMetadataFactory;
@@ -42,12 +43,12 @@ public class OracleDatabaseSchemaTest {
 
     protected OracleConnection connection;
     protected OracleDatabaseSchema schema;
+    private int databaseCharacterSet;
 
     @BeforeEach
     void before() throws Exception {
         this.connection = Mockito.mock(OracleConnection.class);
-        Mockito.when(this.connection.getNationalCharacterSet()).thenReturn(CharacterSet.make(CharacterSet.UTF8_CHARSET));
-        Mockito.when(this.connection.getDatabaseCharacterSet()).thenReturn(CharacterSet.make(CharacterSet.AL32UTF8_CHARSET));
+        this.databaseCharacterSet = CharacterSet.AL32UTF8_CHARSET;
         this.schema = createOracleDatabaseSchema();
     }
 
@@ -205,7 +206,7 @@ public class OracleDatabaseSchemaTest {
 
         // Extended strings are not captured without lob.enabled, so the warning does not apply
         schema.close();
-        Mockito.when(this.connection.getDatabaseCharacterSet()).thenReturn(CharacterSet.make(CharacterSet.ZHS16GBK_CHARSET));
+        databaseCharacterSet = CharacterSet.ZHS16GBK_CHARSET;
         schema = createOracleDatabaseSchema(true, false);
         assertThat(logInterceptor.containsWarnMessage(message)).isFalse();
 
@@ -244,8 +245,9 @@ public class OracleDatabaseSchemaTest {
         final OracleConnectorConfig connectorConfig = new OracleConnectorConfig(configuration);
         final TopicNamingStrategy topicNamingStrategy = SchemaTopicNamingStrategy.create(connectorConfig);
         final SchemaNameAdjuster schemaNameAdjuster = connectorConfig.schemaNameAdjuster();
-        Mockito.when(this.connection.hasExtendedStringSupport()).thenReturn(extendedStringsSupported);
-        final OracleValueConverters converters = connectorConfig.getAdapter().getValueConverter(connectorConfig, connection);
+        final OracleDatabaseSettings settings = new OracleDatabaseSettings(CharacterSet.make(databaseCharacterSet),
+                CharacterSet.make(CharacterSet.UTF8_CHARSET), extendedStringsSupported, false);
+        final OracleValueConverters converters = connectorConfig.getAdapter().getValueConverter(connectorConfig, connection, settings);
         final OracleDefaultValueConverter defaultValueConverter = new OracleDefaultValueConverter(converters, connection);
         final StreamingAdapter.TableNameCaseSensitivity sensitivity = StreamingAdapter.TableNameCaseSensitivity.INSENSITIVE;
 

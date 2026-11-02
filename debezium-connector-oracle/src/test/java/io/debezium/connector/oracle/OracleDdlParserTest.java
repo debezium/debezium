@@ -21,6 +21,7 @@ import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 
 import io.debezium.connector.oracle.antlr.OracleDdlParser;
+import io.debezium.connector.oracle.jdbc.OracleDatabaseSettings;
 import io.debezium.connector.oracle.relational.OracleColumn;
 import io.debezium.connector.oracle.relational.OracleRelationalMetadataFactory;
 import io.debezium.connector.oracle.relational.OracleTable;
@@ -832,16 +833,14 @@ public class OracleDdlParserTest {
 
     private void useParserWithConverters(int databaseCharacterSet, int nationalCharacterSet, boolean extendedStrings,
                                          boolean charLengthSemantics) {
-        // The value converters read the character sets, MAX_STRING_SIZE and NLS_LENGTH_SEMANTICS from a connection,
-        // which requires a database, so the connection is mocked like in the other unit tests that create value converters.
+        // The value converters only use the connection to convert timestamps, which the parser never does
         final OracleConnection connection = Mockito.mock(OracleConnection.class);
-        Mockito.when(connection.getDatabaseCharacterSet()).thenReturn(CharacterSet.make(databaseCharacterSet));
-        Mockito.when(connection.getNationalCharacterSet()).thenReturn(CharacterSet.make(nationalCharacterSet));
-        Mockito.when(connection.hasExtendedStringSupport()).thenReturn(extendedStrings);
-        Mockito.when(connection.hasCharLengthSemantics()).thenReturn(charLengthSemantics);
+        final OracleDatabaseSettings settings = new OracleDatabaseSettings(CharacterSet.make(databaseCharacterSet),
+                CharacterSet.make(nationalCharacterSet), extendedStrings, charLengthSemantics);
 
         final OracleConnectorConfig config = new OracleConnectorConfig(TestHelper.defaultConfig().build());
-        parser = new OracleDdlParser(true, config.getAdapter().getValueConverter(config, connection), config.getTableFilters().dataCollectionFilter());
+        parser = new OracleDdlParser(true, config.getAdapter().getValueConverter(config, connection, settings),
+                config.getTableFilters().dataCollectionFilter());
         parser.setCurrentDatabase(PDB_NAME);
         parser.setCurrentSchema("DEBEZIUM");
     }

@@ -22,6 +22,7 @@ import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 
 import io.debezium.config.Configuration;
+import io.debezium.connector.oracle.jdbc.OracleDatabaseSettings;
 import io.debezium.connector.oracle.util.TestHelper;
 import io.debezium.doc.FixFor;
 import io.debezium.jdbc.TemporalPrecisionMode;
@@ -57,32 +58,31 @@ public class OracleValueConvertersTest {
         final Configuration configuration = TestHelper.defaultConfig().build();
         final OracleConnectorConfig connectorConfig = new OracleConnectorConfig(configuration);
 
+        // The value converters only use the connection to convert timestamps
+        final OracleConnection connection = Mockito.mock(OracleConnection.class);
+
         // Converter with AL32UTF8 database charset (common case)
-        final OracleConnection utf8Connection = Mockito.mock(OracleConnection.class);
-        Mockito.when(utf8Connection.getNationalCharacterSet()).thenReturn(CharacterSet.make(CharacterSet.AL16UTF16_CHARSET));
-        Mockito.when(utf8Connection.getDatabaseCharacterSet()).thenReturn(CharacterSet.make(CharacterSet.AL32UTF8_CHARSET));
-        convertersUtf8 = connectorConfig.getAdapter().getValueConverter(connectorConfig, utf8Connection);
+        final OracleDatabaseSettings utf8Settings = settings(CharacterSet.AL32UTF8_CHARSET);
+        convertersUtf8 = connectorConfig.getAdapter().getValueConverter(connectorConfig, connection, utf8Settings);
 
         // Converter with WE8ISO8859P1 (Latin-1) database charset
-        final OracleConnection latin1Connection = Mockito.mock(OracleConnection.class);
-        Mockito.when(latin1Connection.getNationalCharacterSet()).thenReturn(CharacterSet.make(CharacterSet.AL16UTF16_CHARSET));
-        Mockito.when(latin1Connection.getDatabaseCharacterSet()).thenReturn(CharacterSet.make(CharacterSet.WE8ISO8859P1_CHARSET));
-        convertersLatin1 = connectorConfig.getAdapter().getValueConverter(connectorConfig, latin1Connection);
+        convertersLatin1 = connectorConfig.getAdapter().getValueConverter(connectorConfig, connection, settings(CharacterSet.WE8ISO8859P1_CHARSET));
 
         final Configuration structuredConfiguration = TestHelper.defaultConfig()
                 .with(OracleConnectorConfig.TIME_PRECISION_MODE, TemporalPrecisionMode.STRUCTURED)
                 .build();
         final OracleConnectorConfig structuredConnectorConfig = new OracleConnectorConfig(structuredConfiguration);
-        final OracleConnection structuredConnection = Mockito.mock(OracleConnection.class);
-        Mockito.when(structuredConnection.getNationalCharacterSet()).thenReturn(CharacterSet.make(CharacterSet.AL16UTF16_CHARSET));
-        Mockito.when(structuredConnection.getDatabaseCharacterSet()).thenReturn(CharacterSet.make(CharacterSet.AL32UTF8_CHARSET));
-        convertersStructured = structuredConnectorConfig.getAdapter().getValueConverter(structuredConnectorConfig, structuredConnection);
+        convertersStructured = structuredConnectorConfig.getAdapter().getValueConverter(structuredConnectorConfig, connection, utf8Settings);
 
         final Configuration intervalStringConfiguration = TestHelper.defaultConfig()
                 .with(OracleConnectorConfig.INTERVAL_HANDLING_MODE, OracleConnectorConfig.IntervalHandlingMode.STRING.getValue())
                 .build();
         final OracleConnectorConfig intervalStringConnectorConfig = new OracleConnectorConfig(intervalStringConfiguration);
-        convertersIntervalString = intervalStringConnectorConfig.getAdapter().getValueConverter(intervalStringConnectorConfig, utf8Connection);
+        convertersIntervalString = intervalStringConnectorConfig.getAdapter().getValueConverter(intervalStringConnectorConfig, connection, utf8Settings);
+    }
+
+    private static OracleDatabaseSettings settings(int databaseCharacterSet) {
+        return new OracleDatabaseSettings(CharacterSet.make(databaseCharacterSet), CharacterSet.make(CharacterSet.AL16UTF16_CHARSET), false, false);
     }
 
     @Test
