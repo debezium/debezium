@@ -579,6 +579,16 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
                     "in - The query uses SQL in-clause expressions to specify the schema or table filters." + System.lineSeparator() +
                     "regex - The query uses Oracle REGEXP_LIKE expressions to specify the schema or table filters." + System.lineSeparator());
 
+    public static final Field LOG_MINING_QUERY_FILTER_SCHEMA_TABLE_CONCATENATE = Field.createInternal("log.mining.query.filter.schema.table.concatenate")
+            .withDisplayName("Use the log miner query that filter tables on the upper-cased concatenation of schema and table names")
+            .withType(Type.BOOLEAN)
+            .withWidth(Width.SHORT)
+            .withImportance(Importance.LOW)
+            .withDefault(false)
+            .withDescription("When 'log.mining.query.filter.mode' is 'in', the query compares the schema and table names case-sensitively and " +
+                    "compares tables by table name alone. Set this option to 'true' to  restore the slower query that compares the " +
+                    "upper-cased schema name and the upper-cased concatenation of the schema and table names.");
+
     public static final Field LOG_MINING_FLUSH_TABLE_NAME = Field.create("log.mining.flush.table.name")
             .withDisplayName("Specifies the name of the flush table used by the connector")
             .withType(Type.STRING)
@@ -847,7 +857,8 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
                     LOG_MINING_BUFFER_TRANSACTION_EVENTS_THRESHOLD, LOG_MINING_ARCHIVE_LOG_ONLY_SCN_POLL_INTERVAL_MS,
                     LOG_MINING_LOG_QUERY_MAX_RETRIES, LOG_MINING_LOG_BACKOFF_INITIAL_DELAY_MS,
                     LOG_MINING_LOG_BACKOFF_MAX_DELAY_MS, LOG_MINING_SESSION_MAX_MS, LOG_MINING_WINDOW_MAX_MS, LOG_MINING_TRANSACTION_SNAPSHOT_BOUNDARY_MODE,
-                    LOG_MINING_READ_ONLY, LOG_MINING_FLUSH_TABLE_NAME, LOG_MINING_QUERY_FILTER_MODE, LOG_MINING_RESTART_CONNECTION, LOG_MINING_MAX_SCN_DEVIATION_MS,
+                    LOG_MINING_READ_ONLY, LOG_MINING_FLUSH_TABLE_NAME, LOG_MINING_QUERY_FILTER_MODE, LOG_MINING_QUERY_FILTER_SCHEMA_TABLE_CONCATENATE,
+                    LOG_MINING_RESTART_CONNECTION, LOG_MINING_MAX_SCN_DEVIATION_MS,
                     LOG_MINING_SCHEMA_CHANGES_USERNAME_EXCLUDE_LIST, LOG_MINING_INCLUDE_REDO_SQL, OLR_SOURCE, OLR_HOST, OLR_PORT,
                     LOG_MINING_BUFFER_EHCACHE_GLOBAL_CONFIG, LOG_MINING_BUFFER_EHCACHE_TRANSACTIONS_CONFIG, LOG_MINING_BUFFER_EHCACHE_PROCESSED_TRANSACTIONS_CONFIG,
                     LOG_MINING_BUFFER_EHCACHE_SCHEMA_CHANGES_CONFIG, LOG_MINING_BUFFER_EHCACHE_EVENTS_CONFIG,
@@ -926,6 +937,7 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
     private final Set<String> logMiningClientIdIncludes;
     private final Set<String> logMiningClientIdExcludes;
     private final String logMiningPathToDictionary;
+    private final boolean logMiningQueryFilterSchemaTableConcatenate;
     private final OracleJdbcConfiguration oracleJdbcConfig;
     private final Integer logMiningRedoThreadScnAdjustment;
     private final Long logMiningHashAreaSize;
@@ -1008,6 +1020,7 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
         this.logMiningClientIdIncludes = Strings.setOfTrimmed(config.getString(LOG_MINING_CLIENTID_INCLUDE_LIST), String::new);
         this.logMiningClientIdExcludes = Strings.setOfTrimmed(config.getString(LOG_MINING_CLIENTID_EXCLUDE_LIST), String::new);
         this.logMiningPathToDictionary = config.getString(LOG_MINING_PATH_DICTIONARY);
+        this.logMiningQueryFilterSchemaTableConcatenate = config.getBoolean(LOG_MINING_QUERY_FILTER_SCHEMA_TABLE_CONCATENATE);
         this.logMiningWindowMaxMs = Duration.ofMillis(config.getLong(LOG_MINING_WINDOW_MAX_MS));
 
         this.oracleJdbcConfig = OracleJdbcConfiguration.adaptWithSubset(config);
@@ -2128,6 +2141,13 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
      */
     public Set<String> getLogMiningClientIdExcludes() {
         return logMiningClientIdExcludes;
+    }
+
+    /**
+     * Should we use the previous more expensive log mining query with the schema concatenation and the case-insensitive schema and table name.
+     */
+    public boolean isLogMiningQueryFilterSchemaTableConcatenate() {
+        return logMiningQueryFilterSchemaTableConcatenate;
     }
 
     /**
