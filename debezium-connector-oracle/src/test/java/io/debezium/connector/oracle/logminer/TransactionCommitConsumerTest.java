@@ -178,6 +178,41 @@ public class TransactionCommitConsumerTest {
         assertThat(dispatched).isEmpty();
     }
 
+    @Test
+    @FixFor("debezium/dbz#2159")
+    public void testTrailingXmlWriteAfterNonMergeableDelete() throws Exception {
+        try (TransactionCommitConsumer consumer = createConsumer()) {
+            accept(consumer, insert());
+            accept(consumer, xmlBegin());
+            accept(consumer, xmlWrite("<row>a</row>"));
+            accept(consumer, selectClobLocator());
+            accept(consumer, delete());
+            accept(consumer, xmlWrite("<row>b</row>"));
+            accept(consumer, xmlEnd());
+        }
+        assertThat(dispatched).hasSize(2);
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2159")
+    public void testTrailingXmlWriteAfterNonMergeableUpdate() throws Exception {
+        try (TransactionCommitConsumer consumer = createConsumer()) {
+            accept(consumer, update("a"));
+            accept(consumer, xmlBegin());
+            accept(consumer, xmlWrite("<row>a</row>"));
+            accept(consumer, selectClobLocator());
+            accept(consumer, update("b"));
+            accept(consumer, xmlWrite("<row>b</row>"));
+            accept(consumer, xmlEnd());
+        }
+        assertThat(dispatched).hasSize(2);
+    }
+
+    private DmlEvent delete() {
+        return new DmlEvent(EventType.DELETE, nextScn(), TABLE_ID, ROW_ID, "rsId", Instant.now(),
+                new Object[]{ "test3", "data", null, null }, new Object[0]);
+    }
+
     private void assertSingleEvent(EventType eventType, String expectedXml) {
         assertThat(dispatched).hasSize(1);
         final DmlEvent event = (DmlEvent) dispatched.get(0);
