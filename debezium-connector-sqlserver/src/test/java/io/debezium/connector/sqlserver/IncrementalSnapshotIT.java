@@ -11,7 +11,11 @@ import java.sql.SQLException;
 import java.time.Duration;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
+import java.util.function.Function;
 
+import org.apache.kafka.connect.data.Struct;
+import org.apache.kafka.connect.source.SourceRecord;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -22,6 +26,7 @@ import io.debezium.config.Configuration;
 import io.debezium.config.Configuration.Builder;
 import io.debezium.connector.sqlserver.SqlServerConnectorConfig.SnapshotMode;
 import io.debezium.connector.sqlserver.util.TestHelper;
+import io.debezium.data.Envelope;
 import io.debezium.jdbc.JdbcConnection;
 import io.debezium.junit.Flaky;
 import io.debezium.junit.logging.LogInterceptor;
@@ -247,7 +252,7 @@ public class IncrementalSnapshotIT extends AbstractIncrementalSnapshotWithSchema
                 connection2.execute(String.format("INSERT INTO b VALUES (%d, %d)", i, i * 100));
             }
 
-            Thread.sleep(Duration.ofSeconds(TestHelper.waitTimeForLsnTimeMapping()).toMillis());
+            waitForInsertsToBeCaptured(connection2);
 
             final Configuration config = TestHelper.defaultConnectorConfig()
                     .with(SqlServerConnectorConfig.DATABASE_NAMES, TestHelper.TEST_DATABASE_1 + "," + TestHelper.TEST_DATABASE_2)
@@ -271,18 +276,17 @@ public class IncrementalSnapshotIT extends AbstractIncrementalSnapshotWithSchema
                     TestHelper.TEST_DATABASE_1));
 
             final int expectedRecordsCount = 10;
-            SourceRecords records = consumeRecordsByTopic(expectedRecordsCount + 7);
-
-            List<org.apache.kafka.connect.source.SourceRecord> tableARecords = records.recordsForTopic(
+            final Map<Integer, SourceRecord> tableARecords = consumeIncrementalSnapshotReads(expectedRecordsCount,
                     "server1." + TestHelper.TEST_DATABASE_1 + ".dbo.a");
-            assertThat(tableARecords).hasSize(expectedRecordsCount);
 
-            for (int i = 0; i < expectedRecordsCount; i++) {
-                org.apache.kafka.connect.data.Struct value = (org.apache.kafka.connect.data.Struct) tableARecords.get(i).value();
-                assertThat(value.getStruct("after").getInt32("pk")).isEqualTo(i + 1);
-                assertThat(value.getStruct("after").getInt32("aa")).isEqualTo((i + 1) * 10);
-                assertThat(tableARecords.get(i).sourcePartition().get("server")).isEqualTo("server1");
-                assertThat(tableARecords.get(i).sourcePartition().get("database")).isEqualTo(TestHelper.TEST_DATABASE_1);
+            for (int pk = 1; pk <= expectedRecordsCount; pk++) {
+                final SourceRecord record = tableARecords.get(pk);
+                assertThat(record).isNotNull();
+                final Struct value = (Struct) record.value();
+                assertThat(value.getStruct("after").getInt32("pk")).isEqualTo(pk);
+                assertThat(value.getStruct("after").getInt32("aa")).isEqualTo(pk * 10);
+                assertThat(record.sourcePartition().get("server")).isEqualTo("server1");
+                assertThat(record.sourcePartition().get("database")).isEqualTo(TestHelper.TEST_DATABASE_1);
             }
 
             connection2.execute(String.format(
@@ -290,18 +294,17 @@ public class IncrementalSnapshotIT extends AbstractIncrementalSnapshotWithSchema
                             "'{\"data-collections\": [\"%s.dbo.b\"]}')",
                     TestHelper.TEST_DATABASE_2));
 
-            records = consumeRecordsByTopic(expectedRecordsCount + 7, 5);
-
-            List<org.apache.kafka.connect.source.SourceRecord> tableBRecords = records.recordsForTopic(
+            final Map<Integer, SourceRecord> tableBRecords = consumeIncrementalSnapshotReads(expectedRecordsCount,
                     "server1." + TestHelper.TEST_DATABASE_2 + ".dbo.b");
-            assertThat(tableBRecords).hasSize(expectedRecordsCount);
 
-            for (int i = 0; i < expectedRecordsCount; i++) {
-                org.apache.kafka.connect.data.Struct value = (org.apache.kafka.connect.data.Struct) tableBRecords.get(i).value();
-                assertThat(value.getStruct("after").getInt32("pk")).isEqualTo(i + 1);
-                assertThat(value.getStruct("after").getInt32("bb")).isEqualTo((i + 1) * 100);
-                assertThat(tableBRecords.get(i).sourcePartition().get("server")).isEqualTo("server1");
-                assertThat(tableBRecords.get(i).sourcePartition().get("database")).isEqualTo(TestHelper.TEST_DATABASE_2);
+            for (int pk = 1; pk <= expectedRecordsCount; pk++) {
+                final SourceRecord record = tableBRecords.get(pk);
+                assertThat(record).isNotNull();
+                final Struct value = (Struct) record.value();
+                assertThat(value.getStruct("after").getInt32("pk")).isEqualTo(pk);
+                assertThat(value.getStruct("after").getInt32("bb")).isEqualTo(pk * 100);
+                assertThat(record.sourcePartition().get("server")).isEqualTo("server1");
+                assertThat(record.sourcePartition().get("database")).isEqualTo(TestHelper.TEST_DATABASE_2);
             }
         }
     }
@@ -329,7 +332,7 @@ public class IncrementalSnapshotIT extends AbstractIncrementalSnapshotWithSchema
                 connection2.execute(String.format("INSERT INTO b VALUES (%d, %d)", i, i * 100));
             }
 
-            Thread.sleep(Duration.ofSeconds(TestHelper.waitTimeForLsnTimeMapping()).toMillis());
+            waitForInsertsToBeCaptured(connection2);
 
             final Configuration config = TestHelper.defaultConnectorConfig()
                     .with(SqlServerConnectorConfig.DATABASE_NAMES, TestHelper.TEST_DATABASE_1 + "," + TestHelper.TEST_DATABASE_2)
@@ -345,5 +348,29 @@ public class IncrementalSnapshotIT extends AbstractIncrementalSnapshotWithSchema
             assertThat(logInterceptor.containsMessage(
                     "You set a single data collection for a multi task connector. If you want to send signals for each database you need to provide a signal data collection per database."));
         }
+    }
+
+    /**
+     * Waits until the rows inserted before the connector starts are covered by the max LSN of both databases.
+     * Otherwise the streaming start position can fall in the middle of the inserts, and the remaining rows
+     * are streamed as create events.
+     */
+    private void waitForInsertsToBeCaptured(SqlServerConnection connection2) throws Exception {
+        // Table testDB1.dbo.a has no change table, so only the max LSN can be checked.
+        TestHelper.waitForMaxLsnAvailable(connection, TestHelper.TEST_DATABASE_1);
+        TestHelper.waitForCdcRecordInDatabase(connection2, TestHelper.TEST_DATABASE_2, "b", rs -> rs.getInt("pk") == 10);
+    }
+
+    /**
+     * Consumes records until the given number of distinct incremental snapshot reads arrived on the topic.
+     * Records on other topics are skipped, and an entry only counts once its latest record is a read.
+     */
+    private Map<Integer, SourceRecord> consumeIncrementalSnapshotReads(int recordCount, String topicName) throws InterruptedException {
+        return consumeMixedWithIncrementalSnapshot(recordCount,
+                entry -> Envelope.Operation.READ.code().equals(((Struct) entry.getValue().value()).getString(Envelope.FieldName.OPERATION)),
+                key -> key.getInt32("pk"),
+                Function.identity(),
+                topicName,
+                null);
     }
 }
