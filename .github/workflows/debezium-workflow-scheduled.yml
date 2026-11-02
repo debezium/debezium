@@ -1,0 +1,54 @@
+name: Build Debezium (Scheduled)
+
+# Dispatches debezium-workflow-build.yml for main and for every <major>.<minor>
+# branch whose latest commit is from the last 7 days.
+on:
+  schedule:
+    - cron: '0 0,12 * * *'
+  workflow_dispatch:
+
+permissions:
+  actions: write
+  contents: read
+
+jobs:
+  dispatch:
+    name: "Dispatch Branch Builds"
+    if: github.repository == 'debezium/debezium'
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    steps:
+      - name: Find branches to build
+        run: |
+          cutoff=$(date -u -d '7 days ago' +%s)
+          gh api graphql --paginate \
+            -F owner="${GITHUB_REPOSITORY%/*}" \
+            -F repo="${GITHUB_REPOSITORY#*/}" \
+            -f query='
+              query($owner: String!, $repo: String!, $endCursor: String) {
+                repository(owner: $owner, name: $repo) {
+                  refs(refPrefix: "refs/heads/", first: 100, after: $endCursor) {
+                    pageInfo { hasNextPage endCursor }
+                    nodes { name target { ... on Commit { committedDate } } }
+                  }
+                }
+              }' \
+            --jq '.data.repository.refs.nodes[] | "\(.name) \(.target.committedDate)"' \
+          | while read -r name date; do
+              if [[ "$name" =~ ^[0-9]+\.[0-9]+$ ]] && (( $(date -u -d "$date" +%s) >= cutoff )); then
+                echo "$name"
+              fi
+            done > branches.txt
+          echo main >> branches.txt
+          echo "Branches to build:"
+          cat branches.txt
+
+      - name: Dispatch build workflow per branch
+        run: |
+          status=0
+          while read -r branch; do
+            echo "Dispatching build on $branch"
+            gh workflow run debezium-workflow-build.yml --repo "$GITHUB_REPOSITORY" --ref "$branch" || status=1
+          done < branches.txt
+          exit $status
