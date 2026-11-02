@@ -744,7 +744,8 @@ public class GeneralDatabaseDialect implements DatabaseDialect {
 
     protected void addColumnDefaultValue(FieldDescriptor field, StringBuilder columnSpec) {
         if (field.getSchema().defaultValue() != null) {
-            final String defaultValue = getSchemaType(field.getSchema()).getDefaultValueBinding(field.getSchema(), field.getSchema().defaultValue());
+            final String defaultValue = getSchemaType(field.getSchema())
+                    .getDefaultValueBinding(field.getSchema(), field.getSchema().defaultValue(), resolveColumnName(field));
             if (defaultValue != null) {
                 columnSpec.append(" DEFAULT ").append(defaultValue);
             }
