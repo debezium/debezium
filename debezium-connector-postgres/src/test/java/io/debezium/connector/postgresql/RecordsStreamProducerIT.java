@@ -4265,10 +4265,13 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
         stopConnector();
         consumeAvailableRecords(null);
 
-        // Consume everything pending in the slot so the restarted connector waits in the WAL position search
+        // Consume everything pending in the slot so the restarted connector waits in the WAL position search.
+        // Draining the slot moves its restart LSN past the stored offset, which the default strategy refuses,
+        // so the restart trusts the slot; the search still runs because the stored offset has a processed position
         clearReplicationSlotChanges();
 
-        startConnector(configMapper);
+        startConnector(config -> configMapper.apply(config)
+                .with(PostgresConnectorConfig.OFFSET_SLOT_MISMATCH_STRATEGY, "trust_slot"));
         waitForStreamingToStart();
 
         Awaitility.await()
