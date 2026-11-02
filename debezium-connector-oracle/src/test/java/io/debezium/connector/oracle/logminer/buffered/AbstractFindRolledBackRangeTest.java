@@ -1351,16 +1351,16 @@ public abstract class AbstractFindRolledBackRangeTest<T extends Transaction> {
         // DBMS_LOB.WRITE(loc, 1985, 1, RPAD('LOB0-2-', 1985, '1'));
         // END;
         // ROLLBACK TO SAVEPOINT s1;
-        // Version: 19c, with lob.enabled=false: the undo of the insert is a DELETE, and the row inserted after the
-        // rollback takes the row id the undone row gave up
+        // Version: 19c, with lob.enabled=false: the undo of the insert is a DELETE,
+        // and the undo of the LOB write is an UPDATE
         LogInterceptor logInterceptor = new LogInterceptor(AbstractLogMinerTransactionCache.class);
         LogMinerEvent[] events = new LogMinerEvent[]{
                 event(EventType.INSERT, 0, "AAAAAAAAAAAAAAAAAA", "1"),
                 event(EventType.UPDATE, 0, "BBBBBBBBBBBBBBBBBB", "2"),
                 event(EventType.INSERT, 0, "AAAAAAAAAAAAAAAAAA", "3"),
                 event(EventType.UPDATE, 0, "CCCCCCCCCCCCCCCCCC", "4"),
-                // event(EventType.SELECT_LOB_LOCATOR, 0, "BBBBBBBBBBBBBBBBBB", "5"),
-                // event(EventType.LOB_WRITE, 0, "BBBBBBBBBBBBBBBBBB", "6"),
+                // event(EventType.SELECT_LOB_LOCATOR, 0, "CCCCCCCCCCCCCCCCCC", "5"),
+                // event(EventType.LOB_WRITE, 0, "CCCCCCCCCCCCCCCCCC", "6"),
                 event(EventType.INTERNAL, 0, "CCCCCCCCCCCCCCCCCC", "7"),
                 event(EventType.INTERNAL, 0, "CCCCCCCCCCCCCCCCCC", "8", null),
                 event(EventType.UPDATE, 1, "CCCCCCCCCCCCCCCCCC", "9"),
