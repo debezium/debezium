@@ -1165,6 +1165,7 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
             .withDescription("Maximum time in milliseconds that the connector keeps reading the replication stream after the database server "
                     + "terminates the connector's regular JDBC connection with SQLSTATE 57P01 (admin_shutdown), for example during a fast shutdown, "
                     + "so that delivered changes can be confirmed before the server stops. "
+                    + "A value above the sum of the runtime's offset commit interval and status.update.interval.ms is a safe margin. "
                     + "Ignored when lsn.flush.mode is manual. The default value of 0 disables draining.")
             .withValidation(Field::isNonNegativeLong);
 
