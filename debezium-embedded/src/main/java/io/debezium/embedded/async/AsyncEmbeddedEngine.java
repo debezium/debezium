@@ -111,6 +111,7 @@ public final class AsyncEmbeddedEngine<R> implements DebeziumEngine<R>, AsyncEng
     private final List<EngineSourceTask> tasks = new ArrayList<>();
     // Synchronized on itself, so that stopping the engine cannot miss a polling task that is just being submitted.
     private final List<Future<Void>> pollingFutures = new ArrayList<>();
+    private final ThreadLocal<Boolean> pollingThread = ThreadLocal.withInitial(() -> false);
     private final ExecutorService taskService;
     private final ExecutorService recordService;
     private final Lock offsetCommitLock = new ReentrantLock();
@@ -527,7 +528,7 @@ public final class AsyncEmbeddedEngine<R> implements DebeziumEngine<R>, AsyncEng
                 final RecordProcessor<?> processor = createRecordProcessor(processorClassName, task);
                 processor.initialize(recordService, transformations);
                 synchronized (pollingFutures) {
-                    pollingFutures.add(taskCompletionService.submit(new PollRecords(task, processor, state)));
+                    pollingFutures.add(taskCompletionService.submit(new PollRecords(task, processor, state, pollingThread)));
                 }
             }
         }
@@ -706,6 +707,26 @@ public final class AsyncEmbeddedEngine<R> implements DebeziumEngine<R>, AsyncEng
     }
 
     /**
+     * Waits up to {@code task.management.timeout.ms} for the polling threads to finish, so the tasks are stopped only after
+     * the in-flight batches are committed and never confirm offsets which aren't stored. Skipped on a polling thread, which
+     * would wait for itself.
+     */
+    private void awaitPollingTermination() {
+        if (pollingThread.get()) {
+            return;
+        }
+        taskService.shutdown();
+        try {
+            if (!taskService.awaitTermination(config.getLong(AsyncEngineConfig.TASK_MANAGEMENT_TIMEOUT_MS), TimeUnit.MILLISECONDS)) {
+                LOGGER.warn("Polling of the tasks hasn't finished within the task management timeout, stopping the tasks anyway.");
+            }
+        }
+        catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        }
+    }
+
+    /**
      * Stops all the connector's tasks. There are no checks if the tasks were fully stated or already running, stop is always called.
      * Also tries to stop all the other tasks which may be still running or awaiting execution in the task's thread pool.
      *
@@ -714,6 +735,7 @@ public final class AsyncEmbeddedEngine<R> implements DebeziumEngine<R>, AsyncEng
     private void stopSourceTasks(final List<EngineSourceTask> tasks) {
         // Clear interrupt flag so the graceful stop of the tasks is always attempted.
         Thread.interrupted();
+        awaitPollingTermination();
         final ExecutorService stopTaskService = Threads.newFixedThreadPool(AsyncEmbeddedEngine.class,
                 config.getString(EmbeddedEngineConfig.ENGINE_NAME), "task-stop", Math.max(tasks.size(), 1));
         final Set<EngineTaskId> tasksNotStopped = ConcurrentHashMap.newKeySet();
@@ -1338,18 +1360,31 @@ public final class AsyncEmbeddedEngine<R> implements DebeziumEngine<R>, AsyncEng
         final EngineSourceTask task;
         final RecordProcessor processor;
         final AtomicReference<State> engineState;
+        final ThreadLocal<Boolean> pollingThread;
         private final SourceRecordCommitter committer;
 
-        PollRecords(final EngineSourceTask task, final RecordProcessor processor, final AtomicReference<State> engineState) {
+        PollRecords(final EngineSourceTask task, final RecordProcessor processor, final AtomicReference<State> engineState,
+                    final ThreadLocal<Boolean> pollingThread) {
             super(Configuration.from(task.context().config()).getInteger(EmbeddedEngineConfig.ERRORS_MAX_RETRIES));
             this.task = task;
             this.processor = processor;
             this.engineState = engineState;
+            this.pollingThread = pollingThread;
             this.committer = new SourceRecordCommitter(task);
         }
 
         @Override
         public Void doCall() throws Exception {
+            pollingThread.set(true);
+            try {
+                return pollRecords();
+            }
+            finally {
+                pollingThread.remove();
+            }
+        }
+
+        private Void pollRecords() throws Exception {
             while (engineState.get() == State.POLLING_TASKS) {
                 LOGGER.trace("Thread {} running task {} starts polling for records.", Thread.currentThread().getName(), task.connectTask());
                 EngineLoggingContext.clear();
