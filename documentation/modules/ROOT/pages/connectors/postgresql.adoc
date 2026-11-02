@@ -4567,25 +4567,25 @@ If the operation does not complete within the specified interval, the connector 
 |[[postgresql-property-database-shutdown-drain-timeout-ms]]<<postgresql-property-database-shutdown-drain-timeout-ms, `+database.shutdown.drain.timeout.ms+`>>
 |`0`
 |The maximum time, in milliseconds, that the connector continues to read the replication stream after the database server terminates the connector's regular JDBC connection with SQLSTATE `57P01` (`admin_shutdown`), for example, during a fast shutdown.
-During a fast shutdown, PostgreSQL terminates regular connections first, but keeps logical replication connections open so that clients can receive the remaining changes and confirm them before the server writes its shutdown checkpoint.
-While the connector drains the stream, it uses acknowledged source offsets to confirm LSNs, following its normal offset-commit semantics.
-When the stream is quiet and the last tracked source offset is acknowledged, the connector also confirms the last processed commit LSN.
-On PostgreSQL 17 and later, when all changes are confirmed before the server stops, `pg_upgrade` can migrate the replication slot.
+A fast shutdown keeps replication connections open, so that the connector can receive and confirm the remaining changes.
+On PostgreSQL 17 and later, `pg_upgrade` can migrate a replication slot only if all of its changes are confirmed before the server stops.
 
-The drain ends, and the connector stops streaming, when one of the following occurs:
+The timeout starts when the connector's periodic connection check detects `57P01`.
+The drain cannot start while the streaming thread is blocked dispatching records.
 
-* The last tracked source offset is acknowledged, and no new changes arrive during the interval that is set by xref:postgresql-property-status-update-interval-ms[`status.update.interval.ms`].
-* The replication stream ends.
-* An operation requires the regular connection, for example, a schema refresh, a xref:postgresql-property-heartbeat-action-query[`heartbeat.action.query`], or an incremental snapshot.
-* The timeout expires.
+The drain ends in one of three ways:
 
-If the drain deadline expires, the connector reports the original retriable shutdown error.
-Failures before the deadline retain their normal error handling.
+* Quiet exit: The stream stays quiet for xref:postgresql-property-status-update-interval-ms[`status.update.interval.ms`], and the runtime commits the offset of the last tracked record.
+The connector then also confirms the last processed commit LSN.
+* Timeout: The timeout expires.
+The connector reports the original retriable `57P01` error.
+LSNs that the runtime already committed stay confirmed, but the last changes might stay unconfirmed, so `pg_upgrade` can reject the replication slot.
+* Failure: The replication stream closes, or a query on a regular connection fails, for example, a schema refresh, an xmin lookup (when xref:postgresql-property-xmin-fetch-interval-ms[`xmin.fetch.interval.ms`] is greater than `0`), or the query that is set in xref:postgresql-property-heartbeat-action-query[`heartbeat.action.query`].
+The connector applies its normal error handling.
+If a query fails before the connection check detects `57P01`, the drain never starts.
 
-The timeout starts when the connection probe detects `57P01`, not when the server begins shutting down.
-If the streaming thread is already blocked while dispatching records, it cannot start the drain until dispatch resumes.
-Set the timeout to a value greater than xref:postgresql-property-status-update-interval-ms[`status.update.interval.ms`].
-Otherwise, the drain never ends because the stream is quiet, and the connector does not confirm the last processed commit LSN.
+The runtime commits offsets at the interval that is set by {link-kafka-docs}/#connectconfigs_offset.flush.interval.ms[`offset.flush.interval.ms`], which defaults to 60 seconds in Kafka Connect and Debezium Engine.
+A timeout longer than the sum of that interval and `status.update.interval.ms`, plus time to process the remaining changes, is a safe margin.
 
 The connector ignores this property if xref:postgresql-property-lsn-flush-mode[`lsn.flush.mode`] is `manual`.
 The default value of `0` disables draining.
