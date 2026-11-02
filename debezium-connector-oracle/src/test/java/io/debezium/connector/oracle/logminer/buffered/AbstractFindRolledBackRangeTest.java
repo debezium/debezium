@@ -1318,12 +1318,14 @@ public abstract class AbstractFindRolledBackRangeTest<T extends Transaction> {
         LogMinerEvent[] events = new LogMinerEvent[]{
                 event(EventType.INSERT, 0, "AAAAAAAAAAAAAAAAAA", "1"),
                 event(EventType.UPDATE, 0, "BBBBBBBBBBBBBBBBBB", "2"),
-                event(EventType.INTERNAL, 0, "BBBBBBBBBBBBBBBBBB", "3", null),
-                event(EventType.UPDATE, 1, "BBBBBBBBBBBBBBBBBB", "4"), };
+                // event(EventType.SELECT_LOB_LOCATOR, 0, "BBBBBBBBBBBBBBBBBB", "3"),
+                // event(EventType.LOB_TRIM, 0, "AAAAAAAAAAAAAAAAAA", "4"),
+                event(EventType.INTERNAL, 0, "BBBBBBBBBBBBBBBBBB", "5", null),
+                event(EventType.UPDATE, 1, "BBBBBBBBBBBBBBBBBB", "6"), };
         LogMinerEvent[] expected = new LogMinerEvent[]{
                 event(EventType.INSERT, 0, "AAAAAAAAAAAAAAAAAA", "1"),
                 event(EventType.UPDATE, 0, "BBBBBBBBBBBBBBBBBB", "2"),
-                event(EventType.UPDATE, 1, "BBBBBBBBBBBBBBBBBB", "4"), };
+                event(EventType.UPDATE, 1, "BBBBBBBBBBBBBBBBBB", "6"), };
         assertThat(cache(events)).isEqualTo(expected);
         assertThat(logInterceptor.containsWarnMessage("Manual investigation is required")).isFalse();
         assertThat(logInterceptor.containsWarnMessage("Please enable 'log.mining.include.internal.events'")).isFalse();
@@ -1354,17 +1356,21 @@ public abstract class AbstractFindRolledBackRangeTest<T extends Transaction> {
         LogMinerEvent[] events = new LogMinerEvent[]{
                 event(EventType.INSERT, 0, "AAAAAAAAAAAAAAAAAA", "1"),
                 event(EventType.UPDATE, 0, "BBBBBBBBBBBBBBBBBB", "2"),
-                event(EventType.INTERNAL, 0, "BBBBBBBBBBBBBBBBBB", "3"),
-                event(EventType.INTERNAL, 0, "BBBBBBBBBBBBBBBBBB", "4", null),
+                // event(EventType.SELECT_LOB_LOCATOR, 0, "BBBBBBBBBBBBBBBBBB", "3"),
+                // event(EventType.LOB_WRITE, 0, "BBBBBBBBBBBBBBBBBB", "4"),
                 event(EventType.INTERNAL, 0, "BBBBBBBBBBBBBBBBBB", "5"),
                 event(EventType.INTERNAL, 0, "BBBBBBBBBBBBBBBBBB", "6", null),
-                event(EventType.UPDATE, 1, "BBBBBBBBBBBBBBBBBB", "7"),
-                event(EventType.UPDATE, 1, "BBBBBBBBBBBBBBBBBB", "8"), };
+                // event(EventType.SELECT_LOB_LOCATOR, 0, "BBBBBBBBBBBBBBBBBB", "7"),
+                // event(EventType.LOB_WRITE, 0, "BBBBBBBBBBBBBBBBBB", "8"),
+                event(EventType.INTERNAL, 0, "BBBBBBBBBBBBBBBBBB", "9"),
+                event(EventType.INTERNAL, 0, "BBBBBBBBBBBBBBBBBB", "10", null),
+                event(EventType.UPDATE, 1, "BBBBBBBBBBBBBBBBBB", "11"),
+                event(EventType.UPDATE, 1, "BBBBBBBBBBBBBBBBBB", "12"), };
         LogMinerEvent[] expected = new LogMinerEvent[]{
                 event(EventType.INSERT, 0, "AAAAAAAAAAAAAAAAAA", "1"),
                 event(EventType.UPDATE, 0, "BBBBBBBBBBBBBBBBBB", "2"),
-                event(EventType.UPDATE, 1, "BBBBBBBBBBBBBBBBBB", "7"),
-                event(EventType.UPDATE, 1, "BBBBBBBBBBBBBBBBBB", "8"), };
+                event(EventType.UPDATE, 1, "BBBBBBBBBBBBBBBBBB", "11"),
+                event(EventType.UPDATE, 1, "BBBBBBBBBBBBBBBBBB", "12"), };
         assertThat(cache(events)).isEqualTo(expected);
         assertThat(logInterceptor.containsWarnMessage("Manual investigation is required")).isFalse();
         assertThat(logInterceptor.containsWarnMessage("Please enable 'log.mining.include.internal.events'")).isFalse();
@@ -1391,15 +1397,17 @@ public abstract class AbstractFindRolledBackRangeTest<T extends Transaction> {
                 event(EventType.INSERT, 0, "AAAAAAAAAAAAAAAAAA", "1"),
                 event(EventType.UPDATE, 0, "BBBBBBBBBBBBBBBBBB", "2"),
                 event(EventType.UPDATE, 0, "BBBBBBBBBBBBBBBBBB", "3"),
-                event(EventType.INTERNAL, 0, "BBBBBBBBBBBBBBBBBB", "4"),
-                event(EventType.INTERNAL, 0, "BBBBBBBBBBBBBBBBBB", "5", null),
-                event(EventType.UPDATE, 1, "BBBBBBBBBBBBBBBBBB", "6"),
-                event(EventType.UPDATE, 1, "BBBBBBBBBBBBBBBBBB", "7"), };
+                // event(EventType.SELECT_LOB_LOCATOR, 0, "BBBBBBBBBBBBBBBBBB", "4"),
+                // event(EventType.LOB_WRITE, 0, "BBBBBBBBBBBBBBBBBB", "5"),
+                event(EventType.INTERNAL, 0, "BBBBBBBBBBBBBBBBBB", "6"),
+                event(EventType.INTERNAL, 0, "BBBBBBBBBBBBBBBBBB", "7", null),
+                event(EventType.UPDATE, 1, "BBBBBBBBBBBBBBBBBB", "8"),
+                event(EventType.UPDATE, 1, "BBBBBBBBBBBBBBBBBB", "9"), };
         LogMinerEvent[] expected = new LogMinerEvent[]{
                 event(EventType.INSERT, 0, "AAAAAAAAAAAAAAAAAA", "1"),
                 event(EventType.UPDATE, 0, "BBBBBBBBBBBBBBBBBB", "2"),
-                event(EventType.UPDATE, 1, "BBBBBBBBBBBBBBBBBB", "6"),
-                event(EventType.UPDATE, 1, "BBBBBBBBBBBBBBBBBB", "7"), };
+                event(EventType.UPDATE, 1, "BBBBBBBBBBBBBBBBBB", "8"),
+                event(EventType.UPDATE, 1, "BBBBBBBBBBBBBBBBBB", "9"), };
         assertThat(cache(events)).isEqualTo(expected);
         assertThat(logInterceptor.containsWarnMessage("Manual investigation is required")).isFalse();
         assertThat(logInterceptor.containsWarnMessage("Please enable 'log.mining.include.internal.events'")).isFalse();
@@ -1427,15 +1435,17 @@ public abstract class AbstractFindRolledBackRangeTest<T extends Transaction> {
                 event(EventType.UPDATE, 0, "BBBBBBBBBBBBBBBBBB", "2"),
                 event(EventType.INSERT, 0, "AAAAAAAAAAAAAAAAAA", "3"),
                 event(EventType.UPDATE, 0, "CCCCCCCCCCCCCCCCCC", "4"),
-                event(EventType.INTERNAL, 0, "CCCCCCCCCCCCCCCCCC", "5"),
-                event(EventType.INTERNAL, 0, "CCCCCCCCCCCCCCCCCC", "6", null),
-                event(EventType.UPDATE, 1, "CCCCCCCCCCCCCCCCCC", "7"),
-                event(EventType.DELETE, 1, "CCCCCCCCCCCCCCCCCC", "8"), };
+                // event(EventType.SELECT_LOB_LOCATOR, 0, "BBBBBBBBBBBBBBBBBB", "5"),
+                // event(EventType.LOB_WRITE, 0, "BBBBBBBBBBBBBBBBBB", "6"),
+                event(EventType.INTERNAL, 0, "CCCCCCCCCCCCCCCCCC", "7"),
+                event(EventType.INTERNAL, 0, "CCCCCCCCCCCCCCCCCC", "8", null),
+                event(EventType.UPDATE, 1, "CCCCCCCCCCCCCCCCCC", "9"),
+                event(EventType.DELETE, 1, "CCCCCCCCCCCCCCCCCC", "10"), };
         LogMinerEvent[] expected = new LogMinerEvent[]{
                 event(EventType.INSERT, 0, "AAAAAAAAAAAAAAAAAA", "1"),
                 event(EventType.UPDATE, 0, "BBBBBBBBBBBBBBBBBB", "2"),
-                event(EventType.UPDATE, 1, "CCCCCCCCCCCCCCCCCC", "7"),
-                event(EventType.DELETE, 1, "CCCCCCCCCCCCCCCCCC", "8"), };
+                event(EventType.UPDATE, 1, "CCCCCCCCCCCCCCCCCC", "9"),
+                event(EventType.DELETE, 1, "CCCCCCCCCCCCCCCCCC", "10"), };
         assertThat(cache(events)).isEqualTo(expected);
         assertThat(logInterceptor.containsWarnMessage("Manual investigation is required")).isFalse();
         assertThat(logInterceptor.containsWarnMessage("Please enable 'log.mining.include.internal.events'")).isFalse();
