@@ -50,6 +50,7 @@ import io.debezium.connector.oracle.RedoThreadState;
 import io.debezium.connector.oracle.Scn;
 import io.debezium.connector.oracle.StreamingAdapter.TableNameCaseSensitivity;
 import io.debezium.connector.oracle.jdbc.OracleConnectionFactory;
+import io.debezium.connector.oracle.jdbc.OracleDatabaseSettings;
 import io.debezium.connector.oracle.jdbc.StandardOracleConnectionFactory;
 import io.debezium.connector.oracle.junit.SkipWhenAdapterNameIsNot;
 import io.debezium.connector.oracle.logminer.AbstractLogMinerStreamingChangeEventSource;
@@ -256,7 +257,8 @@ public class UnbufferedStreamingChangeEventSourceTest extends AbstractAsyncEngin
         final TopicNamingStrategy topicNamingStrategy = SchemaTopicNamingStrategy.create(connectorConfig);
         final SchemaNameAdjuster schemaNameAdjuster = connectorConfig.schemaNameAdjuster();
         final OracleConnection connection = connectionFactory.mainConnection();
-        final OracleValueConverters converters = connectorConfig.getAdapter().getValueConverter(connectorConfig, connection);
+        final OracleValueConverters converters = connectorConfig.getAdapter().getValueConverter(connectorConfig, connection,
+                new OracleDatabaseSettings(CharacterSet.make(CharacterSet.AL32UTF8_CHARSET), CharacterSet.make(CharacterSet.UTF8_CHARSET), false, false));
         final OracleDefaultValueConverter defaultValueConverter = new OracleDefaultValueConverter(converters, connection);
         final TableNameCaseSensitivity sensitivity = connectorConfig.getAdapter().getTableNameCaseSensitivity(connection);
 
@@ -293,8 +295,6 @@ public class UnbufferedStreamingChangeEventSourceTest extends AbstractAsyncEngin
         final OracleConnection connection = Mockito.mock(OracleConnection.class);
         Mockito.when(connection.connection(Mockito.anyBoolean())).thenReturn(conn);
         Mockito.when(connection.connection()).thenReturn(conn);
-        Mockito.when(connection.getNationalCharacterSet()).thenReturn(CharacterSet.make(CharacterSet.UTF8_CHARSET));
-        Mockito.when(connection.getDatabaseCharacterSet()).thenReturn(CharacterSet.make(CharacterSet.AL32UTF8_CHARSET));
         Mockito.when(connection.singleOptionalValue(anyString(), any())).thenReturn(BigInteger.TWO);
         Mockito.when(connection.isArchiveLogDestinationValid(eq("LOG_ARCHIVE_DEST_1"))).thenReturn(true);
 

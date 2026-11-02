@@ -36,6 +36,7 @@ import org.apache.kafka.connect.data.SchemaBuilder;
 
 import io.debezium.DebeziumException;
 import io.debezium.config.CommonConnectorConfig.BinaryHandlingMode;
+import io.debezium.connector.oracle.jdbc.OracleDatabaseSettings;
 import io.debezium.connector.oracle.logminer.UnistrHelper;
 import io.debezium.connector.oracle.util.TimestampUtils;
 import io.debezium.data.Json;
@@ -115,38 +116,36 @@ public class OracleValueConverters extends JdbcValueConverters {
     private final OracleConnectorConfig.IntervalHandlingMode intervalHandlingMode;
     private final byte[] unavailableValuePlaceholderBinary;
     private final String unavailableValuePlaceholderString;
-    private final CharacterSet nationalCharacterSet;
-    private final CharacterSet databaseCharacterSet;
-    private final boolean extendedStringsSupported;
-    private final boolean charLengthSemantics;
+    private final OracleDatabaseSettings databaseSettings;
 
-    public OracleValueConverters(OracleConnectorConfig config, OracleConnection connection) {
+    public OracleValueConverters(OracleConnectorConfig config, OracleConnection connection, OracleDatabaseSettings databaseSettings) {
         super(config.getDecimalMode(), config.getTemporalPrecisionMode(), ZoneOffset.UTC, null, null, config.binaryHandlingMode());
         this.connection = connection;
         this.legacyDecimalModeStrategy = config.isUsingLegacyDecimalHandlingStrategy();
         this.intervalHandlingMode = config.getIntervalHandlingMode();
         this.unavailableValuePlaceholderBinary = config.getUnavailableValuePlaceholder();
         this.unavailableValuePlaceholderString = new String(config.getUnavailableValuePlaceholder());
-        this.nationalCharacterSet = connection.getNationalCharacterSet();
-        this.databaseCharacterSet = connection.getDatabaseCharacterSet();
-        this.extendedStringsSupported = connection.hasExtendedStringSupport();
-        this.charLengthSemantics = connection.hasCharLengthSemantics();
+        this.databaseSettings = databaseSettings;
+    }
+
+    public OracleDatabaseSettings getDatabaseSettings() {
+        return databaseSettings;
     }
 
     public CharacterSet getDatabaseCharacterSet() {
-        return databaseCharacterSet;
+        return databaseSettings.databaseCharacterSet();
     }
 
     public CharacterSet getNationalCharacterSet() {
-        return nationalCharacterSet;
+        return databaseSettings.nationalCharacterSet();
     }
 
     public boolean isExtendedStringsSupported() {
-        return extendedStringsSupported;
+        return databaseSettings.extendedStringsSupported();
     }
 
     public boolean isCharLengthSemantics() {
-        return charLengthSemantics;
+        return databaseSettings.charLengthSemantics();
     }
 
     public byte[] getUnavailableValuePlaceholderBinary() {
@@ -1100,9 +1099,9 @@ public class OracleValueConverters extends JdbcValueConverters {
             switch (column.jdbcType()) {
                 case OracleTypes.NVARCHAR:
                 case OracleTypes.NCHAR:
-                    return new CHAR(convertHexToRawFunctionToByteArray(function), nationalCharacterSet).toString();
+                    return new CHAR(convertHexToRawFunctionToByteArray(function), getNationalCharacterSet()).toString();
                 default:
-                    return new CHAR(convertHexToRawFunctionToByteArray(function), databaseCharacterSet).toString();
+                    return new CHAR(convertHexToRawFunctionToByteArray(function), getDatabaseCharacterSet()).toString();
             }
         }
         catch (Exception e) {

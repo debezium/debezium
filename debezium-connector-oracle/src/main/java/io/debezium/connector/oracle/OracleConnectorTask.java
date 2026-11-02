@@ -32,6 +32,7 @@ import io.debezium.connector.oracle.StreamingAdapter.TableNameCaseSensitivity;
 import io.debezium.connector.oracle.jdbc.CaptureMode;
 import io.debezium.connector.oracle.jdbc.OracleConnectionFactory;
 import io.debezium.connector.oracle.jdbc.OracleConnectionFactoryProvider;
+import io.debezium.connector.oracle.jdbc.OracleDatabaseSettings;
 import io.debezium.document.DocumentReader;
 import io.debezium.heartbeat.HeartbeatFactory;
 import io.debezium.jdbc.JdbcConfiguration;
@@ -104,10 +105,13 @@ public class OracleConnectorTask extends BaseSourceTask<OraclePartition, OracleO
 
         LOGGER.info("Database Version: {}", jdbcConnection.getOracleVersion().getBanner());
 
+        // Read once from the captured database, so every component shares the same values
+        final OracleDatabaseSettings databaseSettings = jdbcConnection.readDatabaseSettings(connectorConfig);
+
         // Service providers
         registerServiceProviders(connectorConfig.getServiceRegistry());
 
-        OracleValueConverters valueConverters = connectorConfig.getAdapter().getValueConverter(connectorConfig, jdbcConnection);
+        OracleValueConverters valueConverters = connectorConfig.getAdapter().getValueConverter(connectorConfig, jdbcConnection, databaseSettings);
         OracleDefaultValueConverter defaultValueConverter = new OracleDefaultValueConverter(valueConverters, jdbcConnection);
         TableNameCaseSensitivity tableNameCaseSensitivity = connectorConfig.getAdapter().getTableNameCaseSensitivity(jdbcConnection);
         CustomConverterRegistry customConverterRegistry = connectorConfig.getServiceRegistry().tryGetService(CustomConverterRegistry.class);

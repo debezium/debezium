@@ -105,7 +105,8 @@ public class ConnectionIT implements Testing {
                 assertThat(table.columnWithName("C6").unwrap(OracleColumn.class).octetLength()).isEqualTo(Column.UNSET_INT_VALUE);
 
                 // The DDL parser must resolve the same byte lengths from the database character sets
-                final OracleValueConverters converters = connectorConfig.getAdapter().getValueConverter(connectorConfig, connection);
+                final OracleValueConverters converters = connectorConfig.getAdapter().getValueConverter(connectorConfig, connection,
+                        connection.readDatabaseSettings(connectorConfig));
                 final OracleDdlParser parser = new OracleDdlParser(converters);
                 parser.setCurrentSchema("DEBEZIUM");
                 final Tables parsedTables = new Tables(false, connectorConfig);

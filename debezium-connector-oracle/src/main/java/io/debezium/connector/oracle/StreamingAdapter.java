@@ -10,6 +10,7 @@ import java.sql.SQLException;
 import io.debezium.config.Configuration;
 import io.debezium.connector.base.ChangeEventQueueMetrics;
 import io.debezium.connector.oracle.jdbc.OracleConnectionFactory;
+import io.debezium.connector.oracle.jdbc.OracleDatabaseSettings;
 import io.debezium.pipeline.ErrorHandler;
 import io.debezium.pipeline.EventDispatcher;
 import io.debezium.pipeline.metrics.CapturedTablesSupplier;
@@ -103,10 +104,12 @@ public interface StreamingAdapter<T extends AbstractOracleStreamingChangeEventSo
      *
      * @param connectorConfig the connector configuration, shoudl never be {@code null}
      * @param connection the database connection, should never be {@code null}
+     * @param databaseSettings the settings read from the captured database, should never be {@code null}
      * @return the value converter to be used
      */
-    default OracleValueConverters getValueConverter(OracleConnectorConfig connectorConfig, OracleConnection connection) {
-        return new OracleValueConverters(connectorConfig, connection);
+    default OracleValueConverters getValueConverter(OracleConnectorConfig connectorConfig, OracleConnection connection,
+                                                    OracleDatabaseSettings databaseSettings) {
+        return new OracleValueConverters(connectorConfig, connection, databaseSettings);
     }
 
     /**

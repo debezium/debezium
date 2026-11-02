@@ -24,6 +24,7 @@ import io.debezium.config.CommonConnectorConfig.BinaryHandlingMode;
 import io.debezium.connector.oracle.OracleConnection;
 import io.debezium.connector.oracle.OracleConnectorConfig;
 import io.debezium.connector.oracle.OracleValueConverters;
+import io.debezium.connector.oracle.jdbc.OracleDatabaseSettings;
 import io.debezium.jdbc.TemporalPrecisionMode;
 import io.debezium.relational.Column;
 import io.debezium.util.Strings;
@@ -56,8 +57,9 @@ public class OpenLogReplicatorValueConverter extends OracleValueConverters {
     private final Map<Integer, DateTimeFormatter> timestampWithTimeZoneFormatterCache = new HashMap<>();
     private final Map<Integer, DateTimeFormatter> timestampWithLocalTimeZoneFormatterCache = new HashMap<>();
 
-    public OpenLogReplicatorValueConverter(OracleConnectorConfig connectorConfig, OracleConnection connection) {
-        super(connectorConfig, connection);
+    public OpenLogReplicatorValueConverter(OracleConnectorConfig connectorConfig, OracleConnection connection,
+                                           OracleDatabaseSettings databaseSettings) {
+        super(connectorConfig, connection, databaseSettings);
     }
 
     @Override

@@ -40,6 +40,7 @@ import io.debezium.annotation.VisibleForTesting;
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Field;
 import io.debezium.connector.oracle.OracleConnectorConfig.ConnectorAdapter;
+import io.debezium.connector.oracle.jdbc.OracleDatabaseSettings;
 import io.debezium.connector.oracle.logminer.SqlUtils;
 import io.debezium.connector.oracle.relational.OracleColumnEditor;
 import io.debezium.connector.oracle.relational.OracleRelationalMetadataFactory;
@@ -76,10 +77,6 @@ public class OracleConnection extends JdbcConnection {
      * Pattern to identify system generated indices and column names.
      */
     private static final Pattern SYS_NC_PATTERN = Pattern.compile("^SYS_NC(?:_OID|_ROWINFO|[0-9][0-9][0-9][0-9][0-9])\\$$");
-
-    private CharacterSet databaseCharacterSet;
-    private Boolean extendedStringSupport;
-    private Boolean charLengthSemantics;
 
     /**
      * Pattern to identify abstract data type indices and column names.
@@ -896,15 +893,11 @@ public class OracleConnection extends JdbcConnection {
      * Get the database character set used for {@code VARCHAR2}, {@code CHAR}, and {@code CLOB} data types.
      *
      * This method queries the {@code NLS_CHARACTERSET} database parameter and returns the corresponding
-     * {@link CharacterSet}. Like the nationalized character set, the database character set is set at
-     * database creation and does not change, so the result can be cached.
+     * {@link CharacterSet}.
      *
      * @return the database character set
      */
     public CharacterSet getDatabaseCharacterSet() {
-        if (databaseCharacterSet != null) {
-            return databaseCharacterSet;
-        }
         final String query = "SELECT NLS_CHARSET_ID(VALUE) FROM NLS_DATABASE_PARAMETERS WHERE PARAMETER = 'NLS_CHARACTERSET'";
         try {
             final Integer charsetId = queryAndMap(query, rs -> {
@@ -914,8 +907,7 @@ public class OracleConnection extends JdbcConnection {
                 return null;
             });
             if (charsetId != null) {
-                databaseCharacterSet = CharacterSet.make(charsetId);
-                return databaseCharacterSet;
+                return CharacterSet.make(charsetId);
             }
             throw new SQLException("Failed to resolve Oracle's NLS_CHARACTERSET property");
         }
@@ -1038,16 +1030,51 @@ public class OracleConnection extends JdbcConnection {
         }
     }
 
-    public boolean hasExtendedStringSupport() {
-        // MAX_STRING_SIZE can only change with a database restart in upgrade mode, so the result can be cached
-        if (extendedStringSupport != null) {
-            return extendedStringSupport;
+    /**
+     * Reads the database settings that affect how string data is interpreted from the database that the
+     * connector captures. The character sets, {@code MAX_STRING_SIZE} and {@code NLS_LENGTH_SEMANTICS} can
+     * differ between containers, so when a pluggable database is configured the session is switched to it
+     * for the read and then switched back to the container it was in.
+     *
+     * @param connectorConfig the connector configuration, should never be {@code null}
+     * @return the database settings
+     */
+    public OracleDatabaseSettings readDatabaseSettings(OracleConnectorConfig connectorConfig) {
+        final String pdbName = connectorConfig.getPdbName();
+        final String previousContainer = Strings.isNullOrBlank(pdbName) ? null : getCurrentContainerName();
+        final boolean switchContainer = previousContainer != null && !previousContainer.equalsIgnoreCase(pdbName);
+        if (switchContainer) {
+            setSessionToPdb(pdbName);
         }
         try {
+            final OracleDatabaseSettings settings = new OracleDatabaseSettings(
+                    getDatabaseCharacterSet(),
+                    getNationalCharacterSet(),
+                    hasExtendedStringSupport(),
+                    hasCharLengthSemantics());
+            LOGGER.info("Database settings: {}", settings);
+            return settings;
+        }
+        finally {
+            if (switchContainer) {
+                setContainerAs(previousContainer);
+            }
+        }
+    }
+
+    private String getCurrentContainerName() {
+        try {
+            return queryAndMap("SELECT SYS_CONTEXT('USERENV', 'CON_NAME') FROM DUAL", rs -> rs.next() ? rs.getString(1) : null);
+        }
+        catch (SQLException e) {
+            throw new DebeziumException("Failed to resolve the current container name", e);
+        }
+    }
+
+    private boolean hasExtendedStringSupport() {
+        try {
             final String value = Strings.defaultIfBlank(getDatabaseParameterValue("MAX_STRING_SIZE"), "STANDARD");
-            LOGGER.info("Oracle MAX_STRING_SIZE is {}", value);
-            extendedStringSupport = "EXTENDED".equals(value);
-            return extendedStringSupport;
+            return "EXTENDED".equals(value);
         }
         catch (Exception e) {
             LOGGER.warn("Failed to check MAX_STRING_SIZE status, defaulting to STANDARD.", e);
@@ -1055,15 +1082,10 @@ public class OracleConnection extends JdbcConnection {
         }
     }
 
-    public boolean hasCharLengthSemantics() {
-        if (charLengthSemantics != null) {
-            return charLengthSemantics;
-        }
+    private boolean hasCharLengthSemantics() {
         try {
             final String value = Strings.defaultIfBlank(getDatabaseParameterValue("NLS_LENGTH_SEMANTICS"), "BYTE");
-            LOGGER.info("Oracle NLS_LENGTH_SEMANTICS is {}", value);
-            charLengthSemantics = "CHAR".equalsIgnoreCase(value);
-            return charLengthSemantics;
+            return "CHAR".equalsIgnoreCase(value);
         }
         catch (Exception e) {
             LOGGER.warn("Failed to check NLS_LENGTH_SEMANTICS, defaulting to BYTE.", e);
