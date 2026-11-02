@@ -266,7 +266,8 @@ public class UnbufferedStreamingChangeEventSourceTest extends AbstractAsyncEngin
                 schemaNameAdjuster,
                 topicNamingStrategy,
                 sensitivity,
-                false, new CustomConverterRegistry(emptyList()), new OracleTaskContext(configuration, connectorConfig));
+                new CustomConverterRegistry(emptyList()),
+                new OracleTaskContext(configuration, connectorConfig));
 
         final Table table = OracleRelationalMetadataFactory.INSTANCE.tableEditor()
                 .tableId(TableId.parse("ORCLPDB1.DEBEZIUM." + TABLE_NAME))

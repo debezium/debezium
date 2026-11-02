@@ -1256,7 +1256,8 @@ public abstract class AbstractBufferedLogMinerStreamingChangeEventSourceTest ext
                 schemaNameAdjuster,
                 topicNamingStrategy,
                 sensitivity,
-                false, new CustomConverterRegistry(emptyList()), new OracleTaskContext(configuration, connectorConfig));
+                new CustomConverterRegistry(emptyList()),
+                new OracleTaskContext(configuration, connectorConfig));
 
         Table table = OracleRelationalMetadataFactory.INSTANCE.tableEditor()
                 .tableId(TableId.parse("ORCLPDB1.DEBEZIUM.TEST_TABLE"))

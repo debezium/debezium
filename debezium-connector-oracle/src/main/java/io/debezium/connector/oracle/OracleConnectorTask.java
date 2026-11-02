@@ -104,8 +104,6 @@ public class OracleConnectorTask extends BaseSourceTask<OraclePartition, OracleO
 
         LOGGER.info("Database Version: {}", jdbcConnection.getOracleVersion().getBanner());
 
-        final boolean extendedStringsSupported = jdbcConnection.hasExtendedStringSupport();
-
         // Service providers
         registerServiceProviders(connectorConfig.getServiceRegistry());
 
@@ -115,7 +113,7 @@ public class OracleConnectorTask extends BaseSourceTask<OraclePartition, OracleO
         CustomConverterRegistry customConverterRegistry = connectorConfig.getServiceRegistry().tryGetService(CustomConverterRegistry.class);
 
         this.schema = new OracleDatabaseSchema(connectorConfig, valueConverters, defaultValueConverter, schemaNameAdjuster,
-                topicNamingStrategy, tableNameCaseSensitivity, extendedStringsSupported, customConverterRegistry, taskContext);
+                topicNamingStrategy, tableNameCaseSensitivity, customConverterRegistry, taskContext);
 
         Offsets<OraclePartition, OracleOffsetContext> previousOffsets = getSinglePartitionPreviousOffsets(partitionProvider, offsetContextLoader);
 

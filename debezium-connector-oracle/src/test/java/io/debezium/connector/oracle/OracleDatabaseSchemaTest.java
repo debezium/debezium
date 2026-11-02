@@ -208,6 +208,7 @@ public class OracleDatabaseSchemaTest {
         final OracleConnectorConfig connectorConfig = new OracleConnectorConfig(configuration);
         final TopicNamingStrategy topicNamingStrategy = SchemaTopicNamingStrategy.create(connectorConfig);
         final SchemaNameAdjuster schemaNameAdjuster = connectorConfig.schemaNameAdjuster();
+        Mockito.when(this.connection.hasExtendedStringSupport()).thenReturn(extendedStringsSupported);
         final OracleValueConverters converters = connectorConfig.getAdapter().getValueConverter(connectorConfig, connection);
         final OracleDefaultValueConverter defaultValueConverter = new OracleDefaultValueConverter(converters, connection);
         final StreamingAdapter.TableNameCaseSensitivity sensitivity = StreamingAdapter.TableNameCaseSensitivity.INSENSITIVE;
@@ -218,7 +219,6 @@ public class OracleDatabaseSchemaTest {
                 schemaNameAdjuster,
                 topicNamingStrategy,
                 sensitivity,
-                extendedStringsSupported,
                 new CustomConverterRegistry(List.of()),
                 new OracleTaskContext(configuration, connectorConfig));
 
