@@ -188,14 +188,10 @@ public class ColumnDefinitionParserListener extends BaseParserListener {
                 }
                 else {
                     setPrecision(precisionPart, columnEditor);
-                    // Without an explicit CHAR, the length is in bytes, the default NLS_LENGTH_SEMANTICS
-                    if (precisionPart.CHAR() != null) {
-                        setStringOctetLength(columnEditor.length(),
-                                converters -> OracleDatabaseSchema.getMaxBytesPerChar(converters.getDatabaseCharacterSet()));
-                    }
-                    else {
-                        setStringOctetLength(columnEditor.length(), converters -> 1);
-                    }
+                    setStringOctetLength(columnEditor.length(),
+                            converters -> isCharLengthSemantics(precisionPart, converters)
+                                    ? OracleDatabaseSchema.getMaxBytesPerChar(converters.getDatabaseCharacterSet())
+                                    : 1);
                 }
             }
             else if (ctx.native_datatype_element().NVARCHAR2() != null) {
@@ -385,6 +381,20 @@ public class ColumnDefinitionParserListener extends BaseParserListener {
             final int maxBytes = OracleDatabaseSchema.getMaxStringBytes(converters.isExtendedStringsSupported());
             setOctetLength((int) Math.min((long) length * bytesPerUnit.applyAsInt(converters), maxBytes));
         }
+    }
+
+    /**
+     * Returns whether a {@code VARCHAR2} length is in characters. Without an explicit {@code CHAR} or
+     * {@code BYTE}, the database's {@code NLS_LENGTH_SEMANTICS} parameter applies.
+     */
+    private static boolean isCharLengthSemantics(PlSqlParser.Precision_partContext precisionPart, OracleValueConverters converters) {
+        if (precisionPart.CHAR() != null) {
+            return true;
+        }
+        if (precisionPart.BYTE() != null) {
+            return false;
+        }
+        return converters.isCharLengthSemantics();
     }
 
     private void setOctetLength(int octetLength) {

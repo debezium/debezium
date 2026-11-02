@@ -3717,7 +3717,8 @@ For example, in a database that uses the `AL32UTF8` character set, a `VARCHAR2(2
 When the connector reads the definition of a table from the database, for example during a snapshot, it uses the byte length that the database reports.
 When the connector parses the DDL for a table that is created or altered while it streams changes, it calculates the byte length from the declared length and the character set, with the following limitations:
 
-* For a `VARCHAR2` column that does not specify `CHAR` or `BYTE`, the connector assumes byte length semantics, the default for the `NLS_LENGTH_SEMANTICS` parameter.
+* For a `VARCHAR2` column that does not specify `CHAR` or `BYTE`, the connector uses the value of the `NLS_LENGTH_SEMANTICS` parameter for the database instance, which it reads when it starts.
+The connector cannot detect a session that sets a different value for `NLS_LENGTH_SEMANTICS` when it creates or alters a table.
 * For a `VARCHAR2` column with character length semantics in a database whose character set is multibyte but not Unicode, such as `ZHS16GBK` or `JA16SJIS`, the connector estimates the bytes for each character from the number of bits in the character set name, for example 2 bytes for `ZHS16GBK`.
 If the estimate is larger than the actual width, the connector might treat a column that cannot exceed 4000 bytes as an extended string column, which only affects how its changes are mined.
 When `lob.enabled` is `true`, the connector logs a warning at startup with the estimate that it uses.
