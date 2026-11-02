@@ -685,6 +685,12 @@ public final class Strings {
 
     /**
      * Parse the supplied string as a number.
+     * <p>
+     * Integral values are returned as the narrowest of {@link Short}, {@link Integer}, {@link Long} or {@link BigInteger}.
+     * Other values are returned as the narrowest of {@link Float}, {@link Double} or {@link BigDecimal} that represents
+     * the value exactly, so values that would overflow, underflow or lose precision as a {@code Float} are widened.
+     * {@code NaN}, infinities and hexadecimal floating point literals are returned as a {@code Float} if exactly
+     * representable, otherwise as a {@code Double}.
      *
      * @param value the string representation of a number
      * @param defaultValueProvider the function that returns a value to be used when the string value is null or cannot be parsed
@@ -709,39 +715,9 @@ public final class Strings {
                             return new BigInteger(value);
                         }
                         catch (NumberFormatException e4) {
-                            try {
-                                Double d = Double.valueOf(value);
-                                Float f = Float.valueOf(value);
-                                if (Float.isNaN(f)) {
-                                    return f;
-                                }
-                                if (f.isInfinite() && isInfinity(value)) {
-                                    return f;
-                                }
-                                if (f == 0.0f && isZero(value)) {
-                                    return f;
-                                }
-                                if (!f.isInfinite() && Math.abs(f) >= Float.MIN_NORMAL && Double.valueOf(Float.toString(f)).equals(d)) {
-                                    return f;
-                                }
-                                if (!d.isInfinite() && (d != 0.0d || isZero(value)) && Math.abs(d) >= Double.MIN_NORMAL) {
-                                    try {
-                                        if (new BigDecimal(value).compareTo(new BigDecimal(Double.toString(d))) == 0) {
-                                            return d;
-                                        }
-                                    }
-                                    catch (Exception ignored) {
-                                        return d;
-                                    }
-                                }
-                                return new BigDecimal(value);
-                            }
-                            catch (NumberFormatException ignored) {
-                                try {
-                                    return new BigDecimal(value);
-                                }
-                                catch (NumberFormatException ignored2) {
-                                }
+                            final var number = asFloatingPointNumber(value);
+                            if (number != null) {
+                                return number;
                             }
                         }
                     }
@@ -751,17 +727,54 @@ public final class Strings {
         return defaultValueProvider != null ? defaultValueProvider.get() : null;
     }
 
-    private static boolean isInfinity(String value) {
-        return "Infinity".equals(value) || "-Infinity".equals(value) || "+Infinity".equals(value);
+    private static Number asFloatingPointNumber(String value) {
+        final float f;
+        final double d;
+        try {
+            f = Float.parseFloat(value);
+            d = Double.parseDouble(value);
+        }
+        catch (NumberFormatException e) {
+            return null;
+        }
+
+        final var decimal = asBigDecimal(value);
+        if (decimal == null) {
+            // NaN, Infinity, or a hexadecimal literal, none of which BigDecimal can parse
+            if (Float.isNaN(f) || Double.isInfinite(d) || (double) f == d) {
+                return f;
+            }
+            return d;
+        }
+        if (isNormalOrZero(f) && new BigDecimal(Float.toString(f)).compareTo(decimal) == 0) {
+            return f;
+        }
+        if (isNormalOrZero(d) && new BigDecimal(Double.toString(d)).compareTo(decimal) == 0) {
+            return d;
+        }
+        return decimal;
     }
 
-    private static boolean isZero(String value) {
+    private static BigDecimal asBigDecimal(String value) {
+        // mirror Float.valueOf, which trims whitespace and accepts a trailing type suffix
+        var normalized = value.trim();
+        if (!normalized.isEmpty() && "fFdD".indexOf(normalized.charAt(normalized.length() - 1)) >= 0) {
+            normalized = normalized.substring(0, normalized.length() - 1);
+        }
         try {
-            return new BigDecimal(value).signum() == 0;
+            return new BigDecimal(normalized);
         }
-        catch (Exception e) {
-            return false;
+        catch (NumberFormatException e) {
+            return null;
         }
+    }
+
+    private static boolean isNormalOrZero(float value) {
+        return value == 0.0f || (Float.isFinite(value) && Math.abs(value) >= Float.MIN_NORMAL);
+    }
+
+    private static boolean isNormalOrZero(double value) {
+        return value == 0.0d || (Double.isFinite(value) && Math.abs(value) >= Double.MIN_NORMAL);
     }
 
     /**
