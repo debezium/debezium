@@ -3748,7 +3748,8 @@ As a result, they did not capture changes to `VARCHAR2` columns that use charact
 The schema history that earlier versions recorded does not include the byte length of columns.
 If the database parameter `max_string_size` is `EXTENDED`, after you upgrade the connector, run a snapshot with xref:oracle-property-snapshot-mode[`snapshot.mode`] set to `recovery` to rebuild the schema history topic.
 
-Until you rebuild the schema history, the connector continues to use the declared length for columns that were recorded by an earlier version, and logs a warning that the byte length of the column is missing.
+Until you rebuild the schema history, the connector continues to use the declared length for columns that were recorded by an earlier version.
+It logs a warning for each table that has such a column that is not detected as an extended string column, but whose declared length could exceed 4000 bytes with character length semantics.
 A DDL statement corrects only the columns that it redefines with a data type, for example, `ALTER TABLE ... MODIFY (c1 VARCHAR2(2000 CHAR))`, or all columns of a table that is dropped and re-created.
 Other DDL changes, such as `ALTER TABLE ... ADD`, do not correct the existing columns of the table.
 ====
