@@ -651,21 +651,25 @@ public class TestHelper {
      * @param handler the handler method to be called if changes are found in the capture table instance
      */
     public static void waitForCdcRecord(SqlServerConnection connection, String tableName, CdcRecordHandler handler) {
+        waitForCdcRecordInDatabase(connection, TEST_DATABASE_1, tableName, handler);
+    }
+
+    public static void waitForCdcRecordInDatabase(SqlServerConnection connection, String databaseName, String tableName, CdcRecordHandler handler) {
         try {
-            Awaitility.await("Checking for expected record in CDC table for " + tableName)
+            Awaitility.await("Checking for expected record in CDC table for " + databaseName + "." + tableName)
                     .atMost(60, TimeUnit.SECONDS)
                     .pollDelay(Duration.ofSeconds(0))
                     .pollInterval(Duration.ofMillis(100)).until(() -> {
-                        if (!connection.getMaxLsn(TEST_DATABASE_1).isAvailable()) {
+                        if (!connection.getMaxLsn(databaseName).isAvailable()) {
                             return false;
                         }
 
-                        for (SqlServerChangeTable ct : connection.getChangeTables(TEST_DATABASE_1)) {
+                        for (SqlServerChangeTable ct : connection.getChangeTables(databaseName)) {
                             final String ctTableName = ct.getChangeTableId().table();
                             if (ctTableName.endsWith("dbo_" + connection.getNameOfChangeTable(tableName))) {
                                 try {
-                                    final Lsn minLsn = connection.getMinLsn(TEST_DATABASE_1, ctTableName);
-                                    final Lsn maxLsn = connection.getMaxLsn(TEST_DATABASE_1);
+                                    final Lsn minLsn = connection.getMinLsn(databaseName, ctTableName);
+                                    final Lsn maxLsn = connection.getMaxLsn(databaseName);
                                     final CdcRecordFoundBlockingResultSetConsumer consumer = new CdcRecordFoundBlockingResultSetConsumer(handler);
                                     try (ResultSet resultSet = connection.getChangesForTable(ct, minLsn, Lsn.ZERO, 0, -1, maxLsn, 0)) {
                                         consumer.accept(resultSet);
@@ -707,21 +711,26 @@ public class TestHelper {
     }
 
     public static void waitForCdcRecord(SqlServerConnection connection, String tableName, String captureInstanceName, CdcRecordHandler handler) {
+        waitForCdcRecordInDatabase(connection, TEST_DATABASE_1, tableName, captureInstanceName, handler);
+    }
+
+    public static void waitForCdcRecordInDatabase(SqlServerConnection connection, String databaseName, String tableName, String captureInstanceName,
+                                                  CdcRecordHandler handler) {
         try {
-            Awaitility.await("Checking for expected record in CDC table for " + tableName)
+            Awaitility.await("Checking for expected record in CDC table for " + databaseName + "." + tableName)
                     .atMost(30, TimeUnit.SECONDS)
                     .pollDelay(Duration.ofSeconds(0))
                     .pollInterval(Duration.ofMillis(100)).until(() -> {
-                        if (!connection.getMaxLsn(TEST_DATABASE_1).isAvailable()) {
+                        if (!connection.getMaxLsn(databaseName).isAvailable()) {
                             return false;
                         }
 
-                        for (SqlServerChangeTable ct : connection.getChangeTables(TEST_DATABASE_1)) {
+                        for (SqlServerChangeTable ct : connection.getChangeTables(databaseName)) {
                             final String ctTableName = ct.getChangeTableId().table();
                             if (ctTableName.endsWith(connection.getNameOfChangeTable(captureInstanceName))) {
                                 try {
-                                    final Lsn minLsn = connection.getMinLsn(TEST_DATABASE_1, ctTableName);
-                                    final Lsn maxLsn = connection.getMaxLsn(TEST_DATABASE_1);
+                                    final Lsn minLsn = connection.getMinLsn(databaseName, ctTableName);
+                                    final Lsn maxLsn = connection.getMaxLsn(databaseName);
                                     final CdcRecordFoundBlockingResultSetConsumer consumer = new CdcRecordFoundBlockingResultSetConsumer(handler);
                                     try (ResultSet resultSet = connection.getChangesForTable(ct, minLsn, Lsn.ZERO, 0, -1, maxLsn, 0)) {
                                         consumer.accept(resultSet);
