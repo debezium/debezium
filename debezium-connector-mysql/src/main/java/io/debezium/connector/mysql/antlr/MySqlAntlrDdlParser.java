@@ -174,7 +174,13 @@ public class MySqlAntlrDdlParser extends AntlrDdlParser<MySqlLexer, MySqlParser>
     @Override
     public DdlChanges parse(String ddlContent, Tables databaseTables) {
         String normalizedDdl = DdlNormalizer.normalize(ddlContent, isAnsiQuotesMode());
-        return super.parse(normalizedDdl, databaseTables);
+        try {
+            return super.parse(normalizedDdl, databaseTables);
+        }
+        finally {
+            // The token stream is only needed while the statements are processed
+            tokenStream = null;
+        }
     }
 
     private boolean isAnsiQuotesMode() {
@@ -581,6 +587,6 @@ public class MySqlAntlrDdlParser extends AntlrDdlParser<MySqlLexer, MySqlParser>
         Interval interval = new Interval(ctx.getParent().start.getStartIndex(),
                 parent.renamePair().get(0).start.getStartIndex() - 1);
         String prefix = ctx.getParent().start.getInputStream().getText(interval);
-        signalAlterTable(id, previousId, prefix + getText(ctx));
+        signalAlterTable(id, previousId, prefix + getStatementText(ctx));
     }
 }
