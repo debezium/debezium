@@ -28,8 +28,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ExecutorService;
+import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicLong;
@@ -119,7 +120,6 @@ public abstract class BinlogStreamingChangeEventSource<P extends BinlogPartition
     private static final Logger LOGGER = LoggerFactory.getLogger(BinlogStreamingChangeEventSource.class);
 
     private static final String KEEPALIVE_THREAD_NAME = "blc-keepalive";
-    private static final long REWIND_WAIT_FOR_PREVIOUS_READ_LOOP_MS = 30_000;
     private static final String SET_STATEMENT_REGEX = "SET STATEMENT .* FOR";
     private static final Pattern TRUNCATE_STATEMENT_PATTERN = Pattern.compile("(SET STATEMENT .*)?TRUNCATE TABLE .*", Pattern.CASE_INSENSITIVE | Pattern.DOTALL);
 
@@ -160,8 +160,8 @@ public abstract class BinlogStreamingChangeEventSource<P extends BinlogPartition
     private final boolean isBinlogRowImageNoblob;
     private final AtomicLong totalRecordCounter = new AtomicLong();
     private final Map<String, Thread> binaryLogClientThreads = new ConcurrentHashMap<>(4);
-    /** Reconnects after a rewind, so that read loops are not nested on the thread that handles the event. */
-    private volatile ExecutorService rewindExecutor;
+    /** Rewinds requested by the thread that handles the events, performed by the thread that runs {@link #execute}. */
+    private final BlockingQueue<BinlogPosition> rewindRequests = new LinkedBlockingQueue<>();
     private final EnumMap<EventType, BlockingConsumer<Event>> eventHandlers = new EnumMap<>(EventType.class);
     private final float heartbeatIntervalFactor = 0.8f;
     private final OffsetActivityMonitorService offsetActivityMonitorService;
@@ -344,7 +344,7 @@ public abstract class BinlogStreamingChangeEventSource<P extends BinlogPartition
         // Only when we reach the first BEGIN event will we start to skip events ...
         skipEvent = false;
 
-        rewindExecutor = Threads.newSingleThreadExecutor(getConnectorClass(), connectorConfig.getLogicalName(), "binlog-rewind", true);
+        rewindRequests.clear();
         try {
             // Start the log reader, which starts background threads ...
             if (context.isRunning()) {
@@ -353,24 +353,7 @@ public abstract class BinlogStreamingChangeEventSource<P extends BinlogPartition
                 try {
                     LOGGER.debug("Attempting to establish binlog reader connection with timeout of {} ms", timeout);
                     client.connect(timeout);
-                    // Need to wait for keepalive thread to be running, otherwise it can be left orphaned
-                    // The problem is with timing. When the close is called too early after connect then
-                    // the keepalive thread is not terminated
-                    if (client.isKeepAlive()) {
-                        LOGGER.info("Waiting for keepalive thread to start");
-                        final Metronome metronome = Metronome.parker(Duration.ofMillis(100), clock);
-                        int waitAttempts = 50;
-                        boolean keepAliveThreadRunning = false;
-                        while (!keepAliveThreadRunning && waitAttempts-- > 0) {
-                            for (Thread t : binaryLogClientThreads.values()) {
-                                if (t.getName().startsWith(KEEPALIVE_THREAD_NAME) && t.isAlive()) {
-                                    LOGGER.info("Keepalive thread is running");
-                                    keepAliveThreadRunning = true;
-                                }
-                            }
-                            metronome.pause();
-                        }
-                    }
+                    waitForKeepAliveThread();
                 }
                 catch (TimeoutException e) {
                     // If the client thread is interrupted *before* the client could connect, the client throws a timeout exception
@@ -397,7 +380,10 @@ public abstract class BinlogStreamingChangeEventSource<P extends BinlogPartition
                 }
             }
             while (context.isRunning()) {
-                Thread.sleep(100);
+                final BinlogPosition rewind = rewindRequests.poll(100, TimeUnit.MILLISECONDS);
+                if (rewind != null) {
+                    reconnectAtPosition(context, rewind);
+                }
                 waitWhenStreamingPaused(context);
             }
         }
@@ -408,8 +394,27 @@ public abstract class BinlogStreamingChangeEventSource<P extends BinlogPartition
             catch (Exception e) {
                 LOGGER.info("Exception while stopping binary log client", e);
             }
-            finally {
-                rewindExecutor.shutdownNow();
+        }
+    }
+
+    // Need to wait for keepalive thread to be running, otherwise it can be left orphaned
+    // The problem is with timing. When the close is called too early after connect then
+    // the keepalive thread is not terminated
+    private void waitForKeepAliveThread() throws InterruptedException {
+        if (client.isKeepAlive()) {
+            LOGGER.info("Waiting for keepalive thread to start");
+            final Metronome metronome = Metronome.parker(Duration.ofMillis(100), clock);
+            int waitAttempts = 50;
+            boolean keepAliveThreadRunning = false;
+            // A read loop that already ended (for example a rewind right after connecting) never spawns the keepalive thread
+            while (!keepAliveThreadRunning && waitAttempts-- > 0 && client.isConnected() && rewindRequests.isEmpty()) {
+                for (Thread t : binaryLogClientThreads.values()) {
+                    if (t.getName().startsWith(KEEPALIVE_THREAD_NAME) && t.isAlive()) {
+                        LOGGER.info("Keepalive thread is running");
+                        keepAliveThreadRunning = true;
+                    }
+                }
+                metronome.pause();
             }
         }
     }
@@ -1460,15 +1465,15 @@ public abstract class BinlogStreamingChangeEventSource<P extends BinlogPartition
     }
 
     /**
-     * Re-reads the part of an oversized transaction that did not fit into the buffer. The reconnect runs on another thread,
-     * as {@code BinaryLogClient#connect()} blocks and would nest a new read loop inside the current one on every rewind.
+     * Re-reads the part of an oversized transaction that did not fit into the buffer. This runs on the thread that handles
+     * the events, so it only disconnects the client and hands the reconnect to the thread that runs {@link #execute}:
+     * a blocking {@code BinaryLogClient#connect()} here would nest a new read loop inside the current one on every rewind.
      */
     void rewindBinaryLogClient(ChangeEventSourceContext context, BinlogPosition position) {
         if (!context.isRunning()) {
             return;
         }
         LOGGER.debug("Rewinding binlog to position {}", position);
-        final Thread previousReadLoop = Thread.currentThread();
         try {
             client.disconnect();
         }
@@ -1477,50 +1482,38 @@ public abstract class BinlogStreamingChangeEventSource<P extends BinlogPartition
             errorHandler.setProducerThrowable(wrap(e));
             return;
         }
-        rewindExecutor.execute(() -> reconnectAtPosition(context, position, previousReadLoop));
+        rewindRequests.add(position);
     }
 
-    private void reconnectAtPosition(ChangeEventSourceContext context, BinlogPosition position, Thread previousReadLoop) {
+    private void reconnectAtPosition(ChangeEventSourceContext context, BinlogPosition position) throws InterruptedException {
+        if (!context.isRunning()) {
+            return;
+        }
         try {
-            // The previous read loop still updates the client position after handling this event, so wait for it to finish
-            // (when it was this thread, connect() has already returned)
-            if (previousReadLoop != Thread.currentThread()) {
-                final long deadline = System.currentTimeMillis() + REWIND_WAIT_FOR_PREVIOUS_READ_LOOP_MS;
-                while (previousReadLoop.isAlive() && context.isRunning() && System.currentTimeMillis() < deadline) {
-                    previousReadLoop.join(100);
-                }
-                if (previousReadLoop.isAlive() && context.isRunning()) {
-                    throw new DebeziumException("The previous binlog read loop did not finish within " + REWIND_WAIT_FOR_PREVIOUS_READ_LOOP_MS
-                            + " ms, cannot re-read the transaction from " + position);
-                }
-            }
-            if (!context.isRunning()) {
-                return;
-            }
+            // returns once the previous read loop has left connect(): it still updates the client position after handling
+            // the event that requested the rewind, and its exit path can disconnect a client that is connected again
+            client.disconnect();
             client.setBinlogFilename(position.getFilename());
             client.setBinlogPosition(position.getPosition());
             // In GTID mode the executed GTID set already contains this transaction, so unless the filename and position
             // are used the server skips it, END included
             client.setUseBinlogFilenamePositionInGtidMode(true);
-            try {
-                // blocks until the client is disconnected
-                client.connect();
-            }
-            finally {
-                client.setUseBinlogFilenamePositionInGtidMode(false);
-            }
+            // returns once the dump command is sent, the read loop runs on the client's own thread
+            client.connect(connectorConfig.getConnectionTimeout().toMillis());
+            waitForKeepAliveThread();
         }
-        catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-        }
-        catch (Exception e) {
+        catch (TimeoutException | IOException e) {
             if (!context.isRunning()) {
                 LOGGER.debug("Re-connecting to the MySQL binary log reader was interrupted by the streaming shutdown", e);
                 return;
             }
             // nothing else reads the binlog, so fail the task instead of leaving it RUNNING
-            LOGGER.error("Unexpected error when re-connecting to the MySQL binary log reader", e);
-            errorHandler.setProducerThrowable(wrap(e));
+            throw new DebeziumException("Unable to re-connect to the MySQL binary log reader to re-read the transaction from " + position, e);
+        }
+        finally {
+            // A later reconnect (for example by the keepalive thread) must resume from the GTID set again, not from the
+            // tracked filename and position, which can be in the middle of a transaction
+            client.setUseBinlogFilenamePositionInGtidMode(false);
         }
     }
 

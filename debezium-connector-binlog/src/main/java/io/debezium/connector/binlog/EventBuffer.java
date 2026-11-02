@@ -244,7 +244,7 @@ public class EventBuffer<T extends BinlogStreamingChangeEventSource<P, O>, P ext
         if (!wellFormed) {
             streamingChangeEventSource.getMetrics().onNotWellFormedTransaction();
         }
-        // clear before the rewind, the replayed events are handled on another thread
+        // reset before the rewind, the replayed events must find an empty buffer and no open transaction
         clear();
         if (rewindPosition != null) {
             streamingChangeEventSource.rewindBinaryLogClient(changeEventSourceContext, rewindPosition);

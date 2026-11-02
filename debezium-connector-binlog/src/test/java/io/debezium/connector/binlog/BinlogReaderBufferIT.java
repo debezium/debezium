@@ -382,9 +382,9 @@ public abstract class BinlogReaderBufferIT<C extends SourceConnector> extends Ab
     }
 
     @Test
-    @SkipWhenGtidModeIs(value = SkipWhenGtidModeIs.GtidMode.OFF, reason = "Every rewind re-reads the transaction with the GTID dump command")
+    @FixFor("debezium/dbz#2914")
     @SkipWhenDatabaseIs(value = SkipWhenDatabaseIs.Type.MARIADB, reason = "The rewind change targets the MySQL GTID dump command")
-    void shouldKeepStreamingAfterManyBufferRewindsWithGtids() throws SQLException, InterruptedException {
+    void shouldKeepStreamingAfterManyBufferRewinds() throws SQLException, InterruptedException {
         String primaryPort = System.getProperty("database.port", "3306");
         String replicaPort = System.getProperty("database.replica.port", "3306");
         boolean replicaIsPrimary = primaryPort.equals(replicaPort);
@@ -443,7 +443,7 @@ public abstract class BinlogReaderBufferIT<C extends SourceConnector> extends Ab
     }
 
     @Test
-    @SkipWhenGtidModeIs(value = SkipWhenGtidModeIs.GtidMode.OFF, reason = "Every rewind re-reads the transaction with the GTID dump command")
+    @FixFor("debezium/dbz#2914")
     @SkipWhenDatabaseIs(value = SkipWhenDatabaseIs.Type.MARIADB, reason = "The rewind change targets the MySQL GTID dump command")
     void shouldStopWhileBufferRewindsAreRunning() throws SQLException, InterruptedException {
         startWithBufferOfTwo(null);
@@ -464,16 +464,17 @@ public abstract class BinlogReaderBufferIT<C extends SourceConnector> extends Ab
             }
             connection.setAutoCommit(true);
         }
-        Awaitility.await().atMost(30, TimeUnit.SECONDS).until(this::isRewindThreadAlive);
+        // the connector is rewinding, and still has most of the transactions to read
+        consumeRecordsByTopic(9);
 
         stopConnector();
 
-        // the rewind thread must not outlive the connector
-        Awaitility.await().atMost(10, TimeUnit.SECONDS).until(() -> !isRewindThreadAlive());
+        // the threads of the binlog client, including the keepalive thread of the last reconnect, must not outlive the connector
+        Awaitility.await().atMost(10, TimeUnit.SECONDS).until(() -> !isBinaryLogClientThreadAlive());
     }
 
     @Test
-    @SkipWhenGtidModeIs(value = SkipWhenGtidModeIs.GtidMode.OFF, reason = "Every rewind re-reads the transaction with the GTID dump command")
+    @FixFor("debezium/dbz#2914")
     @SkipWhenDatabaseIs(value = SkipWhenDatabaseIs.Type.MARIADB, reason = "The rewind change targets the MySQL GTID dump command")
     void shouldFailTheTaskWhenReconnectingForARewindFails() throws SQLException, InterruptedException {
         final AtomicReference<Boolean> success = new AtomicReference<>();
@@ -521,9 +522,9 @@ public abstract class BinlogReaderBufferIT<C extends SourceConnector> extends Ab
         }
     }
 
-    private boolean isRewindThreadAlive() {
+    private boolean isBinaryLogClientThreadAlive() {
         return Thread.getAllStackTraces().keySet().stream()
-                .anyMatch(t -> t.isAlive() && t.getName().endsWith("-binlog-rewind") && t.getName().contains(DATABASE.getServerName()));
+                .anyMatch(t -> t.isAlive() && t.getName().startsWith("blc-"));
     }
 
     @FixFor("DBZ-411")
