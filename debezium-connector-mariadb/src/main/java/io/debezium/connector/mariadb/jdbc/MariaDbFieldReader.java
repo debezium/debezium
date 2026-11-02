@@ -6,7 +6,9 @@
 package io.debezium.connector.mariadb.jdbc;
 
 import java.sql.ResultSet;
+import java.sql.SQLDataException;
 import java.sql.SQLException;
+import java.time.DateTimeException;
 import java.time.LocalDateTime;
 import java.util.Objects;
 
@@ -60,8 +62,19 @@ public class MariaDbFieldReader extends BinlogFieldReader {
         }
         // The driver returns a DATETIME string in the JVM's default time zone, which changes a value that does not exist
         // in that time zone, so the value is read as a LocalDateTime instead
-        return MariaDbValueConverters.containsZeroValuesInDatePart(value, column, table)
-                ? null
-                : rs.getObject(columnIndex, LocalDateTime.class);
+        if (MariaDbValueConverters.containsZeroValuesInDatePart(value, column, table)) {
+            return null;
+        }
+        try {
+            return rs.getObject(columnIndex, LocalDateTime.class);
+        }
+        catch (SQLDataException e) {
+            // Since CONJ-1351, the driver wraps the DateTimeException for a value that is not a valid date, which
+            // BinlogFieldReader handles according to the failure handling mode
+            if (e.getCause() instanceof DateTimeException invalidDate) {
+                throw invalidDate;
+            }
+            throw e;
+        }
     }
 }
