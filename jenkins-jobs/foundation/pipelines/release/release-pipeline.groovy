@@ -86,7 +86,8 @@ properties([
     '3.4' : ['mongodb', 'mysql', 'postgres', 'sqlserver', 'oracle', 'cassandra-3', 'cassandra-4', 'db2', 'vitess', 'spanner', 'jdbc', 'informix', 'ibmi', 'mariadb', 'cockroachdb'],
     '3.5' : ['mongodb', 'mysql', 'postgres', 'sqlserver', 'oracle', 'cassandra-3', 'cassandra-4', 'db2', 'vitess', 'spanner', 'jdbc', 'informix', 'ingres', 'ibmi', 'mariadb', 'cockroachdb'],
     '3.6' : ['mongodb', 'mysql', 'postgres', 'sqlserver', 'oracle', 'cassandra-3', 'cassandra-4', 'db2', 'vitess', 'spanner', 'jdbc', 'informix', 'ingres', 'ibmi', 'mariadb', 'cockroachdb', 'yashandb'],
-    '3.7' : ['mongodb', 'mysql', 'postgres', 'sqlserver', 'oracle', 'cassandra-3', 'cassandra-4', 'db2', 'vitess', 'spanner', 'jdbc', 'informix', 'ingres', 'ibmi', 'mariadb', 'cockroachdb', 'yashandb', 'tidb', 'milvus', 'sqlite']
+    '3.7' : ['mongodb', 'mysql', 'postgres', 'sqlserver', 'oracle', 'cassandra-3', 'cassandra-4', 'db2', 'vitess', 'spanner', 'jdbc', 'informix', 'ingres', 'ibmi', 'mariadb', 'cockroachdb', 'yashandb', 'tidb', 'milvus', 'sqlite'],
+    '3.8' : ['mongodb', 'mysql', 'postgres', 'sqlserver', 'oracle', 'cassandra-3', 'cassandra-4', 'db2', 'vitess', 'spanner', 'jdbc', 'informix', 'ingres', 'ibmi', 'mariadb', 'cockroachdb', 'yashandb', 'tidb', 'milvus', 'sqlite', 'elasticsearch']
 ]
 @Field final ZULIP_URL = 'https://debezium.zulipchat.com/api/v1'
 
@@ -119,7 +120,7 @@ properties([
 //   The pipeline validates at startup that RELEASE_PLAN and SOURCE_REPOSITORIES are in sync.
 @Field RELEASE_PLAN = [
     ['debezium'],
-    ['cassandra', 'cockroachdb', 'db2', 'ibmi', 'informix', 'ingres', 'milvus' ,'spanner', 'sqlite', 'vitess', 'tidb', 'yashandb'],
+    ['cassandra', 'cockroachdb', 'db2', 'elasticsearch', 'ibmi', 'informix', 'ingres', 'milvus' ,'spanner', 'sqlite', 'vitess', 'tidb', 'yashandb'],
     ['quarkus', 'operator'],
     ['server', 'jbang-catalog'],
     ['platform']
