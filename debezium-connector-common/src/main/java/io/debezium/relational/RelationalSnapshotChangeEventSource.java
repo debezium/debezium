@@ -979,10 +979,15 @@ public abstract class RelationalSnapshotChangeEventSource<P extends Partition, O
                         recoverConnection(snapshotContext, connection);
                     }
                     catch (SQLException recoveryFailure) {
-                        // A failed recovery (e.g. the database is still unreachable after the delay) must not end
-                        // the retry loop: it counts as this attempt, and the unit keeps retrying until its budget
-                        // is spent. Keep the read failure that triggered the retry so it is not lost behind the
-                        // recovery failure.
+                        // Only swallow the failure when the connection could not be re-established at all
+                        // (the database is still unreachable). If reconnect() succeeded but the subsequent
+                        // pin re-application failed (e.g. SET TRANSACTION SNAPSHOT on an expired export),
+                        // the connection is live but unpinned — continuing would silently read under a
+                        // fresh MVCC snapshot, so propagate to end the retry loop.
+                        if (connection.isValid()) {
+                            recoveryFailure.addSuppressed(e);
+                            throw recoveryFailure;
+                        }
                         recoveryFailure.addSuppressed(e);
                         LOGGER.warn("Connection recovery before retrying snapshot of {} failed; will retry if budget remains",
                                 unitDescription, recoveryFailure);

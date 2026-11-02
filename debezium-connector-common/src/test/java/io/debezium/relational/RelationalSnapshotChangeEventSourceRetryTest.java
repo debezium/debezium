@@ -396,6 +396,65 @@ public class RelationalSnapshotChangeEventSourceRetryTest {
 
     @Test
     @FixFor("debezium/dbz#2297")
+    public void pinReapplicationFailurePropagatesInsteadOfSilentConsistencyLoss() throws Exception {
+        // Scenario: a retriable connection error drops the connection; reconnect() succeeds but the
+        // connector's pin re-application (e.g. SET TRANSACTION SNAPSHOT on PostgreSQL) fails. The retry
+        // loop must propagate the pin failure instead of continuing on an unpinned connection, which
+        // would silently read under a fresh MVCC snapshot.
+        final SQLException pinFailure = new SQLException("SET TRANSACTION SNAPSHOT failed", "0A000");
+
+        final FakeJdbcConnection deadThenAlive = new FakeJdbcConnection(JdbcConfiguration.create().build(), sqlConnection) {
+            private boolean reconnected = false;
+
+            @Override
+            public synchronized boolean isValid() {
+                return reconnected;
+            }
+
+            @Override
+            public void reconnect() {
+                super.reconnect();
+                reconnected = true;
+            }
+        };
+
+        // Wire up a source whose connectionPoolConnectionCreated always throws — simulating an
+        // expired exported snapshot that cannot be re-pinned after reconnect
+        final RelationalDatabaseConnectorConfig cfg = config(3);
+        @SuppressWarnings("unchecked")
+        final MainConnectionProvidingConnectionFactory<JdbcConnection> factory = mock(MainConnectionProvidingConnectionFactory.class);
+        when(factory.mainConnection()).thenReturn(deadThenAlive);
+        final TestSnapshotSource source = new TestSnapshotSource(cfg, factory, notificationService) {
+            @Override
+            protected void connectionPoolConnectionCreated(
+                    RelationalSnapshotContext<Partition, OffsetContext> snapshotContext, JdbcConnection connection) throws SQLException {
+                throw pinFailure;
+            }
+        };
+
+        final Object[][] rows = { { 1, "a" }, { 2, "b" }, { 3, "c" } };
+        final ResultSet rs = mockResultSet(rows, 2, retriableError());
+        when(sqlConnection.createStatement()).thenReturn(mock(Statement.class));
+        when(sqlConnection.createStatement().executeQuery(anyString())).thenReturn(rs);
+
+        final Table table = keyedTable();
+        final SnapshotChunk chunk = keyedSingleChunk(table);
+
+        final RelationalSnapshotChangeEventSource.RelationalSnapshotContext<Partition, OffsetContext> ctx = snapshotContext(chunk.getTableId());
+        final Map<TableId, TableChunkProgress> progressMap = Map.of(chunk.getTableId(), new TableChunkProgress(chunk.getTableId(), chunk.getTotalChunks()));
+        final SnapshotProgress snapshotProgress = new SnapshotProgress(chunk.getTableCount());
+        final Callable<Void> callable = source.createDataEventsForChunkedTableCallable(
+                sourceContext, ctx, snapshotReceiver, chunk, progressMap, snapshotProgress,
+                new ConcurrentLinkedQueue<>(List.of(deadThenAlive)),
+                new ConcurrentLinkedQueue<>(List.of(offset)));
+
+        assertThatThrownBy(callable::call)
+                .isInstanceOf(SQLException.class)
+                .hasMessageContaining("SET TRANSACTION SNAPSHOT failed");
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2297")
     public void retryIsDisabledByDefault() {
         final RelationalDatabaseConnectorConfig config = buildConfig(Configuration.create()
                 .with(RelationalDatabaseConnectorConfig.TOPIC_PREFIX, "test")
