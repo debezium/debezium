@@ -452,4 +452,29 @@ public class MySqlAntlrDdlParserTest
         assertThat(tables.forTable(null, null, "t2")).isNull();
         assertThat(tables.forTable("auto", null, "t3")).isNotNull();
     }
+
+    @Test
+    @FixFor("debezium/dbz#2997")
+    public void shouldKeepEndOfTrailingVersionCommentInStatement() {
+        final String createPartitioned = "CREATE TABLE `orders` (\n"
+                + "  `id` int NOT NULL,\n"
+                + "  PRIMARY KEY (`id`)\n"
+                + ") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci\n"
+                + "/*!50100 PARTITION BY RANGE (`id`)\n"
+                + "(PARTITION p0 VALUES LESS THAN (1000) ENGINE = InnoDB,\n"
+                + " PARTITION p1 VALUES LESS THAN MAXVALUE ENGINE = InnoDB) */";
+        final String createWithInnerComment = "CREATE TABLE inner_comment (id INT /*!80023 INVISIBLE */, c INT)";
+        final String createWithFutureComment = "CREATE TABLE future_comment (id INT) /*!99999 COMMENT 'future' */";
+        final String ddl = createPartitioned + ";\n"
+                + createWithInnerComment + ";\n"
+                + "/*!40101 ALTER TABLE `orders` ADD COLUMN c INT */;\n"
+                + createWithFutureComment + ";";
+        final var ddlListener = new SimpleDdlParserListener();
+        getParser(ddlListener).parse(ddl, tables);
+
+        ddlListener.assertNext().createTableNamed("orders").ddlMatches(createPartitioned);
+        ddlListener.assertNext().createTableNamed("inner_comment").ddlMatches(createWithInnerComment);
+        ddlListener.assertNext().alterTableNamed("orders").ddlMatches("ALTER TABLE `orders` ADD COLUMN c INT");
+        ddlListener.assertNext().createTableNamed("future_comment").ddlMatches("CREATE TABLE future_comment (id INT)");
+    }
 }
