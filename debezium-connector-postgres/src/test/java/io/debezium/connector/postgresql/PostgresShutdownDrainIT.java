@@ -89,12 +89,16 @@ public class PostgresShutdownDrainIT extends AbstractAsyncEngineConnectorTest {
         if (inserter != null) {
             inserter.shutdownNow();
         }
-        stopConnector();
-        // Slots and publications outlive the connector, and the database is shared with other tests.
-        slotInactiveWithin(waitFor(5));
-        try (PostgresConnection connection = TestHelper.create()) {
-            connection.dropReplicationSlot(SLOT);
-            connection.dropPublication(PUBLICATION);
+        try {
+            stopConnector();
+        }
+        finally {
+            // Slots and publications outlive the connector, and the database is shared with other tests.
+            slotInactiveWithin(waitFor(5));
+            try (PostgresConnection connection = TestHelper.create()) {
+                connection.dropReplicationSlot(SLOT);
+                connection.dropPublication(PUBLICATION);
+            }
         }
     }
 
