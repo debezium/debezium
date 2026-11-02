@@ -145,6 +145,7 @@ gkorland,Guy Korland
 glitke-dev,Gennadi Litke
 gmarav05,Aravind Gm
 gmouss,Moustapha Mahfoud
+GokulArumugam,GokulArumugam
 gongchanghua,Gong Chang Hua
 gongzhongqiang,Zhongqiang Gong
 govi20,Govinda Sakhare
