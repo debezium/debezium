@@ -681,6 +681,19 @@ public class StringsTest {
 
     @Test
     @FixFor("debezium/dbz#2953")
+    public void asNumberShouldAcceptSameFloatingPointSyntaxAsFloatValueOf() {
+        assertThat(Strings.asNumber(" 0.0")).isEqualTo(0.0f);
+        assertThat(Strings.asNumber("0.0f")).isEqualTo(0.0f);
+        assertThat(Strings.asNumber("1.5d")).isEqualTo(1.5f);
+        assertThat(Strings.asNumber("0x0p0")).isEqualTo(0.0f);
+        assertThat(Strings.asNumber(" Infinity")).isEqualTo(Float.POSITIVE_INFINITY);
+        assertThat(Strings.asNumber("+Infinity")).isEqualTo(Float.POSITIVE_INFINITY);
+        assertThat(Strings.asNumber("1e400d")).isEqualTo(new BigDecimal("1e400"));
+        assertThat(Strings.asNumber("1e-400f")).isEqualTo(new BigDecimal("1e-400"));
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2953")
     public void asNumberShouldHandleNullAndInvalidValuesWithDefault() {
         assertThat(Strings.asNumber(null)).isNull();
         assertThat(Strings.asNumber("")).isNull();
