@@ -345,7 +345,7 @@ public class XstreamStreamingChangeEventSource implements StreamingChangeEventSo
      */
     private static class StreamingStoppedException extends Exception {
 
-        public StreamingStoppedException() {
+        StreamingStoppedException() {
             super("The connector stopped while attaching to the XStream outbound server");
         }
     }
