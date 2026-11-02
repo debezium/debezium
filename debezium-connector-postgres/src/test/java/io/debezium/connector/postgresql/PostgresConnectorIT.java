@@ -3950,6 +3950,29 @@ public class PostgresConnectorIT extends AbstractAsyncEngineConnectorTest {
     }
 
     @Test
+    @FixFor("debezium/dbz#1337")
+    public void shouldNotWarnWhenSlotIsAheadOfOffsetWithDriverKeepaliveFlush() throws Exception {
+        final LogInterceptor logInterceptor = new LogInterceptor(PostgresReplicationConnection.class);
+        final LogInterceptor streamingInterceptor = new LogInterceptor(PostgresStreamingChangeEventSource.class);
+
+        startAndAdvanceSlotPastOffset();
+
+        // With driver keepalive flushing the slot is expected to move past the stored offset while idle
+        start(PostgresConnector.class, TestHelper.defaultConfig()
+                .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NO_DATA.name())
+                .with(PostgresConnectorConfig.DROP_SLOT_ON_STOP, Boolean.TRUE)
+                .with(PostgresConnectorConfig.LSN_FLUSH_MODE, PostgresConnectorConfig.LsnFlushMode.CONNECTOR_AND_DRIVER.getValue())
+                .build());
+        assertConnectorIsRunning();
+
+        Awaitility.await()
+                .atMost(TestHelper.waitTimeForRecords(), TimeUnit.SECONDS)
+                .until(() -> streamingInterceptor.containsMessage("Searching for WAL resume position")
+                        || streamingInterceptor.containsMessage("Processing messages"));
+        assertThat(logInterceptor.containsWarnMessage("which is past the stored offset LSN")).isFalse();
+    }
+
+    @Test
     @FixFor("DBZ-9688")
     @SkipWhenDatabaseVersion(check = LESS_THAN, major = 11, reason = "pg_replication_slot_advance needed to test slot advancement")
     public void shouldSyncToGreaterLsnWithTrustGreaterLsnStrategy() throws Exception {

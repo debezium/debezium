@@ -93,6 +93,7 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
     private SlotCreationResult slotCreationInfo;
     private boolean hasInitedSlot;
     private boolean hasCheckedOffsetAgainstSlot;
+    private boolean offsetSlotMismatchDetected;
 
     private final Optional<ReplicaIdentityMapper> replicaIdentityMapper;
 
@@ -772,19 +773,29 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
         if (offset == null || !offset.isValid()) {
             return;
         }
+        // With driver keepalive flushing, the slot routinely moves past the stored offset while the connector
+        // is idle without any change being skipped, so a slot ahead of the offset is not a mismatch there.
         if (slotLatestFlushedLsn != null && slotLatestFlushedLsn.isValid() && slotLatestFlushedLsn.compareTo(offset) > 0
-                && !connectorConfig.offsetSeekToSlotOnStart()) {
+                && !connectorConfig.offsetSeekToSlotOnStart()
+                && connectorConfig.getLsnFlushMode() != PostgresConnectorConfig.LsnFlushMode.CONNECTOR_AND_DRIVER) {
+            offsetSlotMismatchDetected = true;
             LOGGER.warn("The replication slot '{}' has confirmed flushed LSN '{}', which is past the stored offset LSN '{}'. "
                     + "Changes between these positions will not be streamed again, and the search for the WAL resume position may wait "
                     + "until the next transaction is written to the WAL. Review the '{}' setting if the slot should be trusted.",
                     slotName, slotLatestFlushedLsn, offset, PostgresConnectorConfig.OFFSET_SLOT_MISMATCH_STRATEGY.name());
         }
         if (serverWalEndLsn != null && serverWalEndLsn.isValid() && offset.compareTo(serverWalEndLsn) > 0) {
+            offsetSlotMismatchDetected = true;
             LOGGER.warn("The stored offset LSN '{}' is past the current WAL position '{}' of the server. "
                     + "The database or the replication slot '{}' may have been restored or recreated. "
                     + "Streaming will not resume until the server's WAL position passes the stored offset LSN. Review the '{}' setting.",
                     offset, serverWalEndLsn, slotName, PostgresConnectorConfig.OFFSET_SLOT_MISMATCH_STRATEGY.name());
         }
+    }
+
+    @Override
+    public boolean isOffsetSlotMismatchDetected() {
+        return offsetSlotMismatchDetected;
     }
 
     private boolean shouldIgnoreExistingOffsetPosition(Lsn offset) {
