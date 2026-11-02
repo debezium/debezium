@@ -8,7 +8,6 @@ package io.debezium.converters;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.junit.jupiter.api.Assertions.fail;
 
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
@@ -102,24 +101,14 @@ public class BinaryDataConverterTest {
 
     @Test
     public void shouldThrowWhenNoDelegateConverterConfigured() {
-        try {
-            converter.fromConnectData(TOPIC, Schema.OPTIONAL_STRING_SCHEMA, "Hello World");
-            fail("now expected exception thrown");
-        }
-        catch (Exception e) {
-            assertThat(e).isExactlyInstanceOf(DataException.class);
-        }
+        assertThrows(DataException.class,
+                () -> converter.fromConnectData(TOPIC, Schema.OPTIONAL_STRING_SCHEMA, "Hello World"));
     }
 
     @Test
     public void shouldThrowWhenNoSchemaOrDelegateConverterConfigured() {
-        try {
-            converter.fromConnectData(TOPIC, null, "Hello World");
-            fail("now expected exception thrown");
-        }
-        catch (Exception e) {
-            assertThat(e).isExactlyInstanceOf(DataException.class);
-        }
+        assertThrows(DataException.class,
+                () -> converter.fromConnectData(TOPIC, null, "Hello World"));
     }
 
     @Test
