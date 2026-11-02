@@ -79,6 +79,7 @@ public class OracleConnection extends JdbcConnection {
 
     private CharacterSet databaseCharacterSet;
     private Boolean extendedStringSupport;
+    private Boolean charLengthSemantics;
 
     /**
      * Pattern to identify abstract data type indices and column names.
@@ -1050,6 +1051,22 @@ public class OracleConnection extends JdbcConnection {
         }
         catch (Exception e) {
             LOGGER.warn("Failed to check MAX_STRING_SIZE status, defaulting to STANDARD.", e);
+            return false;
+        }
+    }
+
+    public boolean hasCharLengthSemantics() {
+        if (charLengthSemantics != null) {
+            return charLengthSemantics;
+        }
+        try {
+            final String value = Strings.defaultIfBlank(getDatabaseParameterValue("NLS_LENGTH_SEMANTICS"), "BYTE");
+            LOGGER.info("Oracle NLS_LENGTH_SEMANTICS is {}", value);
+            charLengthSemantics = "CHAR".equalsIgnoreCase(value);
+            return charLengthSemantics;
+        }
+        catch (Exception e) {
+            LOGGER.warn("Failed to check NLS_LENGTH_SEMANTICS, defaulting to BYTE.", e);
             return false;
         }
     }

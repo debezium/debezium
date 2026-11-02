@@ -797,6 +797,24 @@ public class OracleDdlParserTest {
 
     @Test
     @FixFor("debezium/dbz#2794")
+    void shouldUseDatabaseLengthSemanticsWithoutExplicitCharOrByte() {
+        useParserWithConverters(CharacterSet.AL32UTF8_CHARSET, CharacterSet.AL16UTF16_CHARSET, true, true);
+
+        parser.parse("CREATE TABLE " + TABLE_NAME + " ("
+                + "ID numeric(9,0) primary key, "
+                + "C1 varchar2(2000), "
+                + "C2 varchar2(2000 byte), "
+                + "C3 varchar2(2000 char))", tables);
+
+        final Table table = tables.forTable(new TableId(PDB_NAME, "DEBEZIUM", TABLE_NAME));
+        // NLS_LENGTH_SEMANTICS is CHAR, so the length without CHAR or BYTE is in characters
+        assertOctetLength(table, "C1", 8000);
+        assertOctetLength(table, "C2", 2000);
+        assertOctetLength(table, "C3", 8000);
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2794")
     void shouldLeaveOctetLengthUnsetWithoutValueConverters() {
         parser.setCurrentDatabase(PDB_NAME);
         parser.setCurrentSchema("DEBEZIUM");
@@ -809,12 +827,18 @@ public class OracleDdlParserTest {
     }
 
     private void useParserWithConverters(int databaseCharacterSet, int nationalCharacterSet, boolean extendedStrings) {
-        // The value converters read the character sets and MAX_STRING_SIZE from a connection, which requires a
-        // database, so the connection is mocked like in the other unit tests that create value converters.
+        useParserWithConverters(databaseCharacterSet, nationalCharacterSet, extendedStrings, false);
+    }
+
+    private void useParserWithConverters(int databaseCharacterSet, int nationalCharacterSet, boolean extendedStrings,
+                                         boolean charLengthSemantics) {
+        // The value converters read the character sets, MAX_STRING_SIZE and NLS_LENGTH_SEMANTICS from a connection,
+        // which requires a database, so the connection is mocked like in the other unit tests that create value converters.
         final OracleConnection connection = Mockito.mock(OracleConnection.class);
         Mockito.when(connection.getDatabaseCharacterSet()).thenReturn(CharacterSet.make(databaseCharacterSet));
         Mockito.when(connection.getNationalCharacterSet()).thenReturn(CharacterSet.make(nationalCharacterSet));
         Mockito.when(connection.hasExtendedStringSupport()).thenReturn(extendedStrings);
+        Mockito.when(connection.hasCharLengthSemantics()).thenReturn(charLengthSemantics);
 
         final OracleConnectorConfig config = new OracleConnectorConfig(TestHelper.defaultConfig().build());
         parser = new OracleDdlParser(true, config.getAdapter().getValueConverter(config, connection), config.getTableFilters().dataCollectionFilter());
