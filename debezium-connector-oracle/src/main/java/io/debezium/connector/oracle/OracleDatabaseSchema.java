@@ -74,7 +74,7 @@ public class OracleDatabaseSchema extends HistorizedRelationalDatabaseSchema {
     public OracleDatabaseSchema(OracleConnectorConfig connectorConfig, OracleValueConverters valueConverters,
                                 DefaultValueConverter defaultValueConverter, SchemaNameAdjuster schemaNameAdjuster,
                                 TopicNamingStrategy<TableId> topicNamingStrategy, TableNameCaseSensitivity tableNameCaseSensitivity,
-                                boolean extendedStringsSupported, CustomConverterRegistry customConverterRegistry,
+                                CustomConverterRegistry customConverterRegistry,
                                 CdcSourceTaskContext<? extends CommonConnectorConfig> taskContext) {
         super(connectorConfig, topicNamingStrategy, connectorConfig.getTableFilters().dataCollectionFilter(),
                 connectorConfig.getColumnFilter(),
@@ -99,7 +99,7 @@ public class OracleDatabaseSchema extends HistorizedRelationalDatabaseSchema {
                 connectorConfig.getTableFilters().dataCollectionFilter());
 
         this.objectIdToTableId = new LRUCacheMap<>(connectorConfig.getObjectIdToTableIdCacheSize());
-        this.extendedStringsSupported = extendedStringsSupported;
+        this.extendedStringsSupported = valueConverters.isExtendedStringsSupported();
 
         if (extendedStringsSupported && connectorConfig.isLobEnabled() && isMultibyteNonUnicode(valueConverters.getDatabaseCharacterSet())) {
             LOGGER.warn("The database character set {} is a multibyte character set that is not Unicode. "
