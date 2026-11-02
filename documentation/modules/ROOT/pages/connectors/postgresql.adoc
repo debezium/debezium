@@ -4580,11 +4580,12 @@ The connector then also confirms the last processed commit LSN.
 * Timeout: The timeout expires.
 The connector reports the original retriable `57P01` error.
 LSNs that the runtime already committed stay confirmed, but the last changes might stay unconfirmed, so `pg_upgrade` can reject the replication slot.
-* Failure: The replication stream closes, or a query on a regular connection fails, for example, a schema refresh, an xmin lookup (when xref:postgresql-property-xmin-fetch-interval-ms[`xmin.fetch.interval.ms`] is greater than `0`), or the query that is set in xref:postgresql-property-heartbeat-action-query[`heartbeat.action.query`].
+* Failure: The replication stream closes, or a query on a regular connection fails because the server terminated the connection.
 The connector applies its normal error handling.
-If a query fails before the connection check detects `57P01`, the drain never starts.
+Examples are a schema refresh, an xmin lookup (when xref:postgresql-property-xmin-fetch-interval-ms[`xmin.fetch.interval.ms`] is greater than `0`), an incremental snapshot, and the query that is set in xref:postgresql-property-heartbeat-action-query[`heartbeat.action.query`].
+If such a query fails before the connection check detects `57P01`, the drain never starts.
 
-The runtime commits offsets at the interval that is set by {link-kafka-docs}/#connectconfigs_offset.flush.interval.ms[`offset.flush.interval.ms`], which defaults to 60 seconds in Kafka Connect and Debezium Engine.
+The runtime commits offsets at the interval that is set by {link-kafka-docs}/#connectconfigs_offset.flush.interval.ms[`offset.flush.interval.ms`], which defaults to 60 seconds in Kafka Connect, and in Debezium Engine with its default commit policy.
 A timeout longer than the sum of that interval and `status.update.interval.ms`, plus time to process the remaining changes, is a safe margin.
 
 The connector ignores this property if xref:postgresql-property-lsn-flush-mode[`lsn.flush.mode`] is `manual`.
