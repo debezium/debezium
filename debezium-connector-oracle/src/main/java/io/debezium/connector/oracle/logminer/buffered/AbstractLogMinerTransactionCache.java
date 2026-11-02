@@ -171,8 +171,6 @@ public abstract class AbstractLogMinerTransactionCache<T extends Transaction> im
             return null;
         }
 
-        boolean pastInternal = false;
-        boolean adjacent = true;
         while (iterator.hasNext()) {
             final LogMinerEventEntry entry = iterator.next();
             final LogMinerEvent event = entry.event();
@@ -181,21 +179,6 @@ public abstract class AbstractLogMinerTransactionCache<T extends Transaction> im
                 break;
             }
 
-            if (event.getEventType() == EventType.INTERNAL && event.getRowId().equals(rollbackEvent.getRowId())) {
-                if (adjacent && event.getTableId() != null && rolledBackEntry != null && rolledBackEntry.event().getTableId() == null) {
-                    // A DBMS_LOB block ends in a marker row that carries the table, directly followed by the
-                    // row-piece update that does not; the undo covers both, and with lob.enabled=false the two
-                    // are all the block leaves in the cache
-                    adjacent = false;
-                    rolledBackEntry = entry;
-                    pastInternal = true;
-                    continue;
-                }
-                // The final row of the statement before the undone one
-                break;
-            }
-
-            adjacent = false;
             if (lobStmt) {
                 if (event.getEventType() == EventType.SELECT_LOB_LOCATOR) {
                     if (event.getRowId().equals(rollbackEvent.getRowId())) {
@@ -207,11 +190,17 @@ public abstract class AbstractLogMinerTransactionCache<T extends Transaction> im
                         continue;
                     }
                 }
+                else if (event.getEventType() == EventType.INTERNAL) {
+                    if (event.getRowId().equals(rollbackEvent.getRowId()) && event.getTableId() != null
+                            && rolledBackEntry != null && rolledBackEntry.event().getTableId() == null) {
+                        // A DBMS_LOB block ends in a marker row that carries the table, directly followed by the
+                        // row-piece update that does not; the undo covers both, and with lob.enabled=false the two
+                        // are all the block leaves in the cache
+                        rolledBackEntry = entry;
+                        continue;
+                    }
+                }
                 lobStmt = false;
-            }
-            if (pastInternal) {
-                // No LOB row follows the marker row when the LOB rows are not mined
-                break;
             }
 
             if (!RowIdCodec.EMPTY_ROW_ID.equals(event.getRowId())) {
