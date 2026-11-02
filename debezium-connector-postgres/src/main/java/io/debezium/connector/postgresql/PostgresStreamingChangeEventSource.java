@@ -448,13 +448,16 @@ public class PostgresStreamingChangeEventSource implements StreamingChangeEventS
 
             if (resumeLsn.get() == null && progressTracker.shouldWarn()) {
                 final Lsn lastReceivedLsn = progressTracker.lastReceivedLsn();
+                final String cause = replicationConnection.isOffsetSlotMismatchDetected()
+                        ? "A mismatch between the stored offset and the replication slot was reported at startup, so the search cannot end "
+                                + "before new changes are written to the WAL; review the '" + PostgresConnectorConfig.OFFSET_SLOT_MISMATCH_STRATEGY.name()
+                                + "' setting."
+                        : "No new WAL activity has been received from the server; the search ends once new changes are written to the WAL.";
                 LOGGER.warn("The search for the WAL resume position has been running for {} ms and has not received a new LSN from the server for {} ms "
-                        + "(last received LSN '{}', {}). The replication slot may have confirmed a position past the stored offset, or the stored offset "
-                        + "may be past the server's current WAL position; in both cases the search only ends once new changes are written to the WAL. "
-                        + "Consider generating WAL traffic (for example with '{}') or setting '{}'.",
+                        + "(last received LSN '{}', {}). {} Consider generating WAL traffic on a quiet database, for example with '{}'.",
                         progressTracker.elapsed().toMillis(), progressTracker.timeWithoutProgress().toMillis(),
-                        lastReceivedLsn == null ? "none" : lastReceivedLsn, walPosition,
-                        DatabaseHeartbeatImpl.HEARTBEAT_ACTION_QUERY_PROPERTY_NAME, PostgresConnectorConfig.OFFSET_SLOT_MISMATCH_STRATEGY.name());
+                        lastReceivedLsn == null ? "none" : lastReceivedLsn, walPosition, cause,
+                        DatabaseHeartbeatImpl.HEARTBEAT_ACTION_QUERY_PROPERTY_NAME);
             }
 
             if (receivedMessage) {

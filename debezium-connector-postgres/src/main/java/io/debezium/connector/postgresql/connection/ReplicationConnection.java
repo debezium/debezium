@@ -94,6 +94,16 @@ public interface ReplicationConnection extends AutoCloseable {
     void reconnect() throws SQLException;
 
     /**
+     * Returns whether the check performed when streaming was first started found that the stored offset
+     * does not match the replication slot or the server's WAL position.
+     *
+     * @return {@code true} if a mismatch was detected and the stored offset is still used, {@code false} otherwise
+     */
+    default boolean isOffsetSlotMismatchDetected() {
+        return false;
+    }
+
+    /**
      * A builder for {@link ReplicationConnection}
      */
     interface Builder {
