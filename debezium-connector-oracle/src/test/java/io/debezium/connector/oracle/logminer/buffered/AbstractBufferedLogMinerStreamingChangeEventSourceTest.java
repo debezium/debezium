@@ -384,6 +384,8 @@ public abstract class AbstractBufferedLogMinerStreamingChangeEventSourceTest ext
             Mockito.when(rs.getString(2)).thenReturn("insert into \"DEBEZIUM\".\"ABC\"(\"ID\",\"DATA\") values ('1','test');");
             Mockito.when(rs.getInt(3)).thenReturn(EventType.INSERT.getValue());
             Mockito.when(rs.getTimestamp(eq(4), any(Calendar.class))).thenReturn(Timestamp.valueOf(LocalDateTime.now()));
+            // Every mined row carries an XID, and the Ehcache processed-transactions cache rejects a null key
+            Mockito.when(rs.getBytes(5)).thenReturn(new byte[]{ 1, 2, 3, 4, 5, 6, 7, 8 });
             Mockito.when(rs.getString(7)).thenReturn("ABC");
             Mockito.when(rs.getString(8)).thenReturn("DEBEZIUM");
             Mockito.when(rs.getString(10)).thenReturn("AAAAAAAAAAAAAAAAAB");
