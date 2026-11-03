@@ -9,6 +9,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.nio.charset.StandardCharsets;
+import java.sql.SQLException;
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
@@ -408,7 +409,7 @@ public abstract class AbstractJdbcSinkSchemaEvolutionTest extends AbstractJdbcSi
         getSink().assertColumnType(tableAssert, "col_string_optional", ValueType.TEXT, text);
         getSink().assertColumnType(tableAssert, "col_bytes", ValueType.BYTES, text.getBytes(StandardCharsets.UTF_8));
         getSink().assertColumnType(tableAssert, "col_bytes_optional", ValueType.BYTES, text.getBytes(StandardCharsets.UTF_8));
-        if (getSink().getType().is(SinkType.ORACLE)) {
+        if (isBooleanStoredAsNumber()) {
             getSink().assertColumnType(tableAssert, "col_bool", ValueType.NUMBER, 1);
             getSink().assertColumnType(tableAssert, "col_bool_optional", ValueType.NUMBER, 1);
         }
@@ -473,7 +474,7 @@ public abstract class AbstractJdbcSinkSchemaEvolutionTest extends AbstractJdbcSi
         getSink().assertColumnHasNullValue(tableAssert, "col_string_optional");
         getSink().assertColumnType(tableAssert, "col_bytes", ValueType.BYTES, text.getBytes(StandardCharsets.UTF_8));
         getSink().assertColumnHasNullValue(tableAssert, "col_bytes_optional");
-        if (getSink().getType().is(SinkType.ORACLE)) {
+        if (isBooleanStoredAsNumber()) {
             getSink().assertColumnType(tableAssert, "col_bool", ValueType.NUMBER, 1);
             getSink().assertColumnHasNullValue(tableAssert, "col_bool_optional");
         }
@@ -560,7 +561,7 @@ public abstract class AbstractJdbcSinkSchemaEvolutionTest extends AbstractJdbcSi
         getSink().assertColumnType(tableAssert, "col_string_optional", ValueType.TEXT, text);
         getSink().assertColumnType(tableAssert, "col_bytes", ValueType.BYTES, "test".getBytes(StandardCharsets.UTF_8));
         getSink().assertColumnType(tableAssert, "col_bytes_optional", ValueType.BYTES, text.getBytes(StandardCharsets.UTF_8));
-        if (getSink().getType().is(SinkType.ORACLE)) {
+        if (isBooleanStoredAsNumber()) {
             getSink().assertColumnType(tableAssert, "col_bool", ValueType.NUMBER, 1);
             getSink().assertColumnType(tableAssert, "col_bool_optional", ValueType.NUMBER, 1);
         }
@@ -701,6 +702,18 @@ public abstract class AbstractJdbcSinkSchemaEvolutionTest extends AbstractJdbcSi
         final JdbcSinkConnectorConfig config = new JdbcSinkConnectorConfig(properties);
         final String tableName = config.getCollectionNameFormat().replace("${topic}", topicName.replace(".", "_"));
         return getSink().formatTableName(tableName);
+    }
+
+    private boolean isBooleanStoredAsNumber() {
+        if (!getSink().getType().is(SinkType.ORACLE)) {
+            return false;
+        }
+        try {
+            return !getSink().getVersion().isSameOrAfter(23);
+        }
+        catch (SQLException e) {
+            throw new IllegalStateException("Failed to resolve the sink database version", e);
+        }
     }
 
 }

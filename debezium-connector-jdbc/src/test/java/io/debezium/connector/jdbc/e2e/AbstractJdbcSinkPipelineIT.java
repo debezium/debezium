@@ -107,6 +107,7 @@ public abstract class AbstractJdbcSinkPipelineIT extends AbstractJdbcSinkIT {
     @TestTemplate
     @SkipWhenSource(value = { SourceType.ORACLE }, reason = "No BIT data type support")
     public void testBitDataType(Source source, Sink sink) throws Exception {
+        final String booleanType = getBooleanType(sink);
         assertDataType(source,
                 sink,
                 "bit",
@@ -116,8 +117,15 @@ public abstract class AbstractJdbcSinkPipelineIT extends AbstractJdbcSinkIT {
                     final SourceConnectorOptions options = source.getOptions();
                     switch (sink.getType()) {
                         case ORACLE:
-                            assertColumn(sink, record, "id", getBooleanType(), 1);
-                            assertColumn(sink, record, "data", getBooleanType(), 1);
+                            if (booleanType.equals(getBooleanType())) {
+                                assertColumn(sink, record, "id", booleanType, 1);
+                                assertColumn(sink, record, "data", booleanType, 1);
+                            }
+                            else {
+                                // Native BOOLEAN column, no precision to verify
+                                assertColumn(sink, record, "id", booleanType);
+                                assertColumn(sink, record, "data", booleanType);
+                            }
                             break;
                         case POSTGRES:
                         case COCKROACHDB:
@@ -251,6 +259,7 @@ public abstract class AbstractJdbcSinkPipelineIT extends AbstractJdbcSinkIT {
     @TestTemplate
     @SkipWhenSource(value = { SourceType.ORACLE, SourceType.SQLSERVER }, reason = "No BOOLEAN data type support")
     public void testBooleanDataType(Source source, Sink sink) throws Exception {
+        final String booleanType = getBooleanType(sink);
         assertDataType(source,
                 sink,
                 "boolean",
@@ -269,8 +278,8 @@ public abstract class AbstractJdbcSinkPipelineIT extends AbstractJdbcSinkIT {
                         }
                     }
                     else {
-                        assertColumn(sink, record, "id", getBooleanType());
-                        assertColumn(sink, record, "data", getBooleanType());
+                        assertColumn(sink, record, "id", booleanType);
+                        assertColumn(sink, record, "data", booleanType);
                     }
                 },
                 (rs, index) -> {
@@ -3313,7 +3322,7 @@ public abstract class AbstractJdbcSinkPipelineIT extends AbstractJdbcSinkIT {
                 });
     }
 
-    private static List<ZonedDateTime> getExpectedZonedDateTimes(Sink sink) {
+    private static List<ZonedDateTime> getExpectedZonedDateTimes(Sink sink) throws SQLException {
 
         List<ZonedDateTime> expectedValues = List.of();
         if (sink.getType().is(SinkType.SQLSERVER) && sink.getType().is(SinkType.DB2) && sink.getType().is(SinkType.DB2I)) {
@@ -3325,6 +3334,12 @@ public abstract class AbstractJdbcSinkPipelineIT extends AbstractJdbcSinkIT {
 
             expectedValues = List.of(ZonedDateTime.of(1970, 1, 1, 0, 0, 1, 0, ZoneOffset.UTC),
                     ZonedDateTime.of(2038, 1, 19, 3, 14, 7, 0, ZoneOffset.UTC));
+        }
+        else if (sink.getType().is(SinkType.ORACLE) && sink.getVersion().isSameOrAfter(23)) {
+
+            // Oracle 23ai reads the negative infinity bound back one year earlier than older versions.
+            expectedValues = List.of(ZonedDateTime.of(-4713, 11, 24, 0, 0, 0, 0, ZoneOffset.UTC),
+                    ZonedDateTime.of(9999, 12, 31, 23, 59, 59, 0, ZoneOffset.UTC));
         }
         else if (sink.getType().is(SinkType.ORACLE)) {
 
@@ -3344,6 +3359,10 @@ public abstract class AbstractJdbcSinkPipelineIT extends AbstractJdbcSinkIT {
     }
 
     protected abstract String getBooleanType();
+
+    protected String getBooleanType(Sink sink) throws SQLException {
+        return getBooleanType();
+    }
 
     protected abstract String getBitsDataType();
 

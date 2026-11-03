@@ -6,8 +6,6 @@
 package io.debezium.connector.jdbc.junit.jupiter;
 
 import org.testcontainers.containers.Network;
-import org.testcontainers.containers.OracleContainer;
-import org.testcontainers.utility.DockerImageName;
 
 import io.debezium.connector.jdbc.junit.TestHelper;
 
@@ -18,16 +16,10 @@ import io.debezium.connector.jdbc.junit.TestHelper;
  */
 public class OracleSinkDatabaseContextProvider extends AbstractSinkDatabaseContextProvider {
 
-    private static final DockerImageName IMAGE_NAME = DockerImageName.parse("quay.io/rh_integration/dbz-oracle:19.3.0")
-            .asCompatibleSubstituteFor("gvenzl/oracle-xe");
-
     @SuppressWarnings("resource")
     public OracleSinkDatabaseContextProvider() {
-        super(SinkType.ORACLE, new OracleContainer(IMAGE_NAME)
+        super(SinkType.ORACLE, new JdbcOracleContainer(false)
                 .withNetwork(Network.SHARED)
-                .withUsername("debezium")
-                .withPassword("dbz")
-                .withDatabaseName("ORCLPDB1")
                 .withEnv("TZ", TestHelper.getSinkTimeZone()));
     }
 
