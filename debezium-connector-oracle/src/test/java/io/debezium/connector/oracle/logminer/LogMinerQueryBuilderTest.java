@@ -197,16 +197,15 @@ public class LogMinerQueryBuilderTest {
 
     @Test
     @FixFor("debezium/dbz#2991")
-    public void testInModeIncludeListFiltersCaseSensitivelyOnTableNameOnly() {
+    public void testInModeIncludeListFiltersOnUpperCasedTableNameOnly() {
         final OracleConnectorConfig config = getBuilderForMode(LogMiningQueryFilterMode.IN)
                 .with(SCHEMA_INCLUDE_LIST, "A,b")
-                .with(TABLE_INCLUDE_LIST, "A\\.T1,b\\.T1,A\\.t2")
+                .with(TABLE_INCLUDE_LIST, "A\\.T1,b\\.T1,A\\.t2,A\\.t1")
                 .build();
 
         assertThat(new BufferedLogMinerQueryBuilder(config).getQuery())
-                .contains("SEG_OWNER IN ('UNKNOWN','A','b')")
-                .contains("TABLE_NAME IN ('T1','t2')")
-                .doesNotContain("UPPER(")
+                .contains("(SEG_OWNER IS NULL OR EXISTS (SELECT 1 FROM DUAL WHERE UPPER(SEG_OWNER) IN ('UNKNOWN','A','B')))")
+                .contains("EXISTS (SELECT 1 FROM DUAL WHERE UPPER(TABLE_NAME) IN ('T1','T2')))")
                 .doesNotContain("SEG_OWNER ||");
         assertQuery(config);
     }
@@ -216,25 +215,24 @@ public class LogMinerQueryBuilderTest {
     public void testInModeQuotedTableNameKeepsItsDot() {
         final OracleConnectorConfig config = getBuilderForMode(LogMiningQueryFilterMode.IN).with(TABLE_INCLUDE_LIST, "A.\"B.C\"").build();
 
-        assertThat(new BufferedLogMinerQueryBuilder(config).getQuery()).contains("TABLE_NAME IN ('B.C')");
+        assertThat(new BufferedLogMinerQueryBuilder(config).getQuery()).contains("UPPER(TABLE_NAME) IN ('B.C')");
         assertQuery(config);
     }
 
     @Test
     @FixFor("debezium/dbz#2991")
-    public void testInModeExcludeListFiltersCaseSensitivelyOnTableNameOnly() {
+    public void testInModeExcludeListFiltersOnUpperCasedTableNameOnly() {
         final OracleConnectorConfig config = getBuilderForMode(LogMiningQueryFilterMode.IN).with(TABLE_EXCLUDE_LIST, "A\\.T1,b\\.T1,A\\.t2").build();
 
         assertThat(new BufferedLogMinerQueryBuilder(config).getQuery())
-                .contains("TABLE_NAME NOT IN ('T1','t2')")
-                .doesNotContain("UPPER(")
+                .contains("EXISTS (SELECT 1 FROM DUAL WHERE UPPER(TABLE_NAME) NOT IN ('T1','T2')))")
                 .doesNotContain("SEG_OWNER ||");
         assertQuery(config);
     }
 
     @Test
     @FixFor("debezium/dbz#2991")
-    public void testInModeSignalTableFiltersCaseSensitivelyOnTableNameOnly() {
+    public void testInModeSignalTableFiltersOnTableNameOnly() {
         final OracleConnectorConfig config = getBuilderForMode(LogMiningQueryFilterMode.IN)
                 .with(TABLE_INCLUDE_LIST, "A\\.T1")
                 .with(SIGNAL_DATA_COLLECTION, TestHelper.getDatabaseName() + ".DEBEZIUM1.SIGNAL_TABLE")
@@ -242,7 +240,7 @@ public class LogMinerQueryBuilderTest {
 
         assertThat(new BufferedLogMinerQueryBuilder(config).getQuery())
                 .contains("TABLE_NAME = 'SIGNAL_TABLE' OR ")
-                .doesNotContain("UPPER(");
+                .doesNotContain("SEG_OWNER ||");
         assertQuery(config);
     }
 
@@ -259,7 +257,8 @@ public class LogMinerQueryBuilderTest {
         assertThat(new BufferedLogMinerQueryBuilder(config).getQuery())
                 .contains("UPPER(SEG_OWNER) IN ('UNKNOWN','A')")
                 .contains("UPPER(SEG_OWNER || '.' || TABLE_NAME) IN ('A.T1')")
-                .contains("UPPER(SEG_OWNER || '.' || TABLE_NAME) = 'DEBEZIUM1.SIGNAL_TABLE' OR ");
+                .contains("UPPER(SEG_OWNER || '.' || TABLE_NAME) = 'DEBEZIUM1.SIGNAL_TABLE' OR ")
+                .doesNotContain("EXISTS (SELECT 1 FROM DUAL");
         assertQuery(config);
     }
 
@@ -493,13 +492,13 @@ public class LogMinerQueryBuilderTest {
             final boolean concatenate = config.isLogMiningQueryFilterSchemaTableConcatenate();
             final String inClause;
             if (!Strings.isNullOrEmpty(includeList)) {
-                inClause = getIn(fieldName, getSchemaIncludes(includeList, false), false, concatenate);
+                inClause = getIn(fieldName, getSchemaIncludes(includeList, false), false, true);
             }
             else {
                 // Exclusions are defined (either built-in or both built-in and provided
-                inClause = getIn(fieldName, getSchemaExcludes(excludeList, false), true, concatenate);
+                inClause = getIn(fieldName, getSchemaExcludes(excludeList, false), true, true);
             }
-            return " AND (" + fieldName + " IS NULL OR " + inClause + ")";
+            return " AND (" + fieldName + " IS NULL OR " + (concatenate ? inClause : "EXISTS (SELECT 1 FROM DUAL WHERE " + inClause + ")") + ")";
         }
         else {
             // Regular Expressions
@@ -537,8 +536,9 @@ public class LogMinerQueryBuilderTest {
                 inClause = getIn(fieldName, tables, negated, true);
             }
             else {
-                inClause = getIn("TABLE_NAME", tables.stream().map(t -> TableId.parse(t, false).table()).collect(Collectors.toCollection(LinkedHashSet::new)), negated,
-                        false);
+                inClause = "EXISTS (SELECT 1 FROM DUAL WHERE " + getIn("TABLE_NAME",
+                        tables.stream().map(t -> TableId.parse(t, false).table().toUpperCase()).collect(Collectors.toCollection(LinkedHashSet::new)), negated, true)
+                        + ")";
             }
             final String signalDataClause = getSignalDataCollectionTableClause(config);
 
