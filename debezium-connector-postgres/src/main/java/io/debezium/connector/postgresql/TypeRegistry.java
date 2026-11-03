@@ -254,6 +254,7 @@ public class TypeRegistry {
             if (r == null) {
                 LOGGER.warn("Unknown OID {} requested", oid);
                 r = PostgresType.UNKNOWN;
+                oidToType.put(oid, r);
             }
         }
         return r;
