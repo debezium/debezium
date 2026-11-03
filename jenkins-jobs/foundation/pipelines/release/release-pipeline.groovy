@@ -243,13 +243,15 @@ def checkPreReleaseContent(String dbzContent, String copyrightContent, String re
 
 @Field final BUILD_ARGS = [
    'debezium': '-Poracle-all',
-   'server': '-Pnative -Dquarkus.native.builder-image=quay.io/quarkus/ubi9-quarkus-mandrel-builder-image:jdk-25 -Dversion.debezium=$RELEASE_VERSION',
+   'server': "-Pnative -Dquarkus.native.builder-image=quay.io/quarkus/ubi9-quarkus-mandrel-builder-image:jdk-25 -Dversion.debezium=${params.RELEASE_VERSION}",
  ]
 
 // Build args used in the post-perform step (building the new development version).
 // If present, the value is used instead of BUILD_ARGS for that repo.
 // An empty string means no extra args.
-@Field final POST_PERFORM_BUILD_ARGS = [:]
+@Field final POST_PERFORM_BUILD_ARGS = [
+   'server': "-Dversion.debezium=${params.DEVELOPMENT_VERSION}",
+]
 
 // Debezium Server must always ignore snapshots as it depends on Debezium Server BOM
 // and it is not possible to override it with a stable version
@@ -277,6 +279,7 @@ def buildArgsForRepo(repoDir) {
 // publish under a different Maven group ID.
 @Field final TEST_GROUP_IDS = [
     'jbang-catalog': 'io.debezium.jbang',
+    'quarkus': 'io.debezium.quarkus',
 ]
 
 def artifactExists(repoDir) {
@@ -354,8 +357,11 @@ def serverPrePrepareSteps() {
     fileUtils.modifyFile('debezium-server-bom/pom.xml') {
         it.replaceFirst('<version>.+</version>\n    </parent>', "<version>$RELEASE_VERSION</version>\n    </parent>")
     }
-    fileUtils.modifyFile('debezium-quarkus-bridge/pom.xml') {
-        it.replaceFirst('<version>.+</version>\n    </parent>', "<version>$RELEASE_VERSION</version>\n    </parent>")
+    def bridgePom = 'debezium-quarkus-bridge/pom.xml'
+    if (fileExists(bridgePom)) {
+        fileUtils.modifyFile(bridgePom) {
+            it.replaceFirst('<version>.+</version>\n    </parent>', "<version>$RELEASE_VERSION</version>\n    </parent>")
+        }
     }
     defaultPrePrepareSteps()
 }
@@ -402,8 +408,11 @@ def serverPostPerformSteps() {
     fileUtils.modifyFile('debezium-server-bom/pom.xml') {
         it.replaceFirst('<version>.+</version>\n    </parent>', "<version>$DEVELOPMENT_VERSION</version>\n    </parent>")
     }
-    fileUtils.modifyFile('debezium-quarkus-bridge/pom.xml') {
-        it.replaceFirst('<version>.+</version>\n    </parent>', "<version>$DEVELOPMENT_VERSION</version>\n    </parent>")
+    def bridgePom = 'debezium-quarkus-bridge/pom.xml'
+    if (fileExists(bridgePom)) {
+        fileUtils.modifyFile(bridgePom) {
+	    it.replaceFirst('<version>.+</version>\n    </parent>', "<version>$DEVELOPMENT_VERSION</version>\n    </parent>")
+	}
     }
     defaultPostPerformSteps()
 }
