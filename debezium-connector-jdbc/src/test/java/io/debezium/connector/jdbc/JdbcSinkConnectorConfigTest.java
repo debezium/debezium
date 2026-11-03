@@ -234,10 +234,18 @@ public class JdbcSinkConnectorConfigTest {
         assertThat(ormProperties.get(AvailableSettings.JAKARTA_JDBC_PASSWORD)).isNull(); // Password should be null
     }
 
+    private static Map<String, String> connectionProperties() {
+        final Map<String, String> properties = new HashMap<>();
+        properties.put(JdbcSinkConnectorConfig.CONNECTION_URL, "jdbc://url");
+        properties.put(JdbcSinkConnectorConfig.CONNECTION_USER, "user");
+        properties.put(JdbcSinkConnectorConfig.CONNECTION_PASSWORD, "pass");
+        return properties;
+    }
+
     @Test
     @FixFor("debezium/dbz#2950")
     public void testDefaultConnectionPoolTimeoutIsInSeconds() {
-        final JdbcSinkConnectorConfig config = getConfig(connectionProperties());
+        final JdbcSinkConnectorConfig config = new JdbcSinkConnectorConfig(connectionProperties());
 
         final String timeout = config.getHibernateConfiguration().getProperty(AvailableSettings.AGROAL_IDLE_TIMEOUT);
 
@@ -250,7 +258,7 @@ public class JdbcSinkConnectorConfigTest {
         final Map<String, String> properties = connectionProperties();
         properties.put(JdbcSinkConnectorConfig.CONNECTION_POOL_TIMEOUT, "60");
 
-        final JdbcSinkConnectorConfig config = getConfig(properties);
+        final JdbcSinkConnectorConfig config = new JdbcSinkConnectorConfig(properties);
 
         final String timeout = config.getHibernateConfiguration().getProperty(AvailableSettings.AGROAL_IDLE_TIMEOUT);
 
