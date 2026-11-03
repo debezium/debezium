@@ -1138,7 +1138,7 @@ public class CappedLogFileSessionSelectorTest {
         // which is left out of the session. Thread 2's capped window holds SCN 300 mid-log, so it can
         // return changes at 300. Reading up to 300 would move the read position onto 300 and the
         // next window, reading above it, would skip thread 1's changes at 300 in t1_arc2.
-        CappedLogFileSessionSelector racSelector = new CappedLogFileSessionSelector(1, 16, Scn.NULL);
+        CappedLogFileSessionSelector racSelector = new CappedLogFileSessionSelector(1, 16, ONE_GB, Scn.NULL);
 
         List<LogFile> logs = List.of(
                 createArchiveLog("t1_arc1.log", 100, 300, 1, 1, ONE_GB),
