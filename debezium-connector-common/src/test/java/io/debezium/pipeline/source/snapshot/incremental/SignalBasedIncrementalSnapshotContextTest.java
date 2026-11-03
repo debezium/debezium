@@ -116,4 +116,45 @@ public class SignalBasedIncrementalSnapshotContextTest {
                 .extracting(dataCollection -> dataCollection.getId().identifier())
                 .containsExactly("public.a");
     }
+
+    @Test
+    public void shouldStorePausedStateWhenSnapshotPaused() {
+        final SignalBasedIncrementalSnapshotContext<TableId> context = new SignalBasedIncrementalSnapshotContext<>();
+        context.addDataCollectionNamesToSnapshot("signal-1", List.of("public.a"), List.of(), "");
+        context.pauseSnapshot();
+
+        final Map<String, Object> offsets = context.store(new HashMap<>());
+
+        assertThat(offsets).containsEntry(AbstractIncrementalSnapshotContext.INCREMENTAL_SNAPSHOT_PAUSED, true);
+        final IncrementalSnapshotContext<TableId> restored = SignalBasedIncrementalSnapshotContext.load(offsets);
+        assertThat(restored.isSnapshotPaused()).isTrue();
+    }
+
+    @Test
+    public void shouldRemovePausedStateWhenSnapshotResumed() {
+        final SignalBasedIncrementalSnapshotContext<TableId> context = new SignalBasedIncrementalSnapshotContext<>();
+        context.addDataCollectionNamesToSnapshot("signal-1", List.of("public.a"), List.of(), "");
+        context.pauseSnapshot();
+        final Map<String, Object> pausedOffsets = context.store(new HashMap<>());
+        assertThat(pausedOffsets).containsEntry(AbstractIncrementalSnapshotContext.INCREMENTAL_SNAPSHOT_PAUSED, true);
+
+        context.resumeSnapshot();
+        final Map<String, Object> resumedOffsets = context.store(pausedOffsets);
+
+        assertThat(resumedOffsets).doesNotContainKey(AbstractIncrementalSnapshotContext.INCREMENTAL_SNAPSHOT_PAUSED);
+        final IncrementalSnapshotContext<TableId> restored = SignalBasedIncrementalSnapshotContext.load(resumedOffsets);
+        assertThat(restored.isSnapshotPaused()).isFalse();
+    }
+
+    @Test
+    public void shouldNotStorePausedFlagWhenSnapshotNotPaused() {
+        final SignalBasedIncrementalSnapshotContext<TableId> context = new SignalBasedIncrementalSnapshotContext<>();
+        context.addDataCollectionNamesToSnapshot("signal-1", List.of("public.a"), List.of(), "");
+
+        final Map<String, Object> offsets = context.store(new HashMap<>());
+
+        assertThat(offsets).doesNotContainKey(AbstractIncrementalSnapshotContext.INCREMENTAL_SNAPSHOT_PAUSED);
+        final IncrementalSnapshotContext<TableId> restored = SignalBasedIncrementalSnapshotContext.load(offsets);
+        assertThat(restored.isSnapshotPaused()).isFalse();
+    }
 }
