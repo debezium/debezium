@@ -838,6 +838,111 @@ public abstract class AbstractBufferedLogMinerStreamingChangeEventSourceTest ext
     }
 
     @Test
+    @FixFor("debezium/dbz#2666")
+    public void testInternalEventIsNotTrackedWhenInternalEventsAreExcluded() throws Exception {
+        try (var source = getChangeEventSource(getConfig().build())) {
+            source.processEvent(getStartLogMinerEventRow(1, TRANSACTION_ID_1));
+            source.processEvent(getUpdateLogMinerEventRow(2, TRANSACTION_ID_1, Instant.now(), "TEST_TABLE", "AAAAAAAAAAAAAAAAAB", "'update'"));
+
+            // Nothing is tracked while INTERNAL events are excluded, so a stray INTERNAL row is dropped
+            assertThat(source.getLastEnqueuedEventByTransactionId()).isEmpty();
+
+            source.processEvent(getInternalLogMinerEventRow(3, TRANSACTION_ID_1, "AAAAAAAAAAAAAAAAAB", "TEST_TABLE"));
+
+            assertTransactionEvents(source.getTransactionCache(), 1);
+            assertThat(source.getLastEnqueuedEventByTransactionId()).isEmpty();
+        }
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2666")
+    public void testInternalEventAfterUpdateOfSameRowIsEnqueuedWithLobDisabled() throws Exception {
+        final Configuration config = getConfig().with(OracleConnectorConfig.LOG_MINING_INCLUDE_INTERNAL_EVENTS, "true").build();
+        try (var source = getChangeEventSource(config)) {
+            source.processEvent(getStartLogMinerEventRow(1, TRANSACTION_ID_1));
+            source.processEvent(getInsertLogMinerEventRow(2, TRANSACTION_ID_1, Instant.now(), "TEST_TABLE", "AAAAAAAAAAAAAAAAAB", "'insert'"));
+            source.processEvent(getUpdateLogMinerEventRow(3, TRANSACTION_ID_1, Instant.now(), "TEST_TABLE", "AAAAAAAAAAAAAAAAAB", "'update'"));
+
+            // The DBMS_LOB marker row carries the table and follows the UPDATE of the same row
+            source.processEvent(getInternalLogMinerEventRow(4, TRANSACTION_ID_1, "AAAAAAAAAAAAAAAAAB", "TEST_TABLE"));
+
+            assertTransactionEvents(source.getTransactionCache(), 3);
+            assertThat(source.getLastEnqueuedEventByTransactionId().get(TRANSACTION_ID_1).getEventType()).isEqualTo(EventType.INTERNAL);
+
+            // The row-piece update carries no table and follows the marker row
+            source.processEvent(getInternalLogMinerEventRow(5, TRANSACTION_ID_1, "AAAAAAAAAAAAAAAAAB", null));
+
+            assertTransactionEvents(source.getTransactionCache(), 4);
+            assertThat(source.getLastEnqueuedEventByTransactionId().get(TRANSACTION_ID_1).getEventType()).isEqualTo(EventType.INTERNAL);
+        }
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2666")
+    public void testInternalEventAfterInsertOfSameRowIsDroppedWithLobDisabled() throws Exception {
+        final Configuration config = getConfig().with(OracleConnectorConfig.LOG_MINING_INCLUDE_INTERNAL_EVENTS, "true").build();
+        try (var source = getChangeEventSource(config)) {
+            source.processEvent(getStartLogMinerEventRow(1, TRANSACTION_ID_1));
+            source.processEvent(getInsertLogMinerEventRow(2, TRANSACTION_ID_1, Instant.now(), "TEST_TABLE", "AAAAAAAAAAAAAAAAAB", "'insert'"));
+            source.processEvent(getInternalLogMinerEventRow(3, TRANSACTION_ID_1, "AAAAAAAAAAAAAAAAAB", "TEST_TABLE"));
+
+            assertTransactionEvents(source.getTransactionCache(), 1);
+            assertThat(source.getLastEnqueuedEventByTransactionId()).isEmpty();
+        }
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2666")
+    public void testInternalEventOfDifferentRowIsDroppedWithLobDisabled() throws Exception {
+        final Configuration config = getConfig().with(OracleConnectorConfig.LOG_MINING_INCLUDE_INTERNAL_EVENTS, "true").build();
+        try (var source = getChangeEventSource(config)) {
+            source.processEvent(getStartLogMinerEventRow(1, TRANSACTION_ID_1));
+            source.processEvent(getInsertLogMinerEventRow(2, TRANSACTION_ID_1, Instant.now(), "TEST_TABLE", "AAAAAAAAAAAAAAAAAB", "'insert'"));
+            source.processEvent(getUpdateLogMinerEventRow(3, TRANSACTION_ID_1, Instant.now(), "TEST_TABLE", "AAAAAAAAAAAAAAAAAB", "'update'"));
+            source.processEvent(getInternalLogMinerEventRow(4, TRANSACTION_ID_1, "AAAAAAAAAAAAAAAAAC", "TEST_TABLE"));
+
+            assertTransactionEvents(source.getTransactionCache(), 2);
+            assertThat(source.getLastEnqueuedEventByTransactionId()).isEmpty();
+        }
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2666")
+    public void testInternalEventAfterEmptyRowIdIsEnqueuedWithLobDisabled() throws Exception {
+        final Configuration config = getConfig().with(OracleConnectorConfig.LOG_MINING_INCLUDE_INTERNAL_EVENTS, "true").build();
+        try (var source = getChangeEventSource(config)) {
+            source.processEvent(getStartLogMinerEventRow(1, TRANSACTION_ID_1));
+            // An UPDATE that sets an out-of-line LOB has an empty ROW_ID, and the final INTERNAL row of the
+            // statement carries the real one
+            source.processEvent(getUpdateLogMinerEventRow(2, TRANSACTION_ID_1, Instant.now(), "TEST_TABLE", "AAAAAAAAAAAAAAAAAA", "'update'"));
+            source.processEvent(getInternalLogMinerEventRow(3, TRANSACTION_ID_1, "AAAAAAAAAAAAAAAAAB", null));
+
+            assertTransactionEvents(source.getTransactionCache(), 2);
+            assertThat(source.getLastEnqueuedEventByTransactionId().get(TRANSACTION_ID_1).getEventType()).isEqualTo(EventType.INTERNAL);
+        }
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2666")
+    public void testInternalEventAfterUpdateOfSameRowIsDroppedWithLobEnabled() throws Exception {
+        final Configuration config = getConfig()
+                .with(OracleConnectorConfig.LOB_ENABLED, "true")
+                .with(OracleConnectorConfig.LOG_MINING_INCLUDE_INTERNAL_EVENTS, "true")
+                .build();
+        try (var source = getChangeEventSource(config)) {
+            source.processEvent(getStartLogMinerEventRow(1, TRANSACTION_ID_1));
+            source.processEvent(getInsertLogMinerEventRow(2, TRANSACTION_ID_1, Instant.now(), "TEST_TABLE", "AAAAAAAAAAAAAAAAAB", "'insert'"));
+            source.processEvent(getUpdateLogMinerEventRow(3, TRANSACTION_ID_1, Instant.now(), "TEST_TABLE", "AAAAAAAAAAAAAAAAAB", "'update'"));
+
+            // With LOB mining enabled the marker row is only kept after a SELECT_LOB_LOCATOR or LOB_* row
+            source.processEvent(getInternalLogMinerEventRow(4, TRANSACTION_ID_1, "AAAAAAAAAAAAAAAAAB", "TEST_TABLE"));
+
+            assertTransactionEvents(source.getTransactionCache(), 2);
+            assertThat(source.getLastEnqueuedEventByTransactionId()).isEmpty();
+        }
+    }
+
+    @Test
     @FixFor({ "DBZ-1914", "debezium/dbz#1960" })
     public void testSavepointRollbackIdempotence() throws Exception {
         final Configuration config = getConfig().build();
@@ -1315,6 +1420,22 @@ public abstract class AbstractBufferedLogMinerStreamingChangeEventSourceTest ext
         Mockito.when(row.getRsId()).thenReturn("A.B.C");
         Mockito.when(row.getTablespaceName()).thenReturn("DEBEZIUM");
         Mockito.when(row.getUserName()).thenReturn(TestHelper.SCHEMA_USER);
+        return row;
+    }
+
+    private LogMinerEventRow getInternalLogMinerEventRow(long scn, String transactionId, String rowId, String tableName) {
+        LogMinerEventRow row = Mockito.mock(LogMinerEventRow.class);
+        Mockito.when(row.getEventType()).thenReturn(EventType.INTERNAL);
+        Mockito.when(row.getTransactionId()).thenReturn(transactionId);
+        Mockito.when(row.getScn()).thenReturn(Scn.valueOf(scn));
+        Mockito.when(row.getChangeTime()).thenReturn(Instant.now());
+        Mockito.when(row.getRowId()).thenReturn(rowId);
+        Mockito.when(row.getOperation()).thenReturn("INTERNAL");
+        if (tableName != null) {
+            Mockito.when(row.getTableName()).thenReturn(tableName);
+            Mockito.when(row.getTableId()).thenReturn(TableId.parse("ORCLPDB1.DEBEZIUM." + tableName));
+        }
+        Mockito.when(row.getRsId()).thenReturn("A.B.C");
         return row;
     }
 
