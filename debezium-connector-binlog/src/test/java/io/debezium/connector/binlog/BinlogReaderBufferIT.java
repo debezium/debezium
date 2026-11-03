@@ -13,8 +13,11 @@ import java.sql.Connection;
 import java.sql.SQLException;
 import java.sql.Savepoint;
 import java.sql.Statement;
+import java.util.HashSet;
+import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.stream.Collectors;
 
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceConnector;
@@ -446,6 +449,8 @@ public abstract class BinlogReaderBufferIT<C extends SourceConnector> extends Ab
     @FixFor("debezium/dbz#2914")
     @SkipWhenDatabaseIs(value = SkipWhenDatabaseIs.Type.MARIADB, reason = "The rewind change targets the MySQL GTID dump command")
     void shouldStopWhileBufferRewindsAreRunning() throws SQLException, InterruptedException {
+        // other tests of this JVM may have left binlog client threads behind, only the ones started from here on count
+        final Set<Thread> binaryLogClientThreadsBefore = binaryLogClientThreads();
         startWithBufferOfTwo(null);
         consumeRecordsByTopic(5 + 9 + 9 + 4 + 11 + 1); // 11 schema change records + 1 SET statement
 
@@ -470,7 +475,11 @@ public abstract class BinlogReaderBufferIT<C extends SourceConnector> extends Ab
         stopConnector();
 
         // the threads of the binlog client, including the keepalive thread of the last reconnect, must not outlive the connector
-        Awaitility.await().atMost(10, TimeUnit.SECONDS).until(() -> !isBinaryLogClientThreadAlive());
+        Awaitility.await().atMost(10, TimeUnit.SECONDS).untilAsserted(() -> {
+            final Set<Thread> left = binaryLogClientThreads();
+            left.removeAll(binaryLogClientThreadsBefore);
+            assertThat(left).as("binlog client threads left behind by the connector").isEmpty();
+        });
     }
 
     @Test
@@ -522,9 +531,10 @@ public abstract class BinlogReaderBufferIT<C extends SourceConnector> extends Ab
         }
     }
 
-    private boolean isBinaryLogClientThreadAlive() {
+    private Set<Thread> binaryLogClientThreads() {
         return Thread.getAllStackTraces().keySet().stream()
-                .anyMatch(t -> t.isAlive() && t.getName().startsWith("blc-"));
+                .filter(t -> t.isAlive() && t.getName().startsWith("blc-"))
+                .collect(Collectors.toCollection(HashSet::new));
     }
 
     @FixFor("DBZ-411")
