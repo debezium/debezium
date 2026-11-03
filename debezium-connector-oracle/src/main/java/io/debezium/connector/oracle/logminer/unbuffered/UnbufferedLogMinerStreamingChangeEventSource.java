@@ -28,6 +28,7 @@ import io.debezium.connector.oracle.OraclePartition;
 import io.debezium.connector.oracle.Scn;
 import io.debezium.connector.oracle.jdbc.OracleConnectionFactory;
 import io.debezium.connector.oracle.logminer.AbstractLogMinerStreamingChangeEventSource;
+import io.debezium.connector.oracle.logminer.LogFile;
 import io.debezium.connector.oracle.logminer.LogMinerChangeRecordEmitter;
 import io.debezium.connector.oracle.logminer.LogMinerStreamingChangeEventSourceMetrics;
 import io.debezium.connector.oracle.logminer.TransactionCommitConsumer;
@@ -63,7 +64,8 @@ public class UnbufferedLogMinerStreamingChangeEventSource extends AbstractLogMin
     private final boolean includeSql;
     private final TransactionCommitConsumer accumulator;
     private final List<LogMinerEventRow> ddlQueue = new ArrayList<>();
-    private final ResumePositionProvider resumePositionProvider;
+    private final ResumePositionCalculator resumePositionCalculator;
+    private final ResumePositionUpdateStrategy resumePositionUpdateStrategy;
 
     private boolean skipCurrentTransaction = false;
     private ZoneOffset databaseOffset;
@@ -81,7 +83,8 @@ public class UnbufferedLogMinerStreamingChangeEventSource extends AbstractLogMin
         this.miningQuery = new UnbufferedLogMinerQueryBuilder(connectorConfig).getQuery();
         this.includeSql = connectorConfig.isLogMiningIncludeRedoSql();
         this.accumulator = new TransactionCommitConsumer(this::dispatchEvent, connectorConfig, schema);
-        this.resumePositionProvider = new ResumePositionProvider(connectorConfig, getJdbcConfiguration());
+        this.resumePositionCalculator = new ResumePositionCalculator(connectorConfig, getJdbcConfiguration());
+        this.resumePositionUpdateStrategy = new AdaptiveResumePositionUpdateStrategy(connectorConfig, Clock.system());
     }
 
     @Override
@@ -206,10 +209,10 @@ public class UnbufferedLogMinerStreamingChangeEventSource extends AbstractLogMin
     @Override
     public void close() {
         try {
-            resumePositionProvider.close();
+            resumePositionCalculator.close();
         }
         catch (Exception e) {
-            LOGGER.warn("Failed to gracefully shutdown the resume position provider", e);
+            LOGGER.warn("Failed to gracefully shutdown the resume position calculator", e);
         }
     }
 
@@ -239,8 +242,8 @@ public class UnbufferedLogMinerStreamingChangeEventSource extends AbstractLogMin
     }
 
     /**
-     * Recomputes the resume position, optionally updating the offsets if the resume position
-     * changes from its prior value.
+     * Recomputes the resume position when the {@link ResumePositionUpdateStrategy} asks for it,
+     * optionally updating the offsets if the resume position changes from its prior value.
      *
      * @param resumeScn the current resume system change number, should not be {@code null}
      * @param commitScn the current commit system change number, should not be {@code null}
@@ -248,8 +251,18 @@ public class UnbufferedLogMinerStreamingChangeEventSource extends AbstractLogMin
      * @throws SQLException if a database exception occurs
      */
     private Scn computeResumeScnAndUpdateOffsets(Scn resumeScn, Scn commitScn) throws SQLException {
-        final Scn computedResumeScn = resumePositionProvider.computeResumePositionFromLogs(
-                resumeScn, commitScn, getCurrentLogFiles());
+        final List<LogFile> logFiles = getCurrentLogFiles();
+        if (!resumePositionUpdateStrategy.shouldUpdate(resumeScn, commitScn, logFiles)) {
+            return resumeScn;
+        }
+
+        final Scn computedResumeScn;
+        try {
+            computedResumeScn = resumePositionCalculator.calculate(resumeScn, commitScn, logFiles);
+        }
+        finally {
+            resumePositionUpdateStrategy.onUpdated(commitScn);
+        }
 
         if (!computedResumeScn.equals(resumeScn)) {
             LOGGER.debug("Advancing offset low-watermark scn to {}", computedResumeScn);
@@ -421,6 +434,8 @@ public class UnbufferedLogMinerStreamingChangeEventSource extends AbstractLogMin
 
         final int numEvents = accumulator.getTotalEvents();
         accumulator.close();
+
+        resumePositionUpdateStrategy.onCommit(numEvents);
 
         getEventDispatcher().dispatchTransactionCommittedEvent(getPartition(), getOffsetContext(), event.getChangeTime());
 

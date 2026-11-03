@@ -472,6 +472,62 @@ public class OracleConnectorConfigTest {
     }
 
     @Test
+    @FixFor("debezium/dbz#1354")
+    public void shouldReturnDefaultResumePositionUpdateThresholds() {
+        final Configuration config = Configuration.create()
+                .with(CommonConnectorConfig.TOPIC_PREFIX, "myserver")
+                .build();
+        final OracleConnectorConfig connectorConfig = new OracleConnectorConfig(config);
+        assertThat(connectorConfig.getResumePositionUpdateInterval()).isEqualTo(Duration.ofSeconds(10));
+        assertThat(connectorConfig.getResumePositionMinUpdateInterval()).isEqualTo(Duration.ofSeconds(1));
+        assertThat(connectorConfig.getResumePositionLogCountThreshold()).isEqualTo(10L);
+        assertThat(connectorConfig.getResumePositionLogBytesThreshold()).isZero();
+        assertThat(connectorConfig.getResumePositionScnDistanceThreshold()).isZero();
+        assertThat(connectorConfig.getResumePositionCommitsThreshold()).isZero();
+        assertThat(connectorConfig.getResumePositionTransactionEventsThreshold()).isEqualTo(100_000L);
+    }
+
+    @Test
+    @FixFor("debezium/dbz#1354")
+    public void shouldReturnCustomResumePositionUpdateThresholds() {
+        final Configuration config = Configuration.create()
+                .with(CommonConnectorConfig.TOPIC_PREFIX, "myserver")
+                .with(OracleConnectorConfig.LOG_MINING_RESUME_POSITION_MIN_INTERVAL_MS, 0L)
+                .with(OracleConnectorConfig.LOG_MINING_RESUME_POSITION_THRESHOLD_LOG_COUNT, 2L)
+                .with(OracleConnectorConfig.LOG_MINING_RESUME_POSITION_THRESHOLD_LOG_BYTES, 3L)
+                .with(OracleConnectorConfig.LOG_MINING_RESUME_POSITION_THRESHOLD_SCN_DISTANCE, 4L)
+                .with(OracleConnectorConfig.LOG_MINING_RESUME_POSITION_THRESHOLD_COMMITS, 5L)
+                .with(OracleConnectorConfig.LOG_MINING_RESUME_POSITION_THRESHOLD_TRANSACTION_EVENTS, 6L)
+                .build();
+        final OracleConnectorConfig connectorConfig = new OracleConnectorConfig(config);
+        assertThat(connectorConfig.getResumePositionMinUpdateInterval()).isEqualTo(Duration.ZERO);
+        assertThat(connectorConfig.getResumePositionLogCountThreshold()).isEqualTo(2L);
+        assertThat(connectorConfig.getResumePositionLogBytesThreshold()).isEqualTo(3L);
+        assertThat(connectorConfig.getResumePositionScnDistanceThreshold()).isEqualTo(4L);
+        assertThat(connectorConfig.getResumePositionCommitsThreshold()).isEqualTo(5L);
+        assertThat(connectorConfig.getResumePositionTransactionEventsThreshold()).isEqualTo(6L);
+    }
+
+    @Test
+    @FixFor("debezium/dbz#1354")
+    public void shouldFailValidationWhenResumePositionUpdateThresholdIsNegative() {
+        final List<Field> fields = List.of(
+                OracleConnectorConfig.LOG_MINING_RESUME_POSITION_MIN_INTERVAL_MS,
+                OracleConnectorConfig.LOG_MINING_RESUME_POSITION_THRESHOLD_LOG_COUNT,
+                OracleConnectorConfig.LOG_MINING_RESUME_POSITION_THRESHOLD_LOG_BYTES,
+                OracleConnectorConfig.LOG_MINING_RESUME_POSITION_THRESHOLD_SCN_DISTANCE,
+                OracleConnectorConfig.LOG_MINING_RESUME_POSITION_THRESHOLD_COMMITS,
+                OracleConnectorConfig.LOG_MINING_RESUME_POSITION_THRESHOLD_TRANSACTION_EVENTS);
+        for (Field field : fields) {
+            final Configuration invalid = Configuration.create().with(field, -1L).build();
+            assertThat(invalid.validateAndRecord(List.of(field), LOGGER::error)).as(field.name()).isFalse();
+
+            final Configuration valid = Configuration.create().with(field, 0L).build();
+            assertThat(valid.validateAndRecord(List.of(field), LOGGER::error)).as(field.name()).isTrue();
+        }
+    }
+
+    @Test
     @FixFor("debezium/dbz#2473")
     public void shouldFailValidationWhenUsernameTrackingDisabledWithUsernameIncludeList() {
         final Configuration config = logMinerConfig("logminer")
