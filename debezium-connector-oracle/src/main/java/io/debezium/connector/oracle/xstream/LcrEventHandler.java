@@ -33,6 +33,7 @@ import io.debezium.util.Clock;
 import io.debezium.util.Strings;
 
 import oracle.streams.ChunkColumnValue;
+import oracle.streams.ColumnValue;
 import oracle.streams.DDLLCR;
 import oracle.streams.DefaultRowLCR;
 import oracle.streams.LCR;
