@@ -3039,7 +3039,7 @@ endif::product[]
 Oracle support for `JSON` data types is a premium feature that is only available through a GoldenGate license.
 
 Because the Oracle OCI driver cannot read metadata for tables that contain a `JSON` column type, connectors configured to use the Oracle XStream adapter the connector cannot capture `JSON` data.
-This limitation applies to all Oracle 21.x and 23.x drivers tested through version 23.26.1.
+This limitation applies to all Oracle 21.x and 23.x drivers tested through version 23.26.4.
 ====
 
 The following table describes how the connector maps JSON data types.
