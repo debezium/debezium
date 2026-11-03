@@ -1485,7 +1485,7 @@ public abstract class BinlogStreamingChangeEventSource<P extends BinlogPartition
         rewindRequests.add(position);
     }
 
-    private void reconnectAtPosition(ChangeEventSourceContext context, BinlogPosition position) throws InterruptedException {
+    void reconnectAtPosition(ChangeEventSourceContext context, BinlogPosition position) throws InterruptedException {
         if (!context.isRunning()) {
             return;
         }
@@ -1498,8 +1498,15 @@ public abstract class BinlogStreamingChangeEventSource<P extends BinlogPartition
             // In GTID mode the executed GTID set already contains this transaction, so unless the filename and position
             // are used the server skips it, END included
             client.setUseBinlogFilenamePositionInGtidMode(true);
-            // returns once the dump command is sent, the read loop runs on the client's own thread
-            client.connect(connectorConfig.getConnectionTimeout().toMillis());
+            try {
+                // returns once the dump command is sent, the read loop runs on the client's own thread
+                client.connect(connectorConfig.getConnectionTimeout().toMillis());
+            }
+            finally {
+                // A later reconnect (for example by the keepalive thread) must resume from the GTID set again, not from the
+                // tracked filename and position, which can be in the middle of a transaction
+                client.setUseBinlogFilenamePositionInGtidMode(false);
+            }
             waitForKeepAliveThread();
         }
         catch (TimeoutException | IOException e) {
@@ -1509,11 +1516,6 @@ public abstract class BinlogStreamingChangeEventSource<P extends BinlogPartition
             }
             // nothing else reads the binlog, so fail the task instead of leaving it RUNNING
             throw new DebeziumException("Unable to re-connect to the MySQL binary log reader to re-read the transaction from " + position, e);
-        }
-        finally {
-            // A later reconnect (for example by the keepalive thread) must resume from the GTID set again, not from the
-            // tracked filename and position, which can be in the middle of a transaction
-            client.setUseBinlogFilenamePositionInGtidMode(false);
         }
     }
 
