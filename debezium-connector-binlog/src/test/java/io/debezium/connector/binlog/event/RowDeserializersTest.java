@@ -8,12 +8,17 @@ package io.debezium.connector.binlog.event;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.io.IOException;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
 
 import org.junit.jupiter.api.Test;
 
 import com.github.shyiko.mysql.binlog.io.ByteArrayInputStream;
+
+import io.debezium.config.CommonConnectorConfig.EventProcessingFailureHandlingMode;
+import io.debezium.doc.FixFor;
 
 /**
  * Unit tests for {@link RowDeserializers}, in particular the zero-date detection in the
@@ -128,5 +133,77 @@ class RowDeserializersTest {
 
         assertThat(result).isNotNull();
         assertThat(result).isInstanceOf(ZonedDateTime.class);
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2922")
+    void deserializeDateReturnsDateWithYearZero() throws IOException {
+        assertThat(RowDeserializers.deserializeDate(date(0, 1, 1), EventProcessingFailureHandlingMode.FAIL, false))
+                .isEqualTo(LocalDate.of(0, 1, 1));
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2922")
+    void deserializeDatePreservesYearZeroWhenRequested() throws IOException {
+        final Object result = RowDeserializers.deserializeDate(date(0, 1, 1), EventProcessingFailureHandlingMode.FAIL, true);
+
+        assertThat(result).isInstanceOf(BinlogDateValue.class);
+        final BinlogDateValue value = (BinlogDateValue) result;
+        assertThat(value.getYear()).isZero();
+        assertThat(value.getMonth()).isEqualTo(1);
+        assertThat(value.getDay()).isEqualTo(1);
+    }
+
+    @Test
+    void deserializeDateReturnsNullForZeroMonth() throws IOException {
+        assertThat(RowDeserializers.deserializeDate(date(2020, 0, 15), EventProcessingFailureHandlingMode.FAIL, false)).isNull();
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2922")
+    void deserializeDatetimeReturnsDatetimeWithYearZero() throws IOException {
+        assertThat(RowDeserializers.deserializeDatetime(datetime(0, 1, 1), EventProcessingFailureHandlingMode.FAIL, false))
+                .isEqualTo(LocalDateTime.of(0, 1, 1, 0, 0));
+        assertThat(RowDeserializers.deserializeDatetime(datetime(0, 1, 1), EventProcessingFailureHandlingMode.FAIL, true))
+                .isInstanceOf(BinlogDateTimeValue.class)
+                .extracting(value -> ((BinlogDateTimeValue) value).getYear())
+                .isEqualTo(0);
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2922")
+    void deserializeDatetimeV2ReturnsDatetimeWithYearZero() throws IOException {
+        assertThat(RowDeserializers.deserializeDatetimeV2(0, datetimeV2(0, 1, 1), EventProcessingFailureHandlingMode.FAIL, false))
+                .isEqualTo(LocalDateTime.of(0, 1, 1, 0, 0));
+        assertThat(RowDeserializers.deserializeDatetimeV2(0, datetimeV2(0, 1, 1), EventProcessingFailureHandlingMode.FAIL, true))
+                .isInstanceOf(BinlogDateTimeValue.class)
+                .extracting(value -> ((BinlogDateTimeValue) value).getYear())
+                .isEqualTo(0);
+    }
+
+    /** {@code DATE}: 3 little-endian bytes of {@code (year * 16 + month) * 32 + day}. */
+    private static ByteArrayInputStream date(int year, int month, int day) {
+        final int value = (year * 16 + month) * 32 + day;
+        return new ByteArrayInputStream(new byte[]{ (byte) value, (byte) (value >> 8), (byte) (value >> 16) });
+    }
+
+    /** {@code DATETIME} before MySQL 5.6.4: 8 little-endian bytes of {@code YYYYMMDDhhmmss}. */
+    private static ByteArrayInputStream datetime(int year, int month, int day) {
+        final long value = ((year * 100L + month) * 100L + day) * 1_000_000L;
+        final byte[] bytes = new byte[8];
+        for (int i = 0; i < bytes.length; i++) {
+            bytes[i] = (byte) (value >> (8 * i));
+        }
+        return new ByteArrayInputStream(bytes);
+    }
+
+    /** {@code DATETIME2} without fractional seconds: 5 big-endian bytes of the sign bit, {@code year * 13 + month} and the day, at midnight. */
+    private static ByteArrayInputStream datetimeV2(int year, int month, int day) {
+        final long value = (1L << 39) | ((year * 13L + month) << 22) | ((long) day << 17);
+        final byte[] bytes = new byte[5];
+        for (int i = 0; i < bytes.length; i++) {
+            bytes[i] = (byte) (value >> (8 * (bytes.length - 1 - i)));
+        }
+        return new ByteArrayInputStream(bytes);
     }
 }

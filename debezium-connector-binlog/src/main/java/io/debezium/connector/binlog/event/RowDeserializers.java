@@ -333,7 +333,8 @@ public class RowDeserializers {
         value >>>= 5;
         int month = value % 16; // 1-based month number
         int year = value >> 4;
-        if (year == 0 || month == 0 || day == 0) {
+        // The year zero is valid, but the structured mode keeps it as components, so that the time adjuster does not change it
+        if ((year == 0 && preserveInvalidTemporalValues) || month == 0 || day == 0) {
             if (preserveInvalidTemporalValues) {
                 return new BinlogDateValue(year, month, day);
             }
@@ -445,7 +446,8 @@ public class RowDeserializers {
         int minutes = split[1];
         int seconds = split[0];
         int nanoOfSecond = 0; // This version does not support fractional seconds
-        if (year == 0 || month == 0 || day == 0) {
+        // The year zero is valid, but the structured mode keeps it as components, so that the time adjuster does not change it
+        if ((year == 0 && preserveInvalidTemporalValues) || month == 0 || day == 0) {
             if (preserveInvalidTemporalValues) {
                 return new BinlogDateTimeValue(year, month, day, hours, minutes, seconds, nanoOfSecond);
             }
@@ -507,7 +509,8 @@ public class RowDeserializers {
         int minutes = bitSlice(datetime, 28, 6, 40);
         int seconds = bitSlice(datetime, 34, 6, 40);
         int nanoOfSecond = deserializeFractionalSecondsInNanos(meta, inputStream);
-        if (year == 0 || month == 0 || day == 0) {
+        // The year zero is valid, but the structured mode keeps it as components, so that the time adjuster does not change it
+        if ((year == 0 && preserveInvalidTemporalValues) || month == 0 || day == 0) {
             if (preserveInvalidTemporalValues) {
                 return new BinlogDateTimeValue(year, month, day, hours, minutes, seconds, nanoOfSecond);
             }
