@@ -1214,7 +1214,7 @@ When enabled, UPDATE events include the previous row state in the `before` field
 |[[cockroachdb-property-include-mvcc-timestamp]]<<cockroachdb-property-include-mvcc-timestamp, `+cockroachdb.changefeed.include.mvcc.timestamp+`>>
 |`false`
 |Specifies whether to create the changefeed with the CockroachDB `mvcc_timestamp` option.
-Set this property to `true` to report the Multi-Version Concurrency Control (MVCC) commit timestamp of each row in the `source.ts_hlc` field of every change event that comes from the changefeed, including initial scan events.
+Set this property to `true` to populate the `source.ts_hlc` field with the Multi-Version Concurrency Control (MVCC) commit timestamp for each row in all change events, including initial scan events.
 The value of xref:cockroachdb-property-enriched-properties[`cockroachdb.changefeed.enriched.properties`] must include `source`, which is the default.
 Otherwise, change events do not include the timestamp, and the `source.ts_hlc` field is empty.
 If xref:cockroachdb-property-snapshot-mode[`snapshot.mode`] is set to `initial_only`, the connector ignores this property and logs a warning.
