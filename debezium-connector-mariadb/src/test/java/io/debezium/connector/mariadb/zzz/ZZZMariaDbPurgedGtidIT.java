@@ -19,6 +19,7 @@ import org.awaitility.Awaitility;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.condition.DisabledIfSystemProperty;
 
 import io.debezium.config.Configuration;
 import io.debezium.connector.binlog.AbstractBinlogConnectorIT;
@@ -38,6 +39,9 @@ import io.debezium.junit.logging.LogInterceptor;
  * Verifies how the connector restarts when the binlogs holding its stored GTID position were purged.
  * The test is named to run alphabetically last as purging binlogs can influence other tests.
  */
+// The InnoDB-based binary log keeps a pre-allocated next file and its files do not start with a
+// Gtid_list event, so neither the purge done by this test nor the purged binlog check applies.
+@DisabledIfSystemProperty(named = "database.innodb.binlog", matches = "true", disabledReason = "Not supported with the InnoDB-based binary log")
 public class ZZZMariaDbPurgedGtidIT extends AbstractBinlogConnectorIT<MariaDbConnector> implements MariaDbCommon {
 
     private static final Path SCHEMA_HISTORY_PATH = Files.createTestingPath("file-schema-history-purged-gtid.txt").toAbsolutePath();
