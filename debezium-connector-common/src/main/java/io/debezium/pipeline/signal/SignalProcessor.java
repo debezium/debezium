@@ -71,7 +71,9 @@ public class SignalProcessor<P extends Partition, O extends OffsetContext> {
 
     private final Queue<DeferredSignal<P>> synchronousSignals = new ConcurrentLinkedQueue<>();
 
-    private final Queue<SignalRecord> pendingRecords = new ConcurrentLinkedQueue<>();
+    private final Queue<SignalRecord> pendingExternalRecords = new ConcurrentLinkedQueue<>();
+
+    private final Queue<DeferredSourceSignal<P>> pendingSourceSignals = new ConcurrentLinkedQueue<>();
 
     private final int synchronousBatchSize;
 
@@ -152,6 +154,13 @@ public class SignalProcessor<P extends Partition, O extends OffsetContext> {
             synchronousSignals.clear();
         }
 
+        if (!pendingSourceSignals.isEmpty()) {
+            LOGGER.warn("SignalProcessor stopped with {} source signal(s) that were never executed: {}",
+                    pendingSourceSignals.size(),
+                    pendingSourceSignals.stream().map(deferred -> deferred.signalRecord().getId()).collect(Collectors.toList()));
+            pendingSourceSignals.clear();
+        }
+
         LOGGER.info("SignalProcessor stopped");
     }
 
@@ -175,31 +184,93 @@ public class SignalProcessor<P extends Partition, O extends OffsetContext> {
                 .flatMap(Collection::stream)
                 .collect(Collectors.toList());
 
-        if (records.isEmpty() && pendingRecords.isEmpty()) {
+        if (records.isEmpty() && pendingExternalRecords.isEmpty()) {
             return;
         }
 
-        final List<SignalRecord> toProcess = new ArrayList<>(pendingRecords);
-        pendingRecords.clear();
+        final List<SignalRecord> toProcess = new ArrayList<>(pendingExternalRecords);
+        pendingExternalRecords.clear();
         toProcess.addAll(records);
 
         // The records have already left their channel, so they must not be dropped when the permit is not available;
         // the next cycle executes them instead.
         if (!executeWithSemaphore(() -> toProcess.forEach(signalRecord -> processSignal(signalRecord, null)))) {
-            pendingRecords.addAll(toProcess);
+            pendingExternalRecords.addAll(toProcess);
         }
     }
 
+    /**
+     * Takes over the source channel records that the signalling event produced and executes them.
+     * <p>
+     * The channel is drained completely, so that a burst of queued records is executed in one call rather than one
+     * record per call. Each drained record is paired with the partition of the signalling event that produced it. A
+     * record that the processor permit keeps from being executed right away stays pending and is executed by the next
+     * call to {@link #processPendingSourceSignals()}.
+     *
+     * @param partition the partition of the signalling event that produced the records
+     */
     public void processSourceSignal(P partition) {
 
-        executeWithSemaphore(() -> {
-            LOGGER.trace("Processing source signals for partition {}", partition);
-            enabledChannelReaders.stream()
-                    .filter(isSignal(SourceSignalChannel.class))
-                    .map(SignalChannelReader::read)
-                    .flatMap(Collection::stream)
-                    .forEach(signalRecord -> processSignal(signalRecord, partition));
-        });
+        LOGGER.trace("Processing source signals for partition {}", partition);
+
+        final Thread currentThread = Thread.currentThread();
+        final Predicate<SignalChannelReader> isSourceChannel = isSignal(SourceSignalChannel.class);
+        for (SignalChannelReader reader : enabledChannelReaders) {
+            if (!isSourceChannel.test(reader)) {
+                continue;
+            }
+            List<SignalRecord> read;
+            while (!(read = reader.read()).isEmpty()) {
+                read.forEach(signalRecord -> pendingSourceSignals.add(new DeferredSourceSignal<>(signalRecord, partition, currentThread)));
+            }
+        }
+
+        processPendingSourceSignals();
+    }
+
+    /**
+     * Executes the pending source channel signals, each with the partition of the event that produced it.
+     * <p>
+     * A streaming source calls this from its own thread. A signal that could not be executed when it arrived, because
+     * the processor permit was held elsewhere, stays pending and is executed here as soon as the permit is available
+     * again. The permit is taken without waiting, so that the streaming thread is never held up by a signal action
+     * that another thread is running; a signal that is still pending is executed by a later call. The offset context is
+     * resolved from the partition when the signal executes, so the action observes the offset context that is current at
+     * that time. A signal whose partition is no longer managed by this processor is skipped with a warning.
+     * <p>
+     * Only the signals that the calling thread received are executed, because the action must run on the streaming
+     * thread that received the signal. The drain stops at the first pending signal that another thread received, so
+     * that signal stays pending for the thread that received it.
+     */
+    public void processPendingSourceSignals() {
+
+        if (pendingSourceSignals.isEmpty()) {
+            return;
+        }
+
+        if (!semaphore.tryAcquire()) {
+            LOGGER.debug("Could not acquire the signal processing semaphore, {} source signal(s) remain pending", pendingSourceSignals.size());
+            return;
+        }
+
+        try {
+            final Thread currentThread = Thread.currentThread();
+            DeferredSourceSignal<P> deferred = pendingSourceSignals.peek();
+            while (deferred != null && deferred.ownerThread() == currentThread) {
+                pendingSourceSignals.poll();
+                if (partitionOffsets.get(deferred.partition()) == null) {
+                    LOGGER.warn("Signal '{}' of type '{}' references partition {} which is no longer managed by this task; skipping",
+                            deferred.signalRecord().getId(), deferred.signalRecord().getType(), deferred.partition());
+                }
+                else {
+                    processSignal(deferred.signalRecord(), deferred.partition());
+                }
+                deferred = pendingSourceSignals.peek();
+            }
+        }
+        finally {
+            semaphore.release();
+        }
     }
 
     /**
@@ -424,5 +495,13 @@ public class SignalProcessor<P extends Partition, O extends OffsetContext> {
      * offset context that is current at that time.
      */
     private record DeferredSignal<P extends Partition>(SignalAction<P> action, SignalRecord signalRecord, Document jsonData, P partition) {
+    }
+
+    /**
+     * A source channel signal together with the partition of the event that produced it and the thread that received
+     * it. The signal is delivered to that partition, and it is executed by that thread, because the action must run on
+     * the streaming thread that received the signal.
+     */
+    private record DeferredSourceSignal<P extends Partition>(SignalRecord signalRecord, P partition, Thread ownerThread) {
     }
 }

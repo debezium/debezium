@@ -465,11 +465,13 @@ public class EventDispatcher<P extends Partition, T extends DataCollectionId> im
     }
 
     public void alwaysDispatchHeartbeatEvent(P partition, OffsetContext offset) throws InterruptedException {
+        processPendingSourceSignals();
         heartbeat.emit(partition.getSourcePartition(), offset);
     }
 
     @Deprecated
     public void dispatchHeartbeatEvent(P partition, OffsetContext offset) throws InterruptedException {
+        processPendingSourceSignals();
         heartbeat.emitWithDelay(partition.getSourcePartition(), offset);
     }
 
@@ -510,6 +512,17 @@ public class EventDispatcher<P extends Partition, T extends DataCollectionId> im
     public void processSynchronousSignals() throws InterruptedException {
         if (signalProcessor != null) {
             signalProcessor.processSynchronousSignals();
+        }
+    }
+
+    /**
+     * Executes the source channel signals that the streaming thread could not execute when they arrived. The heartbeat
+     * dispatch is a point where the streaming thread retries them, because no further signalling event follows a signal
+     * that could not be executed.
+     */
+    private void processPendingSourceSignals() {
+        if (signalProcessor != null) {
+            signalProcessor.processPendingSourceSignals();
         }
     }
 

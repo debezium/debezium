@@ -10,11 +10,13 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import java.lang.reflect.Field;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.concurrent.Callable;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Semaphore;
@@ -815,6 +817,356 @@ public class SignalProcessorTest {
         }
     }
 
+    @Test
+    @FixFor("debezium/dbz#2908")
+    public void shouldHoldASourceChannelSignalWhenTheSemaphoreCannotBeAcquired() throws Exception {
+
+        final SourceSignalChannel sourceChannel = new SourceSignalChannel();
+        final RecordingAction action = new RecordingAction();
+
+        signalProcess = new SignalProcessor<>(SourceConnector.class,
+                baseConfig(Map.of(CommonConnectorConfig.SIGNAL_PROCESSOR_SEMAPHORE_WAIT_MS.name(), 1L)),
+                Map.of("custom", action),
+                List.of(sourceChannel), documentReader, initialOffset);
+
+        assertThat(sourceChannel.process(sourceSignalEvent("signal-1", "custom")))
+                .as("the signal must be accepted by the source signal channel")
+                .isTrue();
+
+        // Hold the single permit so the streaming thread cannot execute the signal.
+        deliverSourceSignalWhileThePermitIsHeld(signalProcess, initialOffset.getTheOnlyPartition());
+
+        assertThat(action.invocations.get())
+                .as("the signal action must not be executed without the permit")
+                .isZero();
+        assertThat(sourceChannel.signals)
+                .as("the signal must have left the source channel and be held by the signal processor")
+                .isEmpty();
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2908")
+    public void shouldNotWaitForThePermitWhenTheSourceChannelSignalCannotBeExecuted() throws Exception {
+
+        final SourceSignalChannel sourceChannel = new SourceSignalChannel();
+        final RecordingAction action = new RecordingAction();
+
+        signalProcess = new SignalProcessor<>(SourceConnector.class,
+                baseConfig(Map.of(CommonConnectorConfig.SIGNAL_PROCESSOR_SEMAPHORE_WAIT_MS.name(), 1L)),
+                Map.of("custom", action),
+                List.of(sourceChannel), documentReader, initialOffset);
+
+        final LogInterceptor log = signalProcessorDebugLog();
+
+        assertThat(sourceChannel.process(sourceSignalEvent("signal-1", "custom")))
+                .as("the signal must be accepted by the source signal channel")
+                .isTrue();
+
+        deliverSourceSignalWhileThePermitIsHeld(signalProcess, initialOffset.getTheOnlyPartition());
+
+        assertThat(log.containsMessage("Could not acquire the signal processing semaphore, 1 source signal(s) remain pending"))
+                .as("the pending signal must be left pending instead of the streaming thread waiting for the permit")
+                .isTrue();
+        assertThat(log.containsWarnMessage("Could not acquire the signal processing semaphore within"))
+                .as("the streaming thread must not wait for the permit")
+                .isFalse();
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2908")
+    public void shouldNotExecuteAPendingSourceChannelSignalEnqueuedByAnotherThread() throws Exception {
+
+        final SourceSignalChannel sourceChannel = new SourceSignalChannel();
+        final RecordingAction action = new RecordingAction();
+
+        signalProcess = new SignalProcessor<>(SourceConnector.class, baseConfig(),
+                Map.of("custom", action),
+                List.of(sourceChannel), documentReader, initialOffset);
+
+        final TestPartition producerPartition = initialOffset.getTheOnlyPartition();
+
+        assertThat(sourceChannel.process(sourceSignalEvent("signal-1", "custom")))
+                .as("the signal must be accepted by the source signal channel")
+                .isTrue();
+
+        // Hold the single permit, so the streaming thread cannot execute the signal and it stays pending.
+        deliverSourceSignalWhileThePermitIsHeld(signalProcess, producerPartition);
+
+        assertThat(action.invocations.get())
+                .as("the signal action must not be executed without the permit")
+                .isZero();
+
+        // Another thread drains the pending signals. It must not execute a signal that another thread enqueued.
+        runOnAnotherThread(() -> {
+            signalProcess.processSourceSignal(new TestPartition());
+            return null;
+        });
+
+        assertThat(action.invocations.get())
+                .as("a pending source channel signal must not be executed by a thread that did not receive it")
+                .isZero();
+
+        // The thread that received the signal executes it, with the partition of the event that produced it.
+        signalProcess.processSourceSignal(producerPartition);
+
+        assertThat(action.invocations.get())
+                .as("the pending source signal must be executed exactly once")
+                .isEqualTo(1);
+        assertThat(action.receivedPartition.get())
+                .as("the pending source signal must be executed with the partition of the event that produced it")
+                .isSameAs(producerPartition);
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2908")
+    public void shouldExecuteThePendingSourceChannelSignalOnTheNextStreamingThreadTick() throws Exception {
+
+        final SourceSignalChannel sourceChannel = new SourceSignalChannel();
+        final RecordingAction action = new RecordingAction();
+
+        signalProcess = new SignalProcessor<>(SourceConnector.class,
+                baseConfig(Map.of(CommonConnectorConfig.SIGNAL_PROCESSOR_SEMAPHORE_WAIT_MS.name(), 1L)),
+                Map.of("custom", action),
+                List.of(sourceChannel), documentReader, initialOffset);
+
+        final TestPartition producerPartition = initialOffset.getTheOnlyPartition();
+
+        assertThat(sourceChannel.process(sourceSignalEvent("signal-1", "custom")))
+                .as("the signal must be accepted by the source signal channel")
+                .isTrue();
+
+        deliverSourceSignalWhileThePermitIsHeld(signalProcess, producerPartition);
+
+        assertThat(action.invocations.get())
+                .as("the signal action must not be executed without the permit")
+                .isZero();
+
+        // The next point where the streaming thread processes source signals executes the pending signal.
+        signalProcess.processSourceSignal(new TestPartition());
+
+        assertThat(action.invocations.get())
+                .as("the pending signal must be executed exactly once")
+                .isEqualTo(1);
+        assertThat(action.executingThread.get())
+                .as("the pending signal must be executed by the streaming thread")
+                .isSameAs(Thread.currentThread());
+        assertThat(action.receivedPartition.get())
+                .as("the pending signal must be executed with the partition of the event that produced it")
+                .isSameAs(producerPartition);
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2908")
+    public void shouldExecuteEveryQueuedSourceChannelSignal() throws Exception {
+
+        final SourceSignalChannel sourceChannel = new SourceSignalChannel();
+        final RecordingAction action = new RecordingAction();
+
+        signalProcess = new SignalProcessor<>(SourceConnector.class, baseConfig(),
+                Map.of("custom", action),
+                List.of(sourceChannel), documentReader, initialOffset);
+
+        assertThat(sourceChannel.process(sourceSignalEvent("signal-1", "custom")))
+                .as("the signal must be accepted by the source signal channel")
+                .isTrue();
+        assertThat(sourceChannel.process(sourceSignalEvent("signal-2", "custom")))
+                .as("the signal must be accepted by the source signal channel")
+                .isTrue();
+
+        signalProcess.processSourceSignal(initialOffset.getTheOnlyPartition());
+
+        assertThat(action.invocations.get())
+                .as("every queued source channel signal must be executed by the same call")
+                .isEqualTo(2);
+        assertThat(sourceChannel.signals)
+                .as("the source channel must be drained")
+                .isEmpty();
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2908")
+    public void shouldSkipAPendingSourceChannelSignalWhosePartitionIsNoLongerManaged() throws Exception {
+
+        final SourceSignalChannel sourceChannel = new SourceSignalChannel();
+        final RecordingAction action = new RecordingAction();
+
+        signalProcess = new SignalProcessor<>(SourceConnector.class,
+                baseConfig(Map.of(CommonConnectorConfig.SIGNAL_PROCESSOR_SEMAPHORE_WAIT_MS.name(), 1L)),
+                Map.of("custom", action),
+                List.of(sourceChannel), documentReader, initialOffset);
+
+        final LogInterceptor log = signalProcessorDebugLog();
+
+        assertThat(sourceChannel.process(sourceSignalEvent("signal-1", "custom")))
+                .as("the signal must be accepted by the source signal channel")
+                .isTrue();
+
+        deliverSourceSignalWhileThePermitIsHeld(signalProcess, initialOffset.getTheOnlyPartition());
+
+        // The partition is dropped before the streaming thread gets to the signal.
+        signalProcess.setContext(null);
+
+        signalProcess.processSourceSignal(initialOffset.getTheOnlyPartition());
+
+        assertThat(action.invocations.get())
+                .as("the signal must be skipped when its partition is no longer managed")
+                .isZero();
+        assertThat(log.containsWarnMessage("Signal 'signal-1' of type 'custom' references partition")).isTrue();
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2908")
+    public void shouldReportThePendingSourceChannelSignalsWhenTheProcessorStops() throws Exception {
+
+        final SourceSignalChannel sourceChannel = new SourceSignalChannel();
+        final RecordingAction action = new RecordingAction();
+
+        signalProcess = new SignalProcessor<>(SourceConnector.class,
+                baseConfig(Map.of(CommonConnectorConfig.SIGNAL_PROCESSOR_SEMAPHORE_WAIT_MS.name(), 1L)),
+                Map.of("custom", action),
+                List.of(sourceChannel), documentReader, initialOffset);
+
+        final LogInterceptor log = signalProcessorDebugLog();
+
+        assertThat(sourceChannel.process(sourceSignalEvent("signal-1", "custom")))
+                .as("the signal must be accepted by the source signal channel")
+                .isTrue();
+
+        deliverSourceSignalWhileThePermitIsHeld(signalProcess, initialOffset.getTheOnlyPartition());
+
+        signalProcess.stop();
+
+        assertThat(log.containsWarnMessage("SignalProcessor stopped with 1 source signal(s) that were never executed: [signal-1]")).isTrue();
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2908")
+    public void shouldNotExecuteTwoSignalActionsAtTheSameTime() throws Exception {
+
+        final SourceSignalChannel sourceChannel = new SourceSignalChannel();
+        final BlockingAction blockingAction = new BlockingAction();
+        final RecordingAction sourceAction = new RecordingAction();
+
+        final SignalChannelReader genericChannel = mock(SignalChannelReader.class);
+
+        when(genericChannel.name()).thenReturn("generic");
+        when(genericChannel.read()).thenReturn(
+                List.of(new SignalRecord("blocking", "blocking", "{}", Map.of("channelOffset", -1L))),
+                List.of());
+
+        signalProcess = new SignalProcessor<>(SourceConnector.class,
+                baseConfig(Map.of(CommonConnectorConfig.SIGNAL_PROCESSOR_SEMAPHORE_WAIT_MS.name(), 1L)),
+                Map.of("blocking", blockingAction, "custom", sourceAction),
+                List.of(sourceChannel, genericChannel), documentReader, initialOffset);
+
+        final TestPartition producerPartition = initialOffset.getTheOnlyPartition();
+        final Semaphore semaphore = signalProcessorSemaphore(signalProcess);
+
+        try {
+            signalProcess.start();
+
+            // The signal processor thread holds the permit while it executes the blocking action.
+            assertThat(blockingAction.started.await(20, TimeUnit.SECONDS))
+                    .as("the signal processor thread must be executing the blocking action")
+                    .isTrue();
+
+            assertThat(sourceChannel.process(sourceSignalEvent("signal-1", "custom")))
+                    .as("the signal must be accepted by the source signal channel")
+                    .isTrue();
+
+            // The streaming thread cannot take the permit, so the source signal stays pending.
+            signalProcess.processSourceSignal(producerPartition);
+
+            assertThat(sourceAction.invocations.get())
+                    .as("the source signal action must not run while another signal action holds the permit")
+                    .isZero();
+            assertThat(sourceChannel.signals)
+                    .as("the source signal must be held by the signal processor while another signal action holds the permit")
+                    .isEmpty();
+
+            blockingAction.release.countDown();
+
+            // The permit is released once the blocking action returns.
+            Awaitility.await()
+                    .atMost(30, TimeUnit.SECONDS)
+                    .until(() -> semaphore.availablePermits() > 0);
+
+            // The streaming thread executes the pending source signal once the permit is available again.
+            signalProcess.processSourceSignal(new TestPartition());
+
+            assertThat(sourceAction.invocations.get())
+                    .as("the pending source signal must be executed exactly once")
+                    .isEqualTo(1);
+            assertThat(sourceAction.executingThread.get())
+                    .as("the pending source signal must be executed by the streaming thread")
+                    .isSameAs(Thread.currentThread());
+            assertThat(sourceAction.receivedPartition.get())
+                    .as("the pending source signal must be executed with the partition of the event that produced it")
+                    .isSameAs(producerPartition);
+        }
+        finally {
+            blockingAction.release.countDown();
+            signalProcess.stop();
+        }
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2908")
+    public void shouldNotExecuteThePendingSourceChannelSignalOnTheSignalProcessorThread() throws Exception {
+
+        final SourceSignalChannel sourceChannel = new SourceSignalChannel();
+        final RecordingAction action = new RecordingAction();
+        final RecordingAction markerAction = new RecordingAction();
+
+        final SignalChannelReader genericChannel = mock(SignalChannelReader.class);
+
+        when(genericChannel.name()).thenReturn("generic");
+        when(genericChannel.read()).thenAnswer(invocation -> List.of(new SignalRecord("marker", "marker", "{}", Map.of("channelOffset", -1L))));
+
+        signalProcess = new SignalProcessor<>(SourceConnector.class,
+                baseConfig(Map.of(CommonConnectorConfig.SIGNAL_PROCESSOR_SEMAPHORE_WAIT_MS.name(), 1L)),
+                Map.of("custom", action, "marker", markerAction),
+                List.of(sourceChannel, genericChannel), documentReader, initialOffset);
+
+        try {
+            signalProcess.start();
+
+            assertThat(sourceChannel.process(sourceSignalEvent("signal-1", "custom")))
+                    .as("the signal must be accepted by the source signal channel")
+                    .isTrue();
+
+            // The signal is delivered while the permit is held, so the streaming thread cannot execute it and it stays pending.
+            final Semaphore semaphore = signalProcessorSemaphore(signalProcess);
+            deliverSourceSignalWhileThePermitIsHeld(signalProcess, initialOffset.getTheOnlyPartition());
+
+            // A cycle that completes after the signal became pending proves that the periodic cycle ran and still
+            // did not execute the pending source channel signal. The permit must be free again, so that the streaming
+            // thread can take it for the pending signal.
+            final int markersBefore = markerAction.invocations.get();
+            Awaitility.await()
+                    .atMost(30, TimeUnit.SECONDS)
+                    .until(() -> markerAction.invocations.get() > markersBefore && semaphore.availablePermits() > 0);
+
+            assertThat(action.invocations.get())
+                    .as("the periodic cycle must not execute a pending source channel signal")
+                    .isZero();
+
+            // The signal was delayed, not lost: the streaming thread executes it at one of its next ticks.
+            // The condition must run on the streaming thread, because a pending source signal is executed by the
+            // thread that received it.
+            Awaitility.await()
+                    .atMost(30, TimeUnit.SECONDS)
+                    .pollInSameThread()
+                    .untilAsserted(() -> {
+                        signalProcess.processSourceSignal(initialOffset.getTheOnlyPartition());
+                        assertThat(action.invocations.get()).isEqualTo(1);
+                    });
+        }
+        finally {
+            signalProcess.stop();
+        }
+    }
+
     /**
      * Builds the change event that a connector delivers for a document of its signalling collection.
      */
@@ -840,9 +1192,44 @@ public class SignalProcessorTest {
     }
 
     private static Semaphore signalProcessorSemaphore(SignalProcessor<?, ?> processor) throws Exception {
-        final java.lang.reflect.Field field = SignalProcessor.class.getDeclaredField("semaphore");
+        final Field field = SignalProcessor.class.getDeclaredField("semaphore");
         field.setAccessible(true);
         return (Semaphore) field.get(processor);
+    }
+
+    /**
+     * Delivers a source channel signal to the signal processor while the processor permit is held, so that the
+     * streaming thread cannot execute the signal and it stays pending.
+     */
+    private static void deliverSourceSignalWhileThePermitIsHeld(SignalProcessor<TestPartition, OffsetContext> processor, TestPartition partition) throws Exception {
+        final Semaphore semaphore = signalProcessorSemaphore(processor);
+        semaphore.acquire();
+        try {
+            processor.processSourceSignal(partition);
+        }
+        finally {
+            semaphore.release();
+        }
+    }
+
+    /**
+     * Runs the given action on a thread other than the current one and waits for it to finish.
+     */
+    private static void runOnAnotherThread(Callable<?> action) throws Exception {
+        final AtomicReference<Exception> failure = new AtomicReference<>();
+        final Thread thread = new Thread(() -> {
+            try {
+                action.call();
+            }
+            catch (Exception e) {
+                failure.set(e);
+            }
+        });
+        thread.start();
+        thread.join();
+        if (failure.get() != null) {
+            throw failure.get();
+        }
     }
 
     protected CommonConnectorConfig baseConfig() {
@@ -888,17 +1275,19 @@ public class SignalProcessorTest {
     }
 
     /**
-     * A signal action that records how many times it was invoked and on which thread.
+     * A signal action that records how many times it was invoked, on which thread and with which partition.
      */
     private static class RecordingAction implements SignalAction<TestPartition> {
 
         private final AtomicInteger invocations = new AtomicInteger();
         private final AtomicReference<Thread> executingThread = new AtomicReference<>();
+        private final AtomicReference<TestPartition> receivedPartition = new AtomicReference<>();
 
         @Override
         public boolean arrived(SignalPayload<TestPartition> signalPayload) {
             invocations.incrementAndGet();
             executingThread.set(Thread.currentThread());
+            receivedPartition.set(signalPayload.partition);
             return true;
         }
     }
