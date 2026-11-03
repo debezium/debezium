@@ -64,7 +64,7 @@ Information and procedures for using a {prodname} Informix connector is organize
 * xref:how-debezium-informix-connectors-work[]
 * xref:descriptions-of-debezium-informix-connector-data-change-events[]
 * xref:how-debezium-informix-connectors-map-data-types[]
-* xref:setting-up-db2-to-run-a-debezium-connector[]
+* xref:setting-up-informix-to-run-a-debezium-connector[]
 * xref:deployment-of-debezium-informix-connectors[]
 * xref:monitoring-debezium-informix-connector-performance[]
 * xref:updating-schemas-for-informix-tables-in-capture-mode-for-debezium-connectors[]
