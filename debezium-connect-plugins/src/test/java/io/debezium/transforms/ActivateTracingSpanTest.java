@@ -6,6 +6,7 @@
 package io.debezium.transforms;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.time.Instant;
 import java.util.HashMap;
@@ -15,10 +16,12 @@ import java.util.Map;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.data.Struct;
+import org.apache.kafka.connect.errors.ConnectException;
 import org.apache.kafka.connect.header.Headers;
 import org.apache.kafka.connect.source.SourceRecord;
 import org.junit.jupiter.api.Test;
 
+import io.debezium.DebeziumException;
 import io.debezium.data.Envelope;
 import io.debezium.data.VerifyRecord;
 import io.debezium.transforms.tracing.ActivateTracingSpan;
@@ -209,5 +212,85 @@ public class ActivateTracingSpanTest {
 
         final Headers headers = transformedRecord.headers();
         assertThat(headers).isEmpty();
+    }
+
+    @Test
+    public void whenJsonPropagationContextIsProvidedATraceIsCreated() {
+        AgentTestingExporterAccess.reset();
+        final String propagatedTraceParent = "00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01";
+        final String propagatedParentId = "00f067aa0ba902b7";
+        final String propagatedTraceId = "4bf92f3577b34da6a3ce929d0e0e4736";
+        final String propagatedBaggage = "testprop=testvalue";
+
+        final Map<String, String> props = new HashMap<>();
+        props.put(ActivateTracingSpan.TRACING_SPAN_CONTEXT_FORMAT.name(), "json");
+        transform.configure(props);
+
+        final String tracingContext = "{\"traceparent\":\"" + propagatedTraceParent + "\",\"baggage\":\"" + propagatedBaggage + "\","
+                + "\"origin\":\"test\",\"attempt\":3,\"labels\":{\"team\":\"cdc\"}}";
+        final SourceRecord transformedRecord = transform.apply(recordWithTracingSpanContext(tracingContext));
+        VerifyRecord.isValid(transformedRecord, true);
+
+        final List<SpanData> spans = AgentTestingExporterAccess.getExportedSpans();
+        assertThat(spans.size()).isEqualTo(2);
+        assertThat(spans.get(0).getName()).isEqualTo("debezium-read");
+        assertThat(spans.get(1).getName()).isEqualTo("db-log-write");
+        assertThat(spans.get(1).getParentSpanId()).isEqualTo(propagatedParentId);
+        assertThat(spans.get(0).getTraceId()).isEqualTo(propagatedTraceId);
+        assertThat(spans.get(1).getTraceId()).isEqualTo(propagatedTraceId);
+        assertThat(spans.get(1).getSpanContext().isSampled()).isTrue();
+
+        final Headers headers = transformedRecord.headers();
+        assertThat(headers.lastWithName("traceparent").value().toString()).contains(propagatedTraceId);
+        assertThat(headers.lastWithName("traceparent").value().toString()).contains(spans.get(1).getSpanId());
+        assertThat(headers.lastWithName("baggage").value().toString()).isEqualTo(propagatedBaggage);
+        assertThat(headers.lastWithName("origin")).isNull();
+        assertThat(headers.lastWithName("attempt")).isNull();
+    }
+
+    @Test
+    public void whenJsonPropagationContextIsMalformedAnExceptionIsThrown() {
+        AgentTestingExporterAccess.reset();
+        final Map<String, String> props = new HashMap<>();
+        props.put(ActivateTracingSpan.TRACING_SPAN_CONTEXT_FORMAT.name(), "json");
+        transform.configure(props);
+
+        assertThatThrownBy(() -> transform.apply(recordWithTracingSpanContext("traceparent=00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01")))
+                .isInstanceOf(DebeziumException.class);
+        assertThatThrownBy(() -> transform.apply(recordWithTracingSpanContext("[\"traceparent\"]")))
+                .isInstanceOf(DebeziumException.class);
+    }
+
+    @Test
+    public void whenSpanContextFormatIsInvalidConfigurationFails() {
+        final Map<String, String> props = new HashMap<>();
+        props.put(ActivateTracingSpan.TRACING_SPAN_CONTEXT_FORMAT.name(), "yaml");
+
+        assertThatThrownBy(() -> transform.configure(props)).isInstanceOf(ConnectException.class);
+    }
+
+    private SourceRecord recordWithTracingSpanContext(String tracingContext) {
+        final Struct after = new Struct(recordSchemaWithTracingSpanContextField);
+        final Struct source = new Struct(sourceSchema);
+        source.put("table", "mytable");
+        source.put("lsn", 1);
+        source.put("ts_ms", 1588252618953L);
+
+        after.put("id", (byte) 1);
+        after.put("name", "test");
+        after.put(tracingSpanContextFieldName, tracingContext);
+
+        final Envelope envelope = Envelope.defineSchema()
+                .withName("dummy.Envelope")
+                .withRecord(recordSchemaWithTracingSpanContextField)
+                .withSource(sourceSchema)
+                .build();
+
+        return new SourceRecord(
+                new HashMap<>(),
+                new HashMap<>(),
+                "db.server1.table1",
+                envelope.schema(),
+                envelope.create(after, source, Instant.now()));
     }
 }

@@ -57,6 +57,16 @@ public class ActivateTracingSpan<R extends ConnectRecord<R>> implements Transfor
             .withDescription("The name of the field containing java.util.Properties representation of serialized span context. Defaults to '"
                     + DEFAULT_TRACING_SPAN_CONTEXT_FIELD + "'");
 
+    public static final Field TRACING_SPAN_CONTEXT_FORMAT = Field.create("tracing.span.context.format")
+            .withDisplayName("Serialized tracing span context format")
+            .withEnum(SpanContextFormat.class, SpanContextFormat.PROPERTIES)
+            .withWidth(ConfigDef.Width.SHORT)
+            .withImportance(ConfigDef.Importance.MEDIUM)
+            .withDescription("The serialization format of the span context stored in the field configured by '" + TRACING_SPAN_CONTEXT_FIELD.name() + "'. "
+                    + "Options include: "
+                    + "'properties' (the default) for a java.util.Properties representation; "
+                    + "'json' for a JSON object whose top-level string members are used as the propagated context, other members are ignored.");
+
     public static final Field TRACING_OPERATION_NAME = Field.create("tracing.operation.name")
             .withDisplayName("Tracing operation name")
             .withType(ConfigDef.Type.STRING)
@@ -74,6 +84,7 @@ public class ActivateTracingSpan<R extends ConnectRecord<R>> implements Transfor
             .withDescription("Set to `true` when only events that have serialized context field should be traced.");
 
     private String spanContextField;
+    private SpanContextFormat spanContextFormat;
     private String operationName;
     private boolean requireContextField;
 
@@ -82,13 +93,14 @@ public class ActivateTracingSpan<R extends ConnectRecord<R>> implements Transfor
     @Override
     public void configure(Map<String, ?> props) {
         Configuration config = Configuration.from(props);
-        final Field.Set configFields = Field.setOf(TRACING_SPAN_CONTEXT_FIELD, TRACING_OPERATION_NAME);
+        final Field.Set configFields = Field.setOf(TRACING_SPAN_CONTEXT_FIELD, TRACING_SPAN_CONTEXT_FORMAT, TRACING_OPERATION_NAME);
 
         if (!config.validateAndRecord(configFields, LOGGER::error)) {
             throw new ConnectException("Unable to validate config.");
         }
 
         spanContextField = config.getString(TRACING_SPAN_CONTEXT_FIELD);
+        spanContextFormat = SpanContextFormat.parse(config.getString(TRACING_SPAN_CONTEXT_FORMAT));
         operationName = config.getString(TRACING_OPERATION_NAME);
         requireContextField = config.getBoolean(TRACING_CONTEXT_FIELD_REQUIRED);
 
@@ -122,7 +134,7 @@ public class ActivateTracingSpan<R extends ConnectRecord<R>> implements Transfor
         }
 
         try {
-            return TracingSpanUtil.traceRecord(connectRecord, envelope, source, propagatedSpanContext, operationName);
+            return TracingSpanUtil.traceRecord(connectRecord, envelope, source, propagatedSpanContext, operationName, spanContextFormat);
         }
         catch (NoClassDefFoundError e) {
             throw new DebeziumException("Failed to record tracing information, tracing libraries not available", e);
@@ -140,6 +152,7 @@ public class ActivateTracingSpan<R extends ConnectRecord<R>> implements Transfor
                 config,
                 null,
                 TRACING_SPAN_CONTEXT_FIELD,
+                TRACING_SPAN_CONTEXT_FORMAT,
                 TRACING_OPERATION_NAME,
                 TRACING_CONTEXT_FIELD_REQUIRED);
         return config;
@@ -167,6 +180,6 @@ public class ActivateTracingSpan<R extends ConnectRecord<R>> implements Transfor
 
     @Override
     public Field.Set getConfigFields() {
-        return Field.setOf(TRACING_SPAN_CONTEXT_FIELD, TRACING_OPERATION_NAME, TRACING_CONTEXT_FIELD_REQUIRED);
+        return Field.setOf(TRACING_SPAN_CONTEXT_FIELD, TRACING_SPAN_CONTEXT_FORMAT, TRACING_OPERATION_NAME, TRACING_CONTEXT_FIELD_REQUIRED);
     }
 }

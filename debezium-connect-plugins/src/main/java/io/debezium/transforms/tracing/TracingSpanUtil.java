@@ -58,12 +58,17 @@ public class TracingSpanUtil {
      * @return the connect record with message headers augmented with tracing information
      */
     public static <R extends ConnectRecord<R>> R traceRecord(R connectRecord, Struct envelope, Struct source, String propagatedSpanContext, String operationName) {
+        return traceRecord(connectRecord, envelope, source, propagatedSpanContext, operationName, SpanContextFormat.PROPERTIES);
+    }
+
+    public static <R extends ConnectRecord<R>> R traceRecord(R connectRecord, Struct envelope, Struct source, String propagatedSpanContext, String operationName,
+                                                             SpanContextFormat spanContextFormat) {
         SpanBuilder txLogSpanBuilder = tracer.spanBuilder(TX_LOG_WRITE_OPERATION_NAME)
                 .setSpanKind(SpanKind.INTERNAL);
 
         Context parentSpanContext = Context.current();
         if (propagatedSpanContext != null) {
-            Properties props = PropertiesGetter.extract(propagatedSpanContext);
+            Properties props = spanContextFormat.deserialize(propagatedSpanContext);
 
             parentSpanContext = openTelemetry.getPropagators().getTextMapPropagator()
                     .extract(parentSpanContext, props, PropertiesGetter.INSTANCE);
