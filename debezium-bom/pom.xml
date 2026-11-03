@@ -47,6 +47,7 @@
 
         <!-- Redis -->
         <version.jedis>6.0.0</version.jedis>
+        <version.lettuce>6.7.1.RELEASE</version.lettuce>
 
         <!-- NATS -->
         <version.jnats>2.26.2</version.jnats>
@@ -590,6 +591,11 @@
                 <groupId>io.nats</groupId>
                 <artifactId>jnats</artifactId>
                 <version>${version.jnats}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.lettuce</groupId>
+                <artifactId>lettuce-core</artifactId>
+                <version>${version.lettuce}</version>
             </dependency>
             <dependency>
                 <groupId>org.apache.rocketmq</groupId>

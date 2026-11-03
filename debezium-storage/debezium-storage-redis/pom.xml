@@ -62,6 +62,18 @@
             <groupId>redis.clients</groupId>
             <artifactId>jedis</artifactId>
         </dependency>
+        <!--
+            Provided rather than compile so that the default (Jedis) deployments neither pull in Lettuce
+            transitively nor carry it, Netty and Reactor in the distribution archive: that chain is about
+            6.9 MB of the 11 MB the archive would otherwise hold, and Jedis users never load a class of it.
+            Users who set redis.client.library=lettuce add lettuce-core to the runtime classpath themselves;
+            RedisConnection fails with an actionable message when it is missing.
+        -->
+        <dependency>
+            <groupId>io.lettuce</groupId>
+            <artifactId>lettuce-core</artifactId>
+            <scope>provided</scope>
+        </dependency>
         <dependency>
             <groupId>io.smallrye.reactive</groupId>
             <artifactId>mutiny</artifactId>
