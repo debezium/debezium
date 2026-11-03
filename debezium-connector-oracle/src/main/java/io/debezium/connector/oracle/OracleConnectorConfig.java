@@ -560,9 +560,9 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
             .withWidth(Width.SHORT)
             .withImportance(Importance.LOW)
             .withDefault(false)
-            .withDescription("When 'log.mining.query.filter.mode' is 'in', the query compares the schema and table names case-sensitively and " +
-                    "compares tables by table name alone. Set this option to 'true' to  restore the slower query that compares the " +
-                    "upper-cased schema name and the upper-cased concatenation of the schema and table names.");
+            .withDescription("When 'log.mining.query.filter.mode' is 'in', the query compares tables by table name alone. " +
+                    "Set this option to 'true' to restore the slower query that compares the " +
+                    "upper-cased concatenation of the schema and table names.");
 
     public static final Field LOG_MINING_FLUSH_TABLE_NAME = Field.create("log.mining.flush.table.name")
             .withDisplayName("Specifies the name of the flush table used by the connector")

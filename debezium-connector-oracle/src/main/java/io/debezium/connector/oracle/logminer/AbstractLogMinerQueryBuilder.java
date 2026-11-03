@@ -266,21 +266,22 @@ public abstract class AbstractLogMinerQueryBuilder implements LogMinerQueryBuild
             });
 
             final IncludeExcludeInClause inClause = IncludeExcludeInClause.builder()
-                    .withFilterMode(queryFilterMode);
+                    .withFilterMode(queryFilterMode)
+                    .caseInsensitive();
             if (upperAndConcatenateSchema) {
-                inClause
-                        .caseInsensitive()
+                predicate.append(inClause
                         .withField(concatenatedFieldName)
                         .withIncludeValues(includeTableList)
-                        .withExcludeValues(excludeTableList);
+                        .withExcludeValues(excludeTableList)
+                        .build());
             }
             else {
-                inClause
+                predicate.append(existsFromDual(inClause
                         .withField(tableOnlyFieldName)
                         .withIncludeValues(getTableNamesOnly(includeTableList))
-                        .withExcludeValues(getTableNamesOnly(excludeTableList));
+                        .withExcludeValues(getTableNamesOnly(excludeTableList))
+                        .build()));
             }
-            predicate.append(inClause.build());
             predicate.append(")");
             return predicate.toString();
         }
@@ -353,17 +354,16 @@ public abstract class AbstractLogMinerQueryBuilder implements LogMinerQueryBuild
             final StringBuilder predicate = new StringBuilder();
             predicate.append("(").append(fieldName).append(" IS NULL OR ");
 
-            final IncludeExcludeInClause inClause = IncludeExcludeInClause.builder()
+            final String inClause = IncludeExcludeInClause.builder()
                     .withField(fieldName)
                     .withFilterMode(queryFilterMode)
                     .withIncludeValues(includeSchemasList)
                     .withDefaultIncludeValues(Collections.singletonList(UNKNOWN_SCHEMA_NAME))
                     .withExcludeValues(excludeSchemasList)
-                    .withDefaultExcludeValues(getBuiltInExcludedSchemas());
-            if (connectorConfig.isLogMiningQueryFilterSchemaTableConcatenate()) {
-                inClause.caseInsensitive();
-            }
-            predicate.append(inClause.build());
+                    .withDefaultExcludeValues(getBuiltInExcludedSchemas())
+                    .caseInsensitive()
+                    .build();
+            predicate.append(connectorConfig.isLogMiningQueryFilterSchemaTableConcatenate() ? inClause : existsFromDual(inClause));
             predicate.append(")");
             return predicate.toString();
         }
@@ -463,9 +463,16 @@ public abstract class AbstractLogMinerQueryBuilder implements LogMinerQueryBuild
 
     private static List<String> getTableNamesOnly(List<String> tableIds) {
         return tableIds.stream()
-                .map(tableId -> TableId.parse(tableId, false).table())
+                .map(tableId -> TableId.parse(tableId, false).table().toUpperCase())
                 .distinct()
                 .toList();
+    }
+
+    /**
+     * Wraps the predicate in an {@code EXISTS (SELECT 1 FROM DUAL WHERE ...)} sub-query.
+     */
+    private static String existsFromDual(String predicate) {
+        return "EXISTS (SELECT 1 FROM DUAL WHERE " + predicate + ")";
     }
 
     private static List<String> toUpperCase(Collection<String> values) {
