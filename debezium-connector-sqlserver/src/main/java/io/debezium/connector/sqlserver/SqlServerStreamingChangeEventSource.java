@@ -174,7 +174,9 @@ public class SqlServerStreamingChangeEventSource implements StreamingChangeEvent
                     : offsetContext.getChangePosition();
             final SqlServerStreamingExecutionContext streamingExecutionContext = streamingExecutionContexts.getOrDefault(partition,
                     new SqlServerStreamingExecutionContext(
-                            new PriorityQueue<>(Comparator.comparing(SqlServerChangeTable::getStopLsn)),
+                            // The migration of a change table has to be dispatched when the position of the connector
+                            // reaches the start LSN of that change table, so the queue is ordered by the start LSN
+                            new PriorityQueue<>(Comparator.comparing(SqlServerChangeTable::getStartLsn)),
                             new AtomicReference<>(),
                             resumePosition,
                             new AtomicBoolean(false),
@@ -345,10 +347,11 @@ public class SqlServerStreamingChangeEventSource implements StreamingChangeEvent
                         LOGGER.trace("Processing change {}", tableWithSmallestLsn);
                         anyData = true;
                         LOGGER.trace("Schema change checkpoints {}", schemaChangeCheckpoints);
-                        if (!schemaChangeCheckpoints.isEmpty()) {
-                            if (tableWithSmallestLsn.getChangePosition().getCommitLsn().compareTo(schemaChangeCheckpoints.peek().getStartLsn()) >= 0) {
-                                migrateTable(partition, schemaChangeCheckpoints, offsetContext);
-                            }
+                        // Every change table whose start LSN the position of the connector has reached has to be
+                        // migrated, so that the rows of the retired capture instance are read before the ALTER
+                        while (!schemaChangeCheckpoints.isEmpty()
+                                && tableWithSmallestLsn.getChangePosition().getCommitLsn().compareTo(schemaChangeCheckpoints.peek().getStartLsn()) >= 0) {
+                            migrateTable(partition, schemaChangeCheckpoints, offsetContext);
                         }
                         final TableId tableId = tableWithSmallestLsn.getChangeTable().getSourceTableId();
                         final int operation = tableWithSmallestLsn.getOperation();
@@ -479,27 +482,88 @@ public class SqlServerStreamingChangeEventSource implements StreamingChangeEvent
     private void migrateTable(SqlServerPartition partition, final Queue<SqlServerChangeTable> schemaChangeCheckpoints, SqlServerOffsetContext offsetContext)
             throws InterruptedException, SQLException {
         final SqlServerChangeTable newTable = schemaChangeCheckpoints.poll();
-        LOGGER.info("Migrating schema to {}", newTable);
-        Table oldTableSchema = schema.tableFor(newTable.getSourceTableId());
-        Table tableSchema = metadataConnection.getTableSchemaFromTable(partition.getDatabaseName(), newTable);
-        if (oldTableSchema.equals(tableSchema)) {
-            LOGGER.info("Migration skipped, no table schema changes detected.");
-            return;
+        final Table tableSchema = schemaToMigrate(partition, newTable);
+        if (tableSchema != null) {
+            // The migration is dispatched when the position of the connector reaches the start LSN of the capture
+            // instance, so the rows of the retired capture instance precede the record and the rows that follow it are
+            // at or above that start LSN. The record therefore carries the start LSN of the capture instance.
+            withCaptureStartPosition(offsetContext, newTable, () -> dispatchSchemaChange(partition, newTable, tableSchema, offsetContext));
+            newTable.setSourceTable(tableSchema);
         }
-        withCaptureStartPosition(offsetContext, newTable,
-                () -> dispatcher.dispatchSchemaChangeEvent(partition, offsetContext, newTable.getSourceTableId(),
-                        new SqlServerSchemaChangeEventEmitter(partition, offsetContext, newTable, tableSchema, schema,
-                                SchemaChangeEventType.ALTER)));
-        newTable.setSourceTable(tableSchema);
     }
 
+    private void migrateTable(SqlServerPartition partition, final SqlServerChangeTable newTable, SqlServerOffsetContext offsetContext)
+            throws InterruptedException, SQLException {
+        final Table tableSchema = schemaToMigrate(partition, newTable);
+        if (tableSchema != null) {
+            // The migration is dispatched before the change tables of the iteration are read, so the record has to be
+            // below every row the iteration reads.
+            withPosition(offsetContext, positionBelowTheRowsOfTheIteration(partition, offsetContext),
+                    () -> dispatchSchemaChange(partition, newTable, tableSchema, offsetContext));
+            newTable.setSourceTable(tableSchema);
+        }
+    }
+
+    /**
+     * @return the schema of the source table, or {@code null} if the schema of the source table did not change
+     */
+    private Table schemaToMigrate(SqlServerPartition partition, SqlServerChangeTable newTable) throws SQLException {
+        LOGGER.info("Migrating schema to {}", newTable);
+        final Table oldTableSchema = schema.tableFor(newTable.getSourceTableId());
+        final Table tableSchema = metadataConnection.getTableSchemaFromTable(partition.getDatabaseName(), newTable);
+        if (oldTableSchema.equals(tableSchema)) {
+            LOGGER.info("Migration skipped, no table schema changes detected.");
+            return null;
+        }
+        return tableSchema;
+    }
+
+    private void dispatchSchemaChange(SqlServerPartition partition, SqlServerChangeTable newTable, Table tableSchema, SqlServerOffsetContext offsetContext)
+            throws InterruptedException {
+        dispatcher.dispatchSchemaChangeEvent(partition, offsetContext, newTable.getSourceTableId(),
+                new SqlServerSchemaChangeEventEmitter(partition, offsetContext, newTable, tableSchema, schema, SchemaChangeEventType.ALTER));
+    }
+
+    /**
+     * Determines the position of the schema change record of a migration that is dispatched before the change tables of
+     * the iteration are read. The record has to be below every row the iteration reads, or a restart from its offset
+     * skips a row that follows it. The position of the connector is below every row of the iteration, because the
+     * iteration reads from the increment of it, and so is the oldest LSN the change tables hold, because a change table
+     * only holds rows at or above its own start LSN. The record carries the position of the connector when the connector
+     * could resume from it, because the connector refuses to start from a position below the oldest LSN the change
+     * tables hold, and the oldest LSN the change tables hold otherwise.
+     */
+    private Lsn positionBelowTheRowsOfTheIteration(SqlServerPartition partition, SqlServerOffsetContext offsetContext) throws SQLException {
+        final Lsn oldestLsn = dataConnection.getMinLsnFromAllChangeTables(partition.getDatabaseName());
+        final Lsn connectorPosition = offsetContext.getChangePosition().getCommitLsn();
+        LOGGER.info("Oldest LSN in logs is '{}'", oldestLsn);
+        LOGGER.info("Position of the connector is '{}'", connectorPosition);
+        if (connectorPosition.isAvailable() && dataConnection.canResumeFrom(connectorPosition, oldestLsn)) {
+            return connectorPosition;
+        }
+        return oldestLsn;
+    }
+
+    /**
+     * Emits the schema change record at the start LSN of the capture instance, so that it sorts after the last
+     * old-structure row. A restart from that record re-reads from the capture start, which duplicates the rows read
+     * since then but does not drop rows.
+     */
     static void withCaptureStartPosition(SqlServerOffsetContext offsetContext, SqlServerChangeTable newTable, BlockingRunnable action)
+            throws InterruptedException {
+        withPosition(offsetContext, newTable.getStartLsn(), action);
+    }
+
+    /**
+     * Emits the schema change record at the given LSN, so that it sorts at that position in the stream, and restores
+     * the position of the connector afterwards. The event serial number is reset, so that a restart from the offset of
+     * the schema change record does not skip the records at that position.
+     */
+    private static void withPosition(SqlServerOffsetContext offsetContext, Lsn lsn, BlockingRunnable action)
             throws InterruptedException {
         final TxLogPosition currentPosition = offsetContext.getChangePosition();
         final long eventSerialNo = offsetContext.getEventSerialNo();
-        // The schema-change record is emitted at the capture start so it sorts after the last old-structure row.
-        // If that record is the last committed offset, a restart re-reads from the capture start. That duplicates one poll. It does not drop rows.
-        offsetContext.assignChangePosition(TxLogPosition.valueOf(newTable.getStartLsn(), newTable.getStartLsn(), currentPosition.getCommandId()), 0);
+        offsetContext.assignChangePosition(TxLogPosition.valueOf(lsn, lsn, currentPosition.getCommandId()), 0);
         try {
             action.run();
         }
@@ -588,17 +652,31 @@ public class SqlServerStreamingChangeEventSource implements StreamingChangeEvent
                                 dataConnection.getTableSchemaFromTable(databaseName, currentTable),
                                 schema,
                                 SchemaChangeEventType.CREATE));
+                currentTable.setSourceTable(schema.tableFor(currentTable.getSourceTableId()));
             }
-            else if (hasColumnMissingFromSchema(cachedSchema, newestTable)) {
-                LOGGER.info("The capture instance {} of table {} captures a column that the cached schema does not have, so the table will be migrated",
-                        newestTable.getCaptureInstance(), newestTable.getSourceTableId());
-                schemaChangeCheckpoints.add(newestTable);
+            else {
+                // If a column was renamed, then the old capture instance had been dropped and a new one
+                // created. In consequence, a table with out-dated schema might be assigned here.
+                // A proper value will be set when migration happens.
+                currentTable.setSourceTable(cachedSchema);
+                // With the column filter override the captured columns are the columns of the source table and not
+                // of the change table, so they do not tell whether the change table can be decoded with the cached
+                // schema.
+                if (!connectorConfig.isOverrideCdcColumnFilter() && hasColumnMissingFromSchema(cachedSchema, newestTable)) {
+                    LOGGER.info("The capture instance {} of table {} captures a column that the cached schema does not have, so the table will be migrated",
+                            newestTable.getCaptureInstance(), newestTable.getSourceTableId());
+                    if (captures.size() > 1) {
+                        // The retired capture instance may still have rows that have to be read before the
+                        // migration, so the LSN window orders the migration.
+                        schemaChangeCheckpoints.add(newestTable);
+                    }
+                    else {
+                        // The retired capture instance is gone and there is no row that has to be read before
+                        // the migration, so it can happen right here, before the change tables are read.
+                        migrateTable(partition, newestTable, offsetContext);
+                    }
+                }
             }
-
-            // If a column was renamed, then the old capture instance had been dropped and a new one
-            // created. In consequence, a table with out-dated schema might be assigned here.
-            // A proper value will be set when migration happens.
-            currentTable.setSourceTable(schema.tableFor(currentTable.getSourceTableId()));
             tables.add(currentTable);
         }
 
@@ -606,16 +684,21 @@ public class SqlServerStreamingChangeEventSource implements StreamingChangeEvent
     }
 
     /**
-     * Checks whether the change table of the capture instance contains a column that the cached schema of the source
-     * table does not have. Such a column cannot be decoded, because the change table and the schema do not describe
-     * the same set of columns.
+     * Checks whether the given schema of the source table contains every column that the capture instance captures.
+     * A column that the schema does not have cannot be decoded, because the change table and the schema do not
+     * describe the same set of columns.
+     * <p>
+     * The comparison is case-sensitive on purpose: the connector matches the columns of the change table against the
+     * columns of the schema with a case-sensitive map (see {@link ColumnUtils#toMap(Table)}), so a schema whose column
+     * name differs from the captured column name only by case would not decode the change table either, and the decoder
+     * would log "Column '...' available in capture table not found among source table columns".
      *
-     * @param cachedSchema the schema the connector has cached for the source table
+     * @param schema the schema of the source table
      * @param changeTable the change table of the capture instance to check
-     * @return {@code true} if the change table contains a column the cached schema does not have
+     * @return {@code true} if the change table contains a column the given schema does not have
      */
-    private static boolean hasColumnMissingFromSchema(Table cachedSchema, SqlServerChangeTable changeTable) {
-        final Map<String, Column> sourceTableColumns = ColumnUtils.toMap(cachedSchema).getSourceTableColumns();
+    private static boolean hasColumnMissingFromSchema(Table schema, SqlServerChangeTable changeTable) {
+        final Map<String, Column> sourceTableColumns = ColumnUtils.toMap(schema).getSourceTableColumns();
         return changeTable.getCapturedColumns().stream().anyMatch(column -> !sourceTableColumns.containsKey(column));
     }
 

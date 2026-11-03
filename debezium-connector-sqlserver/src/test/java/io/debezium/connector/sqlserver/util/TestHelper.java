@@ -8,11 +8,13 @@ package io.debezium.connector.sqlserver.util;
 
 import static java.sql.Types.NCHAR;
 
+import java.io.IOException;
 import java.lang.management.ManagementFactory;
 import java.nio.file.Path;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.time.Duration;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
@@ -39,6 +41,8 @@ import io.debezium.connector.sqlserver.SqlServerChangeTable;
 import io.debezium.connector.sqlserver.SqlServerConnection;
 import io.debezium.connector.sqlserver.SqlServerConnectorConfig;
 import io.debezium.connector.sqlserver.SqlServerValueConverters;
+import io.debezium.document.Document;
+import io.debezium.document.DocumentReader;
 import io.debezium.jdbc.JdbcConfiguration;
 import io.debezium.jdbc.JdbcConnection;
 import io.debezium.jdbc.JdbcValueConverters;
@@ -63,6 +67,9 @@ public class TestHelper {
     public static final String TEST_DATABASE_1 = "testDB1";
     public static final String TEST_DATABASE_2 = "testDB2";
     public static final String TEST_SERVER_NAME = "server1";
+    public static final String CAPTURE_JOB_NAME = "cdc." + TEST_DATABASE_1 + "_capture";
+    private static final String AGENT_JOB_ALREADY_RUNNING = "refused because the job is already running";
+    private static final String AGENT_JOB_NOT_RUNNING = "refused because the job is not currently running";
     private static final String TEST_PROPERTY_PREFIX = "debezium.test.";
 
     private static final String TEST_TASK_ID = "0";
@@ -501,6 +508,123 @@ public class TestHelper {
     static void executeAndCommit(JdbcConnection connection, String stmt, JdbcConnection.StatementPreparer preparer) throws SQLException {
         connection.prepareUpdate(stmt, preparer);
         connection.commit();
+    }
+
+    /**
+     * Stops the CDC capture job of the test database, so that it publishes nothing and can be started again.
+     * <p>
+     * The capture job is a repeating job of the SQL Server Agent, and the Agent refuses to stop it while it is idle
+     * between its scans. An idle capture job publishes nothing, which is the state this method wants, but the Agent
+     * starts a capture job that has not run yet, so the refusal is a success only once the capture job has run.
+     *
+     * @param connection the connection to the database whose capture job is stopped
+     */
+    public static void stopCaptureJob(SqlServerConnection connection) {
+        Awaitility.await("capture job stopped")
+                .atMost(60, TimeUnit.SECONDS)
+                .pollDelay(Duration.ZERO)
+                .pollInterval(Duration.ofMillis(100))
+                .until(() -> {
+                    try {
+                        connection.execute("EXEC sys.sp_cdc_stop_job @job_type = 'capture'");
+                        return true;
+                    }
+                    catch (SQLException e) {
+                        if (isMissingCaptureJob(e)) {
+                            // There is no capture job at all, so nothing publishes changes
+                            return true;
+                        }
+                        return isAgentRefusal(e, AGENT_JOB_NOT_RUNNING) && captureJobHasRun(connection);
+                    }
+                });
+    }
+
+    /**
+     * Starts the CDC capture job of the test database, so that it publishes the changes the test makes.
+     * <p>
+     * The Agent refuses the start with a stale "already running" answer, while it is still finishing the start
+     * request of the capture job, so the capture job is stopped and started again in that case.
+     *
+     * @param connection the connection to the database whose capture job is started
+     */
+    public static void startCaptureJob(SqlServerConnection connection) {
+        Awaitility.await("capture job started")
+                .atMost(60, TimeUnit.SECONDS)
+                .pollDelay(Duration.ZERO)
+                .pollInterval(Duration.ofMillis(100))
+                .until(() -> {
+                    try {
+                        connection.execute("EXEC sys.sp_cdc_start_job @job_type = 'capture'");
+                        return true;
+                    }
+                    catch (SQLException e) {
+                        if (!isAgentRefusal(e, AGENT_JOB_ALREADY_RUNNING)) {
+                            return false;
+                        }
+                        // The capture job publishes nothing until it runs, so the stale refusal is answered by stopping
+                        // it, which makes the state of the Agent consistent. The next attempt starts it for real.
+                        stopCaptureJob(connection);
+                        return false;
+                    }
+                });
+    }
+
+    /**
+     * Counts the schema changes of the given type in the schema history of the connector.
+     *
+     * @param type the type of the schema change, e.g. {@code CREATE} or {@code ALTER}
+     * @return the number of the schema changes of that type
+     */
+    public static int countSchemaChanges(String type) {
+        final DocumentReader reader = DocumentReader.defaultReader();
+        final List<Document> changes = new ArrayList<>();
+        try {
+            IoUtil.readLines(SCHEMA_HISTORY_PATH, line -> {
+                try {
+                    changes.add(reader.read(line));
+                }
+                catch (IOException e) {
+                    throw new IllegalStateException(e);
+                }
+            });
+        }
+        catch (IOException e) {
+            throw new IllegalStateException(e);
+        }
+        return (int) changes.stream()
+                .flatMap(change -> change.getArray("tableChanges").streamValues())
+                .filter(tableChange -> type.equals(tableChange.asDocument().getString("type")))
+                .count();
+    }
+
+    /**
+     * @param e the exception the SQL Server Agent raised
+     * @return {@code true} if the exception says that the capture job does not exist at all
+     */
+    private static boolean isMissingCaptureJob(SQLException e) {
+        final String message = e.getMessage() == null ? "" : e.getMessage();
+        return message.contains("does not exist in the system table") || message.contains("cannot be found in the msdb system database");
+    }
+
+    /**
+     * @param e the exception the SQL Server Agent raised
+     * @param reason the reason the Agent refused the request
+     * @return {@code true} if the exception says that the Agent refused the request for that reason
+     */
+    private static boolean isAgentRefusal(SQLException e, String reason) {
+        return e.getMessage() != null && e.getMessage().contains(reason);
+    }
+
+    /**
+     * @param connection the connection to the database whose capture job is checked
+     * @return {@code true} if the capture job of the database has run, which means that the SQL Server Agent has
+     *         started it and will not start it again
+     */
+    private static boolean captureJobHasRun(SqlServerConnection connection) throws SQLException {
+        return connection.prepareQueryAndMap(
+                "SELECT COUNT(*) FROM msdb.dbo.sysjobactivity WHERE job_id = (SELECT job_id FROM msdb.dbo.sysjobs WHERE name = ?) AND start_execution_date IS NOT NULL",
+                preparer -> preparer.setString(1, CAPTURE_JOB_NAME),
+                connection.singleResultMapper(resultSet -> resultSet.getLong(1) > 0, "Cannot read the state of the capture job"));
     }
 
     public static void waitForSnapshotToBeCompleted() {

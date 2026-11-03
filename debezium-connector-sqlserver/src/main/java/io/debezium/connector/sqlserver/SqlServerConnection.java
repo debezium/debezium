@@ -446,6 +446,31 @@ public class SqlServerConnection extends JdbcConnection {
     }
 
     /**
+     * @param databaseName the database whose change tables are inspected
+     * @return the oldest start LSN among the change tables of the given database, or {@link Lsn#NULL} when the database
+     *         has no change table
+     */
+    public Lsn getMinLsnFromAllChangeTables(String databaseName) throws SQLException {
+        final String query = replaceDatabaseNamePlaceholder(GET_MIN_LSN_FROM_ALL_CHANGE_TABLES, databaseName);
+        final Lsn oldestLsn = singleOptionalValue(query, rs -> Lsn.valueOf(rs.getBytes(1)));
+        return oldestLsn == null ? Lsn.NULL : oldestLsn;
+    }
+
+    /**
+     * Checks whether the connector could resume from the given LSN, which is the case when the LSN is at or above the
+     * oldest LSN the change tables still hold. An LSN below that is refused by the connector, and so is an LSN that is
+     * not available. A database whose change tables hold no LSN at all refuses every LSN.
+     *
+     * @param lsn the LSN the connector would resume from
+     * @param oldestLsn the oldest LSN among the change tables of the database, or {@link Lsn#NULL} when the database has
+     *        no change table
+     * @return {@code true} if the connector could resume from the given LSN
+     */
+    public boolean canResumeFrom(Lsn lsn, Lsn oldestLsn) {
+        return oldestLsn.isAvailable() && oldestLsn.compareTo(lsn) <= 0;
+    }
+
+    /**
      * Provides all changes recorder by the SQL Server CDC capture process for a set of tables.
      *
      * @param changeTable - the requested table to obtain changes for
@@ -978,18 +1003,14 @@ public class SqlServerConnection extends JdbcConnection {
     public boolean validateLogPosition(Partition partition, OffsetContext offset, CommonConnectorConfig config) {
 
         final Lsn storedLsn = ((SqlServerOffsetContext) offset).getChangePosition().getCommitLsn();
-
-        final String oldestFirstChangeQuery = replaceDatabaseNamePlaceholder(GET_MIN_LSN_FROM_ALL_CHANGE_TABLES, ((SqlServerPartition) partition).getDatabaseName());
+        final String databaseName = ((SqlServerPartition) partition).getDatabaseName();
 
         try {
-
-            final String oldestScn = singleOptionalValue(oldestFirstChangeQuery, rs -> rs.getString(1));
-
-            if (oldestScn == null) {
+            final Lsn oldestLsn = getMinLsnFromAllChangeTables(databaseName);
+            if (!oldestLsn.isAvailable()) {
                 return false;
             }
-
-            LOGGER.info("Oldest SCN in logs is '{}'", oldestScn);
+            LOGGER.info("Oldest SCN in logs is '{}'", oldestLsn);
             LOGGER.info("Stored LSN is '{}'", storedLsn);
             if (storedLsn == null || !storedLsn.isAvailable()) {
                 final SnapshotterService snapshotterService = config.getServiceRegistry().tryGetService(SnapshotterService.class);
@@ -1002,7 +1023,7 @@ public class SqlServerConnection extends JdbcConnection {
                 LOGGER.warn("Stored LSN is NULL so it cannot be verified that no change data was purged since it was recorded.");
                 return true;
             }
-            return Lsn.valueOf(oldestScn).compareTo(storedLsn) <= 0;
+            return canResumeFrom(storedLsn, oldestLsn);
         }
         catch (SQLException e) {
             throw new DebeziumException("Unable to get last available log position", e);
