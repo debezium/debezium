@@ -1453,7 +1453,9 @@ The `log.mining.include.internal.events` property accepts the following values:
 
 `false`:: (Default) The connector excludes `INTERNAL` events from LogMiner queries.
 This setting reduces the volume of mined redo log data.
-However, after a partial rollback of a transaction that modifies out-of-line LOB columns, the connector might emit change events that contain stale values for affected LOB fields.
+However, after a `ROLLBACK TO SAVEPOINT` in a transaction that modifies out-of-line LOB columns, the connector might be unable to identify the boundary of the rolled-back statement.
+In that case, the connector might emit change events for the rolled-back statement, or emit change events that contain stale values for affected LOB fields.
+This applies regardless of the `lob.enabled` setting.
 
 `true`:: The connector includes `INTERNAL` events in LogMiner queries.
 This setting increases the volume of mined redo log data, but enables the connector to accurately process `ROLLBACK TO SAVEPOINT` operations for tables with out-of-line LOB columns.
@@ -1464,9 +1466,12 @@ If your application does not use `ROLLBACK TO SAVEPOINT` in transactions that mo
 Enable it only when you need accurate partial rollback handling for tables that store LOB data out-of-line.
 ====
 
-As an alternative to enabling LOB mining and capturing `INTERNAL` events, you can set `lob.enabled` to `false` and configure the {link-prefix}:{link-reselect-columns}#reselect-columns-post-processor[Reselect columns post processor] to re-query LOB column values directly from the database.
+As an alternative to enabling LOB mining, you can set `lob.enabled` to `false` and configure the {link-prefix}:{link-reselect-columns}#reselect-columns-post-processor[Reselect columns post processor] to re-query LOB column values directly from the database.
 
-This approach avoids the overhead of mining LOB-specific redo log entries and `INTERNAL` events while still ensuring that change events contain correct LOB values, because the post processor retrieves the values directly from the source table.
+This approach avoids the overhead of mining LOB-specific redo log entries while still ensuring that change events contain correct LOB values, because the post processor retrieves the values directly from the source table.
+It does not remove the need for `INTERNAL` events.
+If transactions that modify tables with LOB columns use `ROLLBACK TO SAVEPOINT`, set `log.mining.include.internal.events` to `true` even when `lob.enabled` is `false`.
+The post processor cannot correct a change event that the connector should not have emitted.
 
 // Type: assembly
 // ModuleID: descriptions-of-debezium-oracle-connector-data-change-events
@@ -4817,7 +4822,8 @@ endif::community[]
 Set one of the following values:
 `false`:: (default) The connector does not capture `INTERNAL` events.
 Set this option to reduce the volume of redo log data that the connector processes.
-After a partial rollback of a transaction that modifies externally stored LOB data, the change events that the connector emits might contain stale values for the affected LOB fields.
+After a partial rollback of a transaction that modifies externally stored LOB data, the connector might emit change events for rolled-back statements, or change events that contain stale values for the affected LOB fields.
+This option applies regardless of the `lob.enabled` setting.
 
 `true`:: The connector captures `INTERNAL` events.
 Set this option to enable the connector to accurately handle `ROLLBACK TO SAVEPOINT` operations for tables with out-of-line LOB columns.
