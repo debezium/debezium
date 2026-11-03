@@ -515,6 +515,33 @@ public class IncrementalSnapshotIT extends AbstractIncrementalSnapshotTest<Postg
     }
 
     @Test
+    @FixFor("debezium/dbz#1175")
+    public void snapshotInheritanceParentTableWithoutChildTableRows() throws Exception {
+
+        // create parent table and a child table inheriting from it
+        TestHelper.execute("CREATE TABLE s1.parent (pk SERIAL PRIMARY KEY, aa integer);"
+                + "CREATE TABLE s1.child (PRIMARY KEY(pk)) INHERITS (s1.parent);");
+
+        // insert records in the parent itself, and child records with keys sorted before them
+        try (JdbcConnection connection = databaseConnection()) {
+            populateTable(connection, "s1.parent");
+            connection.execute("INSERT INTO s1.child (pk, aa) SELECT -g, -g FROM generate_series(1, 10) g");
+        }
+
+        // start connector
+        startConnector(x -> x.with(PostgresConnectorConfig.TABLE_INCLUDE_LIST, "s1.parent, s1.child"));
+        waitForConnectorToStart();
+
+        sendAdHocSnapshotSignal("s1.parent");
+
+        // check that the child rows are not part of the parent snapshot
+        final Map<Integer, Integer> dbChanges = consumeMixedWithIncrementalSnapshot(ROW_COUNT, "test_server.s1.parent");
+        for (int i = 0; i < ROW_COUNT; i++) {
+            assertThat(dbChanges).contains(entry(i + 1, i));
+        }
+    }
+
+    @Test
     @FixFor("DBZ-4329")
     public void obsoleteSourceInfoIsExcludedFromRecord() throws Exception {
         populateTable();

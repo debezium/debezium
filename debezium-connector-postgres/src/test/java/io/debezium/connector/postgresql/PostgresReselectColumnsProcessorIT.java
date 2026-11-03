@@ -467,4 +467,43 @@ public class PostgresReselectColumnsProcessorIT extends AbstractReselectProcesso
 
         assertColumnReselectedForUnavailableValue(logInterceptor, "s1.dbz9086_toast", "data");
     }
+
+    @Test
+    @FixFor("debezium/dbz#1175")
+    public void testToastColumnNotReselectedFromInheritingTable() throws Exception {
+        TestHelper.execute("CREATE TABLE s1.parent (id int primary key, data text, data2 int);",
+                "CREATE TABLE s1.child (PRIMARY KEY(id)) INHERITS (s1.parent);");
+
+        final LogInterceptor logInterceptor = getReselectLogInterceptor();
+
+        Configuration config = getConfigurationBuilder()
+                .with(PostgresConnectorConfig.TABLE_INCLUDE_LIST, "s1\\.parent")
+                .build();
+
+        start(PostgresConnector.class, config);
+        waitForStreamingStarted();
+
+        final String parentText = RandomStringUtils.randomAlphabetic(10000);
+        final String childText = RandomStringUtils.randomAlphabetic(10000);
+
+        // a parent row and a child row share the same key
+        TestHelper.execute("INSERT INTO s1.parent (id,data,data2) values (1,'" + parentText + "',1);",
+                "INSERT INTO s1.child (id,data,data2) values (1,'" + childText + "',1);");
+
+        // the parent row no longer exists when its update is re-selected
+        TestHelper.execute("UPDATE s1.parent SET data2 = 2 where id = 1; DELETE FROM ONLY s1.parent where id = 1;");
+
+        // insert, update, delete and tombstone
+        final SourceRecords sourceRecords = consumeRecordsByTopic(4);
+        final List<SourceRecord> tableRecords = sourceRecords.recordsForTopic("test_server.s1.parent");
+
+        // Check update
+        SourceRecord record = tableRecords.get(1);
+        Struct after = ((Struct) record.value()).getStruct(Envelope.FieldName.AFTER);
+        VerifyRecord.isValidUpdate(record, "id", 1);
+        assertThat(after.get("data2")).isEqualTo(2);
+        assertThat(after.get("data")).isNotEqualTo(childText);
+
+        assertColumnReselectedForUnavailableValue(logInterceptor, "s1.parent", "data");
+    }
 }
