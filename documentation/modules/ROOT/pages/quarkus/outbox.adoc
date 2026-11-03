@@ -143,7 +143,11 @@ For example, use the following configuration to  import the reactive variant of 
 
 The reactive extension provides the application with the same `io.debezium.outbox.quarkus.ExportedEvent` interface as the non-reactive variant, but it also provides the `DebeziumOutboxHandler` class.
 Injecting the `DebeziumOutboxHandler` bean into an application provides a method for quickly persisting an `ExportedEvent` to the outbox table.
-The following example shows an invocation that uses the same `ExportedEvent` as in the earlier example:
+To apply the outbox pattern correctly, the outbox event must be written in the same transaction as the application's own changes, so that both are either committed or rolled back together.
+
+To make sure that the outbox event is written in your transaction, pass the reactive session of that transaction to `persistToOutbox`.
+The handler then writes the event by using that session, and does not begin or commit a transaction of its own.
+The following example shows an invocation with Hibernate Reactive with Panache that uses the same `ExportedEvent` as in the earlier example:
 
 .OrderService.java
 [source,java,indent=0]
@@ -157,21 +161,34 @@ public class OrderService {
     @Inject
     OrderRepository orderRepository;
 
-    @Inject
-    Event<ExportedEvent<?, ?>> event;
-
-    @ReactiveTransactional
+    @WithTransaction
     public Uni<Order> addOrder(Order order) {
         return orderRepository.persistAndFlush(order)
-        .call(debeziumOutboxHandler.persistToOutbox(new OrderCreatedEvent(Instant.now(), order)));
-
+                .call(() -> Panache.getSession()
+                        .chain(session -> debeziumOutboxHandler.persistToOutbox(new OrderCreatedEvent(Instant.now(), order), session)));
     }
 }
 ----
 
+If you use Hibernate Reactive without Panache, pass the session that the `Mutiny.SessionFactory` provides to your transaction:
+
+[source,java,indent=0]
+----
+public Uni<Order> addOrder(Order order) {
+    return sessionFactory.withTransaction((session, tx) -> session.persist(order)
+            .chain(() -> debeziumOutboxHandler.persistToOutbox(new OrderCreatedEvent(Instant.now(), order), session))
+            .replaceWith(order));
+}
+----
+
+You can also call `persistToOutbox` without a session.
+In this case, if a session and transaction were opened by `Mutiny.SessionFactory` in the current Vert.x context, for example, by `Mutiny.SessionFactory#withTransaction`, the outbox event is written in that transaction.
+The session that Hibernate Reactive with Panache manages is not guaranteed to be found in this way, so pass the session explicitly when you use Panache.
+If no session and transaction are active, the handler writes the event in a new session and commits it in a transaction of its own.
+
 [NOTE]
 ====
-The `persistToOutbox` method returns a Uni; therefore, it must be observed by a subscriber ito receive the result.
+The `persistToOutbox` method returns a Uni; therefore, it must be observed by a subscriber to receive the result.
 For more information about using the Mutiny library to build reactive applications, see the link:https://quarkus.io/guides/mutiny-primer[Quarkus Mutiny primer].
 ====
 
