@@ -20,7 +20,9 @@
         <!--
         By default only run the integration tests for MySQL, PostgreSQL, and SQL Server.
         Other tags include it-db2, it-oracle, it-singlestore, and it-starrocks for the DB2, Oracle, SingleStore,
-        and StarRocks integration tests.
+        and StarRocks integration tests. The Oracle tests use the Oracle Database Free lite image by default,
+        which can be overridden with the oracle.image system property. Images other than Oracle Database Free,
+        such as quay.io/rh_integration/dbz-oracle:19.3.0, use the ORCLCDB and ORCLPDB1 database names.
 
         Additionally, there are also end to end test tags that can be specified:
         e2e-mysql, e2e-postgresql, e2e-sqlserver, e2e-db2, e2e-oracle, e2e-singlestore, and e2e-starrocks

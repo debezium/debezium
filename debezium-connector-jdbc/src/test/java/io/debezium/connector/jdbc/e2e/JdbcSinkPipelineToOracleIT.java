@@ -47,6 +47,12 @@ public class JdbcSinkPipelineToOracleIT extends AbstractJdbcSinkPipelineIT {
     }
 
     @Override
+    protected String getBooleanType(Sink sink) throws SQLException {
+        // Oracle 23ai and later provide a native BOOLEAN column type
+        return sink.getVersion().isSameOrAfter(23) ? "BOOLEAN" : getBooleanType();
+    }
+
+    @Override
     protected String getBitsDataType() {
         return "BLOB";
     }

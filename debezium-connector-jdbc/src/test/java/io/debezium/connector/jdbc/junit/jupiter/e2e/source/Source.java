@@ -23,6 +23,7 @@ import org.testcontainers.containers.output.WaitingConsumer;
 import com.github.dockerjava.api.command.LogContainerCmd;
 
 import io.debezium.connector.jdbc.junit.jupiter.JdbcConnectionProvider;
+import io.debezium.connector.jdbc.junit.jupiter.JdbcOracleContainer;
 import io.debezium.connector.jdbc.util.RandomTableNameGenerator;
 import io.debezium.testing.testcontainers.Connector;
 import io.debezium.testing.testcontainers.ConnectorConfiguration;
@@ -196,7 +197,7 @@ public class Source extends JdbcConnectionProvider {
             case ORACLE:
                 commands.add("bash");
                 commands.add("-c");
-                commands.add("echo \"select * from " + tableName + ";\" | sqlplus debezium/dbz@ORCLPDB1");
+                commands.add("echo \"select * from " + tableName + ";\" | sqlplus debezium/dbz@" + JdbcOracleContainer.getPdbName());
                 break;
             case SQLSERVER:
                 commands.add("/opt/mssql-tools/bin/sqlcmd");
