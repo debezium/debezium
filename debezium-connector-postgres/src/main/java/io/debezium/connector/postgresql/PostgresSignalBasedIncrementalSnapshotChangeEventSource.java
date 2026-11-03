@@ -10,10 +10,13 @@ import java.sql.SQLException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import io.debezium.DebeziumException;
 import io.debezium.connector.postgresql.connection.PostgresConnection;
 import io.debezium.jdbc.JdbcConnection;
 import io.debezium.pipeline.EventDispatcher;
 import io.debezium.pipeline.notification.NotificationService;
+import io.debezium.pipeline.signal.SignalPayload;
+import io.debezium.pipeline.signal.actions.snapshotting.SnapshotConfiguration;
 import io.debezium.pipeline.source.snapshot.incremental.SignalBasedIncrementalSnapshotChangeEventSource;
 import io.debezium.pipeline.source.spi.DataChangeEventListener;
 import io.debezium.pipeline.source.spi.SnapshotProgressListener;
@@ -49,6 +52,18 @@ public class PostgresSignalBasedIncrementalSnapshotChangeEventSource
         super(config, jdbcConnection, dispatcher, databaseSchema, clock, progressListener, dataChangeEventListener, notificationService);
         this.jdbcConnection = (PostgresConnection) jdbcConnection;
         this.schema = (PostgresSchema) databaseSchema;
+    }
+
+    @Override
+    public void addDataCollectionNamesToSnapshot(SignalPayload<PostgresPartition> signalPayload, SnapshotConfiguration snapshotConfiguration)
+            throws InterruptedException {
+        try {
+            schema.loadTablesForIncrementalSnapshot(jdbcConnection, snapshotConfiguration.getDataCollections());
+        }
+        catch (SQLException e) {
+            throw new DebeziumException("Error while loading the schema of the tables to snapshot", e);
+        }
+        super.addDataCollectionNamesToSnapshot(signalPayload, snapshotConfiguration);
     }
 
     @Override
