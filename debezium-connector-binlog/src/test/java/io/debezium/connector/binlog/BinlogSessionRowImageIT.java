@@ -41,6 +41,7 @@ public abstract class BinlogSessionRowImageIT<C extends SourceConnector> extends
         Testing.Files.delete(OFFSET_STORE_PATH);
         Testing.Files.delete(SCHEMA_HISTORY_PATH);
         database = TestHelper.getUniqueDatabase("session_row_image_server", "empty")
+                .withBinlogMetadataKeyColumns("$DBNAME$\\." + TABLE + ":id")
                 .withDbHistoryPath(SCHEMA_HISTORY_PATH);
         database.create();
         initializeConnectorTestFramework();
