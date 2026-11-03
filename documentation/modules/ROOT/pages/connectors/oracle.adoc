@@ -1319,10 +1319,9 @@ The generated query is much more complex than the `none` mode, and focuses on re
 Finally, **do not** specify regular expressions as part of schema and table include/exclude configuration properties.
 Using regular expressions will cause the connector to not match changes based on these configuration properties, causing changes to be missed.
 
-The query compares schema and table names case-sensitively, so specify the names in the include/exclude lists exactly as they are stored in the database, which is typically upper-case.
-If the case of a name in an include list differs from the name in the database, changes to that table are missed.
+The query compares schema and table names case-insensitively.
 To speed up the query, entries in the table include and exclude lists are compared by table name only, and the connector then applies the full schema and table filters to the changes it receives.
-To restore the slower query that ignores case and compares the schema and table names together, set the internal property `internal.log.mining.query.filter.schema.table.concatenate` to `true`.
+To restore the slower query that compares the schema and table names together, set the internal property `internal.log.mining.query.filter.schema.table.concatenate` to `true`.
 
 `regex`:: This mode creates a JDBC query that filters not only operation types at the database level, but also schema, table, and username include/exclude lists.
 However, unlike the `in` mode, this mode generates a SQL query using the Oracle `REGEXP_LIKE` operator using a conjunction or disjunction depending on whether include or excluded values are specified.
@@ -4984,7 +4983,7 @@ Set one of the following options:
 
 `in`:: The query is generated using a standard SQL in-clause to filter schema, table, and usernames on the database side.
 The schema, table, and username configuration include/exclude lists should not specify any regular expressions as the query is built using the values directly.
-Schema and table names are compared case-sensitively, so they must match the names stored in the database.
+Schema and table names are compared case-insensitively.
 
 `regex`:: The query is generated using Oracle's `REGEXP_LIKE` operator to filter schema and table names on the database side, along with usernames using a SQL in-clause.
 The schema and table configuration include/exclude lists can safely specify regular expressions.
