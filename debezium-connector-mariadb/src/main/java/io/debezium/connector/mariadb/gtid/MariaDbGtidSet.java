@@ -174,6 +174,10 @@ public class MariaDbGtidSet implements GtidSet {
         return merged;
     }
 
+    public Set<Long> domainIds() {
+        return streamSets.keySet().stream().map(MariaDbGtidStreamId::getDomainId).collect(Collectors.toCollection(TreeSet::new));
+    }
+
     public static MariaDbGtid parse(String gtid) {
         if (Strings.isNullOrBlank(gtid)) {
             throw new IllegalStateException("Cannot parse empty GTID");
