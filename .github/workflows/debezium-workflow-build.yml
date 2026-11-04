@@ -1,6 +1,6 @@
 name: Build Debezium (Branch)
 
-# Started twice a day for main and recently updated <major>.<minor> branches by
+# Started once a day for main and recently updated <major>.<minor> branches by
 # debezium-workflow-scheduled.yml, which dispatches this workflow with --ref <branch>.
 on:
   workflow_dispatch:
