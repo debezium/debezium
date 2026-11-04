@@ -48,7 +48,7 @@ public class SignalDataCollectionValidatorTest {
     }
 
     private SignalDataCollectionValidationRequest enabledRequest(String... rawValues) {
-        return new SignalDataCollectionValidationRequest(Arrays.asList(rawValues), true, true);
+        return new SignalDataCollectionValidationRequest(Arrays.asList(rawValues), true, true, true);
     }
 
     private void stubDatabaseCollections(String dbName, String... collectionNames) {
@@ -67,7 +67,15 @@ public class SignalDataCollectionValidatorTest {
     @Test
     public void shouldDoNothingWhenValidationDisabled() {
         SignalDataCollectionValidationResult result = SignalDataCollectionValidator.validate(client,
-                new SignalDataCollectionValidationRequest(List.of(RAW_VALUE), false, true));
+                new SignalDataCollectionValidationRequest(List.of(RAW_VALUE), false, true, true));
+
+        assertThat(result.isValid()).isTrue();
+    }
+
+    @Test
+    public void shouldDoNothingWhenNotStreamingCapable() {
+        SignalDataCollectionValidationResult result = SignalDataCollectionValidator.validate(client,
+                new SignalDataCollectionValidationRequest(List.of(RAW_VALUE), true, false, true));
 
         assertThat(result.isValid()).isTrue();
     }
@@ -75,7 +83,7 @@ public class SignalDataCollectionValidatorTest {
     @Test
     public void shouldDoNothingWhenSourceChannelDisabled() {
         SignalDataCollectionValidationResult result = SignalDataCollectionValidator.validate(client,
-                new SignalDataCollectionValidationRequest(List.of(RAW_VALUE), true, false));
+                new SignalDataCollectionValidationRequest(List.of(RAW_VALUE), true, true, false));
 
         assertThat(result.isValid()).isTrue();
     }

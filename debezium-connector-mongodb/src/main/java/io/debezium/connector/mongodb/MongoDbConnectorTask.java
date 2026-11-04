@@ -467,7 +467,7 @@ public final class MongoDbConnectorTask extends BaseSourceTask<MongoDbPartition,
 
     private void validateSignalDataCollection(MongoDbConnectorConfig connectorConfig) {
         SignalDataCollectionValidationRequest request = SignalDataCollectionValidationRequest.forConnector(connectorConfig);
-        if (!request.validationEnabled() || !request.sourceChannelEnabled()) {
+        if (!request.validationEnabled() || !request.streamingCapable() || !request.sourceChannelEnabled()) {
             return;
         }
         try (MongoDbClient client = connectionContext.openClient()) {
