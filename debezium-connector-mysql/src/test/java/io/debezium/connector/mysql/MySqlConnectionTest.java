@@ -11,6 +11,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import java.net.UnknownHostException;
 import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -88,7 +89,8 @@ public class MySqlConnectionTest {
     @Test
     public void shouldIncludeCauseMessageWhenConnectionFails() {
         final MySqlConnectionConfiguration connectionConfig = mock(MySqlConnectionConfiguration.class);
-        final SQLException networkError = new SQLException("Communications link failure", "08S01");
+        final UnknownHostException unknownHost = new UnknownHostException("no-such-mysql-host: Name or service not known");
+        final SQLException networkError = new SQLException("Communications link failure", "08S01", unknownHost);
 
         when(connectionConfig.config()).thenReturn(JdbcConfiguration.empty());
         when(connectionConfig.factory()).thenReturn(config -> {
@@ -98,6 +100,7 @@ public class MySqlConnectionTest {
         assertThatThrownBy(() -> new MySqlConnection(connectionConfig, mock(BinlogFieldReader.class)))
                 .isInstanceOf(DebeziumException.class)
                 .hasMessage("Failed to establish connection with the database: Communications link failure")
-                .hasCause(networkError);
+                .hasCause(networkError)
+                .hasRootCause(unknownHost);
     }
 }
