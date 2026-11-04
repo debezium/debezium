@@ -48,6 +48,16 @@ jobs:
         run: |
           status=0
           while read -r branch; do
+            # Branches without the build workflow (not yet backported) still build via their own push workflow
+            if ! out=$(gh api "repos/$GITHUB_REPOSITORY/contents/.github/workflows/debezium-workflow-build.yml?ref=$branch" --silent 2>&1 >/dev/null); then
+              if [[ "$out" == *"HTTP 404"* ]]; then
+                echo "Skipping $branch, debezium-workflow-build.yml not found"
+              else
+                echo "Failed to check $branch for debezium-workflow-build.yml: $out"
+                status=1
+              fi
+              continue
+            fi
             echo "Dispatching build on $branch"
             gh workflow run debezium-workflow-build.yml --repo "$GITHUB_REPOSITORY" --ref "$branch" || status=1
           done < branches.txt
