@@ -38,6 +38,7 @@ import io.debezium.relational.Tables.ColumnNameFilter;
 public class SignalDataCollectionValidatorTest {
 
     private static final String RAW_VALUE = "dbo.debezium_signal";
+    private static final TableId PARSED_RAW_VALUE = new TableId(null, "dbo", "debezium_signal");
     private static final ColumnNameFilter MATCH_ALL = (catalog, schema, table, column) -> true;
     private static final ColumnNameFilter MATCH_NONE = (catalog, schema, table, column) -> false;
     private static final Predicate<TableId> ALWAYS_SIGNAL_DATA_COLLECTION = table -> true;
@@ -115,7 +116,7 @@ public class SignalDataCollectionValidatorTest {
     @Test
     public void shouldNotFailWhenSignalDataCollectionIsValid() throws SQLException {
         TableId resolved = new TableId(null, "dbo", "debezium_signal");
-        when(connection.readTableNames(null, "dbo", "debezium_signal", null)).thenReturn(Set.of(resolved));
+        when(connection.readTableNames(PARSED_RAW_VALUE)).thenReturn(Set.of(resolved));
         when(connection.getColumnSizes(resolved)).thenReturn(wellSizedColumns());
 
         SignalDataCollectionValidationResult result = SignalDataCollectionValidator.validate(
@@ -130,7 +131,7 @@ public class SignalDataCollectionValidatorTest {
         // A 2-part FQN can match same-named tables in several catalogs; only the configured one is picked and inspected, regardless of Set order.
         TableId otherCatalogMatch = new TableId("otherDb", "dbo", "debezium_signal");
         TableId configuredMatch = new TableId("testDB", "dbo", "debezium_signal");
-        when(connection.readTableNames(null, "dbo", "debezium_signal", null)).thenReturn(Set.of(otherCatalogMatch, configuredMatch));
+        when(connection.readTableNames(PARSED_RAW_VALUE)).thenReturn(Set.of(otherCatalogMatch, configuredMatch));
         when(connection.getColumnSizes(configuredMatch)).thenReturn(wellSizedColumns());
 
         SignalDataCollectionValidationResult result = SignalDataCollectionValidator.validate(
@@ -142,7 +143,7 @@ public class SignalDataCollectionValidatorTest {
 
     @Test
     public void shouldFailWhenTableDoesNotExist() throws SQLException {
-        when(connection.readTableNames(null, "dbo", "debezium_signal", null)).thenReturn(Collections.emptySet());
+        when(connection.readTableNames(PARSED_RAW_VALUE)).thenReturn(Collections.emptySet());
 
         SignalDataCollectionValidationResult result = SignalDataCollectionValidator.validate(
                 enabledRequest(ALWAYS_SIGNAL_DATA_COLLECTION, MATCH_ALL, RAW_VALUE));
@@ -154,7 +155,7 @@ public class SignalDataCollectionValidatorTest {
     @Test
     public void shouldFailWhenWrongShapeMatchesOneCandidate() throws SQLException {
         TableId found = new TableId("testDB", "dbo", "debezium_signal");
-        when(connection.readTableNames(null, "dbo", "debezium_signal", null)).thenReturn(Set.of(found));
+        when(connection.readTableNames(PARSED_RAW_VALUE)).thenReturn(Set.of(found));
 
         SignalDataCollectionValidationResult result = SignalDataCollectionValidator.validate(
                 enabledRequest(table -> false, MATCH_ALL, RAW_VALUE));
@@ -168,7 +169,7 @@ public class SignalDataCollectionValidatorTest {
         // The message must list every candidate, sorted for determinism, instead of picking one via Set iteration order.
         TableId dbTwoMatch = new TableId("db2", "dbo", "debezium_signal");
         TableId dbOneMatch = new TableId("db1", "dbo", "debezium_signal");
-        when(connection.readTableNames(null, "dbo", "debezium_signal", null)).thenReturn(Set.of(dbTwoMatch, dbOneMatch));
+        when(connection.readTableNames(PARSED_RAW_VALUE)).thenReturn(Set.of(dbTwoMatch, dbOneMatch));
 
         SignalDataCollectionValidationResult result = SignalDataCollectionValidator.validate(
                 enabledRequest(table -> false, MATCH_ALL, RAW_VALUE));
@@ -179,10 +180,34 @@ public class SignalDataCollectionValidatorTest {
     }
 
     @Test
+    public void shouldFailWhenTableOnlyExistsInAnotherDatabase() throws SQLException {
+        // Drivers without schemas (e.g. MySQL) ignore the schema argument, so a same-named table in another database must not be suggested.
+        String rawValue = "inventory.debezium_signal";
+        when(connection.readTableNames(new TableId(null, "inventory", "debezium_signal"))).thenReturn(Set.of(new TableId("orders", null, "debezium_signal")));
+
+        SignalDataCollectionValidationResult result = SignalDataCollectionValidator.validate(
+                enabledRequest(table -> false, MATCH_ALL, rawValue));
+
+        assertThat(result.errors()).containsExactly("Signal data collection '" + rawValue + "' does not exist.");
+    }
+
+    @Test
+    public void shouldFailWhenDatabaseNameDiffersOnlyInCase() throws SQLException {
+        String rawValue = "Inventory.debezium_signal";
+        TableId found = new TableId("inventory", null, "debezium_signal");
+        when(connection.readTableNames(new TableId(null, "Inventory", "debezium_signal"))).thenReturn(Set.of(found));
+
+        SignalDataCollectionValidationResult result = SignalDataCollectionValidator.validate(
+                enabledRequest(table -> false, MATCH_ALL, rawValue));
+
+        assertThat(result.errors()).containsExactly("signal.data.collection must be '" + found + "', not '" + rawValue + "'.");
+    }
+
+    @Test
     public void shouldFailWhenColumnFilterReducesSignalTableBelowRequiredColumns() throws SQLException {
         // Most common real-world trigger: a column.include.list scoped to other tables matches none of the signal table's columns.
         TableId resolved = new TableId(null, "dbo", "debezium_signal");
-        when(connection.readTableNames(null, "dbo", "debezium_signal", null)).thenReturn(Set.of(resolved));
+        when(connection.readTableNames(PARSED_RAW_VALUE)).thenReturn(Set.of(resolved));
         when(connection.getColumnSizes(resolved)).thenReturn(wellSizedColumns());
 
         SignalDataCollectionValidationResult result = SignalDataCollectionValidator.validate(
@@ -196,7 +221,7 @@ public class SignalDataCollectionValidatorTest {
     public void shouldFailWhenEffectiveColumnCountAboveRequired() throws SQLException {
         // More than 3 effective columns are dropped at runtime by parseSignallingMessage, so this must fail like below-3.
         TableId resolved = new TableId(null, "dbo", "debezium_signal");
-        when(connection.readTableNames(null, "dbo", "debezium_signal", null)).thenReturn(Set.of(resolved));
+        when(connection.readTableNames(PARSED_RAW_VALUE)).thenReturn(Set.of(resolved));
         when(connection.getColumnSizes(resolved)).thenReturn(columnSizes("id", 42, "type", 32, "data", 2048, "created_at", 32, "note", 32));
 
         SignalDataCollectionValidationResult result = SignalDataCollectionValidator.validate(
@@ -209,7 +234,7 @@ public class SignalDataCollectionValidatorTest {
     @Test
     public void shouldWarnButNotFailWhenColumnSizeBelowRecommended() throws SQLException {
         TableId resolved = new TableId(null, "dbo", "debezium_signal");
-        when(connection.readTableNames(null, "dbo", "debezium_signal", null)).thenReturn(Set.of(resolved));
+        when(connection.readTableNames(PARSED_RAW_VALUE)).thenReturn(Set.of(resolved));
         when(connection.getColumnSizes(resolved)).thenReturn(columnSizes("id", 42, "type", 32, "data", 1000));
 
         SignalDataCollectionValidationResult result = SignalDataCollectionValidator.validate(
@@ -224,7 +249,7 @@ public class SignalDataCollectionValidatorTest {
     public void shouldSkipSizeCheckWhenColumnSizeUnknown() throws SQLException {
         // LOB columns report no usable size (0), so they must not be flagged as undersized.
         TableId resolved = new TableId(null, "dbo", "debezium_signal");
-        when(connection.readTableNames(null, "dbo", "debezium_signal", null)).thenReturn(Set.of(resolved));
+        when(connection.readTableNames(PARSED_RAW_VALUE)).thenReturn(Set.of(resolved));
         when(connection.getColumnSizes(resolved)).thenReturn(columnSizes("id", 42, "type", 32, "data", 0));
 
         SignalDataCollectionValidationResult result = SignalDataCollectionValidator.validate(
@@ -237,7 +262,7 @@ public class SignalDataCollectionValidatorTest {
     @Test
     public void shouldWarnButNotFailWhenColumnNamesDeviateFromConvention() throws SQLException {
         TableId resolved = new TableId(null, "dbo", "debezium_signal");
-        when(connection.readTableNames(null, "dbo", "debezium_signal", null)).thenReturn(Set.of(resolved));
+        when(connection.readTableNames(PARSED_RAW_VALUE)).thenReturn(Set.of(resolved));
         when(connection.getColumnSizes(resolved)).thenReturn(columnSizes("sig_id", 42, "sig_type", 32, "sig_data", 2048));
 
         SignalDataCollectionValidationResult result = SignalDataCollectionValidator.validate(
@@ -253,7 +278,7 @@ public class SignalDataCollectionValidatorTest {
     @Test
     public void shouldFailWhenFirstColumnNotNamedIdUnderInsertDeleteWatermarking() throws SQLException {
         TableId resolved = new TableId(null, "dbo", "debezium_signal");
-        when(connection.readTableNames(null, "dbo", "debezium_signal", null)).thenReturn(Set.of(resolved));
+        when(connection.readTableNames(PARSED_RAW_VALUE)).thenReturn(Set.of(resolved));
         when(connection.getColumnSizes(resolved)).thenReturn(columnSizes("identifier", 42, "type", 32, "data", 2048));
 
         SignalDataCollectionValidationResult result = SignalDataCollectionValidator.validate(
@@ -268,9 +293,9 @@ public class SignalDataCollectionValidatorTest {
         // Each configured signal.data.collection is checked independently; a problem in one must not skip the other.
         String secondRawValue = "dbo.other_signal";
         TableId resolved = new TableId(null, "dbo", "debezium_signal");
-        when(connection.readTableNames(null, "dbo", "debezium_signal", null)).thenReturn(Set.of(resolved));
+        when(connection.readTableNames(PARSED_RAW_VALUE)).thenReturn(Set.of(resolved));
         when(connection.getColumnSizes(resolved)).thenReturn(wellSizedColumns());
-        when(connection.readTableNames(null, "dbo", "other_signal", null)).thenReturn(Collections.emptySet());
+        when(connection.readTableNames(new TableId(null, "dbo", "other_signal"))).thenReturn(Collections.emptySet());
 
         SignalDataCollectionValidationResult result = SignalDataCollectionValidator.validate(
                 enabledRequest(ALWAYS_SIGNAL_DATA_COLLECTION, MATCH_ALL, RAW_VALUE, secondRawValue));
@@ -281,8 +306,8 @@ public class SignalDataCollectionValidatorTest {
     @Test
     public void shouldSwallowSqlExceptionAndContinueToNextValue() throws SQLException {
         String secondRawValue = "dbo.other_signal";
-        when(connection.readTableNames(null, "dbo", "debezium_signal", null)).thenThrow(new SQLException("connection reset"));
-        when(connection.readTableNames(null, "dbo", "other_signal", null)).thenReturn(Collections.emptySet());
+        when(connection.readTableNames(PARSED_RAW_VALUE)).thenThrow(new SQLException("connection reset"));
+        when(connection.readTableNames(new TableId(null, "dbo", "other_signal"))).thenReturn(Collections.emptySet());
 
         SignalDataCollectionValidationResult result = SignalDataCollectionValidator.validate(
                 enabledRequest(ALWAYS_SIGNAL_DATA_COLLECTION, MATCH_ALL, RAW_VALUE, secondRawValue));
@@ -293,7 +318,7 @@ public class SignalDataCollectionValidatorTest {
 
     @Test
     public void shouldSwallowRuntimeExceptionAndNeverThrow() throws SQLException {
-        when(connection.readTableNames(null, "dbo", "debezium_signal", null)).thenThrow(new RuntimeException("unexpected"));
+        when(connection.readTableNames(PARSED_RAW_VALUE)).thenThrow(new RuntimeException("unexpected"));
 
         SignalDataCollectionValidationResult result = SignalDataCollectionValidator.validate(
                 enabledRequest(ALWAYS_SIGNAL_DATA_COLLECTION, MATCH_ALL, RAW_VALUE));

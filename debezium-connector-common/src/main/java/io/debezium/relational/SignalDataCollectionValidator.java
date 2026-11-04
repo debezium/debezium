@@ -10,6 +10,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -64,7 +65,9 @@ public class SignalDataCollectionValidator {
             throws SQLException {
         JdbcConnection connection = request.connectionResolver().apply(rawValue);
         TableId parsed = TableId.parse(rawValue, false);
-        Set<TableId> matches = connection.readTableNames(parsed.catalog(), parsed.schema(), parsed.table(), null);
+        Set<TableId> matches = connection.readTableNames(parsed).stream()
+                .filter(match -> isInConfiguredNamespace(parsed, match))
+                .collect(Collectors.toSet());
         if (matches.isEmpty()) {
             errors.add(String.format("Signal data collection '%s' does not exist.", rawValue));
             return;
@@ -95,6 +98,15 @@ public class SignalDataCollectionValidator {
 
         checkColumnNames(request.insertDeleteWatermarking(), rawValue, effectiveColumns, errors, warnings);
         checkColumnSizes(rawValue, effectiveColumns, warnings);
+    }
+
+    /** Drops tables outside the configured schema (or database, for databases without schemas), which some drivers do not filter on. */
+    private static boolean isInConfiguredNamespace(TableId parsed, TableId match) {
+        if (parsed.catalog() != null || parsed.schema() == null) {
+            return true;
+        }
+        String namespace = match.schema() != null ? match.schema() : match.catalog();
+        return parsed.schema().equalsIgnoreCase(namespace);
     }
 
     /** Returns the columns surviving the connector's {@link ColumnNameFilter}, so the count matches what reaches Debezium's schema. */
