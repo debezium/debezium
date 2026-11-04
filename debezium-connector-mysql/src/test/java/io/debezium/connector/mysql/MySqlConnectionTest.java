@@ -84,4 +84,20 @@ public class MySqlConnectionTest {
 
         verify(jdbcConnection).close();
     }
+
+    @Test
+    public void shouldIncludeCauseMessageWhenConnectionFails() {
+        final MySqlConnectionConfiguration connectionConfig = mock(MySqlConnectionConfiguration.class);
+        final SQLException networkError = new SQLException("Communications link failure", "08S01");
+
+        when(connectionConfig.config()).thenReturn(JdbcConfiguration.empty());
+        when(connectionConfig.factory()).thenReturn(config -> {
+            throw networkError;
+        });
+
+        assertThatThrownBy(() -> new MySqlConnection(connectionConfig, mock(BinlogFieldReader.class)))
+                .isInstanceOf(DebeziumException.class)
+                .hasMessage("Failed to establish connection with the database: Communications link failure")
+                .hasCause(networkError);
+    }
 }
