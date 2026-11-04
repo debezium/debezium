@@ -2279,6 +2279,9 @@ Structured temporal values that have fractional seconds include an optional `pre
 The {prodname} JDBC sink connector can consume these structured temporal schemas directly and maps them according to the target database dialect.
 Kafka Connect cannot represent a struct as a default value (link:https://issues.apache.org/jira/browse/KAFKA-12694[KAFKA-12694]).
 In this mode, the schema of a temporal field therefore has no default value, even if the column definition includes a `DEFAULT` clause.
+If the connector receives a `null` value for a `NOT NULL` temporal column, it emits the epoch-based fallback value.
+For a `DATE` column, this value is `1970-01-01`.
+The connector does not use the value from the `DEFAULT` clause.
 +
 .Mappings when `time.precision.mode=structured`
 [cols="25%a,20%a,55%a",options="header",subs="+attributes"]
