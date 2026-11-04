@@ -21,6 +21,7 @@ import java.sql.DatabaseMetaData;
 import java.sql.DriverManager;
 import java.sql.NClob;
 import java.sql.PreparedStatement;
+import java.sql.ResultSet;
 import java.sql.SQLClientInfoException;
 import java.sql.SQLException;
 import java.sql.SQLWarning;
@@ -139,6 +140,25 @@ class JdbcConnectionTest {
         assertSame(initializationException, thrown);
         assertEquals(1, thrown.getSuppressed().length);
         assertSame(resourceReleasingException, thrown.getSuppressed()[0]);
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2633")
+    public void shouldEscapeLikeWildcardsWhenLookingUpTableById() throws SQLException {
+        final DatabaseMetaData metadata = Mockito.mock(DatabaseMetaData.class);
+        final Connection jdbcConnection = Mockito.mock(Connection.class);
+        Mockito.when(jdbcConnection.getMetaData()).thenReturn(metadata);
+        Mockito.when(metadata.getSearchStringEscape()).thenReturn("\\");
+        Mockito.when(metadata.getTables(any(), any(), any(), any())).thenReturn(Mockito.mock(ResultSet.class));
+        Mockito.when(metadata.getColumns(any(), any(), any(), any())).thenReturn(Mockito.mock(ResultSet.class));
+        final JdbcConnection connection = new JdbcConnection(JdbcConfiguration.empty(), config -> jdbcConnection, "\"", "\"");
+        final TableId tableId = new TableId("db", "tenant_1", "debezium_signal");
+
+        connection.readTableNames(tableId);
+        connection.getColumnSizes(tableId);
+
+        Mockito.verify(metadata).getTables("db", "tenant\\_1", "debezium\\_signal", null);
+        Mockito.verify(metadata).getColumns("db", "tenant\\_1", "debezium\\_signal", null);
     }
 
     private static class TestJdbcConnection extends JdbcConnection {
