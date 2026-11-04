@@ -146,7 +146,8 @@ To use the RocksDB cache, the `debezium-storage-rocksdb` artifact must be on the
 Storage is permanent by default: no time-to-live is applied, and the database directory is retained when the connector stops.
 If you specify a positive `reselect.cache.ttl.ms` value, expired entries are treated as cache misses and removed when they are read.
 RocksDB reclaims expired entries from disk during compaction.
-Because compaction runs only when RocksDB decides that a file needs it, expired entries in large caches that are rarely written, such as caches that store LOB values, can remain on disk for a long time.
+In RocksDB, compaction runs only in response to specific triggers, such as a configured level size or file count.
+As a result, in a database that experiences infrequent writes, expired entries in large caches, such as caches that store LOB values, can remain on disk for extended periods.
 To reclaim that space sooner, set <<reselect-columns-post-processor-property-reselect-cache-rocksdb-periodic-compaction-seconds, `reselect.cache.rocksdb.periodic.compaction.seconds`>>.
 A time-to-live is recommended for schemas that change frequently, because entries written under a previous key schema are never overwritten and would otherwise remain on disk indefinitely.
 
@@ -204,16 +205,17 @@ Note that this is the same property that the in-memory cache uses, but with a di
 |The age, in seconds, after which RocksDB compacts a storage file, even if nothing else would cause the file to be compacted.
 The value is passed to the RocksDB `periodic_compaction_seconds` option.
 RocksDB removes expired entries during compaction, so a lower value reclaims disk space from expired entries sooner.
-The setting is most useful together with a positive `reselect.cache.ttl.ms`, but it also reclaims space from deleted and overwritten entries.
+This setting is most useful when you also set `reselect.cache.ttl.ms` to a positive value, but in the absence of that setting, compaction still reclaims space from deleted and overwritten entries.
 
 If you do not set this property, {prodname} does not set the option, and RocksDB uses its own default.
-When a time-to-live is set, the RocksDB default compacts files every 30 days (`2592000` seconds), so set a value lower than `2592000` to reclaim space sooner.
+If you set `reselect.cache.ttl.ms`, by default, RocksDB compacts files every 30 days (`2592000` seconds).
+To modify the default behavior, specify a value less than `2592000`.
 When no time-to-live is set, RocksDB compacts old files only according to its own automatic defaults.
 
 A value of `0` disables periodic compaction.
 If you disable periodic compaction while a time-to-live is set, expired entries remain on disk until RocksDB happens to compact the file that holds them, which can take a long time for large caches that are rarely written.
 
-Very low values cause RocksDB to rewrite files often, which increases background disk I/O, especially for large caches that store LOB values.
+Lower values cause RocksDB to rewrite files more frequently, which increases background disk I/O, especially for large caches that store LOB values.
 
 |===
 endif::community[]
