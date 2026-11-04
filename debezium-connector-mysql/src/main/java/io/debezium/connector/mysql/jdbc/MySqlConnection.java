@@ -58,7 +58,7 @@ public class MySqlConnection extends BinlogConnectorConnection {
         }
         catch (SQLException e) {
             if (isNetworkError(e)) {
-                throw new DebeziumException("Failed to establish connection with the database: ", e);
+                throw new DebeziumException("Failed to establish connection with the database: " + e.getMessage(), e);
             }
 
             try {
