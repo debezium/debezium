@@ -62,6 +62,22 @@ public class MongoToRelationalMapper<R extends ConnectRecord<R>> implements Tran
         }
     }
 
+    public enum StringUnsupportedTypeHandlingMode implements EnumeratedValue {
+        FAIL("fail"),
+        JSON("json");
+
+        private final String value;
+
+        StringUnsupportedTypeHandlingMode(String value) {
+            this.value = value;
+        }
+
+        @Override
+        public String getValue() {
+            return value;
+        }
+    }
+
     private static final Logger LOGGER = LoggerFactory.getLogger(MongoToRelationalMapper.class);
 
     private static final String SCHEMA_MAPPING_PREFIX = "schema.mapping.";
@@ -75,7 +91,17 @@ public class MongoToRelationalMapper<R extends ConnectRecord<R>> implements Tran
                     + "'input' (the default) preserves the incoming JSON representation. "
                     + "'canonical' serializes all mapped JSON values, including the whole document, as canonical Extended JSON.");
 
-    private static final Field.Set CONFIG_FIELDS = Field.setOf(JSON_OUTPUT_MODE);
+    private static final Field STRING_UNSUPPORTED_TYPE_HANDLING_MODE = Field.create("string.unsupported.type.handling.mode")
+            .withDisplayName("String unsupported type handling mode")
+            .withEnum(StringUnsupportedTypeHandlingMode.class, StringUnsupportedTypeHandlingMode.FAIL)
+            .withWidth(ConfigDef.Width.SHORT)
+            .withImportance(ConfigDef.Importance.MEDIUM)
+            .withDescription("How collection mappings convert BSON values that the string type does not support, such as arrays and documents. "
+                    + "'fail' (the default) raises a conversion error. "
+                    + "'json' writes these values as JSON text in the representation selected by json.output.mode "
+                    + "and keeps the plain string schema.");
+
+    private static final Field.Set CONFIG_FIELDS = Field.setOf(JSON_OUTPUT_MODE, STRING_UNSUPPORTED_TYPE_HANDLING_MODE);
 
     private Field.Set configFields = CONFIG_FIELDS;
 
@@ -89,6 +115,8 @@ public class MongoToRelationalMapper<R extends ConnectRecord<R>> implements Tran
         this.smtManager = new SmtManager<>(config);
         smtManager.validate(config, CONFIG_FIELDS);
         final var jsonOutputMode = EnumeratedValue.parse(JsonOutputMode.class, config.getString(JSON_OUTPUT_MODE));
+        final var stringUnsupportedTypeHandlingMode = EnumeratedValue.parse(StringUnsupportedTypeHandlingMode.class,
+                config.getString(STRING_UNSUPPORTED_TYPE_HANDLING_MODE));
 
         customSchemaMap.clear();
         configFields = CONFIG_FIELDS;
@@ -102,7 +130,7 @@ public class MongoToRelationalMapper<R extends ConnectRecord<R>> implements Tran
                 if (!(entry.getValue() instanceof String json)) {
                     throw new ConfigException("Schema mapping values must be JSON strings: " + entry.getKey());
                 }
-                customSchemaMap.put(namespace, new MongoDocumentMapping(namespace, json, jsonOutputMode));
+                customSchemaMap.put(namespace, new MongoDocumentMapping(namespace, json, jsonOutputMode, stringUnsupportedTypeHandlingMode));
                 configFields = configFields.with(Field.create(entry.getKey())
                         .withType(ConfigDef.Type.STRING)
                         .withImportance(ConfigDef.Importance.HIGH)
