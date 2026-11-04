@@ -111,6 +111,8 @@ public final class AsyncEmbeddedEngine<R> implements DebeziumEngine<R>, AsyncEng
     private final List<EngineSourceTask> tasks = new ArrayList<>();
     // Synchronized on itself, so that stopping the engine cannot miss a polling task that is just being submitted.
     private final List<Future<Void>> pollingFutures = new ArrayList<>();
+    // Marks the threads which run the polling loop. The engine shutdown can be triggered from within the polling loop itself,
+    // in which case it must not wait for the polling threads to terminate, as it would be waiting for itself.
     private final ThreadLocal<Boolean> pollingThread = ThreadLocal.withInitial(() -> false);
     private final ExecutorService taskService;
     private final ExecutorService recordService;
@@ -707,9 +709,15 @@ public final class AsyncEmbeddedEngine<R> implements DebeziumEngine<R>, AsyncEng
     }
 
     /**
-     * Waits up to {@code task.management.timeout.ms} for the polling threads to finish, so the tasks are stopped only after
-     * the in-flight batches are committed and never confirm offsets which aren't stored. Skipped on a polling thread, which
-     * would wait for itself.
+     * Waits up to {@code task.management.timeout.ms} for the polling threads to finish, so that the tasks are stopped only after
+     * the in-flight batches are committed and never confirm offsets which aren't stored.
+     * <p>
+     * This wait is needed because the tasks are stopped on a dedicated executor (see {@link #stopSourceTasks(List)}) and therefore
+     * the stop may run in parallel with a polling thread which is still processing a batch. {@code markProcessed()} advances the
+     * in-memory offsets of the {@link SourceTask}, while only {@code commitOffsets()} stores them into the {@link OffsetStore}.
+     * If the polling thread advanced the offsets after the final commit, {@code SourceTask.stop()} would confirm to the database
+     * positions which were never stored (e.g. PostgreSQL would release the WAL for them) and the records in between would be lost
+     * after the engine is restarted.
      */
     private void awaitPollingTermination() {
         if (pollingThread.get()) {
@@ -736,6 +744,8 @@ public final class AsyncEmbeddedEngine<R> implements DebeziumEngine<R>, AsyncEng
         // Clear interrupt flag so the graceful stop of the tasks is always attempted.
         Thread.interrupted();
         awaitPollingTermination();
+        // The stop of the tasks has to run on a dedicated executor. When it's submitted to taskService, it's never scheduled in case
+        // the polling threads are starved, see dbz#2442.
         final ExecutorService stopTaskService = Threads.newFixedThreadPool(AsyncEmbeddedEngine.class,
                 config.getString(EmbeddedEngineConfig.ENGINE_NAME), "task-stop", Math.max(tasks.size(), 1));
         final Set<EngineTaskId> tasksNotStopped = ConcurrentHashMap.newKeySet();
@@ -1375,6 +1385,9 @@ public final class AsyncEmbeddedEngine<R> implements DebeziumEngine<R>, AsyncEng
 
         @Override
         public Void doCall() throws Exception {
+            // Mark the thread, so that the engine shutdown triggered from within the record processing (e.g. by a Shutdown
+            // strategy, which calls close() synchronously on this thread) doesn't wait for the polling threads to terminate
+            // and thus doesn't wait for itself.
             pollingThread.set(true);
             try {
                 return pollRecords();
