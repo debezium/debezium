@@ -25,6 +25,7 @@ import io.debezium.connector.oracle.OracleTaskContext;
 import io.debezium.connector.oracle.OracleValueConverters;
 import io.debezium.connector.oracle.Scn;
 import io.debezium.connector.oracle.StreamingAdapter;
+import io.debezium.connector.oracle.jdbc.OracleDatabaseSettings;
 import io.debezium.connector.oracle.logminer.events.DmlEvent;
 import io.debezium.connector.oracle.logminer.events.EventType;
 import io.debezium.connector.oracle.logminer.events.ExtendedStringBeginEvent;
@@ -280,7 +281,8 @@ public class TransactionCommitConsumerTest {
     private static OracleDatabaseSchema createSchema(Configuration configuration, OracleConnectorConfig connectorConfig, OracleConnection connection) {
         final TopicNamingStrategy topicNamingStrategy = SchemaTopicNamingStrategy.create(connectorConfig);
         final SchemaNameAdjuster schemaNameAdjuster = connectorConfig.schemaNameAdjuster();
-        final OracleValueConverters converters = connectorConfig.getAdapter().getValueConverter(connectorConfig, connection);
+        final OracleValueConverters converters = connectorConfig.getAdapter().getValueConverter(connectorConfig, connection,
+                new OracleDatabaseSettings(CharacterSet.make(CharacterSet.AL32UTF8_CHARSET), CharacterSet.make(CharacterSet.UTF8_CHARSET), false, false));
         final OracleDefaultValueConverter defaultValueConverter = new OracleDefaultValueConverter(converters, connection);
 
         final OracleDatabaseSchema schema = new OracleDatabaseSchema(connectorConfig,
@@ -289,7 +291,6 @@ public class TransactionCommitConsumerTest {
                 schemaNameAdjuster,
                 topicNamingStrategy,
                 StreamingAdapter.TableNameCaseSensitivity.INSENSITIVE,
-                false,
                 new CustomConverterRegistry(List.of()),
                 new OracleTaskContext(configuration, connectorConfig));
 
