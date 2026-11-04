@@ -43,8 +43,8 @@ import io.debezium.util.Strings;
  *   <li>{@code reselect.cache.rocksdb.cleanup} - Whether to delete the RocksDB files on close (default: false)</li>
  *   <li>{@code reselect.cache.ttl.ms} - Time-to-live for cached values; 0 disables expiration (default: 0)</li>
  *   <li>{@code reselect.cache.rocksdb.periodic.compaction.seconds} - Age in seconds after which RocksDB compacts
- *       an SST file, reclaiming expired entries sooner; 0 keeps RocksDB's default and does not disable
- *       periodic compaction (default: 0)</li>
+ *       an SST file, reclaiming expired entries sooner; 0 disables periodic compaction (default: not set,
+ *       RocksDB's own default applies)</li>
  * </ul>
  *
  * @author Chris Cranford
@@ -75,18 +75,12 @@ public class RocksDbReselectColumnCache extends AbstractSerializingReselectColum
 
         this.dbPath = Path.of(configuredPath);
         this.cleanupOnClose = config.getBoolean(CLEANUP, false);
-        // 0 (the default) means the setter is not called, so RocksDB applies its own default; it does
-        // not disable periodic compaction as an explicit RocksDB periodic_compaction_seconds=0 would.
-        final long periodicCompactionSeconds = config.getLong(PERIODIC_COMPACTION_SECONDS, 0L);
-        if (periodicCompactionSeconds < 0) {
-            throw new DebeziumException(String.format("Configuration property '%s' must not be negative, but was %d",
-                    PERIODIC_COMPACTION_SECONDS, periodicCompactionSeconds));
-        }
+        final Long periodicCompactionSeconds = getPeriodicCompactionSeconds(config);
 
         try {
             Files.createDirectories(dbPath);
             try (Options options = RocksDbUtil.createOptions()) {
-                if (periodicCompactionSeconds > 0) {
+                if (periodicCompactionSeconds != null) {
                     // Forces SST files older than this to be compacted, so TTL-expired entries (and deleted or
                     // overwritten values) are reclaimed from disk even when the file is otherwise never compacted.
                     options.setPeriodicCompactionSeconds(periodicCompactionSeconds);
@@ -104,7 +98,7 @@ public class RocksDbReselectColumnCache extends AbstractSerializingReselectColum
                 }
             }
             LOGGER.info("RocksDB reselect cache initialized at: {} (ttl: {} ms, cleanup on close: {}, periodic compaction: {})",
-                    dbPath, getTtlMs(), cleanupOnClose, periodicCompactionSeconds > 0 ? periodicCompactionSeconds + " s" : "RocksDB default");
+                    dbPath, getTtlMs(), cleanupOnClose, describePeriodicCompaction(periodicCompactionSeconds));
         }
         catch (IOException | RocksDBException e) {
             throw new DebeziumException("Failed to initialize RocksDB reselect cache at " + dbPath, e);
@@ -151,5 +145,41 @@ public class RocksDbReselectColumnCache extends AbstractSerializingReselectColum
             RocksDbUtil.deleteDirectory(dbPath);
             LOGGER.info("RocksDB reselect cache cleaned up: {}", dbPath);
         }
+    }
+
+    /**
+     * Parses {@link #PERIODIC_COMPACTION_SECONDS} strictly, so that a malformed value fails instead of
+     * silently falling back to a default that might disable periodic compaction.
+     * <p>
+     * {@code null} (not set) means the setter is not called, so RocksDB applies its own default; {@code 0}
+     * disables periodic compaction, just as RocksDB's own {@code periodic_compaction_seconds=0} does.
+     *
+     * @return the configured value, or {@code null} if the property is not set
+     */
+    private static Long getPeriodicCompactionSeconds(Configuration config) {
+        final String value = config.getString(PERIODIC_COMPACTION_SECONDS);
+        if (Strings.isNullOrBlank(value)) {
+            return null;
+        }
+        final long seconds;
+        try {
+            seconds = Long.parseLong(value.trim());
+        }
+        catch (NumberFormatException e) {
+            throw new DebeziumException(String.format("Configuration property '%s' must be a number of seconds, but was '%s'",
+                    PERIODIC_COMPACTION_SECONDS, value), e);
+        }
+        if (seconds < 0) {
+            throw new DebeziumException(String.format("Configuration property '%s' must not be negative, but was %d",
+                    PERIODIC_COMPACTION_SECONDS, seconds));
+        }
+        return seconds;
+    }
+
+    private static String describePeriodicCompaction(Long periodicCompactionSeconds) {
+        if (periodicCompactionSeconds == null) {
+            return "RocksDB default";
+        }
+        return periodicCompactionSeconds == 0 ? "disabled" : periodicCompactionSeconds + " s";
     }
 }

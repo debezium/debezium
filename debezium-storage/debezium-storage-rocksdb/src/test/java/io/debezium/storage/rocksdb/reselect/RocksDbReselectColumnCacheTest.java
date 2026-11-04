@@ -239,10 +239,9 @@ public class RocksDbReselectColumnCacheTest {
 
     @Test
     @FixFor("debezium/dbz#2865")
-    public void explicitZeroPeriodicCompactionSecondsLeavesRocksDbDefault() throws Exception {
-        final long rocksDbDefault = rocksDbDefaultTtlPeriodicCompactionSeconds();
-
-        // Unlike RocksDB's own periodic_compaction_seconds=0, the property's 0 does not disable periodic compaction
+    public void explicitZeroPeriodicCompactionSecondsDisablesPeriodicCompaction() throws Exception {
+        // Like RocksDB's own periodic_compaction_seconds=0, the property's 0 disables periodic compaction,
+        // even for a TTL database where RocksDB would otherwise enable it by default
         cache = open(config()
                 .with("reselect.cache.ttl.ms", 60_000)
                 .with(RocksDbReselectColumnCache.PERIODIC_COMPACTION_SECONDS, 0)
@@ -251,8 +250,15 @@ public class RocksDbReselectColumnCacheTest {
         cache.close();
         cache = null;
 
-        assertThat(rocksDbDefault).isNotZero();
-        assertThat(persistedPeriodicCompactionSeconds(cacheDir())).isEqualTo(rocksDbDefault);
+        assertThat(persistedPeriodicCompactionSeconds(cacheDir())).isZero();
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2865")
+    public void nonNumericPeriodicCompactionSecondsFails() {
+        assertThatThrownBy(() -> open(config().with(RocksDbReselectColumnCache.PERIODIC_COMPACTION_SECONDS, "1h").build()))
+                .isInstanceOf(DebeziumException.class)
+                .hasMessageContaining(RocksDbReselectColumnCache.PERIODIC_COMPACTION_SECONDS);
     }
 
     @Test
