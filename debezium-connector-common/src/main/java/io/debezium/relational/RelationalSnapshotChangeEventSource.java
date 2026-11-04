@@ -1017,16 +1017,13 @@ public abstract class RelationalSnapshotChangeEventSource<P extends Partition, O
     /**
      * Recovers the given pooled connection before a snapshot retry attempt.
      * <p>
-     * A failed statement can leave the connection in an aborted-transaction state that a liveness check
-     * does not detect, so the default rolls the transaction back and re-establishes the connection if it is
-     * no longer valid, re-applying the connector-specific per-connection state the same way the reconnect
-     * path of the connection pool does. Connectors that must re-apply additional state (e.g. a session
-     * context or an exported snapshot pin) can override this.
+     * A failed statement can leave the connection in an aborted-transaction state, so the default rolls the
+     * transaction back and re-establishes the connection when it is no longer valid. After recovery the
+     * connector-specific per-connection pin ({@link #connectionPoolConnectionCreated}) is always re-applied,
+     * because a rollback ends the transaction that carried it (e.g. PostgreSQL's {@code SET TRANSACTION SNAPSHOT}):
+     * without re-application the retried unit would silently read under a fresh MVCC snapshot.
      */
     protected void recoverConnection(RelationalSnapshotContext<P, O> snapshotContext, JdbcConnection connection) throws SQLException {
-        // TODO(review): the design doc leaves room for an unconditional reconnect here; rolling back and
-        // only reconnecting an invalid connection preserves the per-connection consistent-read view for
-        // in-transaction failures, which seems preferable as a common default.
         try {
             connection.rollback();
         }
@@ -1036,8 +1033,11 @@ public abstract class RelationalSnapshotChangeEventSource<P extends Partition, O
         if (!connection.isValid()) {
             connection.reconnect();
             initializePooledConnection(connection);
-            connectionPoolConnectionCreated(snapshotContext, connection);
         }
+        // Re-apply the connector-specific per-connection pin after every recovery: rollback ends
+        // the transaction and its consistent-read view, so continuing without re-pinning would
+        // silently read under a fresh MVCC snapshot.
+        connectionPoolConnectionCreated(snapshotContext, connection);
     }
 
     /**

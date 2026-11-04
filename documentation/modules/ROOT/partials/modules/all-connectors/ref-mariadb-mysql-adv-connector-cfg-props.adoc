@@ -655,6 +655,36 @@ For more information, see the documentation that describes xref:{context}-snapsh
 
 
 
+[id="{context}-property-snapshot-retry-max"]
+xref:{context}-property-snapshot-retry-max[`snapshot.retry.max`]::
+
+Default value::: `0`
+
+Description:::
+The number of times a transient read failure of a single table or chunk may be retried during the snapshot. The budget is per retriable unit; only failures the connector classifies as retriable are retried. A retried table or chunk resumes from the last emitted key where possible so that rows are not emitted twice. Defaults to `0` (no retries).
+
+
+
+[id="{context}-property-snapshot-retry-total-max"]
+xref:{context}-property-snapshot-retry-total-max[`snapshot.retry.total.max`]::
+
+Default value::: `0`
+
+Description:::
+An optional ceiling on the total number of retries across all tables and chunks during a single snapshot. Defaults to `0` (no overall ceiling; the per-unit `snapshot.retry.max` budget governs on its own).
+
+
+
+[id="{context}-property-snapshot-retry-delay-ms"]
+xref:{context}-property-snapshot-retry-delay-ms[`snapshot.retry.delay.ms`]::
+
+Default value::: `10000`
+
+Description:::
+The number of milliseconds to wait before retrying a table or chunk read that failed with a retriable error during the snapshot.
+
+
+
 [id="{context}-property-snapshot-locking-mode"]
 xref:{context}-property-snapshot-locking-mode[`snapshot.locking.mode`]::
 
