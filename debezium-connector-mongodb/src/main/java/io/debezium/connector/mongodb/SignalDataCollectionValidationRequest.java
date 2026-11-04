@@ -15,15 +15,17 @@ import io.debezium.pipeline.signal.channels.SourceSignalChannel;
  *
  * @param rawValues the configured signal.data.collection values
  * @param validationEnabled whether validation should run at all
+ * @param streamingCapable whether the connector will actually reach a mode that reads signals
  * @param sourceChannelEnabled whether the source signal channel is enabled
  *
  * @author Debezium Authors
  */
-public record SignalDataCollectionValidationRequest(List<String> rawValues, boolean validationEnabled, boolean sourceChannelEnabled) {
+public record SignalDataCollectionValidationRequest(List<String> rawValues, boolean validationEnabled, boolean streamingCapable, boolean sourceChannelEnabled) {
 
     public static SignalDataCollectionValidationRequest forConnector(MongoDbConnectorConfig connectorConfig) {
         return new SignalDataCollectionValidationRequest(connectorConfig.getSignalingDataCollectionIds(),
                 connectorConfig.isSignalDataCollectionValidationEnabled(),
+                connectorConfig.getSnapshotMode() != MongoDbConnectorConfig.SnapshotMode.INITIAL_ONLY,
                 connectorConfig.getEnabledChannels().contains(SourceSignalChannel.CHANNEL_NAME));
     }
 }

@@ -32,11 +32,11 @@ public class SignalDataCollectionValidator {
 
     /**
      * Validates every configured signal data collection (multiple may be configured for multi-partition
-     * deployments). No-op unless enabled and the source channel is on.
+     * deployments). No-op unless enabled, streaming-capable, and the source channel is on.
      */
     public static SignalDataCollectionValidationResult validate(MongoClient client, SignalDataCollectionValidationRequest request) {
         List<String> errors = new ArrayList<>();
-        if (request.validationEnabled() && request.sourceChannelEnabled()) {
+        if (request.validationEnabled() && request.streamingCapable() && request.sourceChannelEnabled()) {
             for (String rawValue : request.rawValues()) {
                 if (Strings.isNullOrBlank(rawValue)) {
                     continue;
