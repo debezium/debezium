@@ -204,9 +204,9 @@ public abstract class AbstractOpenLineageJdbcSinkTest extends AbstractJdbcSinkTe
             case POSTGRES -> List.of("id;int2", "name;text", "nick_name$;varchar");
             case COCKROACHDB -> List.of("id;int2", "name;text", "nick_name$;varchar");
             case SQLSERVER -> List.of("id;smallint", "name;varchar", "nick_name$;varchar");
-            case ORACLE -> List.of("ID;NUMBER", "NAME;CLOB", "nick_name$;VARCHAR2");
-            case DB2 -> List.of("ID;SMALLINT", "NAME;CLOB", "nick_name$;VARCHAR");
-            case DB2I -> List.of("ID;SMALLINT", "NAME;CLOB", "nick_name$;VARCHAR");
+            case ORACLE -> List.of("ID;NUMBER", "NAME;CLOB", "NICK_NAME$;VARCHAR2");
+            case DB2 -> List.of("ID;SMALLINT", "NAME;CLOB", "NICK_NAME$;VARCHAR");
+            case DB2I -> List.of("ID;SMALLINT", "NAME;CLOB", "NICK_NAME$;VARCHAR");
         };
     }
 
