@@ -362,7 +362,9 @@ public abstract class AbstractJdbcSinkPipelineIT extends AbstractJdbcSinkIT {
                     final SourceConnectorOptions options = source.getOptions();
                     assertColumn(sink, record, "id", getInt16Type());
                     if (sink.getType().is(SinkType.ORACLE) && options.isColumnTypePropagated()) {
-                        assertColumn(sink, record, "data", getInt16Type(), 2);
+                        // MySQL 8.0.19 and later no longer report integer display widths, so the source
+                        // propagates no column length and the Oracle sink falls back to NUMBER(38,0).
+                        assertColumn(sink, record, "data", getInt16Type(), getMaxDecimalPrecision());
                     }
                     else {
                         assertColumn(sink, record, "data", getInt16Type());
