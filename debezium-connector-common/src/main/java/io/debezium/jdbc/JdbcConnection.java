@@ -1529,6 +1529,12 @@ public class JdbcConnection implements AutoCloseable {
                     continue;
                 }
 
+                // Some drivers also return non-unique indexes although only unique indexes were requested,
+                // such as the SQL Server driver for columnstore indexes, so these are ignored too.
+                if (rs.getBoolean(4)) {
+                    continue;
+                }
+
                 // Check whether the index and/or its column is included by the connector
                 boolean indexIncluded = isTableUniqueIndexIncluded(indexName, columnName);
                 if (!indexIncluded) {

@@ -16,6 +16,7 @@ import org.junit.jupiter.api.Test;
 
 import io.debezium.connector.sqlserver.SqlServerConnectorConfig.SnapshotMode;
 import io.debezium.connector.sqlserver.util.TestHelper;
+import io.debezium.doc.FixFor;
 import io.debezium.embedded.async.AbstractAsyncEngineConnectorTest;
 import io.debezium.util.Testing;
 
@@ -28,11 +29,14 @@ public class TablesWithoutPrimaryKeyIT extends AbstractAsyncEngineConnectorTest 
 
     private static final String DDL_STATEMENTS = "CREATE TABLE t1 (pk INT UNIQUE, val INT);" +
             "CREATE TABLE t2 (pk INT UNIQUE, val INT UNIQUE);" +
-            "CREATE TABLE t3 (pk INT, val INT);";
+            "CREATE TABLE t3 (pk INT, val INT);" +
+            "CREATE TABLE t4 (pk INT, val INT);" +
+            "CREATE NONCLUSTERED COLUMNSTORE INDEX ncci_t4 ON t4 (pk, val);";
 
     private static final String DML_STATEMENTS = "INSERT INTO t1 VALUES (1,10);" +
             "INSERT INTO t2 VALUES (2,20);" +
-            "INSERT INTO t3 VALUES (3,30);";
+            "INSERT INTO t3 VALUES (3,30);" +
+            "INSERT INTO t4 VALUES (4,40);";
 
     private SqlServerConnection connection;
 
@@ -52,6 +56,7 @@ public class TablesWithoutPrimaryKeyIT extends AbstractAsyncEngineConnectorTest 
     }
 
     @Test
+    @FixFor("debezium/dbz#3016")
     void shouldProcessFromSnapshot() throws Exception {
         connection = TestHelper.testConnection();
         connection.execute(DDL_STATEMENTS + DML_STATEMENTS);
@@ -59,14 +64,15 @@ public class TablesWithoutPrimaryKeyIT extends AbstractAsyncEngineConnectorTest 
         TestHelper.enableTableCdc(connection, "t1");
         TestHelper.enableTableCdc(connection, "t2");
         TestHelper.enableTableCdc(connection, "t3");
+        TestHelper.enableTableCdc(connection, "t4");
 
         start(SqlServerConnector.class, TestHelper.defaultConfig()
                 .with(SqlServerConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL)
-                .with(SqlServerConnectorConfig.TABLE_INCLUDE_LIST, "dbo.t[123]")
+                .with(SqlServerConnectorConfig.TABLE_INCLUDE_LIST, "dbo.t[1234]")
                 .build());
         assertConnectorIsRunning();
 
-        final int expectedRecordsCount = 1 + 1 + 1;
+        final int expectedRecordsCount = 1 + 1 + 1 + 1;
 
         final SourceRecords records = consumeRecordsByTopic(expectedRecordsCount);
         assertThat(records.recordsForTopic("server1.testDB1.dbo.t1").get(0).keySchema().field("pk")).isNotNull();
@@ -74,9 +80,11 @@ public class TablesWithoutPrimaryKeyIT extends AbstractAsyncEngineConnectorTest 
         assertThat(records.recordsForTopic("server1.testDB1.dbo.t2").get(0).keySchema().field("pk")).isNotNull();
         assertThat(records.recordsForTopic("server1.testDB1.dbo.t2").get(0).keySchema().fields()).hasSize(1);
         assertThat(records.recordsForTopic("server1.testDB1.dbo.t3").get(0).keySchema()).isNull();
+        assertThat(records.recordsForTopic("server1.testDB1.dbo.t4").get(0).keySchema()).isNull();
     }
 
     @Test
+    @FixFor("debezium/dbz#3016")
     void shouldProcessFromStreaming() throws Exception {
         connection = TestHelper.testConnection();
         connection.execute(
@@ -87,6 +95,7 @@ public class TablesWithoutPrimaryKeyIT extends AbstractAsyncEngineConnectorTest 
         TestHelper.waitForDisabledCdc(connection, "t1");
         TestHelper.waitForDisabledCdc(connection, "t2");
         TestHelper.waitForDisabledCdc(connection, "t3");
+        TestHelper.waitForDisabledCdc(connection, "t4");
 
         start(SqlServerConnector.class, TestHelper.defaultConfig()
                 .with(SqlServerConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL)
@@ -105,20 +114,24 @@ public class TablesWithoutPrimaryKeyIT extends AbstractAsyncEngineConnectorTest 
         TestHelper.enableTableCdc(connection, "t1");
         TestHelper.enableTableCdc(connection, "t2");
         TestHelper.enableTableCdc(connection, "t3");
+        TestHelper.enableTableCdc(connection, "t4");
 
         TestHelper.waitForEnabledCdc(connection, "t1");
         TestHelper.waitForEnabledCdc(connection, "t2");
         TestHelper.waitForEnabledCdc(connection, "t3");
+        TestHelper.waitForEnabledCdc(connection, "t4");
 
         connection.execute("INSERT INTO t1 VALUES (1,10);");
         connection.execute("INSERT INTO t2 VALUES (2,20);");
         connection.execute("INSERT INTO t3 VALUES (3,30);");
+        connection.execute("INSERT INTO t4 VALUES (4,40);");
 
         TestHelper.waitForCdcRecord(connection, "t1", rs -> rs.getInt("pk") == 1);
         TestHelper.waitForCdcRecord(connection, "t2", rs -> rs.getInt("pk") == 2);
         TestHelper.waitForCdcRecord(connection, "t3", rs -> rs.getInt("pk") == 3);
+        TestHelper.waitForCdcRecord(connection, "t4", rs -> rs.getInt("pk") == 4);
 
-        final int expectedRecordsCount = 1 + 1 + 1;
+        final int expectedRecordsCount = 1 + 1 + 1 + 1;
 
         final SourceRecords records = consumeRecordsByTopic(expectedRecordsCount, 24);
         assertThat(records.recordsForTopic("server1.testDB1.dbo.t1").get(0).keySchema().field("pk")).isNotNull();
@@ -126,5 +139,6 @@ public class TablesWithoutPrimaryKeyIT extends AbstractAsyncEngineConnectorTest 
         assertThat(records.recordsForTopic("server1.testDB1.dbo.t2").get(0).keySchema().field("pk")).isNotNull();
         assertThat(records.recordsForTopic("server1.testDB1.dbo.t2").get(0).keySchema().fields()).hasSize(1);
         assertThat(records.recordsForTopic("server1.testDB1.dbo.t3").get(0).keySchema()).isNull();
+        assertThat(records.recordsForTopic("server1.testDB1.dbo.t4").get(0).keySchema()).isNull();
     }
 }
