@@ -7,6 +7,7 @@ package io.debezium.relational;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
@@ -15,6 +16,7 @@ import static org.mockito.Mockito.when;
 import java.sql.SQLException;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.EnumSet;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Set;
@@ -26,13 +28,16 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import io.debezium.data.Envelope.Operation;
 import io.debezium.jdbc.JdbcConnection;
 import io.debezium.junit.logging.LogInterceptor;
+import io.debezium.relational.SignalDataCollectionValidationRequest.ConnectorValidator;
 import io.debezium.relational.Tables.ColumnNameFilter;
 
 /**
  * Unit tests for {@link SignalDataCollectionValidator}: the enablement/gating checks, the ordered checks
- * (existence, accepted FQN shape, effective column count, column naming, column sizing), and the exception-swallowing guarantee.
+ * (skipped signal operations, existence, accepted FQN shape, connector-specific checks, effective column count, column naming,
+ * column sizing), and the exception-swallowing guarantee.
  */
 @ExtendWith(MockitoExtension.class)
 public class SignalDataCollectionValidatorTest {
@@ -57,7 +62,13 @@ public class SignalDataCollectionValidatorTest {
                                                           boolean insertDeleteWatermarking, Predicate<TableId> isSignalDataCollection,
                                                           ColumnNameFilter columnFilter, String... rawValues) {
         return new SignalDataCollectionValidationRequest(Arrays.asList(rawValues), validationEnabled, streamingCapable, sourceChannelEnabled,
-                insertDeleteWatermarking, rawValue -> connection, isSignalDataCollection, columnFilter);
+                insertDeleteWatermarking, EnumSet.noneOf(Operation.class), rawValue -> connection, isSignalDataCollection, columnFilter,
+                ConnectorValidator.NONE);
+    }
+
+    private SignalDataCollectionValidationRequest enabledRequest(Set<Operation> skippedSignalOperations, ConnectorValidator connectorCheck) {
+        return new SignalDataCollectionValidationRequest(Collections.singletonList(RAW_VALUE), true, true, true, false, skippedSignalOperations,
+                rawValue -> connection, ALWAYS_SIGNAL_DATA_COLLECTION, MATCH_ALL, connectorCheck);
     }
 
     private SignalDataCollectionValidationRequest enabledRequest(Predicate<TableId> isSignalDataCollection, ColumnNameFilter columnFilter, String... rawValues) {
@@ -286,6 +297,42 @@ public class SignalDataCollectionValidatorTest {
 
         assertThat(result.errors()).containsExactly("Signal data collection '" + RAW_VALUE
                 + "' first column must be named 'id' for the insert_delete watermarking strategy, but is 'identifier'.");
+    }
+
+    @Test
+    public void shouldFailWhenSkippedOperationsDropSignals() throws SQLException {
+        // Connectors filtering skipped operations at the source never see the signal inserts (or insert_delete closing deletes).
+        TableId resolved = new TableId(null, "dbo", "debezium_signal");
+        when(connection.readTableNames(PARSED_RAW_VALUE)).thenReturn(Set.of(resolved));
+        when(connection.getColumnSizes(resolved)).thenReturn(wellSizedColumns());
+
+        SignalDataCollectionValidationResult result = SignalDataCollectionValidator.validate(
+                enabledRequest(EnumSet.of(Operation.CREATE, Operation.DELETE), ConnectorValidator.NONE));
+
+        assertThat(result.errors()).containsExactly("Signal data collection '" + RAW_VALUE
+                + "' will never receive signals because skipped.operations includes 'c', 'd', which the connector filters out before reading signals.");
+    }
+
+    @Test
+    public void shouldReportConnectorCheckErrorsForResolvedTable() throws SQLException {
+        TableId resolved = new TableId("testDB", "dbo", "debezium_signal");
+        when(connection.readTableNames(PARSED_RAW_VALUE)).thenReturn(Set.of(resolved));
+        when(connection.getColumnSizes(resolved)).thenReturn(wellSizedColumns());
+
+        SignalDataCollectionValidationResult result = SignalDataCollectionValidator.validate(enabledRequest(EnumSet.noneOf(Operation.class),
+                (signalDataCollection, errors) -> errors.add("connector check of " + signalDataCollection)));
+
+        assertThat(result.errors()).containsExactly("connector check of " + resolved);
+    }
+
+    @Test
+    public void shouldNotRunConnectorCheckWhenTableDoesNotExist() throws SQLException {
+        when(connection.readTableNames(PARSED_RAW_VALUE)).thenReturn(Collections.emptySet());
+        ConnectorValidator connectorCheck = mock(ConnectorValidator.class);
+
+        SignalDataCollectionValidator.validate(enabledRequest(EnumSet.noneOf(Operation.class), connectorCheck));
+
+        verifyNoInteractions(connectorCheck);
     }
 
     @Test

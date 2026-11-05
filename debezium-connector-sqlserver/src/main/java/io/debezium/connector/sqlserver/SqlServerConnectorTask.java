@@ -137,7 +137,8 @@ public class SqlServerConnectorTask extends BaseSourceTask<SqlServerPartition, S
         validateSchemaHistory(connectorConfig, dataConnection::validateLogPosition, offsets, schema,
                 snapshotterService.getSnapshotter());
 
-        validateSignalDataCollection(connectorConfig, dataConnection);
+        validateSignalDataCollection(connectorConfig, dataConnection,
+                (signalDataCollection, errors) -> checkSignalDataCollection(connectorConfig, dataConnection, signalDataCollection, errors));
 
         // Set up the task record queue ...
         this.queue = new ChangeEventQueue.Builder<DataChangeEvent>()
@@ -268,6 +269,27 @@ public class SqlServerConnectorTask extends BaseSourceTask<SqlServerPartition, S
         }
         catch (SQLException e) {
             throw new DebeziumException("Failed to validate guardrail limits", e);
+        }
+    }
+
+    /**
+     * Streaming reads signals only from the change tables of the task's databases, so the signal data collection must
+     * be in one of them and have CDC enabled.
+     */
+    private void checkSignalDataCollection(SqlServerConnectorConfig connectorConfig, SqlServerConnection connection, TableId signalDataCollection,
+                                           List<String> errors)
+            throws SQLException {
+        String databaseName = signalDataCollection.catalog();
+        if (!connectorConfig.getDatabaseNames().contains(databaseName)) {
+            errors.add(String.format("Signal data collection '%s' is not in any of the task's databases %s; signals are only read from those.",
+                    signalDataCollection, connectorConfig.getDatabaseNames()));
+            return;
+        }
+        boolean cdcEnabled = connection.getChangeTables(databaseName).stream()
+                .anyMatch(changeTable -> changeTable.getSourceTableId().equals(signalDataCollection));
+        if (!cdcEnabled) {
+            errors.add(String.format("Signal data collection '%s' does not have CDC enabled; signals are only read from CDC change tables.",
+                    signalDataCollection));
         }
     }
 
