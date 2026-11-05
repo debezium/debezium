@@ -133,16 +133,6 @@ public class ${connectorName}ConnectorTask
         schema =
                 new ${connectorName}DatabaseSchema(connectorConfig, topicNamingStrategy, valueConverters, taskContext);
 
-        // A non-historized schema is not persisted, so rebuild it from the database on every start. The
-        // snapshot refreshes it too, but it is skipped when a previous offset exists and streaming
-        // would otherwise begin without knowing the captured tables.
-        try {
-            schema.refresh(jdbcConnection);
-        }
-        catch (SQLException e) {
-            throw new DebeziumException("Failed to read the schema of the captured tables", e);
-        }
-
         final ${connectorName}EventMetadataProvider metadataProvider = new ${connectorName}EventMetadataProvider();
 
         final SignalProcessor<${connectorName}Partition, ${connectorName}OffsetContext> signalProcessor =
