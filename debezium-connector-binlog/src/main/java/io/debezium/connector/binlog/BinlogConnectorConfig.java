@@ -17,6 +17,7 @@ import org.slf4j.LoggerFactory;
 
 import io.debezium.config.ConfigDefinition;
 import io.debezium.config.Configuration;
+import io.debezium.config.ConnectorConfigValidationHelper;
 import io.debezium.config.EnumeratedValue;
 import io.debezium.config.Field;
 import io.debezium.config.Field.ValidationOutput;
@@ -34,6 +35,7 @@ import io.debezium.relational.history.SchemaHistory;
 import io.debezium.relational.history.SchemaHistoryListener;
 import io.debezium.schema.DefaultTopicNamingStrategy;
 import io.debezium.util.Collect;
+import io.debezium.util.Strings;
 
 /**
  * Configuration properties for binlog-based connectors.
@@ -719,6 +721,12 @@ public abstract class BinlogConnectorConfig extends HistorizedRelationalDatabase
             .withDescription("Whether the connector should ignore GTID during recovery and restart from the binlog file and position instead. "
                     + "GTID mode on the server remains enabled, and GTID tracking resumes normally after recovery.");
 
+    public static final Field UNAVAILABLE_VALUE_PLACEHOLDER = RelationalDatabaseConnectorConfig.UNAVAILABLE_VALUE_PLACEHOLDER
+            .withDescription("Specify the constant that will be provided by Debezium to indicate that " +
+                    "the original value is unavailable and not provided by the database. " +
+                    "If starts with 'hex:' prefix it is expected that the rest of the string represents hexadecimal encoded octets.")
+            .withValidation(ConnectorConfigValidationHelper::validateHexPrefixedValue);
+
     protected static final ConfigDefinition CONFIG_DEFINITION = HistorizedRelationalDatabaseConnectorConfig.CONFIG_DEFINITION.edit()
             .excluding(
                     SCHEMA_INCLUDE_LIST,
@@ -734,7 +742,7 @@ public abstract class BinlogConnectorConfig extends HistorizedRelationalDatabase
                     GTID_SOURCE_INCLUDES,
                     GTID_SOURCE_EXCLUDES, GTID_SOURCE_FILTER_DML_EVENTS)
             .group(Field.Group.CONNECTOR_ADVANCED, ROW_COUNT_FOR_STREAMING_RESULT_SETS, BUFFER_SIZE_FOR_BINLOG_READER, INCLUDE_SQL_QUERY, IGNORE_GTID_ON_RECOVERY,
-                    BINLOG_METADATA_BASED_SCHEMA)
+                    BINLOG_METADATA_BASED_SCHEMA, UNAVAILABLE_VALUE_PLACEHOLDER)
             .group(Field.Group.CONNECTOR_SNAPSHOT, SNAPSHOT_MODE, SNAPSHOT_QUERY_MODE, SNAPSHOT_QUERY_MODE_CUSTOM_NAME, INCREMENTAL_SNAPSHOT_CHUNK_SIZE,
                     INCREMENTAL_SNAPSHOT_ALLOW_SCHEMA_CHANGES)
             .group(Field.Group.FILTERS, TABLES_IGNORE_BUILTIN, DATABASE_INCLUDE_LIST, DATABASE_EXCLUDE_LIST)
@@ -794,6 +802,15 @@ public abstract class BinlogConnectorConfig extends HistorizedRelationalDatabase
     @Override
     public TemporalPrecisionMode getTemporalPrecisionMode() {
         return temporalPrecisionMode;
+    }
+
+    @Override
+    public byte[] getUnavailableValuePlaceholder() {
+        String placeholder = getConfig().getString(UNAVAILABLE_VALUE_PLACEHOLDER);
+        if (placeholder.startsWith(ConnectorConfigValidationHelper.HEX_PREFIX)) {
+            return Strings.hexStringToByteArray(placeholder.substring(ConnectorConfigValidationHelper.HEX_PREFIX.length()));
+        }
+        return placeholder.getBytes();
     }
 
     /**
