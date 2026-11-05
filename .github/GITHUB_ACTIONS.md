@@ -24,9 +24,11 @@ Debezium defines several top-level workflows, but there are two that define the 
 The workflow `debezium-workflow-pr.yml` defines the behavior to execute when a pull request is opened.
 This top-level workflow is designed to use as many runners that are available for the organization. 
 
-### Pushes
+### Branch builds
 
-The workflow `debezium-workflow-push.yml` defines the behavior to execute when a commit is pushed to the repository.
+The workflow `debezium-workflow-build.yml` builds and tests a single branch.
+It is not triggered by pushes; instead, `debezium-workflow-scheduled.yml` runs daily at 00:00 UTC and dispatches it for `main` and for every `<major>.<minor>` branch with a commit in the last 7 days.
+When all jobs complete, the result is posted to the `dev` stream on Zulip.
 This top-level workflow is designed to consume fewer runners, maximizing those available to pull requests while also allowing the push tests to be completed in a reasonable period of time.
 
 ## Callable workflows

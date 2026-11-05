@@ -1,36 +1,22 @@
-name: Build Debezium (Push)
+name: Build Debezium (Branch)
 
+# Started once a day for main and recently updated <major>.<minor> branches by
+# debezium-workflow-scheduled.yml, which dispatches this workflow with --ref <branch>.
 on:
-  push:
-    branches:
-      - main
-      - 1.*
-      - 2.*
-      - 3.*
-      - 4.*
+  workflow_dispatch:
 
 env:
   MAVEN_FULL_BUILD_PROJECTS: "\\!debezium-microbenchmark-oracle"
 
-# Pushes to each branch will trigger a cancellation of any existing push jobs for that branch and
-# will restart the build based on the latest push for that specific branch.
+# A new run for a branch cancels any build already in progress for that same branch.
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref_name }}
   cancel-in-progress: true
 
 jobs:
-#  # This job is responsible for inspecting the changes in the repository and setting specific output variables
-#  # that subsequent jobs can use to determine whether a particular job should be skipped or included.
-#  file_changes:
-#    name: "Detect repository changes"
-#    uses: ./.github/workflows/file-changes-workflow.yml
-
   # Approx 1m
   build_cache:
     name: "Update Dependencies"
-#    needs: [ file_changes ]
-    # If documentation is all that changed, no need to build code on branch
-#    if: ${{ needs.file_changes.documentation-only-changed == 'false' }}
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Action (Core)
@@ -543,3 +529,72 @@ jobs:
     uses: ./.github/workflows/platform-conductor-workflow.yml
     with:
       maven-cache-key: maven-debezium-test-push-build
+
+  notify:
+    name: "Zulip Notification"
+    needs:
+      - build_cache
+      - check_style
+      - build_core
+      - build_mongodb
+      - build_mysql
+      - build_mariadb
+      - build_postgresql
+      - build_sqlserver
+      - build_oracle
+      - build_schema_generator
+      - build_debezium_testing
+      - build_storage
+      - build_cassandra
+      - build_db2
+      - build_informix
+      - build_ibmi
+      - build_ingres
+      - build_vitess
+      - build_cockroachdb
+      - build_spanner
+      - build_jdbc
+      - build_debezium_server
+      - build_ai
+      - build_openlineage
+      - build_platform_conductor
+    # Runs even when builds fail, but not when the run is cancelled (e.g. superseded by a newer run)
+    if: ${{ !cancelled() && github.repository == 'debezium/debezium' }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Determine overall result
+        id: result
+        env:
+          FAILED: ${{ contains(needs.*.result, 'failure') }}
+          CANCELLED: ${{ contains(needs.*.result, 'cancelled') }}
+        run: |
+          if [ "$FAILED" = "true" ]; then
+            echo "overall_status=failed" >> $GITHUB_OUTPUT
+            echo "status_emoji=❌" >> $GITHUB_OUTPUT
+          elif [ "$CANCELLED" = "true" ]; then
+            echo "overall_status=cancelled" >> $GITHUB_OUTPUT
+            echo "status_emoji=⚠️" >> $GITHUB_OUTPUT
+          else
+            echo "overall_status=success" >> $GITHUB_OUTPUT
+            echo "status_emoji=✅" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Send Zulip stream message
+        uses: zulip/github-actions-zulip/send-message@v2
+        with:
+          api-key: ${{ secrets.ZULIP_TOKEN }}
+          email: ${{ secrets.ZULIP_TOKEN_EMAIL_ADDRESS }}
+          organization-url: "https://debezium.zulipchat.com"
+          type: "stream"
+          to: "dev"
+          topic: "Branch builds"
+          content: |
+            ${{ steps.result.outputs.status_emoji }} **Branch Build Completed**
+
+            **Repository:** ${{ github.repository }}
+            **Branch:** ${{ github.ref_name }}
+            **Commit:** ${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }}
+
+            **Build Status:** ${{ steps.result.outputs.overall_status }}
+
+            **Workflow Run:** ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
