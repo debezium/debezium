@@ -2054,6 +2054,24 @@ public abstract class CommonConnectorConfig {
         return skippedOperations;
     }
 
+    /**
+     * Returns the skipped operations that source signals rely on (inserts, and deletes under insert_delete
+     * watermarking) and that a connector {@link #supportsOperationFiltering() filtering at the source} drops
+     * before they reach the signal channel.
+     */
+    public EnumSet<Envelope.Operation> getSkippedSignalOperations() {
+        EnumSet<Envelope.Operation> skippedSignalOperations = EnumSet.noneOf(Envelope.Operation.class);
+        if (supportsOperationFiltering()) {
+            if (skippedOperations.contains(Operation.CREATE)) {
+                skippedSignalOperations.add(Operation.CREATE);
+            }
+            if (skippedOperations.contains(Operation.DELETE) && incrementalSnapshotWatermarkingStrategy == WatermarkStrategy.INSERT_DELETE) {
+                skippedSignalOperations.add(Operation.DELETE);
+            }
+        }
+        return skippedSignalOperations;
+    }
+
     public List<String> getDataCollectionsToBeSnapshotted() {
         return Optional.ofNullable(config.getString(SNAPSHOT_MODE_TABLES))
                 .map(expr -> Arrays.asList(Strings.RegExSplitter.split(expr)))
