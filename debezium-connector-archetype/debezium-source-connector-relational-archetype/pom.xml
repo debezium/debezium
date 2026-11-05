@@ -47,7 +47,7 @@
             </extension>
         </extensions>
         <plugins>
-            <!-- Template files are Velocity sources, not Java — skip auto-formatting -->
+            <!-- Template files are Velocity sources, not Java, so skip auto-formatting -->
             <plugin>
                 <groupId>net.revelc.code.formatter</groupId>
                 <artifactId>formatter-maven-plugin</artifactId>
