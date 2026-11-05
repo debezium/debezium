@@ -62,9 +62,7 @@ public class XStreamChangeRecordEmitter extends BaseChangeRecordEmitter<ColumnVa
         // the post-op value.
         if (isLobOperation(lcr)) {
             Object[] values = mergeColumnValues(table, lcr.getOldValues(), lcr.getNewValues(), newChunkValues);
-            for (Map.Entry<String, Object> entry : oldChunkValues.entrySet()) {
-                values[columnIndex(table, entry.getKey())] = entry.getValue();
-            }
+            overlayChunkValues(values, table, oldChunkValues);
             return values;
         }
         return getColumnValues(table, lcr.getOldValues(), oldChunkValues);
@@ -99,9 +97,7 @@ public class XStreamChangeRecordEmitter extends BaseChangeRecordEmitter<ColumnVa
         overlayColumnValues(values, table, columnValues);
 
         // Overlay chunk values into non-chunk value array
-        for (Map.Entry<String, Object> entry : chunkValues.entrySet()) {
-            values[columnIndex(table, entry.getKey())] = entry.getValue();
-        }
+        overlayChunkValues(values, table, chunkValues);
 
         return values;
     }
@@ -118,10 +114,18 @@ public class XStreamChangeRecordEmitter extends BaseChangeRecordEmitter<ColumnVa
         Object[] values = new Object[table.columns().size()];
         overlayColumnValues(values, table, oldValues);
         overlayColumnValues(values, table, newValues);
+        overlayChunkValues(values, table, chunkValues);
+        return values;
+    }
+
+    private static void overlayChunkValues(Object[] values, Table table, Map<String, Object> chunkValues) {
         for (Map.Entry<String, Object> entry : chunkValues.entrySet()) {
+            // Skip Oracle ROW_ARCHIVAL column
+            if (isIgnoredColumn(entry.getKey())) {
+                continue;
+            }
             values[columnIndex(table, entry.getKey())] = entry.getValue();
         }
-        return values;
     }
 
     private static void overlayColumnValues(Object[] values, Table table, ColumnValue[] columnValues) {
