@@ -548,17 +548,12 @@ public class PostgresConnectorTask extends BaseSourceTask<PostgresPartition, Pos
                     if (!rs.next()) {
                         return;
                     }
-                    if (!rs.getBoolean(1) && connectorConfig.publicationAutocreateMode() != AutoCreateMode.FILTERED) {
-                        errors.add(String.format("Signal data collection '%s' will never receive signals because it is not in publication '%s'.",
-                                signalDataCollection, publicationName));
-                    }
-                    if (!rs.getBoolean(2)) {
-                        errors.add(String.format("Signal data collection '%s' will never receive signals because publication '%s' does not publish inserts.",
-                                signalDataCollection, publicationName));
-                    }
-                    if (!rs.getBoolean(3) && connectorConfig.getIncrementalSnapshotWatermarkingStrategy() == WatermarkStrategy.INSERT_DELETE) {
-                        errors.add(String.format("Signal data collection '%s' cannot close incremental snapshot windows because publication '%s' does not "
-                                + "publish deletes, which the insert_delete watermarking strategy requires.", signalDataCollection, publicationName));
+                    boolean includesTable = rs.getBoolean(1) || connectorConfig.publicationAutocreateMode() == AutoCreateMode.FILTERED;
+                    boolean publishesSignals = rs.getBoolean(2)
+                            && (rs.getBoolean(3) || connectorConfig.getIncrementalSnapshotWatermarkingStrategy() != WatermarkStrategy.INSERT_DELETE);
+                    if (!includesTable || !publishesSignals) {
+                        errors.add(String.format("Signal data collection '%s' will never receive signals because publication '%s' must include it "
+                                + "and publish inserts, and deletes for the insert_delete watermarking strategy.", signalDataCollection, publicationName));
                     }
                 });
     }

@@ -8,7 +8,6 @@ package io.debezium.connector.mongodb;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
-import java.util.stream.Collectors;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -76,9 +75,8 @@ public class SignalDataCollectionValidator {
     /** Flags skipped operations the change stream pipeline drops before reading signals, which would silently lose every signal. */
     private static void checkSkippedSignalOperations(String rawValue, Set<Operation> skippedSignalOperations, List<String> errors) {
         if (!skippedSignalOperations.isEmpty()) {
-            String codes = skippedSignalOperations.stream().map(operation -> "'" + operation.code() + "'").collect(Collectors.joining(", "));
-            errors.add(String.format("Signal data collection '%s' will never receive signals because skipped.operations includes %s, "
-                    + "which the connector filters out before reading signals.", rawValue, codes));
+            errors.add(String.format("Signal data collection '%s' will never receive signals because skipped.operations must not include 'c', "
+                    + "and 'd' for the insert_delete watermarking strategy.", rawValue));
         }
     }
 }
