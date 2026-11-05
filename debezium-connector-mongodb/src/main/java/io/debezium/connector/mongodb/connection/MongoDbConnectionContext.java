@@ -109,7 +109,8 @@ public class MongoDbConnectionContext implements AutoCloseable {
         var nativeClient = nativeClient(client);
         var listCollections = new ListCollectionsOperation<>(
                 databaseName,
-                nativeClient.getCodecRegistry().get(BsonDocument.class))
+                nativeClient.getCodecRegistry().get(BsonDocument.class),
+                nativeClient.getSettings().getMaxAdaptiveRetries())
                 .nameOnly(true)
                 .retryReads(nativeClient.getSettings().getRetryReads());
 
