@@ -83,6 +83,19 @@ public class XStreamChangeRecordEmitterTest {
 
     @Test
     @FixFor("debezium/dbz#1867")
+    void shouldIgnoreRowArchivalColumnInChunkValues() throws Exception {
+        final RowLCR lcr = createLcr(RowLCR.INSERT);
+        lcr.setNewValues(new ColumnValue[]{ numberValue("ID", 1) });
+
+        final Map<String, Object> chunkValues = new HashMap<>();
+        chunkValues.put(OracleDatabaseSchema.ROW_ARCHIVAL_COLUMN_NAME, "0");
+
+        final XStreamChangeRecordEmitter emitter = createEmitter(lcr, new HashMap<>(), chunkValues);
+        assertThat(emitter.getOperation()).isEqualTo(Operation.CREATE);
+    }
+
+    @Test
+    @FixFor("debezium/dbz#1867")
     void shouldFailWithDescriptiveErrorWhenNewValueColumnIsNotInSchema() throws Exception {
         final RowLCR lcr = createLcr(RowLCR.INSERT);
         lcr.setNewValues(new ColumnValue[]{ numberValue("ID", 1), charValue("UNKNOWN_COL", "abc") });
