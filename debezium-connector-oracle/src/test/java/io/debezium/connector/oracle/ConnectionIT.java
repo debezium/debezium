@@ -5,6 +5,7 @@
  */
 package io.debezium.connector.oracle;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
@@ -15,6 +16,7 @@ import org.junit.jupiter.api.Test;
 
 import io.debezium.config.Configuration;
 import io.debezium.connector.oracle.util.TestHelper;
+import io.debezium.doc.FixFor;
 import io.debezium.util.Testing;
 
 public class ConnectionIT implements Testing {
