@@ -131,7 +131,7 @@ public class SignalDataCollectionValidatorTest {
                 new SignalDataCollectionValidationRequest(List.of(RAW_VALUE), true, true, true, EnumSet.of(Operation.CREATE)));
 
         assertThat(result.errors()).containsExactly("Signal data collection '" + RAW_VALUE
-                + "' will never receive signals because skipped.operations includes 'c', which the connector filters out before reading signals.");
+                + "' will never receive signals because skipped.operations must not include 'c', and 'd' for the insert_delete watermarking strategy.");
     }
 
     @Test

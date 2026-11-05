@@ -280,16 +280,11 @@ public class SqlServerConnectorTask extends BaseSourceTask<SqlServerPartition, S
                                            List<String> errors)
             throws SQLException {
         String databaseName = signalDataCollection.catalog();
-        if (!connectorConfig.getDatabaseNames().contains(databaseName)) {
-            errors.add(String.format("Signal data collection '%s' is not in any of the task's databases %s; signals are only read from those.",
-                    signalDataCollection, connectorConfig.getDatabaseNames()));
-            return;
-        }
-        boolean cdcEnabled = connection.getChangeTables(databaseName).stream()
-                .anyMatch(changeTable -> changeTable.getSourceTableId().equals(signalDataCollection));
-        if (!cdcEnabled) {
-            errors.add(String.format("Signal data collection '%s' does not have CDC enabled; signals are only read from CDC change tables.",
-                    signalDataCollection));
+        boolean captured = connectorConfig.getDatabaseNames().contains(databaseName)
+                && connection.getChangeTables(databaseName).stream().anyMatch(changeTable -> changeTable.getSourceTableId().equals(signalDataCollection));
+        if (!captured) {
+            errors.add(String.format("Signal data collection '%s' will never receive signals because it must be in one of the task's databases %s "
+                    + "and have CDC enabled.", signalDataCollection, connectorConfig.getDatabaseNames()));
         }
     }
 
