@@ -11,8 +11,10 @@ import java.time.Instant;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -33,6 +35,7 @@ import io.debezium.relational.Column;
 import io.debezium.relational.Table;
 import io.debezium.relational.TableId;
 import io.debezium.util.Clock;
+import io.debezium.util.Loggings;
 
 import oracle.streams.ChunkColumnValue;
 import oracle.streams.ColumnValue;
@@ -263,6 +266,15 @@ class LcrEventHandler implements XStreamLCRCallbackHandler {
             }
         }
 
+        // The LCR may carry columns the in-memory relational model does not know about, for example
+        // when the table's schema history is stale or incomplete. Such an event cannot be emitted
+        // faithfully, so it is never emitted partially; the failure handling mode decides instead.
+        final Set<String> unknownColumns = getColumnsNotInSchema(lcr, table, chunkValues);
+        if (!unknownColumns.isEmpty()) {
+            notifyUnknownColumnsFailure(lcr, table, unknownColumns);
+            return;
+        }
+
         // For LOB_WRITE/LOB_TRIM/LOB_ERASE, the chunk stream (if any) only carries the partial
         // delta written by DBMS_LOB, not the full post-operation value. Reselect against the
         // current row so downstream consumers see a consistent full LOB state. Gated on these
@@ -292,6 +304,77 @@ class LcrEventHandler implements XStreamLCRCallbackHandler {
                         schema.tableFor(tableId),
                         schema,
                         clock));
+    }
+
+    /**
+     * Collects the names of the columns supplied by the LCR, either as old or new values or as chunk
+     * data, that the relational model of the table does not have.
+     *
+     * @param lcr the row LCR, should not be {@code null}
+     * @param table the relational table the LCR is for, should not be {@code null}
+     * @param chunkValues the resolved chunk values keyed by column name, should not be {@code null}
+     * @return the names of the unknown columns in the order they were found, never {@code null}
+     */
+    static Set<String> getColumnsNotInSchema(RowLCR lcr, Table table, Map<String, Object> chunkValues) {
+        final Set<String> unknownColumns = new LinkedHashSet<>();
+        collectColumnsNotInSchema(lcr.getOldValues(), table, unknownColumns);
+        collectColumnsNotInSchema(lcr.getNewValues(), table, unknownColumns);
+        for (String columnName : chunkValues.keySet()) {
+            if (isColumnNotInSchema(columnName, table)) {
+                unknownColumns.add(columnName);
+            }
+        }
+        return unknownColumns;
+    }
+
+    private static void collectColumnsNotInSchema(ColumnValue[] values, Table table, Set<String> unknownColumns) {
+        if (values != null) {
+            for (ColumnValue value : values) {
+                if (isColumnNotInSchema(value.getColumnName(), table)) {
+                    unknownColumns.add(value.getColumnName());
+                }
+            }
+        }
+    }
+
+    private static boolean isColumnNotInSchema(String columnName, Table table) {
+        return !XStreamChangeRecordEmitter.isIgnoredColumn(columnName) && table.columnWithName(columnName) == null;
+    }
+
+    /**
+     * Handles a row LCR that supplies columns the relational model of the table does not have,
+     * based on the configured event processing failure handling mode. The event is never emitted.
+     *
+     * @param lcr the row LCR, should not be {@code null}
+     * @param table the relational table the LCR is for, should not be {@code null}
+     * @param unknownColumns the names of the columns not in the relational model, should not be empty
+     */
+    private void notifyUnknownColumnsFailure(RowLCR lcr, Table table, Set<String> unknownColumns) {
+        final String message = String.format(
+                "The %s event for table %s with SCN %s (LCR position %s, transaction %s) has columns %s that are not "
+                        + "in the connector's schema for the table, which has columns %s. The connector's schema is stale "
+                        + "or incomplete, for example after a table was re-created with CREATE TABLE ... AS SELECT. "
+                        + "Refresh the table's schema, for example by recovering the schema history, so the table's "
+                        + "events can be emitted.",
+                lcr.getCommandType(),
+                table.id(),
+                offsetContext.getScn(),
+                offsetContext.getLcrPosition(),
+                lcr.getTransactionId(),
+                unknownColumns,
+                table.retrieveColumnNames());
+
+        switch (connectorConfig.getEventProcessingFailureHandlingMode()) {
+            case FAIL -> {
+                Loggings.logErrorAndTraceRecord(LOGGER, lcr, message);
+                throw new DebeziumException(message);
+            }
+            case WARN -> {
+                Loggings.logWarningAndTraceRecord(LOGGER, lcr, message + " This event will be skipped and will not be emitted.");
+                streamingMetrics.incrementWarningCount();
+            }
+            default -> Loggings.logDebugAndTraceRecord(LOGGER, lcr, message + " This event will be skipped and will not be emitted.");
+        }
     }
 
     private void dispatchSchemaChangeEvent(DDLLCR ddlLcr) throws InterruptedException {
@@ -433,9 +516,16 @@ class LcrEventHandler implements XStreamLCRCallbackHandler {
             }
             return;
         }
-        columnChunks.computeIfAbsent(chunk.getColumnName(), v -> new ChunkColumnValues()).add(chunk);
-        if (chunk.isEndOfRow()) {
-            resolveAndDispatchCurrentChunkedRow();
+        try {
+            columnChunks.computeIfAbsent(chunk.getColumnName(), v -> new ChunkColumnValues()).add(chunk);
+            if (chunk.isEndOfRow()) {
+                resolveAndDispatchCurrentChunkedRow();
+            }
+        }
+        catch (Exception e) {
+            // An exception thrown out of this callback surfaces as an opaque ORA-26824 from the native
+            // XStream client rather than the actual cause, so propagate it ourselves like processLCR does
+            errorHandler.setProducerThrowable(e);
         }
     }
 

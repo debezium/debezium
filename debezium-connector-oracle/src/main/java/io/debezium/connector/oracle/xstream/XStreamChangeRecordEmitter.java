@@ -7,12 +7,14 @@ package io.debezium.connector.oracle.xstream;
 
 import java.util.Map;
 
+import io.debezium.DebeziumException;
 import io.debezium.connector.oracle.BaseChangeRecordEmitter;
 import io.debezium.connector.oracle.OracleConnectorConfig;
 import io.debezium.connector.oracle.OracleDatabaseSchema;
 import io.debezium.data.Envelope.Operation;
 import io.debezium.pipeline.spi.OffsetContext;
 import io.debezium.pipeline.spi.Partition;
+import io.debezium.relational.Column;
 import io.debezium.relational.Table;
 import io.debezium.util.Clock;
 
@@ -61,8 +63,7 @@ public class XStreamChangeRecordEmitter extends BaseChangeRecordEmitter<ColumnVa
         if (isLobOperation(lcr)) {
             Object[] values = mergeColumnValues(table, lcr.getOldValues(), lcr.getNewValues(), newChunkValues);
             for (Map.Entry<String, Object> entry : oldChunkValues.entrySet()) {
-                final int index = table.columnWithName(entry.getKey()).position() - 1;
-                values[index] = entry.getValue();
+                values[columnIndex(table, entry.getKey())] = entry.getValue();
             }
             return values;
         }
@@ -99,8 +100,7 @@ public class XStreamChangeRecordEmitter extends BaseChangeRecordEmitter<ColumnVa
 
         // Overlay chunk values into non-chunk value array
         for (Map.Entry<String, Object> entry : chunkValues.entrySet()) {
-            final int index = table.columnWithName(entry.getKey()).position() - 1;
-            values[index] = entry.getValue();
+            values[columnIndex(table, entry.getKey())] = entry.getValue();
         }
 
         return values;
@@ -119,8 +119,7 @@ public class XStreamChangeRecordEmitter extends BaseChangeRecordEmitter<ColumnVa
         overlayColumnValues(values, table, oldValues);
         overlayColumnValues(values, table, newValues);
         for (Map.Entry<String, Object> entry : chunkValues.entrySet()) {
-            final int index = table.columnWithName(entry.getKey()).position() - 1;
-            values[index] = entry.getValue();
+            values[columnIndex(table, entry.getKey())] = entry.getValue();
         }
         return values;
     }
@@ -131,11 +130,30 @@ public class XStreamChangeRecordEmitter extends BaseChangeRecordEmitter<ColumnVa
         }
         for (ColumnValue columnValue : columnValues) {
             // Skip Oracle ROW_ARCHIVAL column
-            if ("ORA_ARCHIVE_STATE".equals(columnValue.getColumnName())) {
+            if (isIgnoredColumn(columnValue.getColumnName())) {
                 continue;
             }
-            int index = table.columnWithName(columnValue.getColumnName()).position() - 1;
-            values[index] = columnValue.getColumnData();
+            values[columnIndex(table, columnValue.getColumnName())] = columnValue.getColumnData();
         }
+    }
+
+    /**
+     * Returns whether the given LCR column is never part of the relational model and must be ignored.
+     *
+     * @param columnName the column name, should not be {@code null}
+     * @return {@code true} if the column is ignored, {@code false} otherwise
+     */
+    static boolean isIgnoredColumn(String columnName) {
+        return OracleDatabaseSchema.ROW_ARCHIVAL_COLUMN_NAME.equals(columnName);
+    }
+
+    private static int columnIndex(Table table, String columnName) {
+        final Column column = table.columnWithName(columnName);
+        if (column == null) {
+            // LcrEventHandler validates the LCR against the table before the emitter is built, so this
+            // is only reached if that validation is bypassed; never emit a partial event.
+            throw new DebeziumException("Column '" + columnName + "' not found in the schema for table " + table.id());
+        }
+        return column.position() - 1;
     }
 }
