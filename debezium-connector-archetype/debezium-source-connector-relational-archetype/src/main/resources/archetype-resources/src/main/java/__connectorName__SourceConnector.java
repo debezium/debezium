@@ -12,6 +12,7 @@ import java.util.Map;
 import org.apache.kafka.common.config.ConfigDef;
 import org.apache.kafka.common.config.ConfigValue;
 import org.apache.kafka.connect.connector.Task;
+import org.apache.kafka.connect.source.ExactlyOnceSupport;
 
 import io.debezium.config.Configuration;
 import io.debezium.connector.common.RelationalBaseSourceConnector;
@@ -66,5 +67,11 @@ public class ${connectorName}SourceConnector extends RelationalBaseSourceConnect
         // TODO: open a ${connectorName}Connection with the supplied configuration and, if it
         // fails, attach the error to the relevant field (for example the database.hostname
         // ConfigValue) so it surfaces during connector validation.
+    }
+
+    @Override
+    public ExactlyOnceSupport exactlyOnceSupport(Map<String, String> connectorConfig) {
+        // TODO: return ExactlyOnceSupport.SUPPORTED if this connector supports exactly-once semantics.
+        return super.exactlyOnceSupport(connectorConfig);
     }
 }
