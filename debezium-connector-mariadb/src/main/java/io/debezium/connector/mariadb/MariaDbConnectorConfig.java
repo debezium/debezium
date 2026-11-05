@@ -18,7 +18,6 @@ import org.slf4j.LoggerFactory;
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.ConfigDefinition;
 import io.debezium.config.Configuration;
-import io.debezium.config.ConnectorConfigValidationHelper;
 import io.debezium.config.EnumeratedValue;
 import io.debezium.config.Field;
 import io.debezium.config.Field.ValidationOutput;
@@ -30,9 +29,7 @@ import io.debezium.connector.mariadb.charset.MariaDbCharsetRegistryServiceProvid
 import io.debezium.connector.mariadb.gtid.MariaDbGtidSetFactory;
 import io.debezium.connector.mariadb.history.MariaDbHistoryRecordComparator;
 import io.debezium.function.Predicates;
-import io.debezium.relational.RelationalDatabaseConnectorConfig;
 import io.debezium.relational.history.HistoryRecordComparator;
-import io.debezium.util.Strings;
 
 /**
  * Configuration properties for MariaDB.
@@ -258,12 +255,6 @@ public class MariaDbConnectorConfig extends BinlogConnectorConfig {
                     + "perform hostname verification; "
                     + "'verify_identity' to use a secure (encrypted) connection, and perform certificate verification, and hostname verification.");
 
-    public static final Field UNAVAILABLE_VALUE_PLACEHOLDER = RelationalDatabaseConnectorConfig.UNAVAILABLE_VALUE_PLACEHOLDER
-            .withDescription("Specify the constant that will be provided by Debezium to indicate that " +
-                    "the original value is unavailable and not provided by the database. " +
-                    "If starts with 'hex:' prefix it is expected that the rest of the string represents hexadecimal encoded octets.")
-            .withValidation(ConnectorConfigValidationHelper::validateHexPrefixedValue);
-
     private static final ConfigDefinition CONFIG_DEFINITION = BinlogConnectorConfig.CONFIG_DEFINITION.edit()
             .name("MariaDB")
             .excluding(
@@ -273,7 +264,6 @@ public class MariaDbConnectorConfig extends BinlogConnectorConfig {
             .group(Field.Group.CONNECTOR_SNAPSHOT, SNAPSHOT_LOCKING_MODE)
             .group(Field.Group.FILTERS, GTID_SOURCE_INCLUDES, GTID_SOURCE_EXCLUDES)
             .group(Field.Group.CONNECTOR, SOURCE_INFO_STRUCT_MAKER)
-            .group(Field.Group.CONNECTOR_ADVANCED, UNAVAILABLE_VALUE_PLACEHOLDER)
             .create();
 
     protected static ConfigDef configDef() {
@@ -336,15 +326,6 @@ public class MariaDbConnectorConfig extends BinlogConnectorConfig {
     @Override
     public HistoryRecordComparator getHistoryRecordComparator() {
         return new MariaDbHistoryRecordComparator(gtidSourceFilter, getGtidSetFactory());
-    }
-
-    @Override
-    public byte[] getUnavailableValuePlaceholder() {
-        String placeholder = getConfig().getString(UNAVAILABLE_VALUE_PLACEHOLDER);
-        if (placeholder.startsWith(ConnectorConfigValidationHelper.HEX_PREFIX)) {
-            return Strings.hexStringToByteArray(placeholder.substring(ConnectorConfigValidationHelper.HEX_PREFIX.length()));
-        }
-        return placeholder.getBytes();
     }
 
     @Override
