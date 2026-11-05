@@ -429,18 +429,24 @@ public class TableSchemaBuilder {
 
             // if the default value is provided
             if (column.hasDefaultValue() && defaultValue != null) {
-                try {
-                    // if the resolution of the default value resulted in null; there is no need to set it
-                    // if the column isn't optional, the schema won't be set as such and therefore trying
-                    // to set a null default value on a non-optional field schema will assert.
-                    fieldBuilder
-                            .defaultValue(customConverterRegistry.getValueConverter(table.id(), column)
-                                    .orElse(ValueConverter.passthrough()).convert(defaultValue));
+                // if the resolution of the default value resulted in null; there is no need to set it
+                // if the column isn't optional, the schema won't be set as such and therefore trying
+                // to set a null default value on a non-optional field schema will assert.
+                final var convertedDefaultValue = customConverterRegistry.getValueConverter(table.id(), column)
+                        .orElse(ValueConverter.passthrough()).convert(defaultValue);
+                // Kafka Connect rejects a Struct default (KAFKA-12694), and JsonConverter cannot serialize one
+                if (convertedDefaultValue instanceof Struct) {
+                    LOGGER.warn("Struct can't be used as default value for column '{}.{}', will use null instead.", table.id(), column.name());
                 }
-                catch (SchemaBuilderException e) {
-                    throw new DebeziumException("Failed to set field default value for '" + table.id() + "."
-                            + column.name() + "' of type " + column.typeName() + ", the default value is "
-                            + defaultValue + " of type " + defaultValue.getClass(), e);
+                else {
+                    try {
+                        fieldBuilder.defaultValue(convertedDefaultValue);
+                    }
+                    catch (SchemaBuilderException e) {
+                        throw new DebeziumException("Failed to set field default value for '" + table.id() + "."
+                                + column.name() + "' of type " + column.typeName() + ", the default value is "
+                                + defaultValue + " of type " + defaultValue.getClass(), e);
+                    }
                 }
             }
 
