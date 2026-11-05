@@ -52,6 +52,7 @@ public class OracleDatabaseSchema extends HistorizedRelationalDatabaseSchema {
 
     public static final String ATTRIBUTE_OBJECT_ID = "OBJECT_ID";
     public static final String ATTRIBUTE_DATA_OBJECT_ID = "DATA_OBJECT_ID";
+    public static final String ROW_ARCHIVAL_COLUMN_NAME = "ORA_ARCHIVE_STATE";
     private static final TableId NO_SUCH_TABLE = new TableId(null, null, "__NULL");
     private static final int MAX_STANDARD_STRING_BYTES = 4000;
     private static final int MAX_EXTENDED_STRING_BYTES = 32767;
