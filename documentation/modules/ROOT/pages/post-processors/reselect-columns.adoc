@@ -138,7 +138,7 @@ ifdef::community[]
 === RocksDB cache
 
 The `io.debezium.storage.rocksdb.reselect.RocksDbReselectColumnCache` implementation persists cached values to disk in an embedded RocksDB database.
-Cached values persist after you a connector restarts, so columns that would otherwise need to be reselected continue to be served from the cache after a restart.
+Cached values persist after a connector restarts, so columns that would otherwise need to be reselected continue to be served from the cache after a restart.
 Entries remain correct across restarts because the post processor refreshes the cache whenever a column arrives with a real value.
 
 To use the RocksDB cache, the `debezium-storage-rocksdb` artifact must be on the connector plugin path, and `reselect.cache.type` must be set to the implementation's fully-qualified class name.
@@ -200,6 +200,8 @@ By default the directory is retained, so cached values persist across connector 
 
 Note that this is the same property that the in-memory cache uses, but with a different default: persistent storage is permanent unless a time-to-live is explicitly configured.
 
+See <<reselect-columns-post-processor-property-reselect-cache-rocksdb-periodic-compaction-seconds, `reselect.cache.rocksdb.periodic.compaction.seconds`>> for how expired entries are reclaimed from disk.
+
 |[[reselect-columns-post-processor-property-reselect-cache-rocksdb-periodic-compaction-seconds]]<<reselect-columns-post-processor-property-reselect-cache-rocksdb-periodic-compaction-seconds, `+post.processors.reselect.cache.rocksdb.periodic.compaction.seconds+`>>
 |No default
 |The age, in seconds, after which RocksDB compacts a storage file, even if nothing else would cause the file to be compacted.
@@ -208,8 +210,8 @@ RocksDB removes expired entries during compaction, so a lower value reclaims dis
 This setting is most useful when you also set `reselect.cache.ttl.ms` to a positive value, but in the absence of that setting, compaction still reclaims space from deleted and overwritten entries.
 
 If you do not set this property, {prodname} does not set the option, and RocksDB uses its own default.
-If you set `reselect.cache.ttl.ms`, by default, RocksDB compacts files every 30 days (`2592000` seconds).
-To modify the default behavior, specify a value less than `2592000`.
+If you set `reselect.cache.ttl.ms` to a positive value, by default, RocksDB compacts files every 30 days (`2592000` seconds).
+To reclaim expired entries sooner, specify a value less than `2592000`.
 When no time-to-live is set, RocksDB compacts old files only according to its own automatic defaults.
 
 A value of `0` disables periodic compaction.
