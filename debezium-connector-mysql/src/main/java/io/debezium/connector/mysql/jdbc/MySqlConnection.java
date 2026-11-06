@@ -6,6 +6,8 @@
 package io.debezium.connector.mysql.jdbc;
 
 import java.sql.SQLException;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.function.Predicate;
 
 import org.slf4j.Logger;
@@ -16,6 +18,7 @@ import io.debezium.connector.binlog.gtid.GtidSet;
 import io.debezium.connector.binlog.jdbc.BinlogConnectorConnection;
 import io.debezium.connector.binlog.jdbc.BinlogFieldReader;
 import io.debezium.connector.mysql.gtid.MySqlGtidSet;
+import io.debezium.pipeline.source.spi.ServerRoleObservation;
 
 /**
  * An {@link BinlogConnectorConnection} to be used with MySQL.
@@ -29,6 +32,8 @@ public class MySqlConnection extends BinlogConnectorConnection {
     private static final Logger LOGGER = LoggerFactory.getLogger(MySqlConnection.class);
 
     private final String binaryLogStatusStatement;
+    // Whether the server is Amazon Aurora MySQL, read once for this connection
+    private Boolean aurora;
 
     public MySqlConnection(MySqlConnectionConfiguration connectionConfig, BinlogFieldReader fieldReader) {
         super(connectionConfig, fieldReader);
@@ -109,6 +114,40 @@ public class MySqlConnection extends BinlogConnectorConnection {
         catch (SQLException e) {
             throw new DebeziumException("Unexpected error while looking at GTID mode: ", e);
         }
+    }
+
+    @Override
+    public boolean isServerRoleObservable() {
+        return true;
+    }
+
+    @Override
+    public ServerRoleObservation observeServerRole() throws SQLException {
+        final boolean[] readOnly = queryAndMap("SELECT @@read_only, @@super_read_only", rs -> {
+            if (rs.next()) {
+                return new boolean[]{ rs.getBoolean(1), rs.getBoolean(2) };
+            }
+            throw new SQLException("Unable to read whether the server is read-only");
+        });
+        if (aurora == null) {
+            aurora = queryAndMap("SHOW GLOBAL VARIABLES LIKE 'aurora_version'", rs -> rs.next());
+        }
+        final Boolean auroraReader = aurora ? queryAndMap("SELECT @@innodb_read_only", rs -> rs.next() && rs.getBoolean(1)) : null;
+        final String groupReplicationRole = queryAndMap(
+                "SELECT MEMBER_ROLE FROM performance_schema.replication_group_members WHERE MEMBER_ID = @@server_uuid AND MEMBER_STATE = 'ONLINE'",
+                rs -> rs.next() ? rs.getString(1) : null);
+        final List<String> replicationSources = queryAndMap(
+                "SELECT c.HOST, c.PORT FROM performance_schema.replication_connection_status s "
+                        + "JOIN performance_schema.replication_connection_configuration c ON c.CHANNEL_NAME = s.CHANNEL_NAME "
+                        + "WHERE s.SERVICE_STATE IN ('ON', 'CONNECTING') AND s.CHANNEL_NAME NOT LIKE 'group_replication%'",
+                rs -> {
+                    final List<String> sources = new ArrayList<>();
+                    while (rs.next()) {
+                        sources.add(rs.getString(1) + ":" + rs.getInt(2));
+                    }
+                    return sources;
+                });
+        return new MySqlServerRoleFacts(readOnly[0], readOnly[1], auroraReader, groupReplicationRole, replicationSources).toObservation();
     }
 
     @Override

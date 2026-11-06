@@ -241,7 +241,7 @@ public class MySqlConnectorTask extends BinlogSourceTask<MySqlPartition, MySqlOf
                 connectorConfig.getPassword());
 
         final MySqlStreamingChangeEventSourceMetrics streamingMetrics = new MySqlStreamingChangeEventSourceMetrics(taskContext, queue, metadataProvider,
-                schema::dataCollectionIds, binaryLogClient);
+                schema::dataCollectionIds, binaryLogClient, getConnectedServerMeter());
 
         NotificationService<MySqlPartition, MySqlOffsetContext> notificationService = new NotificationService<>(getNotificationChannels(),
                 connectorConfig, SchemaFactory.get(), dispatcher::enqueueNotification);

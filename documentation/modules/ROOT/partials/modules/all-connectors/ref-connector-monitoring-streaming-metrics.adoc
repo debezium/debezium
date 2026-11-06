@@ -164,5 +164,50 @@ The {prodname} {connector-name} connector also provides the following additional
 |`long`
 |The number of transactions that have not fit into the look-ahead buffer. For optimal performance, this value should be significantly smaller than `NumberOfCommittedTransactions` and `NumberOfRolledBackTransactions`.
 
+|[[connected-server]]<<connected-server,`+ConnectedServer+`>>
+|`Map<String, String>`
+|The server that provides the binlog stream, as `server_id`, the value of the `server_id` system variable of that server.
+This is not the xref:{context}-property-database-server-id[`database.server.id`] of the connector.
+The connector reads the value on the binlog connection whenever it connects, so the value identifies the server behind the configured host name, even when a DNS name or a virtual IP address leads to another server after a failover.
+The `server_id` field in the `source` block of change events can differ from this value, because the `source` field identifies the server that originally wrote the event.
+For example, if the connector reads from a replica, the field reports the primary for events that were written on the primary.
+The map is empty while the connector is disconnected.
+
+|[[number-of-connected-server-changes]]<<number-of-connected-server-changes,`+NumberOfConnectedServerChanges+`>>
+|`long`
+|The number of times that the connector connected to a different server than the server of its previous connection.
+The first connection and reconnections to the same server are not counted.
+The number is kept when the task restarts after a retriable error, but starts again from `0` when Kafka Connect creates a new task.
+
+|[[connected-server-role]]<<connected-server-role,`+ConnectedServerRole+`>>
+|`string`
+|The observed role of the server that provides the binlog stream: `PRIMARY`, `REPLICA`, or `UNKNOWN`.
+ifdef::MYSQL[]
+The connector observes the role whenever it connects to the binlog, and then at the interval that xref:{context}-property-connected-server-role-refresh-interval-ms[`connected.server.role.refresh.interval.ms`] specifies, so that the role follows a promotion of the server even when the connector stays connected.
+The role is `UNKNOWN` while the connector is disconnected, when the role cannot be determined or read, and when the separate connection that observes the role reaches another server than the one that provides the binlog stream.
+endif::MYSQL[]
+ifdef::MARIADB[]
+The {connector-name} connector does not observe the role yet, and always reports `UNKNOWN`.
+endif::MARIADB[]
+The metric reports which server the connector reads from; it does not restrict the connector to a role.
+A change of role does not count as a change of server in `NumberOfConnectedServerChanges`.
+
+|[[connected-server-role-source]]<<connected-server-role-source,`+ConnectedServerRoleSource+`>>
+|`string`
+|How the role was determined.
+`AURORA` means that Amazon Aurora MySQL reported the role through `innodb_read_only`, and `GROUP_REPLICATION` means that Group Replication reported the `MEMBER_ROLE` of the server.
+`INFERRED` means that the server reported no role, and that the connector inferred it: a server with a running replication channel is a replica, and a writable server without one is the primary.
+A read-only server without a running replication channel has no role that the connector can infer.
+The value is empty while the role is `UNKNOWN`.
+
+|[[connected-server-state]]<<connected-server-state,`+ConnectedServerState+`>>
+|`Map<String, String>`
+|The facts that the role was determined from, such as `read_only`, `super_read_only`, and the `replication_sources` of the running replication channels.
+The map is empty while the connector is disconnected or before it observes the role.
+
+|[[milliseconds-since-connected-server-role-observed]]<<milliseconds-since-connected-server-role-observed,`+MilliSecondsSinceConnectedServerRoleObserved+`>>
+|`long`
+|The number of milliseconds since the connector last observed the role, or `-1` if it has not observed the role since it connected.
+
 |===
 endif::MARIADB,MYSQL[]
