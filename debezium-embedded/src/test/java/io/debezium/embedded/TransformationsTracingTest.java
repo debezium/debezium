@@ -84,10 +84,10 @@ public class TransformationsTracingTest {
         assertThat(spans.subList(0, 2)).allSatisfy(span -> assertChildOf(span, SAMPLED_TRACE_ID, SAMPLED_SPAN_ID));
         assertThat(spans.subList(2, 4)).allSatisfy(span -> assertChildOf(span, OTHER_TRACE_ID, OTHER_SPAN_ID));
         assertThat(spans).allSatisfy(span -> {
-            assertThat(span.getAttributes().get(TracingTransformation.TYPE)).isEqualTo(CapturingTransformation.class.getName());
-            assertThat(span.getAttributes().get(TracingTransformation.OUTCOME)).isEqualTo(TracingTransformation.OUTCOME_PASSED);
+            assertThat(span.getAttributes().get(TransformationTracing.TYPE)).isEqualTo(CapturingTransformation.class.getName());
+            assertThat(span.getAttributes().get(TransformationTracing.OUTCOME)).isEqualTo(TransformationTracing.OUTCOME_PASSED);
         });
-        assertThat(spans.get(0).getAttributes().get(TracingTransformation.ALIAS)).isEqualTo("a");
+        assertThat(spans.get(0).getAttributes().get(TransformationTracing.ALIAS)).isEqualTo("a");
 
         final List<SpanContext> captured = CapturingTransformation.CAPTURED;
         assertThat(captured).hasSize(6);
@@ -152,7 +152,7 @@ public class TransformationsTracingTest {
 
         assertThat(exporter.getFinishedSpanItems()).singleElement().satisfies(span -> {
             assertThat(span.getName()).isEqualTo("debezium-transform drop");
-            assertThat(span.getAttributes().get(TracingTransformation.OUTCOME)).isEqualTo(TracingTransformation.OUTCOME_FILTERED);
+            assertThat(span.getAttributes().get(TransformationTracing.OUTCOME)).isEqualTo(TransformationTracing.OUTCOME_FILTERED);
         });
         assertThat(CapturingTransformation.CAPTURED).isEmpty();
     }
@@ -167,8 +167,8 @@ public class TransformationsTracingTest {
 
         assertThat(exporter.getFinishedSpanItems()).singleElement().satisfies(span -> {
             assertThat(span.getStatus().getStatusCode()).isEqualTo(StatusCode.ERROR);
-            assertThat(span.getAttributes().get(TracingTransformation.OUTCOME)).isEqualTo(TracingTransformation.OUTCOME_FAILED);
-            assertThat(span.getAttributes().get(TracingTransformation.ERROR_TYPE)).isEqualTo(IllegalStateException.class.getName());
+            assertThat(span.getAttributes().get(TransformationTracing.OUTCOME)).isEqualTo(TransformationTracing.OUTCOME_FAILED);
+            assertThat(span.getAttributes().get(TransformationTracing.ERROR_TYPE)).isEqualTo(IllegalStateException.class.getName());
             assertThat(span.getEvents()).isEmpty();
         });
         assertThat(Span.current().getSpanContext().isValid()).isFalse();

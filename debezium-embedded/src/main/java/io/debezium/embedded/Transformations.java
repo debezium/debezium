@@ -85,7 +85,7 @@ public class Transformations implements Closeable {
         transformation.configure(config.subset(transformPrefix, true).asMap());
 
         if (isTraced(name)) {
-            transformation = new TracingTransformation(name, transformation);
+            transformation = TransformationTracing.wrap(name, transformation);
         }
 
         String predicateName = config.getString(transformPrefix + PREDICATE_SUFFIX);
