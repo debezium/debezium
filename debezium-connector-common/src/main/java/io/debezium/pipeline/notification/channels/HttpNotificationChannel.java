@@ -57,7 +57,13 @@ public class HttpNotificationChannel implements NotificationChannel {
     private static final int DELIVERY_QUEUE_CAPACITY = 1000;
     private static final long SHUTDOWN_TIMEOUT_SECONDS = 5;
 
-    public static final Field NOTIFICATION_URL = Field.create(CommonConnectorConfig.NOTIFICATION_CONFIGURATION_FIELD_PREFIX_STRING + "http.url")
+    private static final String CONTENT_TYPE = "Content-Type";
+    private static final String APPLICATION_JSON = "application/json";
+    private static final String AUTHORIZATION = "Authorization";
+
+    private static final String NOTIFICATION_HTTP_PREFIX = CommonConnectorConfig.NOTIFICATION_CONFIGURATION_FIELD_PREFIX_STRING + "http.";
+
+    public static final Field NOTIFICATION_URL = Field.create(NOTIFICATION_HTTP_PREFIX + "url")
             .withDisplayName("HTTP notification endpoint URL")
             .withType(ConfigDef.Type.STRING)
             .withWidth(ConfigDef.Width.LONG)
@@ -65,7 +71,7 @@ public class HttpNotificationChannel implements NotificationChannel {
             .withDescription("The URL to which notifications are POSTed as JSON. Required when 'http' is in the list of enabled channels.")
             .withValidation(HttpNotificationChannel::validateNotificationUrl);
 
-    public static final Field NOTIFICATION_TIMEOUT_MS = Field.create(CommonConnectorConfig.NOTIFICATION_CONFIGURATION_FIELD_PREFIX_STRING + "http.timeout.ms")
+    public static final Field NOTIFICATION_TIMEOUT_MS = Field.create(NOTIFICATION_HTTP_PREFIX + "timeout.ms")
             .withDisplayName("HTTP notification timeout (ms)")
             .withType(ConfigDef.Type.INT)
             .withWidth(ConfigDef.Width.SHORT)
@@ -74,7 +80,7 @@ public class HttpNotificationChannel implements NotificationChannel {
             .withValidation(Field::isPositiveInteger)
             .withDescription("Connect and read timeout, in milliseconds, for HTTP notification delivery.");
 
-    public static final Field NOTIFICATION_RETRIES = Field.create(CommonConnectorConfig.NOTIFICATION_CONFIGURATION_FIELD_PREFIX_STRING + "http.retries")
+    public static final Field NOTIFICATION_RETRIES = Field.create(NOTIFICATION_HTTP_PREFIX + "retries")
             .withDisplayName("HTTP notification retries")
             .withType(ConfigDef.Type.INT)
             .withWidth(ConfigDef.Width.SHORT)
@@ -84,8 +90,7 @@ public class HttpNotificationChannel implements NotificationChannel {
             .withDescription("Number of retries after the first failed HTTP notification delivery attempt. Terminal notifications "
                     + "(COMPLETED/ABORTED/SKIPPED) are always retried at least " + MIN_TERMINAL_RETRIES + " times.");
 
-    public static final Field NOTIFICATION_ALLOW_PRIVATE_NETWORKS = Field
-            .create(CommonConnectorConfig.NOTIFICATION_CONFIGURATION_FIELD_PREFIX_STRING + "http.allow.private.networks")
+    public static final Field NOTIFICATION_ALLOW_PRIVATE_NETWORKS = Field.create(NOTIFICATION_HTTP_PREFIX + "allow.private.networks")
             .withDisplayName("Allow private network notification targets")
             .withType(ConfigDef.Type.BOOLEAN)
             .withWidth(ConfigDef.Width.SHORT)
@@ -93,6 +98,14 @@ public class HttpNotificationChannel implements NotificationChannel {
             .withDefault(false)
             .withDescription("When true, the SSRF guard permits notification URLs that resolve to loopback, site-local or "
                     + "link-local addresses (e.g. an in-cluster Service). Defaults to false so only public addresses are allowed.");
+
+    public static final Field NOTIFICATION_AUTHORIZATION = Field.create(NOTIFICATION_HTTP_PREFIX + "authorization")
+            .withDisplayName("HTTP notification authorization header")
+            .withType(ConfigDef.Type.PASSWORD)
+            .withWidth(ConfigDef.Width.LONG)
+            .withImportance(ConfigDef.Importance.LOW)
+            .withDescription("The complete value of the Authorization header sent with every HTTP notification request, "
+                    + "e.g. 'Bearer <token>' or 'Basic <base64>'. Omitted when unset.");
 
     // Terminal snapshot statuses, single-sourced from the snapshot-result domain enum rather than string literals.
     private static final Set<String> TERMINAL_TYPES = Set.of(
@@ -102,6 +115,8 @@ public class HttpNotificationChannel implements NotificationChannel {
 
     private String url;
     private int retries;
+    private String authorization;
+
     private SsrfSafeHttpClient http;
     private ExecutorService deliveryExecutor;
 
@@ -110,9 +125,18 @@ public class HttpNotificationChannel implements NotificationChannel {
         return CHANNEL_NAME;
     }
 
+    /**
+     * Initializes the HTTP notification channel with configuration from the connector.
+     * Sets up the target URL, authorization header, retry policy, HTTP client with SSRF protection,
+     * and the asynchronous delivery executor.
+     *
+     * @param config the connector configuration containing HTTP notification settings
+     */
+
     @Override
     public void init(CommonConnectorConfig config) {
         this.url = config.getNotificationHttpUrl();
+        this.authorization = config.getNotificationHttpAuthorization();
         this.retries = config.getNotificationHttpRetries();
         Duration timeout = Duration.ofMillis(config.getNotificationHttpTimeoutMs());
         // allowPrivateNetworks defaults to false so only public addresses are allowed. It can be enabled when the
@@ -159,7 +183,7 @@ public class HttpNotificationChannel implements NotificationChannel {
 
     private void deliver(Notification notification, String body, int maxAttempts) {
         try {
-            http.post(url, Map.of("Content-Type", "application/json"), body, maxAttempts);
+            http.post(url, createHeaders(), body, maxAttempts);
         }
         catch (InterruptedException e) {
             Thread.currentThread().interrupt();
@@ -203,6 +227,16 @@ public class HttpNotificationChannel implements NotificationChannel {
     int maxAttemptsFor(Notification notification) {
         int effectiveRetries = isTerminal(notification) ? Math.max(retries, MIN_TERMINAL_RETRIES) : retries;
         return effectiveRetries + 1;
+    }
+
+    private Map<String, String> createHeaders() {
+
+        Map<String, String> headers = new java.util.HashMap<>();
+        headers.put(CONTENT_TYPE, APPLICATION_JSON);
+        if (!Strings.isNullOrEmpty(authorization)) {
+            headers.put(AUTHORIZATION, authorization);
+        }
+        return headers;
     }
 
     private static boolean isTerminal(Notification notification) {
