@@ -35,7 +35,6 @@ import io.debezium.connector.mysql.history.MySqlHistoryRecordComparator;
 import io.debezium.function.Predicates;
 import io.debezium.relational.RelationalDatabaseConnectorConfig;
 import io.debezium.relational.history.HistoryRecordComparator;
-import io.debezium.util.Strings;
 
 /**
  * The configuration properties.
@@ -432,15 +431,6 @@ public class MySqlConnectorConfig extends BinlogConnectorConfig {
 
     public Optional<SnapshotLockingMode> getSnapshotLockingMode() {
         return Optional.of(this.snapshotLockingMode);
-    }
-
-    @Override
-    public byte[] getUnavailableValuePlaceholder() {
-        String placeholder = getConfig().getString(UNAVAILABLE_VALUE_PLACEHOLDER);
-        if (placeholder.startsWith(ConnectorConfigValidationHelper.HEX_PREFIX)) {
-            return Strings.hexStringToByteArray(placeholder.substring(ConnectorConfigValidationHelper.HEX_PREFIX.length()));
-        }
-        return placeholder.getBytes();
     }
 
     @Override
