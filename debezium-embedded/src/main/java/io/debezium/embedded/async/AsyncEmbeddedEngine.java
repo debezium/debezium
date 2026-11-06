@@ -10,6 +10,7 @@ import java.lang.reflect.InvocationTargetException;
 import java.time.Clock;
 import java.time.Duration;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -119,6 +120,7 @@ public final class AsyncEmbeddedEngine<R> implements DebeziumEngine<R>, AsyncEng
     private final Lock offsetCommitLock = new ReentrantLock();
     // A latch to make sure close() method finishes before we call completion callback, see also DBZ-7496.
     private final CountDownLatch shutDownLatch = new CountDownLatch(1);
+    private final AtomicReference<Throwable> offsetCommitFailure = new AtomicReference<>();
     private Signaler signaler;
     private final Shutdown<R> shutdown;
     private final Watcher watcher;
@@ -355,8 +357,16 @@ public final class AsyncEmbeddedEngine<R> implements DebeziumEngine<R>, AsyncEng
         }
         LOGGER.info("Engine is stopped.");
         setEngineState(State.STOPPING, State.STOPPED);
+        final Throwable commitFailure = offsetCommitFailure.get();
+        // The completion handler reports the cause of an ExecutionException, so the commit failure has to be attached to it.
+        final Throwable reportedError = exitError instanceof ExecutionException && exitError.getCause() != null ? exitError.getCause() : exitError;
+        if (reportedError != null && commitFailure != null && commitFailure != reportedError
+                && !Arrays.asList(reportedError.getSuppressed()).contains(commitFailure)) {
+            // The engine failed before the final commit; keep the commit failure visible as well.
+            reportedError.addSuppressed(commitFailure);
+        }
         LOGGER.debug("Calling completion handler.");
-        callCompletionHandler(exitError);
+        callCompletionHandler(exitError != null ? exitError : commitFailure);
     }
 
     /**
@@ -763,7 +773,17 @@ public final class AsyncEmbeddedEngine<R> implements DebeziumEngine<R>, AsyncEng
                         try {
                             LOGGER.debug("Committing task's offset.");
                             commitOffsets(task.context().offsetStorageWriter(), task.context().offsetCommitLock(), task.context().clock(), commitTimeout,
-                                    task.connectTask());
+                                    task.connectTask(), true);
+                        }
+                        catch (InterruptedException e) {
+                            // Keep the interrupt status for the rest of the stop; the failure is still recorded below.
+                            Thread.currentThread().interrupt();
+                            recordFinalOffsetCommitFailure(e);
+                        }
+                        catch (Exception e) {
+                            // Any failure here (including the checked ones and runtime exceptions escaping the writer) would otherwise only reach
+                            // the poll loop as an ExecutionException. The records were handed to the consumer, but their offsets are not stored.
+                            recordFinalOffsetCommitFailure(e);
                         }
                         finally {
                             LOGGER.debug("Stopping Connect task.");
@@ -815,6 +835,19 @@ public final class AsyncEmbeddedEngine<R> implements DebeziumEngine<R>, AsyncEng
                 LOGGER.warn("Stopping of task(s) {} timed out or failed, the task(s) may still be running.", tasksNotStopped);
             }
         }
+    }
+
+    /**
+     * Records the failure of the final offset commit done by {@link #stopSourceTasks(List)}, so the completion of the engine reports it.
+     * The first failure is kept.
+     *
+     * @param e {@link Exception} which made the final offset commit fail.
+     */
+    private void recordFinalOffsetCommitFailure(Exception e) {
+        LOGGER.error("Failed to commit the offsets while stopping the task", e);
+        final DebeziumException failure = e instanceof DebeziumException ? (DebeziumException) e
+                : new DebeziumException("Failed to commit the offsets while stopping the task", e);
+        offsetCommitFailure.compareAndSet(null, failure);
     }
 
     /**
@@ -966,12 +999,18 @@ public final class AsyncEmbeddedEngine<R> implements DebeziumEngine<R>, AsyncEng
      * @param offsetCommitLock {@link Lock} which serializes the offset commits on the {@code offsetWriter}.
      * @param commitTimeout amount of time to wait for offset flush to finish before it's aborted.
      * @param task {@link SourceTask} which performs the offset commit.
+     * @param failOnError {@code true} to throw a {@link DebeziumException} when the flush fails, {@code false} to log the failure and
+     *            return {@code false}. A flush with nothing to commit is not a failure and returns {@code false} in both cases.
      * @return {@code true} if the offset was successfully committed, {@code false} otherwise.
+     * @throws DebeziumException if {@code failOnError} is {@code true} and the offsets could not be committed.
      */
     private static boolean commitOffsets(final OffsetStorageWriter offsetWriter, final Lock offsetCommitLock, final io.debezium.util.Clock clock,
-                                         final long commitTimeout, final SourceTask task)
+                                         final long commitTimeout, final SourceTask task, final boolean failOnError)
             throws InterruptedException, TimeoutException {
         if (!offsetCommitLock.tryLock(commitTimeout, TimeUnit.MILLISECONDS)) {
+            if (failOnError) {
+                throw new DebeziumException("Flush of the offsets skipped, concurrent flush didn't finish within " + commitTimeout + " ms.");
+            }
             LOGGER.warn("Flush of the offsets skipped, concurrent flush didn't finish within {} ms.", commitTimeout);
             return false;
         }
@@ -982,17 +1021,14 @@ public final class AsyncEmbeddedEngine<R> implements DebeziumEngine<R>, AsyncEng
                 return false;
             }
 
+            // A flush that could not start is handled after the try, so the catch below only sees the failures of the started flush.
+            Future<Void> flush = null;
             try {
-                final Future<Void> flush = offsetWriter.doFlush((Throwable error, Void result) -> {
+                flush = offsetWriter.doFlush((Throwable error, Void result) -> {
                 });
-                if (flush == null) {
-                    LOGGER.warn("Flushing process probably failed, please check previous log for more details.");
-                    offsetWriter.cancelFlush();
-                    return false;
+                if (flush != null) {
+                    flush.get(Math.max(timeout - clock.currentTimeInMillis(), 0), TimeUnit.MILLISECONDS);
                 }
-
-                flush.get(Math.max(timeout - clock.currentTimeInMillis(), 0), TimeUnit.MILLISECONDS);
-                task.commit();
             }
             catch (InterruptedException e) {
                 LOGGER.debug("Flush of the offsets interrupted, canceling the flush.");
@@ -1000,9 +1036,31 @@ public final class AsyncEmbeddedEngine<R> implements DebeziumEngine<R>, AsyncEng
                 throw e;
             }
             catch (Exception e) {
-                LOGGER.warn("Flush of the offsets failed, canceling the flush.", e);
                 offsetWriter.cancelFlush();
+                if (failOnError) {
+                    // Keep the exception if it's already a DebeziumException rather than wrapping it again.
+                    throw e instanceof DebeziumException ? (DebeziumException) e
+                            : new DebeziumException("Flush of the offsets failed, the offsets were not committed.", e);
+                }
+                LOGGER.warn("Flush of the offsets failed, canceling the flush.", e);
                 return false;
+            }
+
+            if (flush == null) {
+                offsetWriter.cancelFlush();
+                if (failOnError) {
+                    throw new DebeziumException("Flushing process probably failed, the offsets were not committed.");
+                }
+                LOGGER.warn("Flushing process probably failed, please check previous log for more details.");
+                return false;
+            }
+
+            // The offsets are stored at this point, so a failure of the task commit is not a failure of the offset flush.
+            try {
+                task.commit();
+            }
+            catch (RuntimeException e) {
+                LOGGER.warn("The offsets were stored, but the task failed to commit them.", e);
             }
             return true;
         }
@@ -1468,7 +1526,7 @@ public final class AsyncEmbeddedEngine<R> implements DebeziumEngine<R>, AsyncEng
             final Duration durationSinceLastCommit = Duration.ofMillis(clock.currentTimeInMillis() - timeOfLastCommitMillis);
             if (offsetCommitPolicy.performCommit(recordsSinceLastCommit, durationSinceLastCommit)) {
                 try {
-                    if (commitOffsets(offsetWriter, offsetCommitLock, clock, commitTimeout, task)) {
+                    if (commitOffsets(offsetWriter, offsetCommitLock, clock, commitTimeout, task, false)) {
                         recordsSinceLastCommit = 0;
                         timeOfLastCommitMillis = clock.currentTimeInMillis();
                     }
