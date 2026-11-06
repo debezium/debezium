@@ -24,6 +24,7 @@ import org.junit.jupiter.api.Test;
 import io.debezium.DebeziumException;
 import io.debezium.data.Envelope;
 import io.debezium.data.VerifyRecord;
+import io.debezium.doc.FixFor;
 import io.debezium.transforms.tracing.ActivateTracingSpan;
 import io.opentelemetry.javaagent.testing.common.AgentTestingExporterAccess;
 import io.opentelemetry.sdk.trace.data.SpanData;
@@ -126,6 +127,7 @@ public class ActivateTracingSpanTest {
     }
 
     @Test
+    @FixFor("debezium/dbz#3033")
     public void whenNanosecondTimestampsAreAvailableSpansStartWithNanosecondPrecision() {
         final Schema schema = SchemaBuilder.struct().optional()
                 .field("table", Schema.STRING_SCHEMA)
@@ -147,6 +149,7 @@ public class ActivateTracingSpanTest {
     }
 
     @Test
+    @FixFor("debezium/dbz#3033")
     public void whenMicrosecondTimestampIsTheMostPreciseAvailableSpanStartsWithMicrosecondPrecision() {
         final Schema schema = SchemaBuilder.struct().optional()
                 .field("table", Schema.STRING_SCHEMA)
@@ -165,6 +168,7 @@ public class ActivateTracingSpanTest {
     }
 
     @Test
+    @FixFor("debezium/dbz#3033")
     public void whenOnlyMillisecondTimestampIsAvailableSpanStartsWithMillisecondPrecision() {
         final Struct source = new Struct(sourceSchema);
         source.put("table", "mytable");
@@ -172,6 +176,20 @@ public class ActivateTracingSpanTest {
         source.put("ts_ms", 1588252618953L);
 
         final List<SpanData> spans = traceRecordWithSource(source, Instant.now());
+
+        assertThat(spans.get(1).getStartEpochNanos()).isEqualTo(1588252618953000000L);
+    }
+
+    @Test
+    @FixFor("debezium/dbz#3033")
+    public void whenEnvelopeTimestampIsMissingSpansAreStillCreated() {
+        final Struct source = new Struct(sourceSchema);
+        source.put("table", "mytable");
+        source.put("lsn", 1);
+        source.put("ts_ms", 1588252618953L);
+
+        // a null processing time leaves the envelope ts_ms, ts_us and ts_ns fields unset
+        final List<SpanData> spans = traceRecordWithSource(source, null);
 
         assertThat(spans.get(1).getStartEpochNanos()).isEqualTo(1588252618953000000L);
     }
