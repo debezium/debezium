@@ -3040,6 +3040,7 @@ If the recovery process cannot resolve an error, the connector stops, and the of
 |Specifies the time, in milliseconds, that a wait for Zerobus to acknowledge the records of a batch can last before the service logs a `WARN` message.
 The message repeats at the same interval while the wait continues.
 Set the value to `0` to disable the message.
+Negative values are rejected at startup.
 The wait in progress is also available over JMX, regardless of this setting.
 For more information, see <<debezium-server-zerobus-grpc-route-tuning-throughput, Tuning throughput on the gRPC route>>.
 
