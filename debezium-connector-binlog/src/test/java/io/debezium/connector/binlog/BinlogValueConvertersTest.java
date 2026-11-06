@@ -12,17 +12,23 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import java.math.BigDecimal;
 import java.sql.Timestamp;
+import java.sql.Types;
 import java.time.Duration;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.Month;
+import java.time.Year;
 import java.time.ZonedDateTime;
 import java.time.temporal.TemporalAdjuster;
+import java.util.stream.Stream;
 
 import org.apache.kafka.connect.data.Field;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceConnector;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 
 import io.debezium.DebeziumException;
 import io.debezium.config.CommonConnectorConfig.BinaryHandlingMode;
@@ -54,6 +60,30 @@ public abstract class BinlogValueConvertersTest<C extends SourceConnector> imple
     private static final TemporalAdjuster ADJUSTER = BinlogValueConverters::adjustTemporal;
     private static final byte[] INVALID_JSON = { 2, 1, 0, 91, 0, 0, 7, 0, 2, 0, 84, 0, 18, 0, 4, 0, 22, 0, 6, 0, 12, 28,
             0, 0, 47, 0, 116, 121, 112, 101 };
+
+    @ParameterizedTest
+    @MethodSource("yearValues")
+    @FixFor("debezium/dbz#2757")
+    void shouldPreserveYearValues(Object value, Integer expected) {
+        final var converters = getValueConverters(JdbcValueConverters.DecimalMode.PRECISE,
+                TemporalPrecisionMode.ADAPTIVE_TIME_MICROSECONDS, JdbcValueConverters.BigIntUnsignedMode.LONG,
+                BinaryHandlingMode.BYTES, ADJUSTER, EventConvertingFailureHandlingMode.FAIL);
+        final var column = Column.editor().name("y").type("YEAR").jdbcType(Types.INTEGER).optional(true).create();
+        final var schema = converters.schemaBuilder(column).optional().build();
+        final var converter = converters.converter(column, new Field("y", 0, schema));
+
+        assertThat(converter.convert(value)).isEqualTo(expected);
+    }
+
+    static Stream<Arguments> yearValues() {
+        return Stream.of(
+                Arguments.of(0, 0), Arguments.of((short) 0, 0), Arguments.of(Year.of(0), 0),
+                Arguments.of("0000", 0), Arguments.of("0", 2000), Arguments.of("00", 2000),
+                Arguments.of("000", 2000), Arguments.of("00000", 2000),
+                Arguments.of(1, 2001), Arguments.of("69", 2069), Arguments.of("70", 1970),
+                Arguments.of(1901, 1901), Arguments.of(Year.of(2000), 2000), Arguments.of(2155, 2155),
+                Arguments.of(null, null));
+    }
 
     @Test
     void shouldAdjustLocalDateWithTwoDigitYears() {
