@@ -3035,6 +3035,14 @@ If the recovery process cannot resolve an error, the connector stops, and the of
 |The SDK default.
 |Specifies the time, in milliseconds, that a flush waits for the records in the stream to be acknowledged.
 
+|[[zerobus-flush-warn-threshold-ms]]<<zerobus-flush-warn-threshold-ms, `debezium.sink.zerobus.flush.warn.threshold.ms`>>
+|`30000`
+|Specifies the time, in milliseconds, that a wait for Zerobus to acknowledge the records of a batch can last before the service logs a `WARN` message.
+The message repeats at the same interval while the wait continues.
+Set the value to `0` to disable the message.
+The wait in progress is also available over JMX, regardless of this setting.
+For more information, see <<debezium-server-zerobus-grpc-route-tuning-throughput, Tuning throughput on the gRPC route>>.
+
 |[[zerobus-metrics-log-interval]]<<zerobus-metrics-log-interval, `debezium.sink.zerobus.metrics.log.interval`>>
 |`0`
 |Specifies the number of batches that the service processes before it emits a periodic `INFO` log line to summarize sink metrics.
@@ -3156,6 +3164,52 @@ When no alternative implementation is available, the sink uses the default.
 By default, the sink builds the instance from the <<zerobus-endpoint, `endpoint`>> and <<zerobus-workspace-url, `workspace.url`>> options.
 
 |===
+
+[id="debezium-server-zerobus-grpc-route-tuning-throughput"]
+====== Tuning throughput on the gRPC route
+
+The gRPC route waits for Zerobus to acknowledge each batch before it commits the source offsets and takes the next batch.
+Zerobus acknowledges the records from the region in which the workspace runs, so each batch pays one network round trip to that region.
+When a batch writes to several tables, the sink waits for each table in turn.
+
+As a result, throughput depends mainly on the number of records that each batch carries.
+The source connector controls the batch size, so tune the following source properties rather than sink properties:
+
+* `debezium.source.max.batch.size` sets the maximum number of change events that the source hands to the sink in one batch.
+The default is `2048`.
+* `debezium.source.max.queue.size` sets the maximum number of events that the source reads ahead while the sink waits for an acknowledgement.
+The default is `8192`.
+The value should always be larger than `max.batch.size`.
+
+A larger batch means fewer round trips for the same number of records, which raises throughput.
+This effect is most visible during the initial snapshot, when the source emits a large number of snapshot read (`op=r`) events.
+A larger batch also uses more memory, and after a failure the sink replays the whole batch, so the replay takes longer.
+The best values depend on the latency between the sink and the workspace, and on the size of the records.
+Use the following example as a starting point, and measure throughput before you change the values further:
+
+[source,properties]
+----
+debezium.source.max.batch.size=8192
+debezium.source.max.queue.size=32768
+debezium.sink.zerobus.metrics.log.interval=10
+----
+
+To follow the progress of a pipeline, and to find out whether it is slow because it waits for Zerobus, use the following options:
+
+* Set <<zerobus-metrics-log-interval, `debezium.sink.zerobus.metrics.log.interval`>> to a positive value.
+The `INFO` line includes `lastFlushMs`, `maxFlushMs`, and `currentFlushMs`, which show the duration of the most recent flush, the longest flush, and the flush in progress.
+Compare the `ingested` counter between two lines to measure throughput.
+* Read the `TotalRecordsIngested` JMX attribute.
+The rate at which it grows is the throughput of the pipeline.
+* Read the `CurrentFlushDurationMillis` JMX attribute.
+It is `0` when no wait is in progress.
+A value that keeps growing means that the sink is waiting for Zerobus to acknowledge a batch.
+* Watch the log for the `WARN` message that the sink writes when a wait exceeds <<zerobus-flush-warn-threshold-ms, `debezium.sink.zerobus.flush.warn.threshold.ms`>>.
+The message names the target table and the number of records that are still waiting for an acknowledgement.
+
+A wait that is still in progress has not committed the source offsets of its batch yet.
+If you stop the service during a wait, no records are lost, but the service sends the records of that batch again after it restarts.
+To find out whether a pipeline has finished processing, do not rely on a fixed period without new acknowledgements, because a single wait can last longer than that period.
 
 [id="debezium-server-zerobus-rest-route-configuration"]
 ===== REST route (`zerobus-rest`)
@@ -3483,6 +3537,8 @@ Reading them from outside the process is a separate step: the service exposes JM
 The {link-prefix}:{link-debezium-monitoring}#monitoring-debezium[{prodname} monitoring documentation] provides details about how to expose metrics by using JMX.
 You can automate periodic metric logging by setting <<zerobus-metrics-log-interval, `debezium.sink.zerobus.metrics.log.interval`>> or <<zerobus-rest-metrics-log-interval, `debezium.sink.zerobus-rest.metrics.log.interval`>> to a positive value.
 After you enable either of these options, at the specified interval the connector writes an `INFO` log message that contains the same metric values that are available through JMX.
+On the gRPC route, the sink also logs a `WARN` message when a wait for Zerobus to acknowledge a batch lasts longer than <<zerobus-flush-warn-threshold-ms, `debezium.sink.zerobus.flush.warn.threshold.ms`>>, and it repeats the message at the same interval while the wait continues.
+The `CurrentFlushDurationMillis` attribute reports the duration of the wait in progress.
 
 The Kafka route is the exception to metrics being collected automatically: because it writes through the generic `kafka` sink, the Zerobus sink is never invoked and cannot instrument itself.
 On that route the metrics are not collected until you register the following producer interceptor, which reports the same attributes under `server=kafka`:
@@ -3561,6 +3617,12 @@ On the Kafka route the value describes a sampled subset of records rather than e
 |`MaxFlushDurationMillis`
 |Longest duration of any flush (gRPC), record POST (REST), or broker acknowledgement (Kafka) operation since the task started.
 On the Kafka route the value describes a sampled subset of records rather than every record, as the following note describes.
+
+|`CurrentFlushDurationMillis`
+|Duration, in milliseconds, of the flush (gRPC) that is waiting for Zerobus to acknowledge the records of a batch.
+The value is `0` when no flush is waiting.
+A value that keeps growing means that the offsets of that batch are not committed yet.
+Only the gRPC route reports a value greater than `0`.
 
 |`ActiveStreams`
 |Number of currently open Zerobus streams (one per target table).
