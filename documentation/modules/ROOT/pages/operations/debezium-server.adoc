@@ -841,7 +841,15 @@ To use all available cores on given machine, set the placeholder value, `AVAILAB
 === Stopping the server after an initial snapshot
 
 When you set `debezium.source.snapshot.mode` to `initial_only`, the connector takes a snapshot and then stops producing events, but by default {prodname} Server keeps running.
-To make the server stop on its own after the snapshot, set `debezium.shutdown.after.snapshot` to `true`.
+To make the server stop on its own after the snapshot, set `debezium.shutdown.after.snapshot` to `true`, and enable the `sink` notification channel, as in the following example:
+
+[source,properties]
+----
+debezium.source.snapshot.mode=initial_only
+debezium.source.notification.enabled.channels=sink
+debezium.source.notification.sink.topic.name=<topic_prefix>.notifications
+debezium.shutdown.after.snapshot=true
+----
 
 [cols="35%a,10%a,55%a",options="header"]
 |===
@@ -852,13 +860,19 @@ To make the server stop on its own after the snapshot, set `debezium.shutdown.af
 |[[debezium-shutdown-after-snapshot]]<<debezium-shutdown-after-snapshot, `debezium.shutdown.after.snapshot`>>
 |`false`
 |Specifies whether {prodname} Server stops after the sink has received every event of an `initial_only` snapshot.
-The server stops the engine after the sink handles the batch that contains the last pending snapshot event.
-The engine then commits the offsets of the delivered events, and the server process exits with code `0`.
+With the `sink` notification channel, the connector sends its notifications as records through the same queue as the change events.
+The notification that the initial snapshot is completed follows the last snapshot event, so the server stops the engine after the sink handles the batch that contains that notification.
+The engine then commits the offsets of the delivered records, including the offset of the completed snapshot, and the server process exits with code `0`.
+If you restart the server after the snapshot completed, the connector sends a notification that the snapshot was skipped, and the server stops after it in the same way.
 If the sink fails, the process exits with a non-zero code instead.
+
+The notification records are delivered to the sink like any other record.
+Do not drop them with a transformation, because transformations run before the server sees the records, and the server would then keep running.
 
 The server fails to start if you enable this option with any of the following settings:
 
 * a `debezium.source.snapshot.mode` other than `initial_only`;
+* `debezium.source.notification.enabled.channels` without the `sink` channel;
 * `debezium.source.tasks.max` greater than `1`;
 * more than one database in `debezium.source.database.names`;
 * `debezium.shutdown.on.completion` set to `false`.
@@ -868,10 +882,6 @@ The server fails to start if you enable this option with any of the following se
 Because the process exits only after the offsets are committed, a script or a supervisor can treat a `0` exit code as the signal that the snapshot was fully delivered.
 Do not rely on a period without new events for that purpose, because the sink can wait for a long time while it delivers a batch.
 The `0` exit code also requires that the engine reports a failure of the final offset commit as a failed completion, as described in link:https://github.com/debezium/dbz/issues/3028[debezium/dbz#3028].
-
-The server stops only after it delivers a batch of snapshot events.
-If you restart the server with offsets that already record a completed snapshot, the connector skips the snapshot, no batch is delivered, and the server keeps running until you stop it.
-For the same reason, if the connector reports the snapshot as completed only after the sink has already handled the last batch, the server also keeps running.
 
 // Type: reference
 // ModuleID: debezium-server-quarkus-runtime-configuration-properties
