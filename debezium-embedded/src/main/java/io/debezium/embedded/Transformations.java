@@ -8,8 +8,10 @@ package io.debezium.embedded;
 import java.io.Closeable;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import org.apache.kafka.common.config.ConfigDef;
 import org.apache.kafka.connect.source.SourceRecord;
@@ -39,10 +41,15 @@ public class Transformations implements Closeable {
     private final Configuration config;
     private final List<Transformation<SourceRecord>> transforms = new ArrayList<>();
     private final Predicates predicates;
+    private final boolean tracingEnabled;
+    private final Set<String> tracedAliases;
 
     public Transformations(Configuration config) {
         this.config = config;
         this.predicates = new Predicates(config);
+        this.tracedAliases = new HashSet<>(config.getList(EmbeddedEngineConfig.TRANSFORMS_TRACING_INCLUDE));
+        this.tracedAliases.removeIf(String::isEmpty);
+        this.tracingEnabled = config.getBoolean(EmbeddedEngineConfig.TRANSFORMS_TRACING_ENABLED) && isOpenTelemetryAvailable();
         final String transformationList = config.getString(EmbeddedEngineConfig.TRANSFORMS);
         if (transformationList == null) {
             return;
@@ -77,6 +84,10 @@ public class Transformations implements Closeable {
 
         transformation.configure(config.subset(transformPrefix, true).asMap());
 
+        if (isTraced(name)) {
+            transformation = new TracingTransformation(name, transformation);
+        }
+
         String predicateName = config.getString(transformPrefix + PREDICATE_SUFFIX);
         if (predicateName != null) {
             Boolean negate = config.getBoolean(transformPrefix + NEGATE_SUFFIX);
@@ -85,6 +96,21 @@ public class Transformations implements Closeable {
         }
 
         return transformation;
+    }
+
+    private boolean isTraced(String name) {
+        return tracingEnabled && (tracedAliases.isEmpty() || tracedAliases.contains(name));
+    }
+
+    private static boolean isOpenTelemetryAvailable() {
+        try {
+            Class.forName("io.opentelemetry.api.GlobalOpenTelemetry", false, Transformations.class.getClassLoader());
+            return true;
+        }
+        catch (ClassNotFoundException | LinkageError e) {
+            LOGGER.warn("Transformation tracing is enabled but the OpenTelemetry API is not available, transformations will not be traced");
+            return false;
+        }
     }
 
     public SourceRecord transform(SourceRecord record) {
