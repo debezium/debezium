@@ -42,6 +42,7 @@ public class HttpNotificationChannelTest {
 
     @Mock
     private CommonConnectorConfig connectorConfig;
+    private final List<Map<String, List<String>>> receivedHeaders = new CopyOnWriteArrayList<>();
 
     private HttpServer server;
     private final AtomicInteger requestCount = new AtomicInteger();
@@ -74,10 +75,15 @@ public class HttpNotificationChannelTest {
     }
 
     private void initChannel(String url, int retries, boolean allowPrivateNetworks) {
+        initChannel(url, retries, allowPrivateNetworks, null);
+    }
+
+    private void initChannel(String url, int retries, boolean allowPrivateNetworks, String authorization) {
         lenient().when(connectorConfig.getNotificationHttpUrl()).thenReturn(url);
         lenient().when(connectorConfig.getNotificationHttpRetries()).thenReturn(retries);
         lenient().when(connectorConfig.getNotificationHttpTimeoutMs()).thenReturn(5000);
         lenient().when(connectorConfig.isNotificationHttpAllowPrivateNetworks()).thenReturn(allowPrivateNetworks);
+        lenient().when(connectorConfig.getNotificationHttpAuthorization()).thenReturn(authorization);
         channel.init(connectorConfig);
     }
 
@@ -193,11 +199,64 @@ public class HttpNotificationChannelTest {
                 .with("notification.http.url", "https://example.com/notify").build())).isTrue();
     }
 
+    @Test
+    void shouldIncludeBasicAuthorizationHeader() throws Exception {
+        initChannel(url(), 2, true, "Basic dXNlcjpwYXNz");
+        channel.send(notification("STARTED"));
+        flush();
+
+        assertThat(requestCount.get()).isEqualTo(1);
+        assertThat(receivedHeaders.get(0).get("Authorization")).containsExactly("Basic dXNlcjpwYXNz");
+        assertThat(receivedHeaders.get(0).get("Content-Type")).containsExactly("application/json");
+    }
+
+    @Test
+    void shouldIncludeBearerTokenAuthorizationHeader() throws Exception {
+        initChannel(url(), 2, true, "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9");
+        channel.send(notification("STARTED"));
+        flush();
+
+        assertThat(requestCount.get()).isEqualTo(1);
+        assertThat(receivedHeaders.get(0).get("Authorization")).containsExactly("Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9");
+    }
+
+    @Test
+    void shouldIncludeCustomAuthorizationHeader() throws Exception {
+        initChannel(url(), 2, true, "ApiKey my-secret-key-12345");
+        channel.send(notification("STARTED"));
+        flush();
+
+        assertThat(requestCount.get()).isEqualTo(1);
+        assertThat(receivedHeaders.get(0).get("Authorization")).containsExactly("ApiKey my-secret-key-12345");
+    }
+
+    @Test
+    void shouldNotIncludeAuthorizationHeaderWhenNotConfigured() throws Exception {
+        initChannel(url(), 2, true, null);
+        channel.send(notification("STARTED"));
+        flush();
+
+        assertThat(requestCount.get()).isEqualTo(1);
+        assertThat(receivedHeaders.get(0).containsKey("Authorization")).isFalse();
+        assertThat(receivedHeaders.get(0).get("Content-Type")).containsExactly("application/json");
+    }
+
+    @Test
+    void shouldNotIncludeAuthorizationHeaderWhenEmpty() throws Exception {
+        initChannel(url(), 2, true, "");
+        channel.send(notification("STARTED"));
+        flush();
+
+        assertThat(requestCount.get()).isEqualTo(1);
+        assertThat(receivedHeaders.get(0).containsKey("Authorization")).isFalse();
+    }
+
     private final class RecordingHandler implements HttpHandler {
 
         @Override
         public void handle(HttpExchange exchange) throws IOException {
             requestCount.incrementAndGet();
+            receivedHeaders.add(exchange.getRequestHeaders());
             try (InputStream in = exchange.getRequestBody()) {
                 receivedBodies.add(new String(in.readAllBytes(), StandardCharsets.UTF_8));
             }

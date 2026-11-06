@@ -1587,7 +1587,8 @@ public abstract class CommonConnectorConfig {
                     INCREMENTAL_SNAPSHOT_CHUNK_SIZE, INCREMENTAL_SNAPSHOT_ALLOW_SCHEMA_CHANGES,
                     SIGNAL_DATA_COLLECTION, SIGNAL_DATA_COLLECTION_VALIDATION_ENABLED, SIGNAL_ENABLED_CHANNELS, NOTIFICATION_ENABLED_CHANNELS,
                     SinkNotificationChannel.NOTIFICATION_TOPIC, HttpNotificationChannel.NOTIFICATION_URL, HttpNotificationChannel.NOTIFICATION_TIMEOUT_MS,
-                    HttpNotificationChannel.NOTIFICATION_RETRIES, HttpNotificationChannel.NOTIFICATION_ALLOW_PRIVATE_NETWORKS, TRANSACTION_METADATA_FACTORY)
+                    HttpNotificationChannel.NOTIFICATION_RETRIES, HttpNotificationChannel.NOTIFICATION_ALLOW_PRIVATE_NETWORKS,
+                    HttpNotificationChannel.NOTIFICATION_AUTHORIZATION, TRANSACTION_METADATA_FACTORY)
             .group(Field.Group.CONNECTOR_SNAPSHOT, SNAPSHOT_DELAY_MS, SNAPSHOT_FETCH_SIZE, SNAPSHOT_MODE_TABLES,
                     SNAPSHOT_MODE_CUSTOM_NAME, SNAPSHOT_MODE_CONFIGURATION_BASED_SNAPSHOT_DATA, SNAPSHOT_MODE_CONFIGURATION_BASED_SNAPSHOT_SCHEMA,
                     SNAPSHOT_MODE_CONFIGURATION_BASED_START_STREAM, SNAPSHOT_MODE_CONFIGURATION_BASED_SNAPSHOT_ON_SCHEMA_ERROR,
@@ -1655,8 +1656,10 @@ public abstract class CommonConnectorConfig {
     private final int notificationHttpTimeoutMs;
     private final int notificationHttpRetries;
     private final boolean notificationHttpAllowPrivateNetworks;
+    private final String notificationHttpAuthorization;
+
     private final Map<String, String> customMetricTags;
-    private WatermarkStrategy incrementalSnapshotWatermarkingStrategy;
+    private final WatermarkStrategy incrementalSnapshotWatermarkingStrategy;
 
     // Intentionally protected so that subclasses can access internal contracts
     protected final DefaultBeanRegistry beanRegistry;
@@ -1710,6 +1713,8 @@ public abstract class CommonConnectorConfig {
         this.notificationHttpTimeoutMs = config.getInteger(HttpNotificationChannel.NOTIFICATION_TIMEOUT_MS);
         this.notificationHttpRetries = config.getInteger(HttpNotificationChannel.NOTIFICATION_RETRIES);
         this.notificationHttpAllowPrivateNetworks = config.getBoolean(HttpNotificationChannel.NOTIFICATION_ALLOW_PRIVATE_NETWORKS);
+        this.notificationHttpAuthorization = config.getString(HttpNotificationChannel.NOTIFICATION_AUTHORIZATION);
+
         this.skipMessagesWithoutChange = config.getBoolean(SKIP_MESSAGES_WITHOUT_CHANGE);
         this.maxRetriesOnError = config.getInteger(MAX_RETRIES_ON_ERROR);
         this.customMetricTags = createCustomMetricTags(config);
@@ -1921,6 +1926,10 @@ public abstract class CommonConnectorConfig {
 
     public boolean isNotificationHttpAllowPrivateNetworks() {
         return notificationHttpAllowPrivateNetworks;
+    }
+
+    public String getNotificationHttpAuthorization() {
+        return notificationHttpAuthorization;
     }
 
     public boolean shouldProvideTransactionMetadata() {
