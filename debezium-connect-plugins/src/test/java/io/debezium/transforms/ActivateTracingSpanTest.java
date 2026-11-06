@@ -126,6 +126,87 @@ public class ActivateTracingSpanTest {
     }
 
     @Test
+    public void whenNanosecondTimestampsAreAvailableSpansStartWithNanosecondPrecision() {
+        final Schema schema = SchemaBuilder.struct().optional()
+                .field("table", Schema.STRING_SCHEMA)
+                .field("ts_ms", Schema.OPTIONAL_INT64_SCHEMA)
+                .field("ts_us", Schema.OPTIONAL_INT64_SCHEMA)
+                .field("ts_ns", Schema.OPTIONAL_INT64_SCHEMA)
+                .build();
+        final Struct source = new Struct(schema);
+        source.put("table", "mytable");
+        source.put("ts_ms", 1588252618953L);
+        source.put("ts_us", 1588252618953123L);
+        source.put("ts_ns", 1588252618953123456L);
+
+        final Instant processingTime = Instant.ofEpochSecond(1588252619L, 123456789L);
+        final List<SpanData> spans = traceRecordWithSource(source, processingTime);
+
+        assertThat(spans.get(0).getStartEpochNanos()).isEqualTo(1588252619123456789L);
+        assertThat(spans.get(1).getStartEpochNanos()).isEqualTo(1588252618953123456L);
+    }
+
+    @Test
+    public void whenMicrosecondTimestampIsTheMostPreciseAvailableSpanStartsWithMicrosecondPrecision() {
+        final Schema schema = SchemaBuilder.struct().optional()
+                .field("table", Schema.STRING_SCHEMA)
+                .field("ts_ms", Schema.OPTIONAL_INT64_SCHEMA)
+                .field("ts_us", Schema.OPTIONAL_INT64_SCHEMA)
+                .field("ts_ns", Schema.OPTIONAL_INT64_SCHEMA)
+                .build();
+        final Struct source = new Struct(schema);
+        source.put("table", "mytable");
+        source.put("ts_ms", 1588252618953L);
+        source.put("ts_us", 1588252618953123L);
+
+        final List<SpanData> spans = traceRecordWithSource(source, Instant.now());
+
+        assertThat(spans.get(1).getStartEpochNanos()).isEqualTo(1588252618953123000L);
+    }
+
+    @Test
+    public void whenOnlyMillisecondTimestampIsAvailableSpanStartsWithMillisecondPrecision() {
+        final Struct source = new Struct(sourceSchema);
+        source.put("table", "mytable");
+        source.put("lsn", 1);
+        source.put("ts_ms", 1588252618953L);
+
+        final List<SpanData> spans = traceRecordWithSource(source, Instant.now());
+
+        assertThat(spans.get(1).getStartEpochNanos()).isEqualTo(1588252618953000000L);
+    }
+
+    private List<SpanData> traceRecordWithSource(Struct source, Instant processingTime) {
+        AgentTestingExporterAccess.reset();
+        transform.configure(new HashMap<>());
+
+        final Struct after = new Struct(recordSchema);
+        after.put("id", (byte) 1);
+        after.put("name", "test");
+
+        final Envelope envelope = Envelope.defineSchema()
+                .withName("dummy.Envelope")
+                .withRecord(recordSchema)
+                .withSource(source.schema())
+                .build();
+
+        final SourceRecord record = new SourceRecord(
+                new HashMap<>(),
+                new HashMap<>(),
+                "db.server1.table1",
+                envelope.schema(),
+                envelope.create(after, source, processingTime));
+
+        transform.apply(record);
+
+        final List<SpanData> spans = AgentTestingExporterAccess.getExportedSpans();
+        assertThat(spans).hasSize(2);
+        assertThat(spans.get(0).getName()).isEqualTo("debezium-read");
+        assertThat(spans.get(1).getName()).isEqualTo("db-log-write");
+        return spans;
+    }
+
+    @Test
     public void whenPropagationContextIsNotProvidedAndContextIsNotRequiredATraceIsCreated() {
         AgentTestingExporterAccess.reset();
         final Map<String, String> props = new HashMap<>();

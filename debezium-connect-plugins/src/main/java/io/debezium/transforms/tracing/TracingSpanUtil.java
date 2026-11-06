@@ -77,10 +77,8 @@ public class TracingSpanUtil {
         }
 
         if (source != null) {
-            Long eventTimestamp = source.getInt64(AbstractSourceInfo.TIMESTAMP_KEY);
-            if (eventTimestamp != null) {
-                txLogSpanBuilder.setStartTimestamp(eventTimestamp, TimeUnit.MILLISECONDS);
-            }
+            setStartTimestamp(txLogSpanBuilder, source, AbstractSourceInfo.TIMESTAMP_NS_KEY, AbstractSourceInfo.TIMESTAMP_US_KEY,
+                    AbstractSourceInfo.TIMESTAMP_KEY);
         }
 
         Span txLogSpan = txLogSpanBuilder.startSpan();
@@ -104,10 +102,10 @@ public class TracingSpanUtil {
     }
 
     private static void debeziumSpan(Struct envelope, String operationName) {
-        final Long processingTimestamp = envelope.getInt64(Envelope.FieldName.TIMESTAMP);
-        Span debeziumSpan = tracer.spanBuilder(operationName)
-                .setStartTimestamp(processingTimestamp, TimeUnit.MILLISECONDS)
-                .startSpan();
+        SpanBuilder debeziumSpanBuilder = tracer.spanBuilder(operationName);
+        setStartTimestamp(debeziumSpanBuilder, envelope, Envelope.FieldName.TIMESTAMP_NS, Envelope.FieldName.TIMESTAMP_US,
+                Envelope.FieldName.TIMESTAMP);
+        Span debeziumSpan = debeziumSpanBuilder.startSpan();
 
         try (Scope ignored = debeziumSpan.makeCurrent()) {
             addFieldToSpan(debeziumSpan, envelope, Envelope.FieldName.OPERATION, "");
@@ -116,6 +114,27 @@ public class TracingSpanUtil {
         finally {
             debeziumSpan.end();
         }
+    }
+
+    private static void setStartTimestamp(SpanBuilder spanBuilder, Struct struct, String nanosField, String microsField, String millisField) {
+        Long timestamp = getInt64IfPresent(struct, nanosField);
+        if (timestamp != null) {
+            spanBuilder.setStartTimestamp(timestamp, TimeUnit.NANOSECONDS);
+            return;
+        }
+        timestamp = getInt64IfPresent(struct, microsField);
+        if (timestamp != null) {
+            spanBuilder.setStartTimestamp(timestamp, TimeUnit.MICROSECONDS);
+            return;
+        }
+        timestamp = getInt64IfPresent(struct, millisField);
+        if (timestamp != null) {
+            spanBuilder.setStartTimestamp(timestamp, TimeUnit.MILLISECONDS);
+        }
+    }
+
+    private static Long getInt64IfPresent(Struct struct, String field) {
+        return struct.schema().field(field) != null ? struct.getInt64(field) : null;
     }
 
     private static void addFieldToSpan(Span span, Struct struct, String field, String prefix) {
