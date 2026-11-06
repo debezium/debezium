@@ -8,7 +8,6 @@ package io.debezium.connector.oracle.olr;
 import java.sql.SQLException;
 import java.sql.Types;
 import java.time.Instant;
-import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -125,7 +124,6 @@ public class OpenLogReplicatorStreamingChangeEventSource implements StreamingCha
 
     private OracleOffsetContext emptyContext() {
         return OracleOffsetContext.create().logicalName(connectorConfig)
-                .snapshotPendingTransactions(Collections.emptyMap())
                 .transactionContext(new TransactionContext())
                 .incrementalSnapshotContext(new SignalBasedIncrementalSnapshotContext<>()).build();
     }
