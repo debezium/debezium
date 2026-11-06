@@ -391,7 +391,7 @@ public class MySqlConnectorConfig extends BinlogConnectorConfig {
             .group(Field.Group.CONNECTION_ADVANCED_SSL, SSL_MODE)
             .group(Field.Group.CONNECTOR_SNAPSHOT, SNAPSHOT_LOCKING_MODE)
             .group(Field.Group.CONNECTOR, GTID_SOURCE_INCLUDES, GTID_SOURCE_EXCLUDES, SOURCE_INFO_STRUCT_MAKER)
-            .group(Field.Group.CONNECTOR_ADVANCED, UNAVAILABLE_VALUE_PLACEHOLDER)
+            .group(Field.Group.CONNECTOR_ADVANCED, UNAVAILABLE_VALUE_PLACEHOLDER, DDL_PARSER_TYPE)
             .create();
 
     protected static ConfigDef configDef() {
