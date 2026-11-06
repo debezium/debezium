@@ -9,9 +9,11 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import java.sql.SQLException;
 import java.time.Duration;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
+import java.util.function.Predicate;
 
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceRecord;
@@ -29,6 +31,7 @@ import io.debezium.connector.oracle.OraclePartition;
 import io.debezium.connector.oracle.Scn;
 import io.debezium.connector.oracle.SourceInfo;
 import io.debezium.connector.oracle.junit.SkipWhenAdapterNameIsNot;
+import io.debezium.connector.oracle.logminer.AbstractLogMinerStreamingAdapter;
 import io.debezium.connector.oracle.logminer.AbstractLogMinerStreamingChangeEventSource;
 import io.debezium.connector.oracle.util.TestHelper;
 import io.debezium.data.Envelope;
@@ -84,6 +87,8 @@ public class UnbufferedLogMinerAdapterIT extends AbstractAsyncEngineConnectorTes
             final LogInterceptor sourceLogInterceptor = new LogInterceptor(UnbufferedLogMinerStreamingChangeEventSource.class);
             sourceLogInterceptor.setLoggerLevel(UnbufferedLogMinerStreamingChangeEventSource.class, Level.DEBUG);
 
+            final LogInterceptor adapterLogInterceptor = new LogInterceptor(AbstractLogMinerStreamingAdapter.class);
+
             final Configuration config = TestHelper.defaultConfig()
                     .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "DEBEZIUM\\.DBZ9013")
                     .build();
@@ -115,18 +120,18 @@ public class UnbufferedLogMinerAdapterIT extends AbstractAsyncEngineConnectorTes
             final OraclePartition partition = new OraclePartition(TestHelper.SERVER_NAME, TestHelper.DATABASE);
             final Map<String, Object> committedOffsets = readLastCommittedOffset(config, partition.getSourcePartition());
 
-            // Get SCN passed from the snapshot into the streaming phase
-            final Scn snapshotScn = OracleOffsetContext.loadSnapshotScn(committedOffsets);
-            assertThat(snapshotScn).isNotNull();
+            // Get the offset SCN written by the snapshot, where streaming starts mining
+            final Scn snapshotOffsetScn = (Scn) adapterLogInterceptor.getLoggingEvents("No in-progress transactions will be captured").get(0)
+                    .getArgumentArray()[0];
 
             // Get the SCN low watermark updated by the streaming phase
             final Scn lowWatermarkScn = OracleOffsetContext.getScnFromOffsetMapByKey(committedOffsets, SourceInfo.SCN_KEY);
             assertThat(lowWatermarkScn).isNotNull();
 
             // Verify the SCN values were updated
-            // Before this fix, the lowWatermarkScn was always the same as the snapshotScn
-            // With the fix, the low watermark should be after the snapshot scn
-            assertThat(lowWatermarkScn.asBigInteger()).isGreaterThan(snapshotScn.asBigInteger());
+            // Before this fix, the lowWatermarkScn was always the same as the offset SCN written by the snapshot
+            // With the fix, the low watermark should be after it
+            assertThat(lowWatermarkScn.asBigInteger()).isGreaterThan(snapshotOffsetScn.asBigInteger());
         }
         finally {
             TestHelper.dropTable(connection, "dbz9013");
@@ -256,6 +261,91 @@ public class UnbufferedLogMinerAdapterIT extends AbstractAsyncEngineConnectorTes
         finally {
             TestHelper.dropTable(connection, "dbz1960");
         }
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2779")
+    public void shouldNotRedeliverTransactionRowsAfterRestartWhenDdlCommitsWhileTransactionIsOpen() throws Exception {
+        assertTransactionRowsNotRedeliveredAfterRestart("ALTER TABLE dbz2779_other ADD data varchar2(50)",
+                record -> TestHelper.SERVER_NAME.equals(record.topic())
+                        && ((Struct) record.value()).getString("ddl").contains("ALTER TABLE dbz2779_other ADD data varchar2(50)"));
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2779")
+    public void shouldNotRedeliverTransactionRowsAfterRestartWhenDmlCommitsWhileTransactionIsOpen() throws Exception {
+        assertTransactionRowsNotRedeliveredAfterRestart("INSERT INTO dbz2779_other (id) values (1)",
+                record -> "server1.DEBEZIUM.DBZ2779_OTHER".equals(record.topic()));
+    }
+
+    private void assertTransactionRowsNotRedeliveredAfterRestart(String cutInSql, Predicate<SourceRecord> isCutInRecord) throws Exception {
+        TestHelper.dropTable(connection, "dbz2779");
+        TestHelper.dropTable(connection, "dbz2779_other");
+        try (OracleConnection otherConnection = TestHelper.testConnection()) {
+            connection.execute("CREATE TABLE dbz2779 (id numeric(9,0) primary key, data varchar2(50))");
+            TestHelper.streamTable(connection, "dbz2779");
+            connection.execute("CREATE TABLE dbz2779_other (id numeric(9,0) primary key)");
+            TestHelper.streamTable(connection, "dbz2779_other");
+
+            final Configuration config = TestHelper.defaultConfig()
+                    .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "DEBEZIUM\\.DBZ2779,DEBEZIUM\\.DBZ2779_OTHER")
+                    .with(OracleConnectorConfig.INCLUDE_SCHEMA_CHANGES, true)
+                    .build();
+            final Map<String, String> partition = new OraclePartition(TestHelper.SERVER_NAME, TestHelper.DATABASE).getSourcePartition();
+            final String topicName = "server1.DEBEZIUM.DBZ2779";
+
+            start(OracleConnector.class, config);
+            assertConnectorIsRunning();
+            waitForStreamingRunning(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
+
+            connection.executeWithoutCommitting("INSERT INTO dbz2779 (id,data) values (1,'row 1')");
+            otherConnection.execute(cutInSql);
+            consumeRecordsByTopicUntil((count, record) -> isCutInRecord.test(record));
+
+            stopConnector();
+
+            final Map<String, Object> preTransactionOffset = readLastCommittedOffset(config, partition);
+
+            for (int id = 2; id <= 5; id++) {
+                connection.executeWithoutCommitting("INSERT INTO dbz2779 (id,data) values (" + id + ",'row " + id + "')");
+            }
+            connection.commit();
+
+            start(OracleConnector.class, config);
+            assertConnectorIsRunning();
+            waitForStreamingRunning(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
+
+            final List<SourceRecord> deliveredRecords = consumeRecordsUntilId(topicName, 5);
+            assertThat(deliveredRecords).extracting(record -> getAfter(record).getInt32("ID")).containsExactly(1, 2, 3, 4, 5);
+            assertThat(deliveredRecords).extracting(record -> ((Struct) record.value()).getString(Envelope.FieldName.OPERATION))
+                    .containsOnly(Envelope.Operation.CREATE.code());
+
+            stopConnector();
+
+            final Map<String, Object> restartOffset = new HashMap<>(deliveredRecords.get(1).sourceOffset());
+            assertThat(restartOffset).containsKeys(SourceInfo.TXID_KEY, SourceInfo.TXSEQ_KEY);
+            restartOffset.put(SourceInfo.SCN_KEY, preTransactionOffset.get(SourceInfo.SCN_KEY));
+            storeOffsets(config, Map.of(partition, restartOffset));
+
+            start(OracleConnector.class, config);
+            assertConnectorIsRunning();
+            waitForStreamingRunning(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
+
+            final List<SourceRecord> redeliveredRecords = consumeRecordsUntilId(topicName, 5);
+            assertThat(redeliveredRecords).extracting(record -> getAfter(record).getInt32("ID")).containsExactly(3, 4, 5);
+        }
+        finally {
+            stopConnector();
+            TestHelper.dropTable(connection, "dbz2779");
+            TestHelper.dropTable(connection, "dbz2779_other");
+        }
+    }
+
+    private List<SourceRecord> consumeRecordsUntilId(String topicName, int id) throws InterruptedException {
+        final SourceRecords records = consumeRecordsByTopicUntil((count, record) -> topicName.equals(record.topic())
+                && getAfter(record) != null && getAfter(record).getInt32("ID") == id);
+        final List<SourceRecord> topicRecords = records.recordsForTopic(topicName);
+        return topicRecords == null ? List.of() : topicRecords;
     }
 
     private static Struct getAfter(SourceRecord record) {
