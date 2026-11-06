@@ -9,6 +9,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
+import java.util.List;
 import java.util.Map;
 
 import org.junit.jupiter.api.Test;
@@ -16,6 +17,7 @@ import org.junit.jupiter.api.Test;
 import io.debezium.config.Configuration;
 import io.debezium.connector.binlog.BinlogConnectorConfig;
 import io.debezium.connector.binlog.BinlogOffsetContext;
+import io.debezium.doc.FixFor;
 
 public class MariaDbConnectorConfigTest {
 
@@ -104,5 +106,45 @@ public class MariaDbConnectorConfigTest {
                 ? null
                 : (String) offsets.get(BinlogOffsetContext.GTID_SET_KEY);
         assertThat(effectiveGtid).isNull();
+    }
+
+    @Test
+    @FixFor("debezium/dbz#3006")
+    void shouldAcceptValidUnavailableValuePlaceholder() {
+        for (String placeholder : List.of("__debezium_unavailable_value", "hex:", "hex:ff00", "hex:0A1b")) {
+            assertThat(placeholderValidationErrors(placeholder)).as(placeholder).isEmpty();
+        }
+
+        assertThat(new MariaDbConnectorConfig(placeholderConfig("__debezium_unavailable_value")).getUnavailableValuePlaceholder())
+                .isEqualTo("__debezium_unavailable_value".getBytes());
+        assertThat(new MariaDbConnectorConfig(placeholderConfig("hex:ff00")).getUnavailableValuePlaceholder())
+                .containsExactly((byte) 0xff, (byte) 0x00);
+    }
+
+    @Test
+    @FixFor("debezium/dbz#3006")
+    void shouldRejectInvalidHexUnavailableValuePlaceholder() {
+        for (String placeholder : List.of("hex:abc", "hex:zz", "hex:0x01", "hex: ff")) {
+            assertThat(placeholderValidationErrors(placeholder)).as(placeholder).hasSize(1);
+        }
+    }
+
+    private static List<String> placeholderValidationErrors(String placeholder) {
+        return placeholderConfig(placeholder)
+                .validate(MariaDbConnectorConfig.ALL_FIELDS)
+                .get(MariaDbConnectorConfig.UNAVAILABLE_VALUE_PLACEHOLDER.name())
+                .errorMessages();
+    }
+
+    private static Configuration placeholderConfig(String placeholder) {
+        return Configuration.create()
+                .with(MariaDbConnectorConfig.HOSTNAME, "localhost")
+                .with(MariaDbConnectorConfig.PORT, 3306)
+                .with(MariaDbConnectorConfig.USER, "mariadbuser")
+                .with(MariaDbConnectorConfig.PASSWORD, "mariadbpw")
+                .with(MariaDbConnectorConfig.SERVER_ID, 18765)
+                .with(MariaDbConnectorConfig.TOPIC_PREFIX, "mariadb-server")
+                .with(MariaDbConnectorConfig.UNAVAILABLE_VALUE_PLACEHOLDER, placeholder)
+                .build();
     }
 }

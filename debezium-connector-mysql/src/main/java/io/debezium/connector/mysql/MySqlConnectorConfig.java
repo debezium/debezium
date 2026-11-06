@@ -21,7 +21,6 @@ import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.ConfigDefinition;
 import io.debezium.config.Configuration;
 import io.debezium.config.ConfigurationNames;
-import io.debezium.config.ConnectorConfigValidationHelper;
 import io.debezium.config.EnumeratedValue;
 import io.debezium.config.Field;
 import io.debezium.config.Field.ValidationOutput;
@@ -33,9 +32,7 @@ import io.debezium.connector.mysql.charset.MySqlCharsetRegistryServiceProvider;
 import io.debezium.connector.mysql.gtid.MySqlGtidSetFactory;
 import io.debezium.connector.mysql.history.MySqlHistoryRecordComparator;
 import io.debezium.function.Predicates;
-import io.debezium.relational.RelationalDatabaseConnectorConfig;
 import io.debezium.relational.history.HistoryRecordComparator;
-import io.debezium.util.Strings;
 
 /**
  * The configuration properties.
@@ -367,12 +364,6 @@ public class MySqlConnectorConfig extends BinlogConnectorConfig {
     public static final Field SOURCE_INFO_STRUCT_MAKER = CommonConnectorConfig.SOURCE_INFO_STRUCT_MAKER
             .withDefault(MySqlSourceInfoStructMaker.class.getName());
 
-    public static final Field UNAVAILABLE_VALUE_PLACEHOLDER = RelationalDatabaseConnectorConfig.UNAVAILABLE_VALUE_PLACEHOLDER
-            .withDescription("Specify the constant that will be provided by Debezium to indicate that " +
-                    "the original value is unavailable and not provided by the database. " +
-                    "If starts with 'hex:' prefix it is expected that the rest of the string represents hexadecimal encoded octets.")
-            .withValidation(ConnectorConfigValidationHelper::validateHexPrefixedValue);
-
     public static final Field DDL_PARSER_TYPE = Field.create("ddl.parser.type")
             .withDisplayName("DDL Parser Type")
             .withEnum(DdlParserType.class, DdlParserType.DEFAULT)
@@ -391,7 +382,6 @@ public class MySqlConnectorConfig extends BinlogConnectorConfig {
             .group(Field.Group.CONNECTION_ADVANCED_SSL, SSL_MODE)
             .group(Field.Group.CONNECTOR_SNAPSHOT, SNAPSHOT_LOCKING_MODE)
             .group(Field.Group.CONNECTOR, GTID_SOURCE_INCLUDES, GTID_SOURCE_EXCLUDES, SOURCE_INFO_STRUCT_MAKER)
-            .group(Field.Group.CONNECTOR_ADVANCED, UNAVAILABLE_VALUE_PLACEHOLDER)
             .create();
 
     protected static ConfigDef configDef() {
@@ -432,15 +422,6 @@ public class MySqlConnectorConfig extends BinlogConnectorConfig {
 
     public Optional<SnapshotLockingMode> getSnapshotLockingMode() {
         return Optional.of(this.snapshotLockingMode);
-    }
-
-    @Override
-    public byte[] getUnavailableValuePlaceholder() {
-        String placeholder = getConfig().getString(UNAVAILABLE_VALUE_PLACEHOLDER);
-        if (placeholder.startsWith(ConnectorConfigValidationHelper.HEX_PREFIX)) {
-            return Strings.hexStringToByteArray(placeholder.substring(ConnectorConfigValidationHelper.HEX_PREFIX.length()));
-        }
-        return placeholder.getBytes();
     }
 
     @Override
