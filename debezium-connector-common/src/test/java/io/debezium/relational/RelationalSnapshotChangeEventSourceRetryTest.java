@@ -464,7 +464,7 @@ public class RelationalSnapshotChangeEventSourceRetryTest {
         final RelationalDatabaseConnectorConfig cfg = config(3);
         @SuppressWarnings("unchecked")
         final MainConnectionProvidingConnectionFactory<JdbcConnection> factory = mock(MainConnectionProvidingConnectionFactory.class);
-        when(factory.mainConnection()).thenReturn(fakeConnection);
+        when(factory.mainConnection()).thenReturn(jdbcConnection);
 
         final TestSnapshotSource source = new TestSnapshotSource(cfg, factory, notificationService) {
             @Override
@@ -487,7 +487,7 @@ public class RelationalSnapshotChangeEventSourceRetryTest {
         final SnapshotProgress snapshotProgress = new SnapshotProgress(chunk.getTableCount());
         final Callable<Void> callable = source.createDataEventsForChunkedTableCallable(
                 sourceContext, ctx, snapshotReceiver, chunk, progressMap, snapshotProgress,
-                new ConcurrentLinkedQueue<>(List.of(fakeConnection)),
+                new ConcurrentLinkedQueue<>(List.of(jdbcConnection)),
                 new ConcurrentLinkedQueue<>(List.of(offset)));
 
         assertThatThrownBy(callable::call)
