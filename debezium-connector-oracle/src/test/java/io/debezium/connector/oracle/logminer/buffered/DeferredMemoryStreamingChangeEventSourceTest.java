@@ -35,6 +35,7 @@ import org.mockito.Mockito;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
 import io.debezium.connector.base.ChangeEventQueue;
 import io.debezium.connector.base.DefaultQueueProvider;
@@ -110,7 +111,6 @@ public class DeferredMemoryStreamingChangeEventSourceTest extends AbstractAsyncE
         this.offsetContext = Mockito.mock(OracleOffsetContext.class);
         this.commitScn = Mockito.spy(CommitScn.valueOf((String) null));
         Mockito.when(this.offsetContext.getCommitScn()).thenReturn(commitScn);
-        Mockito.when(this.offsetContext.getSnapshotScn()).thenReturn(Scn.valueOf("1"));
         this.connectionFactory = createOracleConnectionFactory(false);
         this.schema = createOracleDatabaseSchema();
         this.metrics = createMetrics(schema);
@@ -401,6 +401,178 @@ public class DeferredMemoryStreamingChangeEventSourceTest extends AbstractAsyncE
     }
 
     @Test
+    @FixFor("debezium/dbz#2779")
+    public void testPartialCommitAfterSnapshotRaisesLatestDeferredHeldFailureAndDiscardsStale() throws Exception {
+        final String staleTransactionId = "12345678aaaaaaaa";
+        final String activeTransactionId = "12345678bbbbbbbb";
+        final Configuration config = getConfig()
+                .with(CommonConnectorConfig.EVENT_PROCESSING_FAILURE_HANDLING_MODE, "warn")
+                .build();
+        final LogInterceptor logInterceptor = new LogInterceptor(AbstractLogMinerStreamingChangeEventSource.class);
+
+        mockSnapshotCommitScn(10);
+        try (var source = getChangeEventSource(config)) {
+            source.processEvent(getStartLogMinerEventRow(1, staleTransactionId));
+            source.processEvent(getUnreconstructableInsertLogMinerEventRow(2, staleTransactionId));
+            source.processEvent(getStartLogMinerEventRow(3, activeTransactionId));
+            source.processEvent(getUnreconstructableInsertLogMinerEventRow(4, activeTransactionId));
+
+            assertThat(source.getDeferredTransactionCount()).isEqualTo(2);
+            assertThat(source.getTransactionCache().isEmpty()).isTrue();
+
+            source.processEvent(getCommitLogMinerEventRow(11, "12345678ffffffff"));
+
+            assertThat(source.getDeferredTransactionCount()).isZero();
+            assertThat(logInterceptor.getLogEntriesThatContainsMessage("cannot be parsed")).containsExactly(
+                    "An INSERT event with SCN 4 cannot be parsed. This event will be ignored and skipped.");
+        }
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2779")
+    public void testPartialCommitBeforeSnapshotDiscardsHeldFailuresOfAllDeferredMatches() throws Exception {
+        final String staleTransactionId = "12345678aaaaaaaa";
+        final String activeTransactionId = "12345678bbbbbbbb";
+        final Configuration config = getConfig()
+                .with(CommonConnectorConfig.EVENT_PROCESSING_FAILURE_HANDLING_MODE, "warn")
+                .build();
+        final LogInterceptor logInterceptor = new LogInterceptor(AbstractLogMinerStreamingChangeEventSource.class);
+
+        mockSnapshotCommitScn(10);
+        try (var source = getChangeEventSource(config)) {
+            source.processEvent(getStartLogMinerEventRow(1, staleTransactionId));
+            source.processEvent(getUnreconstructableInsertLogMinerEventRow(2, staleTransactionId));
+            source.processEvent(getStartLogMinerEventRow(3, activeTransactionId));
+            source.processEvent(getUnreconstructableInsertLogMinerEventRow(4, activeTransactionId));
+
+            assertThat(source.getDeferredTransactionCount()).isEqualTo(2);
+            assertThat(source.getTransactionCache().isEmpty()).isTrue();
+
+            source.processEvent(getCommitLogMinerEventRow(9, "12345678ffffffff"));
+
+            assertThat(source.getDeferredTransactionCount()).isZero();
+            assertThat(logInterceptor.getLogEntriesThatContainsMessage("cannot be parsed")).isEmpty();
+        }
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2779")
+    public void testPartialCommitDiscardsStaleDeferredHeldFailureWhenLatestStartsRightAfterSnapshot() throws Exception {
+        final String staleTransactionId = "12345678aaaaaaaa";
+        final String activeTransactionId = "12345678bbbbbbbb";
+        final Configuration config = getConfig()
+                .with(CommonConnectorConfig.EVENT_PROCESSING_FAILURE_HANDLING_MODE, "warn")
+                .build();
+        final LogInterceptor logInterceptor = new LogInterceptor(AbstractLogMinerStreamingChangeEventSource.class);
+
+        mockSnapshotCommitScn(10);
+        try (var source = getChangeEventSource(config)) {
+            source.processEvent(getStartLogMinerEventRow(1, staleTransactionId));
+            source.processEvent(getUnreconstructableInsertLogMinerEventRow(2, staleTransactionId));
+            source.processEvent(getStartLogMinerEventRow(11, activeTransactionId));
+
+            assertThat(source.getDeferredTransactionCount()).isEqualTo(2);
+            assertThat(source.getTransactionCache().isEmpty()).isTrue();
+
+            source.processEvent(getCommitLogMinerEventRow(13, "12345678ffffffff"));
+
+            assertThat(source.getDeferredTransactionCount()).isZero();
+            assertThat(logInterceptor.getLogEntriesThatContainsMessage("cannot be parsed")).isEmpty();
+        }
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2779")
+    public void testPartialCommitRaisesStaleDeferredHeldFailureWhenLatestStartsAfterSnapshot() throws Exception {
+        final String staleTransactionId = "12345678aaaaaaaa";
+        final String activeTransactionId = "12345678bbbbbbbb";
+        final Configuration config = getConfig()
+                .with(CommonConnectorConfig.EVENT_PROCESSING_FAILURE_HANDLING_MODE, "warn")
+                .build();
+        final LogInterceptor logInterceptor = new LogInterceptor(AbstractLogMinerStreamingChangeEventSource.class);
+
+        mockSnapshotCommitScn(10);
+        try (var source = getChangeEventSource(config)) {
+            source.processEvent(getStartLogMinerEventRow(1, staleTransactionId));
+            source.processEvent(getUnreconstructableInsertLogMinerEventRow(2, staleTransactionId));
+            source.processEvent(getStartLogMinerEventRow(12, activeTransactionId));
+            source.processEvent(getUnreconstructableInsertLogMinerEventRow(13, activeTransactionId));
+
+            assertThat(source.getDeferredTransactionCount()).isEqualTo(2);
+            assertThat(source.getTransactionCache().isEmpty()).isTrue();
+            assertThat(logInterceptor.getLogEntriesThatContainsMessage("cannot be parsed")).containsExactly(
+                    "An INSERT event with SCN 13 cannot be parsed. This event will be ignored and skipped.");
+
+            source.processEvent(getCommitLogMinerEventRow(14, "12345678ffffffff"));
+
+            assertThat(source.getDeferredTransactionCount()).isZero();
+            assertThat(logInterceptor.getLogEntriesThatContainsMessage("cannot be parsed")).containsExactly(
+                    "An INSERT event with SCN 13 cannot be parsed. This event will be ignored and skipped.",
+                    "An INSERT event with SCN 2 cannot be parsed. This event will be ignored and skipped.");
+        }
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2779")
+    public void testPartialCommitRaisesLatestDeferredFailureAfterSnapshotImmediatelyAndHeldFailureAtCommit() throws Exception {
+        final String staleTransactionId = "12345678aaaaaaaa";
+        final String activeTransactionId = "12345678bbbbbbbb";
+        final Configuration config = getConfig()
+                .with(CommonConnectorConfig.EVENT_PROCESSING_FAILURE_HANDLING_MODE, "warn")
+                .build();
+        final LogInterceptor logInterceptor = new LogInterceptor(AbstractLogMinerStreamingChangeEventSource.class);
+
+        mockSnapshotCommitScn(10);
+        try (var source = getChangeEventSource(config)) {
+            source.processEvent(getStartLogMinerEventRow(1, staleTransactionId));
+            source.processEvent(getUnreconstructableInsertLogMinerEventRow(2, staleTransactionId));
+            source.processEvent(getStartLogMinerEventRow(3, activeTransactionId));
+            source.processEvent(getUnreconstructableInsertLogMinerEventRow(4, activeTransactionId));
+            source.processEvent(getUnreconstructableInsertLogMinerEventRow(11, activeTransactionId));
+
+            assertThat(source.getDeferredTransactionCount()).isEqualTo(2);
+            assertThat(source.getTransactionCache().isEmpty()).isTrue();
+            assertThat(logInterceptor.getLogEntriesThatContainsMessage("cannot be parsed")).containsExactly(
+                    "An INSERT event with SCN 11 cannot be parsed. This event will be ignored and skipped.");
+
+            source.processEvent(getCommitLogMinerEventRow(12, "12345678ffffffff"));
+
+            assertThat(source.getDeferredTransactionCount()).isZero();
+            assertThat(logInterceptor.getLogEntriesThatContainsMessage("cannot be parsed")).containsExactly(
+                    "An INSERT event with SCN 11 cannot be parsed. This event will be ignored and skipped.",
+                    "An INSERT event with SCN 4 cannot be parsed. This event will be ignored and skipped.");
+        }
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2779")
+    public void testPartialRollbackAfterSnapshotRaisesLatestDeferredHeldFailureAndDiscardsStale() throws Exception {
+        final String staleTransactionId = "12345678aaaaaaaa";
+        final String activeTransactionId = "12345678bbbbbbbb";
+        final Configuration config = getConfig()
+                .with(CommonConnectorConfig.EVENT_PROCESSING_FAILURE_HANDLING_MODE, "warn")
+                .build();
+        final LogInterceptor logInterceptor = new LogInterceptor(AbstractLogMinerStreamingChangeEventSource.class);
+
+        mockSnapshotCommitScn(10);
+        try (var source = getChangeEventSource(config)) {
+            source.processEvent(getStartLogMinerEventRow(1, staleTransactionId));
+            source.processEvent(getUnreconstructableInsertLogMinerEventRow(2, staleTransactionId));
+            source.processEvent(getStartLogMinerEventRow(3, activeTransactionId));
+            source.processEvent(getUnreconstructableInsertLogMinerEventRow(4, activeTransactionId));
+
+            assertThat(source.getDeferredTransactionCount()).isEqualTo(2);
+            assertThat(source.getTransactionCache().isEmpty()).isTrue();
+
+            source.processEvent(getRollbackLogMinerEventRow(11, "12345678ffffffff"));
+
+            assertThat(source.getDeferredTransactionCount()).isZero();
+            assertThat(logInterceptor.getLogEntriesThatContainsMessage("cannot be parsed")).containsExactly(
+                    "An INSERT event with SCN 4 cannot be parsed. This event will be ignored and skipped.");
+        }
+    }
+
+    @Test
     public void testCacheIsEmptyWhenDeferredTransactionIsCommittedAfterDml() throws Exception {
         try (var source = getChangeEventSource(getConfig().build())) {
             source.processEvent(getStartLogMinerEventRow(1, TRANSACTION_ID_1));
@@ -642,6 +814,33 @@ public class DeferredMemoryStreamingChangeEventSourceTest extends AbstractAsyncE
         }
     }
 
+    @Test
+    @FixFor("debezium/dbz#2779")
+    public void testHeldFailureOfExpiredDeferredTransactionIsRaised() throws Exception {
+        final Configuration config = getConfig()
+                .with(CommonConnectorConfig.EVENT_PROCESSING_FAILURE_HANDLING_MODE, "warn")
+                .build();
+        final LogInterceptor logInterceptor = new LogInterceptor(AbstractLogMinerStreamingChangeEventSource.class);
+
+        mockSnapshotCommitScn(10);
+        try (var source = getChangeEventSource(config)) {
+            source.processEvent(getStartLogMinerEventRow(1, TRANSACTION_ID_1));
+            source.processEvent(getUnreconstructableInsertLogMinerEventRow(2, TRANSACTION_ID_1));
+            source.processEvent(getStartLogMinerEventRow(3, TRANSACTION_ID_2));
+            source.processEvent(getUnreconstructableInsertLogMinerEventRow(4, TRANSACTION_ID_2));
+
+            assertThat(source.getDeferredTransactionCount()).isEqualTo(2);
+            assertThat(source.getTransactionCache().isEmpty()).isTrue();
+
+            source.cleanupDeferredTransactionsForTest(Duration.ofHours(1));
+
+            assertThat(source.hasDeferredTransaction(TRANSACTION_ID_1)).isFalse();
+            assertThat(source.hasDeferredTransaction(TRANSACTION_ID_2)).isTrue();
+            assertThat(logInterceptor.getLogEntriesThatContainsMessage("cannot be parsed")).containsExactly(
+                    "An INSERT event with SCN 2 cannot be parsed. This event will be ignored and skipped.");
+        }
+    }
+
     @SuppressWarnings({ "rawtypes", "unchecked" })
     private OracleDatabaseSchema createOracleDatabaseSchema() throws Exception {
         Configuration configuration = getConfig().build();
@@ -774,6 +973,22 @@ public class DeferredMemoryStreamingChangeEventSourceTest extends AbstractAsyncE
 
     private LogMinerEventRow getInsertLogMinerEventRow(long scn, String transactionId, Instant changeTime) {
         return getInsertLogMinerEventRow(scn, transactionId, changeTime, "TEST_TABLE", "AAAAAAAAAAAAAAAAAB", "'Test'");
+    }
+
+    private void mockSnapshotCommitScn(long snapshotCommitScn) {
+        final Scn scn = Scn.valueOf(snapshotCommitScn);
+        Mockito.when(offsetContext.getSnapshotCommitScn()).thenReturn(scn);
+        Mockito.when(offsetContext.isLessThanOrEqualToSnapshotCommitScn(any())).thenAnswer(invocation -> {
+            final Scn value = invocation.getArgument(0);
+            return value != null && !value.isNull() && value.compareTo(scn) <= 0;
+        });
+    }
+
+    private LogMinerEventRow getUnreconstructableInsertLogMinerEventRow(long scn, String transactionId) {
+        final LogMinerEventRow row = getInsertLogMinerEventRow(scn, transactionId);
+        Mockito.when(row.hasErrorStatus()).thenReturn(true);
+        Mockito.when(row.getInfo()).thenReturn("Dictionary Mismatch");
+        return row;
     }
 
     private LogMinerEventRow getInsertLogMinerEventRow(long scn, String transactionId, Instant changeTime, String tableName, String rowId, String dataValue) {
