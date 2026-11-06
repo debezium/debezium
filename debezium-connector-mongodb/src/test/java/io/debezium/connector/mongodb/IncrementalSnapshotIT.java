@@ -1008,8 +1008,10 @@ public class IncrementalSnapshotIT extends AbstractMongoConnectorIT {
                     if (interceptor.containsMessage(stopMessage)) {
                         stopMessageFound.set(true);
                     }
-                    return consumeAvailableRecords(r -> {
-                    }) == 0;
+                    // The stop is only applied at the next window close, so wait for it before draining
+                    final int consumed = consumeAvailableRecords(r -> {
+                    });
+                    return stopMessageFound.get() && consumed == 0;
                 });
         return stopMessageFound.get();
     }
