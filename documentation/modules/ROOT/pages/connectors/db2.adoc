@@ -3208,6 +3208,26 @@ Increasing the chunk size provides greater efficiency, because the snapshot runs
 However, larger chunk sizes also require more memory to buffer the snapshot data.
 Adjust the chunk size to a value that provides the best performance in your environment.
 
+|[[db2-property-incremental-snapshot-retry-max-attempts]]<<db2-property-incremental-snapshot-retry-max-attempts, `+incremental.snapshot.retry.max.attempts+`>>
+|`5`
+|Maximum number of retry attempts for transient JDBC failures during an incremental snapshot chunk read.
+Set to `-1` to retry indefinitely.
+
+|[[db2-property-incremental-snapshot-retry-initial-delay-ms]]<<db2-property-incremental-snapshot-retry-initial-delay-ms, `+incremental.snapshot.retry.initial.delay.ms+`>>
+|`1000`
+|Initial wait in milliseconds before retrying a failed chunk read.
+Subsequent delays grow by `incremental.snapshot.retry.backoff.multiplier`, capped at `incremental.snapshot.retry.max.delay.ms`.
+
+|[[db2-property-incremental-snapshot-retry-max-delay-ms]]<<db2-property-incremental-snapshot-retry-max-delay-ms, `+incremental.snapshot.retry.max.delay.ms+`>>
+|`60000` (1 minute)
+|Maximum wait in milliseconds between retries.
+Bounds the exponential backoff that grows from `incremental.snapshot.retry.initial.delay.ms` by `incremental.snapshot.retry.backoff.multiplier`.
+
+|[[db2-property-incremental-snapshot-retry-backoff-multiplier]]<<db2-property-incremental-snapshot-retry-backoff-multiplier, `+incremental.snapshot.retry.backoff.multiplier+`>>
+|`2.0`
+|Multiplier applied to the previous delay on each retry.
+Must be greater than `1.0` for the delay to grow exponentially.
+
 |[[db2-property-incremental-snapshot-watermarking-strategy]]<<db2-property-incremental-snapshot-watermarking-strategy, `+incremental.snapshot.watermarking.strategy+`>>
 |`insert_insert`
 |Specifies the watermarking mechanism that the connector uses during an incremental snapshot to deduplicate events that might be captured by an incremental snapshot and then recaptured after streaming resumes.

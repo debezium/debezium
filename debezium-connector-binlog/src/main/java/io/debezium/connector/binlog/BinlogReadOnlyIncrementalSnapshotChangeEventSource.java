@@ -76,7 +76,7 @@ public abstract class BinlogReadOnlyIncrementalSnapshotChangeEventSource<P exten
             sendWindowEvents(partition, offsetContext);
             readChunk(partition, offsetContext);
         }
-        else if (!window.isEmpty() && getContext().deduplicationNeeded()) {
+        else if (hasOpenWindow() && getContext().deduplicationNeeded()) {
             deduplicateWindow(dataCollectionId, key);
         }
     }
