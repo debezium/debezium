@@ -3537,8 +3537,6 @@ Reading them from outside the process is a separate step: the service exposes JM
 The {link-prefix}:{link-debezium-monitoring}#monitoring-debezium[{prodname} monitoring documentation] provides details about how to expose metrics by using JMX.
 You can automate periodic metric logging by setting <<zerobus-metrics-log-interval, `debezium.sink.zerobus.metrics.log.interval`>> or <<zerobus-rest-metrics-log-interval, `debezium.sink.zerobus-rest.metrics.log.interval`>> to a positive value.
 After you enable either of these options, at the specified interval the connector writes an `INFO` log message that contains the same metric values that are available through JMX.
-On the gRPC route, the sink also logs a `WARN` message when a wait for Zerobus to acknowledge a batch lasts longer than <<zerobus-flush-warn-threshold-ms, `debezium.sink.zerobus.flush.warn.threshold.ms`>>, and it repeats the message at the same interval while the wait continues.
-The `CurrentFlushDurationMillis` attribute reports the duration of the wait in progress.
 
 The Kafka route is the exception to metrics being collected automatically: because it writes through the generic `kafka` sink, the Zerobus sink is never invoked and cannot instrument itself.
 On that route the metrics are not collected until you register the following producer interceptor, which reports the same attributes under `server=kafka`:
