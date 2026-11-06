@@ -22,6 +22,7 @@ Alberto Martino
 Aleksandr Pavlyuk
 Aleksei Silantev
 Aleksejs Sibanovs
+Alex Limontov
 Alex Mansell
 Alex Soto
 Alexander Iskuskov
@@ -71,6 +72,7 @@ Ant Kutschera
 Anton Kondratev
 Anton Martynov
 Anton Repin
+Anton Rino Bosco
 Antonio Marino
 Aravind Gm
 Aravind Pedapudi
@@ -193,6 +195,8 @@ Dana Stott
 Daniel Eriksson
 Daniel Petisme
 Daniele Licini
+Daniil Zabludovsky
+Danny Mican
 dario
 Dario Rodrigues
 Dave Charron
@@ -219,6 +223,7 @@ Dennis Campagna
 Dennis Persson
 Derek Moore
 Dhrubajyoti G
+Dilraj Vyas
 dingqianwen
 Divyansh Agrawal
 Divyanshu Kumar
@@ -288,6 +293,7 @@ Ganeshan Nagarajan
 Garib Karimli
 Gaurav Miglani
 Gaétan Collaud
+Gennadi Litke
 Georgii Zemlianyi
 Giljae Joo
 Gilles Vaquez
@@ -423,6 +429,7 @@ Josh Ribera
 Josh Stanfield
 José Felipe
 Joy Gao
+João Almeida
 Juan Antonio Pedraza
 Juan Fiallo
 Juanma Barea
@@ -502,6 +509,7 @@ Marc Zbyszynski
 Marcel Bruhn
 Marcelo Avancini
 Marci
+Marcin Michalski
 Marcin Piatek
 Marek Winkler
 Marian Derias
