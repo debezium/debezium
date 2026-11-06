@@ -89,6 +89,13 @@ class JsonSerialization {
         return keyValue.substring(start, end);
     }
 
+    public String getDocumentKey(BsonDocument documentKey) {
+        if (documentKey == null) {
+            return null;
+        }
+        return documentKey.toJson(SIMPLE_JSON_SETTINGS);
+    }
+
     public String getDocumentValue(BsonDocument document) {
         return transformer.apply(document);
     }
