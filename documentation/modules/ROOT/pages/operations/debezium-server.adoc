@@ -835,6 +835,8 @@ To use all available cores on given machine, set the placeholder value, `AVAILAB
 |===
 
 // Type: reference
+// ModuleID: debezium-server-stopping-after-an-initial-snapshot
+// Title: Stopping {prodname} Server after an initial snapshot
 [id="debezium-server-stopping-after-initial-snapshot"]
 === Stopping the server after an initial snapshot
 
@@ -853,18 +855,25 @@ To make the server stop on its own after the snapshot, set `debezium.shutdown.af
 The server stops the engine after the sink handles the batch that contains the last pending snapshot event.
 The engine then commits the offsets of the delivered events, and the server process exits with code `0`.
 If the sink fails, the process exits with a non-zero code instead.
-This option requires `debezium.source.snapshot.mode=initial_only`.
-If you set it with any other snapshot mode, the server fails to start.
+
+The server fails to start if you enable this option with any of the following settings:
+
+* a `debezium.source.snapshot.mode` other than `initial_only`;
+* `debezium.source.tasks.max` greater than `1`;
+* more than one database in `debezium.source.database.names`;
+* `debezium.shutdown.on.completion` set to `false`.
 
 |===
 
 Because the process exits only after the offsets are committed, a script or a supervisor can treat a `0` exit code as the signal that the snapshot was fully delivered.
 Do not rely on a period without new events for that purpose, because the sink can wait for a long time while it delivers a batch.
+The `0` exit code also requires that the engine reports a failure of the final offset commit as a failed completion, as described in link:https://github.com/debezium/dbz/issues/3028[debezium/dbz#3028].
 
 The server stops only after it delivers a batch of snapshot events.
 If you restart the server with offsets that already record a completed snapshot, the connector skips the snapshot, no batch is delivered, and the server keeps running until you stop it.
 For the same reason, if the connector reports the snapshot as completed only after the sink has already handled the last batch, the server also keeps running.
 
+// Type: reference
 // ModuleID: debezium-server-quarkus-runtime-configuration-properties
 // Title: {prodname} Server Quarkus runtime configuration properties
 [id="debezium-additional-configuration-options"]
