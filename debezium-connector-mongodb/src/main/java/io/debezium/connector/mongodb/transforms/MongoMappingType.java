@@ -293,11 +293,22 @@ final class MongoMappingType {
             case DECIMAL128 -> value.asDecimal128().getValue().toString();
             case BOOLEAN -> Boolean.toString(value.asBoolean().getValue());
             case DATE_TIME -> instant(value).toString();
-            default -> throw new DataException("Expected a scalar value; use io.debezium.data.Json for BSON documents, arrays, or other BSON types");
+            default -> throw new DataException("Expected a scalar value; use io.debezium.data.Json for BSON documents, arrays, or other BSON types, "
+                    + "or set string.unsupported.type.handling.mode to json");
         };
     }
 
-    private static String canonicalJson(BsonValue value) {
+    /**
+     * Returns whether a {@code string} field converts the value without the JSON fallback.
+     */
+    static boolean isStringConvertible(BsonValue value) {
+        return switch (value.getBsonType()) {
+            case STRING, OBJECT_ID, INT32, INT64, DOUBLE, DECIMAL128, BOOLEAN, DATE_TIME -> true;
+            default -> false;
+        };
+    }
+
+    static String canonicalJson(BsonValue value) {
         // A wrapper lets the BSON writer serialize scalars and arrays as well as documents.
         final String wrapper = new BsonDocument("value", value).toJson(JSON_SETTINGS);
         return wrapper.substring(wrapper.indexOf(':') + 1, wrapper.length() - 1).trim();
