@@ -30,6 +30,7 @@ import io.debezium.DebeziumException;
 import io.debezium.annotation.VisibleForTesting;
 import io.debezium.bean.StandardBeanNames;
 import io.debezium.config.CommonConnectorConfig;
+import io.debezium.config.CommonConnectorConfig.WatermarkStrategy;
 import io.debezium.config.Configuration;
 import io.debezium.config.Field;
 import io.debezium.connector.base.ChangeEventQueue;
@@ -37,6 +38,8 @@ import io.debezium.connector.base.QueueProviderService;
 import io.debezium.connector.common.BaseSourceTask;
 import io.debezium.connector.common.CdcSourceTaskContext;
 import io.debezium.connector.common.DebeziumHeaderProducer;
+import io.debezium.connector.postgresql.PostgresConnectorConfig.AutoCreateMode;
+import io.debezium.connector.postgresql.PostgresConnectorConfig.LogicalDecoder;
 import io.debezium.connector.postgresql.connection.PostgresConnection;
 import io.debezium.connector.postgresql.connection.PostgresConnection.PostgresValueConverterBuilder;
 import io.debezium.connector.postgresql.connection.PostgresDefaultValueConverter;
@@ -77,6 +80,9 @@ public class PostgresConnectorTask extends BaseSourceTask<PostgresPartition, Pos
 
     private static final Logger LOGGER = LoggerFactory.getLogger(PostgresConnectorTask.class);
     private static final String CONTEXT_NAME = "postgres-connector-task";
+    private static final String SELECT_PUBLICATION_FOR_SIGNAL_DATA_COLLECTION = "SELECT EXISTS ("
+            + "SELECT 1 FROM pg_publication_tables t WHERE t.pubname = p.pubname AND t.schemaname = ? AND t.tablename = ?), "
+            + "p.pubinsert, p.pubdelete FROM pg_publication p WHERE p.pubname = ?";
 
     private volatile PostgresTaskContext taskContext;
     private volatile ChangeEventQueue<DataChangeEvent> queue;
@@ -190,7 +196,8 @@ public class PostgresConnectorTask extends BaseSourceTask<PostgresPartition, Pos
 
         validateSchemaHistory(connectorConfig, jdbcConnection::validateLogPosition, previousOffsets, schema, snapshotter);
 
-        validateSignalDataCollection(connectorConfig, jdbcConnection);
+        validateSignalDataCollection(connectorConfig, jdbcConnection,
+                (signalDataCollection, errors) -> checkSignalDataCollection(connectorConfig, jdbcConnection, signalDataCollection, errors));
 
         LoggingContext.PreviousContext previousContext = taskContext.configureLoggingContext(CONTEXT_NAME);
 
@@ -517,6 +524,38 @@ public class PostgresConnectorTask extends BaseSourceTask<PostgresPartition, Pos
         catch (SQLException e) {
             throw new DebeziumException("Failed to validate guardrail limits", e);
         }
+    }
+
+    /**
+     * pgoutput only streams the tables in the publication and the operations it publishes, so an existing publication
+     * must include the signal data collection (unless the filtered mode adds it) and publish the operations signals rely
+     * on. A publication that does not exist yet is created by the connector and needs no check.
+     */
+    private void checkSignalDataCollection(PostgresConnectorConfig connectorConfig, PostgresConnection connection, TableId signalDataCollection,
+                                           List<String> errors)
+            throws SQLException {
+        if (connectorConfig.plugin() != LogicalDecoder.PGOUTPUT) {
+            return;
+        }
+        String publicationName = connectorConfig.publicationName();
+        connection.prepareQuery(SELECT_PUBLICATION_FOR_SIGNAL_DATA_COLLECTION,
+                ps -> {
+                    ps.setString(1, signalDataCollection.schema());
+                    ps.setString(2, signalDataCollection.table());
+                    ps.setString(3, publicationName);
+                },
+                rs -> {
+                    if (!rs.next()) {
+                        return;
+                    }
+                    boolean includesTable = rs.getBoolean(1) || connectorConfig.publicationAutocreateMode() == AutoCreateMode.FILTERED;
+                    boolean publishesSignals = rs.getBoolean(2)
+                            && (rs.getBoolean(3) || connectorConfig.getIncrementalSnapshotWatermarkingStrategy() != WatermarkStrategy.INSERT_DELETE);
+                    if (!includesTable || !publishesSignals) {
+                        errors.add(String.format("Signal data collection '%s' will never receive signals because publication '%s' must include it "
+                                + "and publish inserts, and deletes for the insert_delete watermarking strategy.", signalDataCollection, publicationName));
+                    }
+                });
     }
 
     private static void checkWalLevel(PostgresConnection connection, SnapshotterService snapshotterService) throws SQLException {

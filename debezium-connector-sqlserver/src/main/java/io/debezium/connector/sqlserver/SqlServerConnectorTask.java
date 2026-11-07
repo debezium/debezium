@@ -137,7 +137,8 @@ public class SqlServerConnectorTask extends BaseSourceTask<SqlServerPartition, S
         validateSchemaHistory(connectorConfig, dataConnection::validateLogPosition, offsets, schema,
                 snapshotterService.getSnapshotter());
 
-        validateSignalDataCollection(connectorConfig, dataConnection);
+        validateSignalDataCollection(connectorConfig, dataConnection,
+                (signalDataCollection, errors) -> checkSignalDataCollection(connectorConfig, dataConnection, signalDataCollection, errors));
 
         // Set up the task record queue ...
         this.queue = new ChangeEventQueue.Builder<DataChangeEvent>()
@@ -268,6 +269,22 @@ public class SqlServerConnectorTask extends BaseSourceTask<SqlServerPartition, S
         }
         catch (SQLException e) {
             throw new DebeziumException("Failed to validate guardrail limits", e);
+        }
+    }
+
+    /**
+     * Streaming reads signals only from the change tables of the task's databases, so the signal data collection must
+     * be in one of them and have CDC enabled.
+     */
+    private void checkSignalDataCollection(SqlServerConnectorConfig connectorConfig, SqlServerConnection connection, TableId signalDataCollection,
+                                           List<String> errors)
+            throws SQLException {
+        String databaseName = signalDataCollection.catalog();
+        boolean captured = connectorConfig.getDatabaseNames().contains(databaseName)
+                && connection.getChangeTables(databaseName).stream().anyMatch(changeTable -> changeTable.getSourceTableId().equals(signalDataCollection));
+        if (!captured) {
+            errors.add(String.format("Signal data collection '%s' will never receive signals because it must be in one of the task's databases %s "
+                    + "and have CDC enabled.", signalDataCollection, connectorConfig.getDatabaseNames()));
         }
     }
 

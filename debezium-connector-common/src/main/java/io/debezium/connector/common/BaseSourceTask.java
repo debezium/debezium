@@ -61,6 +61,7 @@ import io.debezium.pipeline.spi.Partition;
 import io.debezium.processors.PostProcessorRegistryServiceProvider;
 import io.debezium.relational.RelationalDatabaseConnectorConfig;
 import io.debezium.relational.SignalDataCollectionValidationRequest;
+import io.debezium.relational.SignalDataCollectionValidationRequest.ConnectorValidator;
 import io.debezium.relational.SignalDataCollectionValidationResult;
 import io.debezium.relational.SignalDataCollectionValidator;
 import io.debezium.schema.DatabaseSchema;
@@ -176,8 +177,13 @@ public abstract class BaseSourceTask<P extends Partition, O extends OffsetContex
     }
 
     protected void validateSignalDataCollection(RelationalDatabaseConnectorConfig connectorConfig, JdbcConnection connection) {
+        validateSignalDataCollection(connectorConfig, connection, ConnectorValidator.NONE);
+    }
+
+    protected void validateSignalDataCollection(RelationalDatabaseConnectorConfig connectorConfig, JdbcConnection connection,
+                                                ConnectorValidator connectorCheck) {
         SignalDataCollectionValidationResult result = SignalDataCollectionValidator.validate(
-                SignalDataCollectionValidationRequest.forConnector(connectorConfig, rawValue -> connection));
+                SignalDataCollectionValidationRequest.forConnector(connectorConfig, rawValue -> connection, connectorCheck));
         if (!result.isValid()) {
             throw new DebeziumException(String.join("; ", result.errors()));
         }

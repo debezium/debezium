@@ -1128,6 +1128,20 @@ public class JdbcConnection implements AutoCloseable {
     }
 
     /**
+     * Get the identifiers of the tables matching the given table identifier, with its schema and table names
+     * escaped so that they are matched literally rather than as patterns.
+     *
+     * @param tableId the table identifier to match
+     * @return the set of {@link TableId}s; never null but possibly empty
+     * @throws SQLException if an error occurs while accessing the database metadata
+     */
+    public Set<TableId> readTableNames(TableId tableId) throws SQLException {
+        String searchStringEscape = connection().getMetaData().getSearchStringEscape();
+        return readTableNames(tableId.catalog(), createPatternFromName(tableId.schema(), searchStringEscape),
+                createPatternFromName(tableId.table(), searchStringEscape), null);
+    }
+
+    /**
      * Returns the given table's columns mapped to their declared sizes, in ordinal order, for use by
      * signal.data.collection validation.
      *
@@ -1137,7 +1151,9 @@ public class JdbcConnection implements AutoCloseable {
      */
     public Map<String, Integer> getColumnSizes(TableId tableId) throws SQLException {
         DatabaseMetaData metadata = connection().getMetaData();
-        try (ResultSet rs = metadata.getColumns(tableId.catalog(), tableId.schema(), tableId.table(), null)) {
+        String schemaNamePattern = createPatternFromName(tableId.schema(), metadata.getSearchStringEscape());
+        String tableNamePattern = createPatternFromName(tableId.table(), metadata.getSearchStringEscape());
+        try (ResultSet rs = metadata.getColumns(tableId.catalog(), schemaNamePattern, tableNamePattern, null)) {
             Map<String, Integer> columnSizes = new LinkedHashMap<>();
             while (rs.next()) {
                 columnSizes.put(rs.getString(4), rs.getInt(7));
