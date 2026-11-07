@@ -24,6 +24,7 @@ import org.junit.jupiter.api.Test;
 import io.debezium.DebeziumException;
 import io.debezium.data.Envelope;
 import io.debezium.data.VerifyRecord;
+import io.debezium.doc.FixFor;
 import io.debezium.transforms.tracing.ActivateTracingSpan;
 import io.opentelemetry.javaagent.testing.common.AgentTestingExporterAccess;
 import io.opentelemetry.sdk.trace.data.SpanData;
@@ -123,6 +124,104 @@ public class ActivateTracingSpanTest {
         assertThat(headers.lastWithName("traceparent").value().toString()).contains(spans.get(1).getSpanId());
         // the produced Kafka record should have a baggage header holding the propagated baggage value
         assertThat(headers.lastWithName("baggage").value().toString()).isEqualTo(propagatedBaggage);
+    }
+
+    @Test
+    @FixFor("debezium/dbz#3033")
+    public void whenNanosecondTimestampsAreAvailableSpansStartWithNanosecondPrecision() {
+        final Schema schema = SchemaBuilder.struct().optional()
+                .field("table", Schema.STRING_SCHEMA)
+                .field("ts_ms", Schema.OPTIONAL_INT64_SCHEMA)
+                .field("ts_us", Schema.OPTIONAL_INT64_SCHEMA)
+                .field("ts_ns", Schema.OPTIONAL_INT64_SCHEMA)
+                .build();
+        final Struct source = new Struct(schema);
+        source.put("table", "mytable");
+        source.put("ts_ms", 1588252618953L);
+        source.put("ts_us", 1588252618953123L);
+        source.put("ts_ns", 1588252618953123456L);
+
+        final Instant processingTime = Instant.ofEpochSecond(1588252619L, 123456789L);
+        final List<SpanData> spans = traceRecordWithSource(source, processingTime);
+
+        assertThat(spans.get(0).getStartEpochNanos()).isEqualTo(1588252619123456789L);
+        assertThat(spans.get(1).getStartEpochNanos()).isEqualTo(1588252618953123456L);
+    }
+
+    @Test
+    @FixFor("debezium/dbz#3033")
+    public void whenMicrosecondTimestampIsTheMostPreciseAvailableSpanStartsWithMicrosecondPrecision() {
+        final Schema schema = SchemaBuilder.struct().optional()
+                .field("table", Schema.STRING_SCHEMA)
+                .field("ts_ms", Schema.OPTIONAL_INT64_SCHEMA)
+                .field("ts_us", Schema.OPTIONAL_INT64_SCHEMA)
+                .field("ts_ns", Schema.OPTIONAL_INT64_SCHEMA)
+                .build();
+        final Struct source = new Struct(schema);
+        source.put("table", "mytable");
+        source.put("ts_ms", 1588252618953L);
+        source.put("ts_us", 1588252618953123L);
+
+        final List<SpanData> spans = traceRecordWithSource(source, Instant.now());
+
+        assertThat(spans.get(1).getStartEpochNanos()).isEqualTo(1588252618953123000L);
+    }
+
+    @Test
+    @FixFor("debezium/dbz#3033")
+    public void whenOnlyMillisecondTimestampIsAvailableSpanStartsWithMillisecondPrecision() {
+        final Struct source = new Struct(sourceSchema);
+        source.put("table", "mytable");
+        source.put("lsn", 1);
+        source.put("ts_ms", 1588252618953L);
+
+        final List<SpanData> spans = traceRecordWithSource(source, Instant.now());
+
+        assertThat(spans.get(1).getStartEpochNanos()).isEqualTo(1588252618953000000L);
+    }
+
+    @Test
+    @FixFor("debezium/dbz#3033")
+    public void whenEnvelopeTimestampIsMissingSpansAreStillCreated() {
+        final Struct source = new Struct(sourceSchema);
+        source.put("table", "mytable");
+        source.put("lsn", 1);
+        source.put("ts_ms", 1588252618953L);
+
+        // a null processing time leaves the envelope ts_ms, ts_us and ts_ns fields unset
+        final List<SpanData> spans = traceRecordWithSource(source, null);
+
+        assertThat(spans.get(1).getStartEpochNanos()).isEqualTo(1588252618953000000L);
+    }
+
+    private List<SpanData> traceRecordWithSource(Struct source, Instant processingTime) {
+        AgentTestingExporterAccess.reset();
+        transform.configure(new HashMap<>());
+
+        final Struct after = new Struct(recordSchema);
+        after.put("id", (byte) 1);
+        after.put("name", "test");
+
+        final Envelope envelope = Envelope.defineSchema()
+                .withName("dummy.Envelope")
+                .withRecord(recordSchema)
+                .withSource(source.schema())
+                .build();
+
+        final SourceRecord record = new SourceRecord(
+                new HashMap<>(),
+                new HashMap<>(),
+                "db.server1.table1",
+                envelope.schema(),
+                envelope.create(after, source, processingTime));
+
+        transform.apply(record);
+
+        final List<SpanData> spans = AgentTestingExporterAccess.getExportedSpans();
+        assertThat(spans).hasSize(2);
+        assertThat(spans.get(0).getName()).isEqualTo("debezium-read");
+        assertThat(spans.get(1).getName()).isEqualTo("db-log-write");
+        return spans;
     }
 
     @Test
