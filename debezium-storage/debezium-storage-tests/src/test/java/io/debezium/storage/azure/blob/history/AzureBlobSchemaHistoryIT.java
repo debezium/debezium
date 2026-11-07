@@ -33,6 +33,7 @@ import io.debezium.relational.history.HistoryRecord;
 import io.debezium.relational.history.SchemaHistory;
 import io.debezium.relational.history.SchemaHistoryListener;
 import io.debezium.storage.AbstractSchemaHistoryTest;
+import io.debezium.testing.testcontainers.ImageNames;
 
 public class AzureBlobSchemaHistoryIT extends AbstractSchemaHistoryTest {
 
@@ -47,7 +48,7 @@ public class AzureBlobSchemaHistoryIT extends AbstractSchemaHistoryTest {
             "AccountKey=key;" +
             "BlobEndpoint=http://127.0.0.1:%s/account;";
 
-    final private static GenericContainer<?> container = new GenericContainer(String.format("mcr.microsoft.com/azure-storage/azurite:%s", IMAGE_TAG))
+    final private static GenericContainer<?> container = new GenericContainer(String.format("%s:%s", ImageNames.AZURITE_IMAGE, IMAGE_TAG))
             .withCommand("azurite --blobHost 0.0.0.0 --blobPort 10000")
             .withEnv("AZURITE_ACCOUNTS", "account:key")
             .withExposedPorts(10000);
