@@ -1795,11 +1795,12 @@ After a source record is deleted, emitting a tombstone event (the default behavi
 
 This property applies to the names of the key, envelope, and `source` schemas that the connector produces.
 The {link-prefix}:{link-mongodb-event-flattening}#mongodb-new-document-state-extraction[MongoDB new document state extraction] SMT (`ExtractNewDocumentState`) derives its value schema name from the envelope schema name.
-To make sure that every segment of that name is valid, for example, when a collection name starts with a digit, also set the SMT's {link-prefix}:{link-mongodb-event-flattening}#mongodb-extract-new-record-state-field-name-adjustment-mode[`field.name.adjustment.mode`] property.
+If a collection name starts with a digit, some segments of the derived schema name might be invalid.
+To ensure the validity of every segment of a derived schema name, set the {link-prefix}:{link-mongodb-event-flattening}#mongodb-extract-new-record-state-field-name-adjustment-mode[field.name.adjustment.mode] property in the SMT.
 
 |[[mongodb-property-field-name-adjustment-mode]]<<mongodb-property-field-name-adjustment-mode,`+field.name.adjustment.mode+`>>
 |none
-|This property has no effect on the content of MongoDB change events.
+|This property does not apply to MongoDB change events and it has no effect on their content.
 The connector emits the `before` and `after` documents as JSON strings, so the field names in a document are not Kafka Connect field names that the connector can adjust.
 
 To adjust document field names for compatibility with a message converter, such as Avro, configure the {link-prefix}:{link-mongodb-event-flattening}#mongodb-new-document-state-extraction[MongoDB new document state extraction] SMT, and set its {link-prefix}:{link-mongodb-event-flattening}#mongodb-extract-new-record-state-field-name-adjustment-mode[`field.name.adjustment.mode`] property by using the SMT prefix, for example, `transforms.unwrap.field.name.adjustment.mode`.

@@ -609,9 +609,8 @@ Set one of the following options:
 
 `avro_unicode`:: Similar to `avro`, but replaces invalid characters with their Unicode equivalent (e.g., `_u0031` for a leading `1`).
 
-The SMT does not inherit the connector-level `field.name.adjustment.mode` or `schema.name.adjustment.mode` settings.
-However, the SMT derives the output schema name from the envelope schema name, which already reflects the connector-level `schema.name.adjustment.mode` setting.
-You must set this property in the SMT configuration by using the SMT prefix, for example:
+The MongoDB new document state extraction SMT does not inherit connector-level `field.name.adjustment.mode`  or `schema.name.adjustment.mode` settings.
+To specify these values you must set the `field.name.adjustment.mode` property in the SMT, using the SMT alias (`unwrap`) as a configuration prefix, as in the following example:
 
 [source]
 ----
