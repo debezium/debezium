@@ -5,9 +5,14 @@
  */
 package io.debezium.connector.oracle.logminer.buffered.ehcache;
 
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Iterator;
+import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.SortedSet;
 import java.util.TreeSet;
 import java.util.function.Consumer;
 import java.util.function.Function;
@@ -35,6 +40,8 @@ public class EhcacheLogMinerTransactionCache extends AbstractLogMinerTransaction
 
     // Heap-backed caches for quick access to specific metadata to speed up processing
     private final Map<String, TreeSet<Integer>> eventIdsByTransactionId = new HashMap<>();
+    // Rewound event ids whose off-heap entries remain until the re-read overwrites them
+    private final Map<String, Set<Integer>> staleEventIdsByTransactionId = new HashMap<>();
 
     public EhcacheLogMinerTransactionCache(Cache<String, EhcacheTransaction> transactionCache,
                                            Cache<String, LogMinerEvent> eventCache,
@@ -59,6 +66,7 @@ public class EhcacheLogMinerTransactionCache extends AbstractLogMinerTransaction
         if (previousEventIds != null) {
             transactionEvents -= previousEventIds.size();
         }
+        removeStaleTransactionEvents(transaction.getTransactionId());
     }
 
     @Override
@@ -131,6 +139,10 @@ public class EhcacheLogMinerTransactionCache extends AbstractLogMinerTransaction
         if (eventIds.add(eventKey)) {
             transactionEvents++;
         }
+        final Set<Integer> staleEventIds = staleEventIdsByTransactionId.get(transaction.getTransactionId());
+        if (staleEventIds != null && staleEventIds.remove(eventKey) && staleEventIds.isEmpty()) {
+            staleEventIdsByTransactionId.remove(transaction.getTransactionId());
+        }
 
         if (event instanceof RollbackToSavepointEvent) {
             final Iterator<LogMinerEventEntry> reverseIterator = new LogMinerEventEntryIterator(
@@ -157,6 +169,7 @@ public class EhcacheLogMinerTransactionCache extends AbstractLogMinerTransaction
                     .collect(Collectors.toSet()));
             transactionEvents -= events.size();
         }
+        removeStaleTransactionEvents(transaction.getTransactionId());
     }
 
     @Override
@@ -177,10 +190,26 @@ public class EhcacheLogMinerTransactionCache extends AbstractLogMinerTransaction
     }
 
     @Override
+    public void rewindTransaction(EhcacheTransaction transaction, int eventId) {
+        final TreeSet<Integer> eventIds = eventIdsByTransactionId.get(transaction.getTransactionId());
+        if (eventIds != null) {
+            final SortedSet<Integer> rewoundEventIds = eventIds.tailSet(eventId);
+            if (!rewoundEventIds.isEmpty()) {
+                staleEventIdsByTransactionId.computeIfAbsent(transaction.getTransactionId(), id -> new HashSet<>()).addAll(rewoundEventIds);
+                transactionEvents -= rewoundEventIds.size();
+                rewoundEventIds.clear();
+            }
+        }
+        transaction.rewindTo(eventId);
+        syncTransaction(transaction);
+    }
+
+    @Override
     public void clear() {
         transactionCache.clear();
         eventCache.clear();
         eventIdsByTransactionId.clear();
+        staleEventIdsByTransactionId.clear();
         transactionEvents = 0;
     }
 
@@ -202,19 +231,41 @@ public class EhcacheLogMinerTransactionCache extends AbstractLogMinerTransaction
     }
 
     private void primeHeapCacheFromOffHeapCaches() {
-        // Primes the heap-based cache if the Ehcache persistence caches contained data on start-up
+        // Primes the heap-based cache if the off-heap caches contained data on start-up
+        final List<String> staleEventKeys = new ArrayList<>();
+        final Map<String, Integer> numberOfEventsByTransactionId = new HashMap<>();
         eventKeys(keyStream -> {
             keyStream.map(k -> k.split("-", 2))
                     .filter(parts -> parts.length == 2)
                     .forEach(parts -> {
                         final String transactionId = parts[0];
                         final int eventId = Integer.parseInt(parts[1]);
-                        if (transactionCache.containsKey(transactionId)
-                                && eventIdsByTransactionId.computeIfAbsent(transactionId, k -> new TreeSet<>()).add(eventId)) {
+                        final int numberOfEvents = numberOfEventsByTransactionId.computeIfAbsent(transactionId, id -> {
+                            final EhcacheTransaction transaction = transactionCache.get(id);
+                            return transaction == null ? -1 : transaction.getNumberOfEvents();
+                        });
+                        if (numberOfEvents < 0) {
+                            return;
+                        }
+                        if (eventId >= numberOfEvents) {
+                            // Left behind by a rewind that the re-read had not yet overwritten
+                            staleEventKeys.add(toEventKey(transactionId, eventId));
+                        }
+                        else if (eventIdsByTransactionId.computeIfAbsent(transactionId, k -> new TreeSet<>()).add(eventId)) {
                             transactionEvents++;
                         }
                     });
         });
+        eventCache.removeAll(Set.copyOf(staleEventKeys));
+        // Transactions without events, such as those whose events were all rewound, still need a heap entry
+        transactions(stream -> stream.forEach(t -> eventIdsByTransactionId.computeIfAbsent(t.getTransactionId(), id -> new TreeSet<>())));
+    }
+
+    private void removeStaleTransactionEvents(String transactionId) {
+        final Set<Integer> staleEventIds = staleEventIdsByTransactionId.remove(transactionId);
+        if (staleEventIds != null) {
+            eventCache.removeAll(staleEventIds.stream().map(id -> toEventKey(transactionId, id)).collect(Collectors.toSet()));
+        }
     }
 
     private void checkAndThrowIfEviction(String cacheName) {

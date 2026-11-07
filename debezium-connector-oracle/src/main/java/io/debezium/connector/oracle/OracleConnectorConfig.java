@@ -778,19 +778,19 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
                     "emit a DML event. By default, deferred transaction metadata is retained for 24 hours. " +
                     "This is independent of log.mining.transaction.retention.ms which governs cached transactions with events.");
 
+    /**
+     * @deprecated no longer has any effect, this option is only kept to warn users that still set it,
+     * to be removed in Debezium 4.0.
+     */
+    @Deprecated
     public static final Field LOG_MINING_BUFFER_REREAD_TRANSACTIONS = Field.create("log.mining.buffer.reread.transactions")
             .withDisplayName("Re-read buffered transactions")
             .withType(Type.BOOLEAN)
             .withWidth(Width.SHORT)
             .withImportance(Importance.LOW)
             .withDefault(true)
-            .withDescription("Controls whether each mining step re-reads buffered transactions from the start of the eldest " +
-                    "in-flight transaction while the transaction buffer is not empty. " +
-                    "When enabled (the default), changes that LogMiner returns after a mining step with a lower SCN than " +
-                    "rows already read are captured. " +
-                    "When disabled, the read position advances to the last processed SCN when 'lob.enabled' is false or " +
-                    "when 'log.mining.buffer.deferred.transaction.start' is enabled, which reduces re-reads but can silently " +
-                    "lose changes to tables with out-of-line LOB or XML columns.");
+            .withValidation(OracleConnectorConfig::validateLogMiningBufferRereadTransactions)
+            .withDescription("Deprecated and no longer has any effect, to be removed in Debezium 4.0.");
 
     public static final Field LEGACY_DECIMAL_HANDLING_STRATEGY = Field.create("legacy.decimal.handling.strategy")
             .withDisplayName("Use legacy decimal handling strategy")
@@ -953,7 +953,6 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
     private final boolean logMiningBufferTrackStartTimestamp;
     private final boolean logMiningDeferredTransactionStart;
     private final Duration logMiningDeferredTransactionRetention;
-    private final boolean logMiningBufferRereadTransactions;
     private final Integer logMiningMinimumLogCount;
     private final Integer logMiningLogCountGrowthMax;
 
@@ -1037,7 +1036,6 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
         this.logMiningBufferTrackStartTimestamp = config.getBoolean(LOG_MINING_BUFFER_TRACK_START_TIMESTAMP);
         this.logMiningDeferredTransactionStart = config.getBoolean(LOG_MINING_BUFFER_DEFERRED_TRANSACTION_START);
         this.logMiningDeferredTransactionRetention = Duration.ofMillis(config.getLong(LOG_MINING_BUFFER_DEFERRED_TRANSACTION_RETENTION_MS));
-        this.logMiningBufferRereadTransactions = config.getBoolean(LOG_MINING_BUFFER_REREAD_TRANSACTIONS);
         this.logMiningMinimumLogCount = config.getInteger(LOG_MINING_LOG_COUNT_MIN);
         this.logMiningLogCountGrowthMax = config.getInteger(LOG_MINING_LOG_COUNT_GROWTH_MAX);
 
@@ -2169,14 +2167,6 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
     }
 
     /**
-     * Whether buffered transactions are re-read from the start of the eldest in-flight transaction on each
-     * mining step while the transaction buffer is not empty.
-     */
-    public boolean isLogMiningBufferRereadTransactions() {
-        return logMiningBufferRereadTransactions;
-    }
-
-    /**
      * Whether deferred LogMiner transaction start behavior is enabled.
      * When enabled, transactions are stored in a lightweight metadata map until a DML event is observed.
      */
@@ -2546,6 +2536,16 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
                         field.name(), LOB_ENABLED.name()));
                 return 1;
             }
+        }
+        return 0;
+    }
+
+    @SuppressWarnings("deprecation")
+    public static int validateLogMiningBufferRereadTransactions(Configuration config, Field field, ValidationOutput problems) {
+        if (config.hasKey(LOG_MINING_BUFFER_REREAD_TRANSACTIONS.name())) {
+            // Logged during validation rather than in the constructor so that it is logged once on start-up
+            LOGGER.warn("The '{}' option is deprecated, no longer has any effect, and will be removed in Debezium 4.0.",
+                    LOG_MINING_BUFFER_REREAD_TRANSACTIONS.name());
         }
         return 0;
     }

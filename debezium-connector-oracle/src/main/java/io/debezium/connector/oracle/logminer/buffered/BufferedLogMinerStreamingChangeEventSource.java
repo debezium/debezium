@@ -22,6 +22,7 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -90,6 +91,7 @@ public class BufferedLogMinerStreamingChangeEventSource extends AbstractLogMiner
     private Scn lastLoggedWindowAdvanceScn = Scn.NULL;
 
     private final Map<String, DeferredTransaction> deferredTransactions = new HashMap<>();
+    private final Map<String, TransactionEventJournal> eventJournals = new HashMap<>();
 
     /**
      * Lightweight metadata record for a deferred transaction that has not yet emitted any DML events.
@@ -853,6 +855,7 @@ public class BufferedLogMinerStreamingChangeEventSource extends AbstractLogMiner
             getTransactionCache().removeLastEnqueuedEvent(transaction.getTransactionId());
             getTransactionCache().removeTransactionEvents(transaction);
             getTransactionCache().removeTransaction(transaction);
+            eventJournals.remove(transaction.getTransactionId());
         }
         // It should not exist in this cache, but in case.
         getTransactionCache().removeAbandonedTransaction(transactionId);
@@ -958,12 +961,6 @@ public class BufferedLogMinerStreamingChangeEventSource extends AbstractLogMiner
 
             getMetrics().setOffsetScn(getOffsetContext().getScn());
 
-            if (getConfig().isLogMiningBufferRereadTransactions() && !oldestScn.isNull()) {
-                // Re-read in-flight transactions so a late row with a lower SCN is not skipped
-                final Scn rereadStartScn = oldestScn.subtract(Scn.ONE);
-                return new ProcessResult(rereadStartScn, rereadStartScn);
-            }
-
             return new ProcessResult(miningSessionStartScn, endScn);
         }
 
@@ -981,11 +978,26 @@ public class BufferedLogMinerStreamingChangeEventSource extends AbstractLogMiner
 
             getMetrics().setOffsetScn(getOffsetContext().getScn());
 
-            // Out-of-line LOB/XML rows can arrive after rows with higher SCNs, so re-read buffered transactions.
-            // Only possible if the window still covers the eldest transaction's start.
-            final boolean rereadTransactions = getConfig().isLobEnabled()
-                    || (getConfig().isLogMiningBufferRereadTransactions() && miningSessionStartScn.compareTo(minCacheScn) < 0);
-            return new ProcessResult(miningSessionStartScn, rereadTransactions ? miningSessionStartScn : endScn);
+            if (getConfig().isLobEnabled()) {
+                return new ProcessResult(miningSessionStartScn, miningSessionStartScn);
+            }
+
+            if (miningSessionStartScn.compareTo(minCacheScn) >= 0) {
+                // The window was advanced past the eldest transactions, so only those that started within it are re-read
+                final Scn readScn = isResumeAfterLastEventEnabled() ? rewindTransactionsToLastEvents(miningSessionStartScn) : Scn.NULL;
+                if (readScn.isNull()) {
+                    for (TransactionEventJournal journal : eventJournals.values()) {
+                        journal.discardEventsUpTo(endScn);
+                    }
+                    return new ProcessResult(miningSessionStartScn, endScn);
+                }
+                return new ProcessResult(miningSessionStartScn, readScn);
+            }
+
+            // Out-of-line LOB/XML rows can arrive after rows with higher SCNs, so re-read from the eldest last event,
+            // or from the transactions' start when their events cannot be rewound
+            final Scn readScn = isResumeAfterLastEventEnabled() ? rewindTransactionsToLastEvents(Scn.NULL) : Scn.NULL;
+            return new ProcessResult(miningSessionStartScn, readScn.isNull() ? miningSessionStartScn : readScn);
         }
         else {
             // Cache has no values
@@ -999,6 +1011,67 @@ public class BufferedLogMinerStreamingChangeEventSource extends AbstractLogMiner
             getMetrics().setOffsetScn(getOffsetContext().getScn());
             return new ProcessResult(miningSessionStartScn, endScn);
         }
+    }
+
+    /**
+     * Computes the read position after the eldest last event across the buffered transactions, and rewinds each
+     * transaction to the first of its events that the next mining step re-reads.
+     *
+     * @param miningSessionStartScn when not {@link Scn#NULL}, the read position only considers the transactions
+     *                              that started after it, as the older transactions cannot be re-read
+     * @return the read position, or {@link Scn#NULL} if the transactions must be re-read from their start
+     */
+    private Scn rewindTransactionsToLastEvents(Scn miningSessionStartScn) {
+        final List<Transaction> transactions = getTransactionCache().streamTransactionsAndReturn(Stream::toList);
+
+        Scn eldestLastEventScn = Scn.NULL;
+        for (Transaction transaction : transactions) {
+            // Without a journal, e.g. after a restart, the transaction is re-read from its START event
+            final TransactionEventJournal journal = eventJournals.get(transaction.getTransactionId());
+            if (!miningSessionStartScn.isNull() && transaction.getStartScn().compareTo(miningSessionStartScn) <= 0) {
+                if (journal == null && getTransactionEventCount(transaction) > 0) {
+                    // Its re-read events could not be matched to its buffered events
+                    return Scn.NULL;
+                }
+                continue;
+            }
+            final Scn lastEventScn = journal == null || journal.getLastEventScn().isNull() ? transaction.getStartScn() : journal.getLastEventScn();
+            if (eldestLastEventScn.isNull() || lastEventScn.compareTo(eldestLastEventScn) < 0) {
+                eldestLastEventScn = lastEventScn;
+            }
+        }
+        if (eldestLastEventScn.isNull()) {
+            return Scn.NULL;
+        }
+
+        final Scn readScn = eldestLastEventScn.subtract(Scn.ONE);
+        for (TransactionEventJournal journal : eventJournals.values()) {
+            journal.discardEventsUpTo(readScn);
+            if (!journal.isRewindable(readScn)) {
+                return Scn.NULL;
+            }
+        }
+
+        for (Transaction transaction : transactions) {
+            final TransactionEventJournal journal = eventJournals.get(transaction.getTransactionId());
+            if (journal != null && journal.getFirstEventId() >= 0) {
+                getTransactionCache().rewindTransaction(transaction, journal.getFirstEventId());
+                journal.clearEvents();
+            }
+        }
+
+        return readScn;
+    }
+
+    /**
+     * Whether the read position resumes after the eldest last event of the buffered transactions, rather than
+     * re-reading the transactions from their start. This requires the buffered events to be DML rows, which
+     * LogMiner returns in system change number order within a transaction.
+     */
+    private boolean isResumeAfterLastEventEnabled() {
+        return !getConfig().isDeferredLogMinerTransactionStartBehaviorEnabled()
+                && !getConfig().isLobEnabled()
+                && !getConfig().isLogMiningIncludeInternalEvents();
     }
 
     /**
@@ -1109,6 +1182,7 @@ public class BufferedLogMinerStreamingChangeEventSource extends AbstractLogMiner
         }
         getTransactionCache().removeLastEnqueuedEvent(transaction.getTransactionId());
         getTransactionCache().removeTransactionEvents(transaction);
+        eventJournals.remove(transaction.getTransactionId());
     }
 
     @Override
@@ -1153,6 +1227,7 @@ public class BufferedLogMinerStreamingChangeEventSource extends AbstractLogMiner
                 getTransactionCache().removeLastEnqueuedEvent(transaction.getTransactionId());
                 getTransactionCache().removeTransactionEvents(transaction);
                 getTransactionCache().removeTransaction(transaction);
+                eventJournals.remove(transaction.getTransactionId());
             }
         }
 
@@ -1251,6 +1326,10 @@ public class BufferedLogMinerStreamingChangeEventSource extends AbstractLogMiner
             // Add new event at eventId offset
             LOGGER.trace("Transaction {}, adding event reference at key {}", transactionId, transaction.getEventId(eventId));
             getTransactionCache().addTransactionEvent(transaction, eventId, dispatchedEvent);
+            if (isResumeAfterLastEventEnabled()) {
+                eventJournals.computeIfAbsent(transaction.getTransactionId(), id -> new TransactionEventJournal())
+                        .eventAdded(eventId, event.getScn(), dispatchedEvent instanceof RollbackToSavepointEvent);
+            }
             getMetrics().calculateLagFromSource(event.getChangeTime());
 
             getMetrics().setBufferedEventCount(getTransactionCache().getTransactionEvents());
