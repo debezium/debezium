@@ -299,4 +299,15 @@ public class ReadOnlyIncrementalSnapshotIT extends IncrementalSnapshotIT {
         return x -> x.with(CommonConnectorConfig.INCREMENTAL_SNAPSHOT_CHUNK_SIZE, 1)
                 .with(Heartbeat.HEARTBEAT_INTERVAL_PROPERTY_NAME, 5000);
     }
+
+    // Small queues keep the snapshot running until testNotification pauses it; large queues let it finish first.
+    @Override
+    protected int notificationMaxQueueSize() {
+        return 20;
+    }
+
+    @Override
+    protected int notificationMaxBatchSize() {
+        return 10;
+    }
 }

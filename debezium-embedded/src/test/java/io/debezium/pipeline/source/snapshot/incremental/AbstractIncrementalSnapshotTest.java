@@ -18,6 +18,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
@@ -1074,8 +1075,11 @@ public abstract class AbstractIncrementalSnapshotTest<T extends SourceConnector>
     void testNotification() throws Exception {
 
         populateTable();
+        consumedLines = new ArrayBlockingQueue<>(Math.min(getMaximumEnqueuedRecordCount(), notificationMaxQueueSize()));
         startConnector(x -> x.with(CommonConnectorConfig.NOTIFICATION_ENABLED_CHANNELS, "sink")
                 .with(CommonConnectorConfig.INCREMENTAL_SNAPSHOT_CHUNK_SIZE, defaultIncrementalSnapshotChunkSize())
+                .with(CommonConnectorConfig.MAX_QUEUE_SIZE, notificationMaxQueueSize())
+                .with(CommonConnectorConfig.MAX_BATCH_SIZE, notificationMaxBatchSize())
                 .with(SinkNotificationChannel.NOTIFICATION_TOPIC, "io.debezium.notification"), loggingCompletion(), false);
 
         waitForConnectorToStart();
@@ -1315,6 +1319,14 @@ public abstract class AbstractIncrementalSnapshotTest<T extends SourceConnector>
         // leaves too little runway and the PAUSED/RESUMED notifications are never emitted. Connectors that
         // need a different value override this method.
         return 1;
+    }
+
+    protected int notificationMaxQueueSize() {
+        return CommonConnectorConfig.DEFAULT_MAX_QUEUE_SIZE;
+    }
+
+    protected int notificationMaxBatchSize() {
+        return CommonConnectorConfig.DEFAULT_MAX_BATCH_SIZE;
     }
 
     private static BiPredicate<Integer, SourceRecord> incrementalSnapshotCompleted() {
