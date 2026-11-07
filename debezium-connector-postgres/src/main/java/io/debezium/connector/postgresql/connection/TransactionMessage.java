@@ -21,11 +21,25 @@ public class TransactionMessage implements ReplicationMessage {
     private final long transactionId;
     private final Instant commitTime;
     private final Operation operation;
+    private final Lsn finalLsn;
 
     public TransactionMessage(Operation operation, long transactionId, Instant commitTime) {
+        this(operation, transactionId, commitTime, null);
+    }
+
+    public TransactionMessage(Operation operation, long transactionId, Instant commitTime, Lsn finalLsn) {
         this.operation = operation;
         this.transactionId = transactionId;
         this.commitTime = commitTime;
+        this.finalLsn = finalLsn;
+    }
+
+    /**
+     * Final LSN of the transaction (the commit record's WAL position) from the pgoutput Begin
+     * message. Only set for BEGIN messages; null otherwise.
+     */
+    public Lsn getFinalLsn() {
+        return finalLsn;
     }
 
     @Override
