@@ -78,8 +78,8 @@ public class UnbufferedLogMinerAdapterIT extends AbstractAsyncEngineConnectorTes
             connection.execute("CREATE TABLE dbz9013 (id numeric(9,0) primary key, data varchar2(50))");
             TestHelper.streamTable(connection, "dbz9013");
 
-            final LogInterceptor resumePositionLogInterceptor = new LogInterceptor(ResumePositionProvider.class);
-            resumePositionLogInterceptor.setLoggerLevel(ResumePositionProvider.class, Level.DEBUG);
+            final LogInterceptor resumePositionLogInterceptor = new LogInterceptor(ResumePositionCalculator.class);
+            resumePositionLogInterceptor.setLoggerLevel(ResumePositionCalculator.class, Level.DEBUG);
 
             final LogInterceptor sourceLogInterceptor = new LogInterceptor(UnbufferedLogMinerStreamingChangeEventSource.class);
             sourceLogInterceptor.setLoggerLevel(UnbufferedLogMinerStreamingChangeEventSource.class, Level.DEBUG);
@@ -93,7 +93,7 @@ public class UnbufferedLogMinerAdapterIT extends AbstractAsyncEngineConnectorTes
 
             waitForStreamingRunning(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
 
-            // Need to wait for the resume position provider to run once
+            // Need to wait for the resume position calculator to run once
             Awaitility.await()
                     .atMost(Duration.ofSeconds(30))
                     .until(() -> resumePositionLogInterceptor.containsMessage("Resume/Commit SCN "));
@@ -130,6 +130,64 @@ public class UnbufferedLogMinerAdapterIT extends AbstractAsyncEngineConnectorTes
         }
         finally {
             TestHelper.dropTable(connection, "dbz9013");
+        }
+    }
+
+    @Test
+    @FixFor("debezium/dbz#1354")
+    public void shouldAdvanceOffsetLowWatermarkBeforeIntervalWhenTransactionEventsThresholdReached() throws Exception {
+        TestHelper.dropTable(connection, "dbz1354");
+        try {
+            connection.execute("CREATE TABLE dbz1354 (id numeric(9,0) primary key, data varchar2(50))");
+            TestHelper.streamTable(connection, "dbz1354");
+
+            final LogInterceptor resumePositionLogInterceptor = new LogInterceptor(ResumePositionCalculator.class);
+            resumePositionLogInterceptor.setLoggerLevel(ResumePositionCalculator.class, Level.DEBUG);
+
+            final LogInterceptor strategyLogInterceptor = new LogInterceptor(AdaptiveResumePositionUpdateStrategy.class);
+            strategyLogInterceptor.setLoggerLevel(AdaptiveResumePositionUpdateStrategy.class, Level.DEBUG);
+
+            final LogInterceptor sourceLogInterceptor = new LogInterceptor(UnbufferedLogMinerStreamingChangeEventSource.class);
+            sourceLogInterceptor.setLoggerLevel(UnbufferedLogMinerStreamingChangeEventSource.class, Level.DEBUG);
+
+            final int rows = 50;
+            final Configuration config = TestHelper.defaultConfig()
+                    .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "DEBEZIUM\\.DBZ1354")
+                    .with(OracleConnectorConfig.LOG_MINING_RESUME_POSITION_INTERVAL_MS, Duration.ofMinutes(10).toMillis())
+                    .with(OracleConnectorConfig.LOG_MINING_RESUME_POSITION_MIN_INTERVAL_MS, 0L)
+                    .with(OracleConnectorConfig.LOG_MINING_RESUME_POSITION_THRESHOLD_TRANSACTION_EVENTS, rows)
+                    // Only the transaction size heuristic is active
+                    .with(OracleConnectorConfig.LOG_MINING_RESUME_POSITION_THRESHOLD_LOG_COUNT, 0L)
+                    .with(OracleConnectorConfig.LOG_MINING_RESUME_POSITION_THRESHOLD_LOG_BYTES, 0L)
+                    .with(OracleConnectorConfig.LOG_MINING_RESUME_POSITION_THRESHOLD_SCN_DISTANCE, 0L)
+                    .with(OracleConnectorConfig.LOG_MINING_RESUME_POSITION_THRESHOLD_COMMITS, 0L)
+                    .build();
+
+            start(OracleConnector.class, config);
+            assertConnectorIsRunning();
+
+            waitForStreamingRunning(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
+
+            // With a 10 minute interval, no calculation happens until a threshold is reached
+            assertThat(resumePositionLogInterceptor.containsMessage("Resume/Commit SCN ")).isFalse();
+
+            // A single transaction that reaches the event threshold
+            connection.executeWithoutCommitting("BEGIN FOR i IN 1.." + rows + " LOOP " +
+                    "INSERT INTO dbz1354 (id,data) VALUES (i, 'test'); END LOOP; END;");
+            connection.commit();
+
+            final SourceRecords records = consumeRecordsByTopic(rows);
+            assertThat(records.recordsForTopic("server1.DEBEZIUM.DBZ1354")).hasSize(rows);
+
+            // Without the threshold, this would only happen after 10 minutes
+            Awaitility.await().atMost(Duration.ofSeconds(60))
+                    .until(() -> sourceLogInterceptor.containsMessage("Advancing offset low-watermark scn"));
+
+            assertThat(strategyLogInterceptor.containsMessage("events reached threshold")).isTrue();
+            assertThat(strategyLogInterceptor.containsMessage("elapsed")).isFalse();
+        }
+        finally {
+            TestHelper.dropTable(connection, "dbz1354");
         }
     }
 

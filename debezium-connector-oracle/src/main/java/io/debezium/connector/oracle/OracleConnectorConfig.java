@@ -68,6 +68,9 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
     protected final static Duration ARCHIVE_LOG_ONLY_POLL_TIME = Duration.ofMillis(10_000);
 
     protected final static long DEFAULT_RESUME_POSITION_INTERVAL = 10_000L;
+    protected final static long DEFAULT_RESUME_POSITION_MIN_INTERVAL = 1_000L;
+    protected final static long DEFAULT_RESUME_POSITION_THRESHOLD_LOG_COUNT = 10L;
+    protected final static long DEFAULT_RESUME_POSITION_THRESHOLD_TRANSACTION_EVENTS = 100_000L;
 
     public static final Field PORT = RelationalDatabaseConnectorConfig.PORT
             .withDefault(DEFAULT_PORT);
@@ -751,6 +754,67 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
             .withValidation(Field::isPositiveLong)
             .withDescription("The interval that the resume position is updated");
 
+    public static final Field LOG_MINING_RESUME_POSITION_MIN_INTERVAL_MS = Field.createInternal("log.mining.resume.position.min.interval.ms")
+            .withDisplayName("The minimum interval between LogMiner unbuffered resume position updates")
+            .withType(Type.LONG)
+            .withWidth(Width.SHORT)
+            .withImportance(Importance.LOW)
+            .withDefault(DEFAULT_RESUME_POSITION_MIN_INTERVAL)
+            .withValidation(Field::isNonNegativeLong)
+            .withDescription("The minimum time between two resume position updates, even when an activity threshold is reached. " +
+                    "Activity thresholds can only update the resume position earlier than 'log.mining.resume.position.interval.ms', " +
+                    "never more often than this interval.");
+
+    public static final Field LOG_MINING_RESUME_POSITION_THRESHOLD_LOG_COUNT = Field.createInternal("log.mining.resume.position.threshold.log.count")
+            .withDisplayName("The number of logs that triggers an early resume position update")
+            .withType(Type.LONG)
+            .withWidth(Width.SHORT)
+            .withImportance(Importance.LOW)
+            .withDefault(DEFAULT_RESUME_POSITION_THRESHOLD_LOG_COUNT)
+            .withValidation(Field::isNonNegativeLong)
+            .withDescription("When the number of logs that hold changes written since the last resume position update reaches this value, " +
+                    "the resume position is updated before the interval elapses. A value of 0 disables this threshold.");
+
+    public static final Field LOG_MINING_RESUME_POSITION_THRESHOLD_LOG_BYTES = Field.createInternal("log.mining.resume.position.threshold.log.bytes")
+            .withDisplayName("The combined log size that triggers an early resume position update")
+            .withType(Type.LONG)
+            .withWidth(Width.SHORT)
+            .withImportance(Importance.LOW)
+            .withDefault(0L)
+            .withValidation(Field::isNonNegativeLong)
+            .withDescription("When the combined size in bytes of the logs that hold changes written since the last resume position update " +
+                    "reaches this value, the resume position is updated before the interval elapses. A value of 0 disables this threshold.");
+
+    public static final Field LOG_MINING_RESUME_POSITION_THRESHOLD_SCN_DISTANCE = Field.createInternal("log.mining.resume.position.threshold.scn.distance")
+            .withDisplayName("The SCN distance that triggers an early resume position update")
+            .withType(Type.LONG)
+            .withWidth(Width.SHORT)
+            .withImportance(Importance.LOW)
+            .withDefault(0L)
+            .withValidation(Field::isNonNegativeLong)
+            .withDescription("When the commit SCN has moved this far since the last resume position update, " +
+                    "the resume position is updated before the interval elapses. A value of 0 disables this threshold.");
+
+    public static final Field LOG_MINING_RESUME_POSITION_THRESHOLD_COMMITS = Field.createInternal("log.mining.resume.position.threshold.commits")
+            .withDisplayName("The number of commits that triggers an early resume position update")
+            .withType(Type.LONG)
+            .withWidth(Width.SHORT)
+            .withImportance(Importance.LOW)
+            .withDefault(0L)
+            .withValidation(Field::isNonNegativeLong)
+            .withDescription("When the number of transactions committed since the last resume position update reaches this value, " +
+                    "the resume position is updated before the interval elapses. A value of 0 disables this threshold.");
+
+    public static final Field LOG_MINING_RESUME_POSITION_THRESHOLD_TRANSACTION_EVENTS = Field.createInternal("log.mining.resume.position.threshold.transaction.events")
+            .withDisplayName("The transaction size that triggers an early resume position update")
+            .withType(Type.LONG)
+            .withWidth(Width.SHORT)
+            .withImportance(Importance.LOW)
+            .withDefault(DEFAULT_RESUME_POSITION_THRESHOLD_TRANSACTION_EVENTS)
+            .withValidation(Field::isNonNegativeLong)
+            .withDescription("When a transaction with at least this many events has been committed since the last resume position update, " +
+                    "the resume position is updated before the interval elapses. A value of 0 disables this threshold.");
+
     public static final Field SIGNAL_DATA_COLLECTION = CommonConnectorConfig.SIGNAL_DATA_COLLECTION
             .withValidation(OracleConnectorConfig::validateSignalDataCollection);
 
@@ -852,6 +916,9 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
                     LOG_MINING_BUFFER_EHCACHE_GLOBAL_CONFIG, LOG_MINING_BUFFER_EHCACHE_TRANSACTIONS_CONFIG, LOG_MINING_BUFFER_EHCACHE_PROCESSED_TRANSACTIONS_CONFIG,
                     LOG_MINING_BUFFER_EHCACHE_SCHEMA_CHANGES_CONFIG, LOG_MINING_BUFFER_EHCACHE_EVENTS_CONFIG,
                     LOG_MINING_SQL_RELAXED_QUOTE_DETECTION, LOG_MINING_CLIENTID_INCLUDE_LIST, LOG_MINING_CLIENTID_EXCLUDE_LIST, LOG_MINING_RESUME_POSITION_INTERVAL_MS,
+                    LOG_MINING_RESUME_POSITION_MIN_INTERVAL_MS, LOG_MINING_RESUME_POSITION_THRESHOLD_LOG_COUNT,
+                    LOG_MINING_RESUME_POSITION_THRESHOLD_LOG_BYTES, LOG_MINING_RESUME_POSITION_THRESHOLD_SCN_DISTANCE,
+                    LOG_MINING_RESUME_POSITION_THRESHOLD_COMMITS, LOG_MINING_RESUME_POSITION_THRESHOLD_TRANSACTION_EVENTS,
                     LOG_MINING_BUFFER_DEFERRED_TRANSACTION_START, LOG_MINING_BUFFER_DEFERRED_TRANSACTION_RETENTION_MS, LOG_MINING_PATH_DICTIONARY,
                     LOG_MINING_USE_CTE_QUERY,
                     LOG_MINING_REDO_THREAD_SCN_ADJUSTMENT, LOG_MINING_HASH_AREA_SIZE, LOG_MINING_SORT_AREA_SIZE, LOG_MINING_LOG_COUNT_MIN,
@@ -946,6 +1013,12 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
     private final Integer openLogReplicatorPort;
 
     private final Duration resumePositionUpdateInterval;
+    private final Duration resumePositionMinUpdateInterval;
+    private final long resumePositionLogCountThreshold;
+    private final long resumePositionLogBytesThreshold;
+    private final long resumePositionScnDistanceThreshold;
+    private final long resumePositionCommitsThreshold;
+    private final long resumePositionTransactionEventsThreshold;
 
     public OracleConnectorConfig(Configuration config) {
         super(
@@ -1035,6 +1108,12 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
         this.openLogReplicatorPort = config.getInteger(OLR_PORT, 0);
 
         this.resumePositionUpdateInterval = Duration.ofMillis(config.getLong(LOG_MINING_RESUME_POSITION_INTERVAL_MS));
+        this.resumePositionMinUpdateInterval = Duration.ofMillis(config.getLong(LOG_MINING_RESUME_POSITION_MIN_INTERVAL_MS));
+        this.resumePositionLogCountThreshold = config.getLong(LOG_MINING_RESUME_POSITION_THRESHOLD_LOG_COUNT);
+        this.resumePositionLogBytesThreshold = config.getLong(LOG_MINING_RESUME_POSITION_THRESHOLD_LOG_BYTES);
+        this.resumePositionScnDistanceThreshold = config.getLong(LOG_MINING_RESUME_POSITION_THRESHOLD_SCN_DISTANCE);
+        this.resumePositionCommitsThreshold = config.getLong(LOG_MINING_RESUME_POSITION_THRESHOLD_COMMITS);
+        this.resumePositionTransactionEventsThreshold = config.getLong(LOG_MINING_RESUME_POSITION_THRESHOLD_TRANSACTION_EVENTS);
     }
 
     public String getDatabaseName() {
@@ -2135,6 +2214,48 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
      */
     public Duration getResumePositionUpdateInterval() {
         return resumePositionUpdateInterval;
+    }
+
+    /**
+     * The minimum time between two unbuffered resume position recalculations.
+     */
+    public Duration getResumePositionMinUpdateInterval() {
+        return resumePositionMinUpdateInterval;
+    }
+
+    /**
+     * The number of logs that triggers an early unbuffered resume position recalculation, {@code 0} if disabled.
+     */
+    public long getResumePositionLogCountThreshold() {
+        return resumePositionLogCountThreshold;
+    }
+
+    /**
+     * The combined log size in bytes that triggers an early unbuffered resume position recalculation, {@code 0} if disabled.
+     */
+    public long getResumePositionLogBytesThreshold() {
+        return resumePositionLogBytesThreshold;
+    }
+
+    /**
+     * The resume to commit SCN distance that triggers an early unbuffered resume position recalculation, {@code 0} if disabled.
+     */
+    public long getResumePositionScnDistanceThreshold() {
+        return resumePositionScnDistanceThreshold;
+    }
+
+    /**
+     * The number of commits that triggers an early unbuffered resume position recalculation, {@code 0} if disabled.
+     */
+    public long getResumePositionCommitsThreshold() {
+        return resumePositionCommitsThreshold;
+    }
+
+    /**
+     * The transaction event count that triggers an early unbuffered resume position recalculation, {@code 0} if disabled.
+     */
+    public long getResumePositionTransactionEventsThreshold() {
+        return resumePositionTransactionEventsThreshold;
     }
 
     /**
