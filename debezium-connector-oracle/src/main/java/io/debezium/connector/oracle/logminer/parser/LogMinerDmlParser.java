@@ -9,6 +9,7 @@ import java.util.Arrays;
 
 import io.debezium.DebeziumException;
 import io.debezium.connector.oracle.OracleConnectorConfig;
+import io.debezium.connector.oracle.OracleDatabaseSchema;
 import io.debezium.connector.oracle.logminer.LogMinerHelper;
 import io.debezium.relational.Table;
 
@@ -43,7 +44,6 @@ import io.debezium.relational.Table;
  */
 public class LogMinerDmlParser implements DmlParser {
 
-    private static final String ORA_ARCHIVE_STATE = "ORA_ARCHIVE_STATE";
     private static final String NULL_SENTINEL = "${DBZ_NULL}";
     private static final String NULL = "NULL";
     private static final String INSERT_INTO = "insert into ";
@@ -264,7 +264,7 @@ public class LogMinerDmlParser implements DmlParser {
                 if (inQuote) {
                     inQuote = false;
                     final String columnName = sql.substring(start + 1, index);
-                    if (!ORA_ARCHIVE_STATE.equals(columnName)) {
+                    if (!OracleDatabaseSchema.ROW_ARCHIVAL_COLUMN_NAME.equals(columnName)) {
                         columnNames[columnIndex++] = columnName;
                     }
                     else {
@@ -862,7 +862,7 @@ public class LogMinerDmlParser implements DmlParser {
     }
 
     private void setColumnValue(String columnName, String columnValue, Table table, Object[] values) {
-        if (!ORA_ARCHIVE_STATE.equals(columnName)) {
+        if (!OracleDatabaseSchema.ROW_ARCHIVAL_COLUMN_NAME.equals(columnName)) {
             int position = getColumnIndexByName(columnName, table);
             values[position] = columnValue;
         }

@@ -6361,12 +6361,12 @@ public class OracleConnectorIT extends AbstractAsyncEngineConnectorTest {
             SourceRecord record = records.get(0);
             assertThat(getAfter(record).get("USER_ID")).isEqualTo(1);
             assertThat(getAfter(record).schema().fields()).hasSize(7);
-            assertThat(getAfter(record).schema().field("ORA_ARCHIVE_STATE")).isNull();
+            assertThat(getAfter(record).schema().field(OracleDatabaseSchema.ROW_ARCHIVAL_COLUMN_NAME)).isNull();
 
             record = records.get(1);
             assertThat(getAfter(record).get("USER_ID")).isEqualTo(2);
             assertThat(getAfter(record).schema().fields()).hasSize(7);
-            assertThat(getAfter(record).schema().field("ORA_ARCHIVE_STATE")).isNull();
+            assertThat(getAfter(record).schema().field(OracleDatabaseSchema.ROW_ARCHIVAL_COLUMN_NAME)).isNull();
         }
         finally {
             TestHelper.dropTable(connection, "dbz1676");
@@ -6416,13 +6416,13 @@ public class OracleConnectorIT extends AbstractAsyncEngineConnectorTest {
             assertThat(getAfter(record).get("USER_ID")).isEqualTo(1);
             assertThat(getAfter(record).get("PREFERRED_NAME")).isEqualTo("john");
             assertThat(getAfter(record).schema().fields()).hasSize(8);
-            assertThat(getAfter(record).schema().field("ORA_ARCHIVE_STATE")).isNull();
+            assertThat(getAfter(record).schema().field(OracleDatabaseSchema.ROW_ARCHIVAL_COLUMN_NAME)).isNull();
 
             record = records.get(1);
             assertThat(getAfter(record).get("USER_ID")).isEqualTo(2);
             assertThat(getAfter(record).get("PREFERRED_NAME")).isEqualTo("jane");
             assertThat(getAfter(record).schema().fields()).hasSize(8);
-            assertThat(getAfter(record).schema().field("ORA_ARCHIVE_STATE")).isNull();
+            assertThat(getAfter(record).schema().field(OracleDatabaseSchema.ROW_ARCHIVAL_COLUMN_NAME)).isNull();
         }
         finally {
             TestHelper.dropTable(connection, "dbz1676");
