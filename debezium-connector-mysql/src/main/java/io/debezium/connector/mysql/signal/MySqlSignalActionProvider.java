@@ -12,6 +12,9 @@ import io.debezium.annotation.ConnectorSpecific;
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.connector.mysql.MySqlConnector;
 import io.debezium.connector.mysql.MySqlConnectorConfig;
+import io.debezium.connector.mysql.jdbc.MySqlConnection;
+import io.debezium.connector.mysql.jdbc.MySqlConnectionConfiguration;
+import io.debezium.connector.mysql.jdbc.MySqlFieldReaderResolver;
 import io.debezium.pipeline.ChangeEventSourceCoordinator;
 import io.debezium.pipeline.EventDispatcher;
 import io.debezium.pipeline.signal.actions.SignalAction;
@@ -36,9 +39,11 @@ public class MySqlSignalActionProvider implements SignalActionProvider {
         Map<String, SignalAction<P>> actions = new HashMap<>();
 
         // Add MySQL-specific signal actions
-        if (connectorConfig instanceof MySqlConnectorConfig) {
+        if (connectorConfig instanceof MySqlConnectorConfig mySqlConfig) {
             actions.put(SetBinlogPositionSignal.NAME,
-                    new SetBinlogPositionSignal<>(dispatcher));
+                    new SetBinlogPositionSignal<>(dispatcher, () -> new MySqlConnection(
+                            new MySqlConnectionConfiguration(mySqlConfig.getConfig()),
+                            MySqlFieldReaderResolver.resolve(mySqlConfig))));
         }
 
         return actions;

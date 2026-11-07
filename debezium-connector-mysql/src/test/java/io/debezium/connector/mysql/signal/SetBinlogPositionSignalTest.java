@@ -8,7 +8,9 @@ package io.debezium.connector.mysql.signal;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 import java.util.Map;
 
@@ -18,6 +20,8 @@ import org.junit.jupiter.api.Test;
 import io.debezium.DebeziumException;
 import io.debezium.connector.mysql.MySqlOffsetContext;
 import io.debezium.connector.mysql.MySqlPartition;
+import io.debezium.connector.mysql.jdbc.MySqlConnection;
+import io.debezium.doc.FixFor;
 import io.debezium.document.Document;
 import io.debezium.document.DocumentReader;
 import io.debezium.pipeline.EventDispatcher;
@@ -35,6 +39,7 @@ public class SetBinlogPositionSignalTest {
     private SetBinlogPositionSignal<MySqlPartition> signal;
     private MySqlOffsetContext offsetContext;
     private MySqlPartition partition;
+    private MySqlConnection connection;
 
     @BeforeEach
     public void setUp() {
@@ -42,10 +47,13 @@ public class SetBinlogPositionSignalTest {
         offsetContext = mock(MySqlOffsetContext.class);
         partition = new MySqlPartition("test-server", "test-db");
 
-        signal = new SetBinlogPositionSignal<>(eventDispatcher);
+        connection = mock(MySqlConnection.class);
+
+        signal = new SetBinlogPositionSignal<>(eventDispatcher, () -> connection);
     }
 
     @Test
+    @FixFor("debezium/dbz#2731")
     public void shouldSetBinlogFileAndPosition() throws Exception {
         // Given
         String binlogFilename = "mysql-bin.000003";
@@ -57,13 +65,66 @@ public class SetBinlogPositionSignalTest {
         SignalPayload<MySqlPartition> payload = new SignalPayload<>(
                 partition, "test-id", "set-binlog-position", data, offsetContext, Map.of());
 
+        when(connection.isGtidModeEnabled()).thenReturn(true);
+        when(connection.gtidSetAtPosition(binlogFilename, binlogPosition)).thenReturn("3E11FA47-71CA-11E1-9E33-C80AA9429562:1-57");
+
         // When
         boolean result = signal.arrived(payload);
 
         // Then
         assertThat(result).isTrue();
         verify(offsetContext).setBinlogStartPoint(binlogFilename, binlogPosition);
+        verify(offsetContext).resetGtidSet();
+        verify(offsetContext).setCompletedGtidSet("3E11FA47-71CA-11E1-9E33-C80AA9429562:1-57");
+        verify(connection).close();
         verify(eventDispatcher).alwaysDispatchHeartbeatEvent(partition, offsetContext);
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2731")
+    public void shouldClearGtidSetWithoutGtidMode() throws Exception {
+        // Given
+        String binlogFilename = "mysql-bin.000003";
+        Long binlogPosition = 1234L;
+
+        Document data = DocumentReader.defaultReader().read(
+                "{\"binlog_filename\": \"" + binlogFilename + "\", \"binlog_position\": " + binlogPosition + "}");
+
+        SignalPayload<MySqlPartition> payload = new SignalPayload<>(
+                partition, "test-id", "set-binlog-position", data, offsetContext, Map.of());
+
+        when(connection.isGtidModeEnabled()).thenReturn(false);
+
+        // When
+        boolean result = signal.arrived(payload);
+
+        // Then
+        assertThat(result).isTrue();
+        verify(connection, never()).gtidSetAtPosition(binlogFilename, binlogPosition);
+        verify(offsetContext).setBinlogStartPoint(binlogFilename, binlogPosition);
+        verify(offsetContext).resetGtidSet();
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2731")
+    public void shouldNotChangeOffsetWhenGtidSetCannotBeResolved() throws Exception {
+        // Given
+        String binlogFilename = "mysql-bin.000003";
+        Long binlogPosition = 1234L;
+
+        Document data = DocumentReader.defaultReader().read(
+                "{\"binlog_filename\": \"" + binlogFilename + "\", \"binlog_position\": " + binlogPosition + "}");
+
+        SignalPayload<MySqlPartition> payload = new SignalPayload<>(
+                partition, "test-id", "set-binlog-position", data, offsetContext, Map.of());
+
+        when(connection.isGtidModeEnabled()).thenReturn(true);
+        when(connection.gtidSetAtPosition(binlogFilename, binlogPosition)).thenThrow(new DebeziumException("binlog file not found"));
+
+        // When / Then
+        assertThatThrownBy(() -> signal.arrived(payload)).isInstanceOf(DebeziumException.class);
+        verify(offsetContext, never()).setBinlogStartPoint(binlogFilename, binlogPosition);
+        verify(offsetContext, never()).resetGtidSet();
     }
 
     @Test

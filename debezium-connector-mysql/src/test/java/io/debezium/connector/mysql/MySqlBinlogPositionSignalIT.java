@@ -9,6 +9,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import java.nio.file.Path;
 import java.sql.SQLException;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
@@ -22,7 +24,12 @@ import io.debezium.config.Configuration;
 import io.debezium.connector.binlog.AbstractBinlogConnectorIT;
 import io.debezium.connector.binlog.util.TestHelper;
 import io.debezium.connector.binlog.util.UniqueDatabase;
+import io.debezium.connector.mysql.gtid.MySqlGtidSet;
+import io.debezium.connector.mysql.jdbc.MySqlConnection;
+import io.debezium.connector.mysql.jdbc.MySqlConnectionConfiguration;
+import io.debezium.connector.mysql.jdbc.MySqlFieldReaderResolver;
 import io.debezium.connector.mysql.signal.SetBinlogPositionSignal;
+import io.debezium.doc.FixFor;
 import io.debezium.util.Testing;
 
 /**
@@ -60,16 +67,11 @@ public class MySqlBinlogPositionSignalIT extends AbstractBinlogConnectorIT<MySql
     }
 
     @Test
+    @FixFor("debezium/dbz#2731")
     public void shouldSkipToBinlogPositionViaSignal() throws Exception {
         // Setup database
         DATABASE.createAndInitialize();
         connection = (MySqlTestConnection) getTestDatabaseConnection(DATABASE.getDatabaseName());
-
-        // Skip this test if GTID mode is enabled (binlog file/position doesn't work with GTID)
-        if (isGtidModeEnabled()) {
-            Testing.print("GTID mode enabled, skipping test (use shouldSkipToGtidSetViaSignal instead)");
-            return;
-        }
 
         // Start connector - use NO_DATA mode to skip initial snapshot data
         Configuration config = DATABASE.defaultConfig()
@@ -316,6 +318,58 @@ public class MySqlBinlogPositionSignalIT extends AbstractBinlogConnectorIT<MySql
         Struct after = value.getStruct("after");
         assertThat(after.getInt32("id")).isEqualTo(5);
         assertThat(after.getString("value")).isEqualTo("value5");
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2731")
+    public void shouldResolveGtidSetAtBinlogPosition() throws Exception {
+        DATABASE.createAndInitialize();
+        connection = (MySqlTestConnection) getTestDatabaseConnection(DATABASE.getDatabaseName());
+        if (!isGtidModeEnabled()) {
+            Testing.print("GTID mode not enabled, skipping test");
+            return;
+        }
+
+        // Each checkpoint is a binlog position and the GTID set the server had executed when it was there.
+        final List<Map<String, Object>> checkpoints = new ArrayList<>();
+        checkpoints.add(checkpoint());
+        connection.execute("INSERT INTO test_table VALUES (1, 'value1')");
+        checkpoints.add(checkpoint());
+        connection.execute("INSERT INTO test_table VALUES (2, 'value2')", "INSERT INTO test_table VALUES (3, 'value3')");
+        checkpoints.add(checkpoint());
+        // A transaction from another source, as left behind by a previous primary
+        connection.execute("COMMIT",
+                "SET GTID_NEXT = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa:1'",
+                "INSERT INTO test_table VALUES (4, 'value4')",
+                "COMMIT",
+                "SET GTID_NEXT = 'AUTOMATIC'");
+        checkpoints.add(checkpoint());
+        // Moves the remaining checkpoints to a file whose Previous_gtids carries both sources
+        connection.execute("FLUSH BINARY LOGS");
+        checkpoints.add(checkpoint());
+        connection.execute("INSERT INTO test_table VALUES (5, 'value5')");
+        checkpoints.add(checkpoint());
+
+        final Configuration config = DATABASE.defaultConfig()
+                .with(MySqlConnectorConfig.HOSTNAME, System.getProperty("database.hostname", "localhost"))
+                .with(MySqlConnectorConfig.PORT, System.getProperty("database.port", "3306"))
+                .with(MySqlConnectorConfig.USER, "mysqluser")
+                .with(MySqlConnectorConfig.PASSWORD, "mysqlpw")
+                .build();
+        try (MySqlConnection mySqlConnection = new MySqlConnection(new MySqlConnectionConfiguration(config),
+                MySqlFieldReaderResolver.resolve(new MySqlConnectorConfig(config)))) {
+            for (Map<String, Object> checkpoint : checkpoints) {
+                final String resolved = mySqlConnection.gtidSetAtPosition((String) checkpoint.get("file"), (Long) checkpoint.get("position"));
+                assertThat(new MySqlGtidSet(resolved))
+                        .as("GTID set at %s", checkpoint)
+                        .isEqualTo(new MySqlGtidSet((String) checkpoint.get("gtids")));
+            }
+        }
+    }
+
+    private Map<String, Object> checkpoint() throws SQLException {
+        final Map<String, Object> position = getCurrentBinlogPosition();
+        return Map.of("file", position.get("file"), "position", position.get("position"), "gtids", getCurrentGtidSet());
     }
 
     private Map<String, Object> getCurrentBinlogPosition() throws SQLException {
