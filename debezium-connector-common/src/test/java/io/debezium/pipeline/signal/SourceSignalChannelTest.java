@@ -48,7 +48,7 @@ public class SourceSignalChannelTest {
         record.put("col2", "custom");
         record.put("col3", "{\"v\": 5}");
 
-        sourceSignalChannel.process(env.create(record, null, null));
+        sourceSignalChannel.process(null, env.create(record, null, null));
         List<SignalRecord> signalRecords = sourceSignalChannel.read();
         assertThat(signalRecords).hasSize(1);
         assertThat(signalRecords.get(0).getData()).isEqualTo("{\"v\": 5}");
@@ -72,10 +72,10 @@ public class SourceSignalChannelTest {
         record.put("col1", "log1");
         record.put("col2", "custom");
 
-        sourceSignalChannel.process(env.create(record, null, null));
+        sourceSignalChannel.process(null, env.create(record, null, null));
         assertThat(sourceSignalChannel.read()).hasSize(0);
 
-        sourceSignalChannel.process(record);
+        sourceSignalChannel.process(null, record);
         assertThat(sourceSignalChannel.read()).hasSize(0);
     }
 

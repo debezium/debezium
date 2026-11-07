@@ -2413,6 +2413,16 @@ public abstract class CommonConnectorConfig {
         });
     }
 
+    /**
+     * Extracts the id of a signal from the key of a change event of the signaling data collection.
+     *
+     * @param key the key of the change event, may be null
+     * @return the signal id, or empty if it cannot be extracted from the key
+     */
+    public Optional<String> parseSignalIdFromKey(Object key) {
+        return Optional.empty();
+    }
+
     public boolean isSignalDataCollection(DataCollectionId dataCollectionId) {
         return signalingDataCollectionIds.stream()
                 .anyMatch(id -> id.equals(dataCollectionId));

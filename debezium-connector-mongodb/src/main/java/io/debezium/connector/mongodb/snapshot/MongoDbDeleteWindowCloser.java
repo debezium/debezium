@@ -13,7 +13,6 @@ import com.mongodb.client.MongoCollection;
 import com.mongodb.client.MongoDatabase;
 
 import io.debezium.connector.mongodb.CollectionId;
-import io.debezium.connector.mongodb.MongoDbPartition;
 import io.debezium.connector.mongodb.connection.MongoDbConnection;
 import io.debezium.pipeline.source.snapshot.incremental.WatermarkWindowCloser;
 import io.debezium.pipeline.spi.OffsetContext;
@@ -26,13 +25,10 @@ public class MongoDbDeleteWindowCloser implements WatermarkWindowCloser {
 
     private final MongoDbConnection mongoDbConnection;
     private final CollectionId collectionId;
-    private final MongoDbIncrementalSnapshotChangeEventSource incrementalSnapshotChangeEventSource;
 
-    public MongoDbDeleteWindowCloser(MongoDbConnection mongoDbConnection, CollectionId collectionId,
-                                     MongoDbIncrementalSnapshotChangeEventSource incrementalSnapshotChangeEventSource) {
+    public MongoDbDeleteWindowCloser(MongoDbConnection mongoDbConnection, CollectionId collectionId) {
         this.mongoDbConnection = mongoDbConnection;
         this.collectionId = collectionId;
-        this.incrementalSnapshotChangeEventSource = incrementalSnapshotChangeEventSource;
     }
 
     @Override
@@ -49,14 +45,5 @@ public class MongoDbDeleteWindowCloser implements WatermarkWindowCloser {
                     signal.put(DOCUMENT_ID, chunkId + "-open");
                     collection.deleteOne(signal);
                 });
-
-        // Since the close event is not written into signal data collection we need to explicit close the window.
-        try {
-            incrementalSnapshotChangeEventSource.closeWindow((MongoDbPartition) partition, chunkId + "-close", offsetContext);
-        }
-        catch (InterruptedException e) {
-            LOGGER.warn("Failed to close window {} successful.", chunkId);
-            Thread.currentThread().interrupt();
-        }
     }
 }
