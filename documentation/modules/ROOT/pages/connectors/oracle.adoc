@@ -1447,6 +1447,37 @@ The following example shows an Ehcache configuration that includes both a global
 endif::community[]
 
 // Type: concept
+// ModuleID: how-the-debezium-oracle-connector-re-reads-in-progress-transactions
+// Title: How the {prodname} Oracle connector re-reads in-progress transactions
+[[oracle-event-buffering-reread-transactions]]
+==== Re-reading in-progress transactions
+
+Oracle LogMiner does not always return rows in SCN order.
+For example, when a statement writes an out-of-line `CLOB`, `BLOB`, or `XMLTYPE` value, LogMiner can return the row for that statement only after the statement writes its redo, and the row retains the SCN at which the statement started.
+By the time that LogMiner returns the row, the connector might already have read rows with higher SCNs from other transactions.
+
+To capture such rows, on each mining step the connector reads the changes of the in-progress transactions again:
+
+* When xref:oracle-property-lob-enabled[`lob.enabled`] and xref:oracle-property-log-mining-include-internal-events[`log.mining.include.internal.events`] are both set to `false`, the connector resumes reading after the last change that it buffered for the oldest in-progress transaction, and replaces the buffered changes that it reads again.
+* Otherwise, the connector re-reads the in-progress transactions from their start.
+
+After the connector restarts, it re-reads the in-progress transactions from their start.
+
+[WARNING]
+====
+When xref:oracle-property-log-mining-buffer-deferred-transaction-start[`log.mining.buffer.deferred.transaction.start`] is set to `true`, the mining window advances block-by-block, and the connector does not read the changes of in-progress transactions again.
+If a mining step ends while a statement that writes an out-of-line LOB or XML value is running, the connector can silently lose the change event for that statement.
+The connector does not log a warning, and the transaction is otherwise emitted normally.
+The risk increases with the size of LOB values and with the volume of concurrent activity in the database.
+====
+
+ifdef::community[]
+When xref:oracle-property-log-mining-window-max-ms[`log.mining.window.max.ms`] advances the mining window past in-progress transactions, the connector cannot read the changes of those transactions again.
+It continues to read again the changes of the transactions that started within the mining window.
+If it cannot replace the changes that it reads again for the older transactions, for example after a restart, it advances the read position to the last row that it read, and it does not read the changes of any in-progress transaction again.
+endif::community[]
+
+// Type: concept
 // ModuleID: how-debezium-manages-offsets-in-databases-that-change-infrequently
 // Title: How {prodname} manages offsets in databases that change infrequently
 [[low-change-frequency-offset-management]]
@@ -5087,6 +5118,9 @@ When set to `true`, the connector stores only lightweight transaction metadata a
 
 This option cannot be enabled when xref:oracle-property-lob-enabled[`lob.enabled`] is set to `true`.
 
+When this option is enabled, the mining window advances block-by-block, and the connector can silently lose the change event of a statement that writes an out-of-line LOB or XML value.
+For more information, see xref:oracle-event-buffering-reread-transactions[Re-reading in-progress transactions].
+
 |[[oracle-property-log-mining-transaction-retention-ms]]<<oracle-property-log-mining-transaction-retention-ms, `log.mining.transaction.retention.ms`>>
 |`0`
 |Positive integer value that specifies the number of milliseconds to retain long running transactions between redo log switches.
@@ -5104,6 +5138,12 @@ When set to `0`, the connector retains the deferred metadata until a commit or r
 
 Use this setting with deferred transaction start behavior to bound the amount of memory used by transactions that never progress beyond `START`.
 This setting does not affect transactions that have already been promoted into the main transaction cache.
+
+|[[oracle-property-log-mining-buffer-reread-transactions]]<<oracle-property-log-mining-buffer-reread-transactions, `log.mining.buffer.reread.transactions`>>
+|`true`
+|Deprecated.
+This property no longer has any effect and will be removed in Debezium 4.0.
+For information about how the connector reads the changes of in-progress transactions, see xref:oracle-event-buffering-reread-transactions[Re-reading in-progress transactions].
 
 ifdef::community[]
 |[[oracle-property-log-mining-window-max-ms]]<<oracle-property-log-mining-window-max-ms, `log.mining.window.max.ms`>>

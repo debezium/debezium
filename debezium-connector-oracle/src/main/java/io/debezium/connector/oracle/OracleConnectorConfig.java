@@ -778,6 +778,20 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
                     "emit a DML event. By default, deferred transaction metadata is retained for 24 hours. " +
                     "This is independent of log.mining.transaction.retention.ms which governs cached transactions with events.");
 
+    /**
+     * @deprecated no longer has any effect, this option is only kept to warn users that still set it,
+     * to be removed in Debezium 4.0.
+     */
+    @Deprecated
+    public static final Field LOG_MINING_BUFFER_REREAD_TRANSACTIONS = Field.create("log.mining.buffer.reread.transactions")
+            .withDisplayName("Re-read buffered transactions")
+            .withType(Type.BOOLEAN)
+            .withWidth(Width.SHORT)
+            .withImportance(Importance.LOW)
+            .withDefault(true)
+            .withValidation(OracleConnectorConfig::validateLogMiningBufferRereadTransactions)
+            .withDescription("Deprecated and no longer has any effect, to be removed in Debezium 4.0.");
+
     public static final Field LEGACY_DECIMAL_HANDLING_STRATEGY = Field.create("legacy.decimal.handling.strategy")
             .withDisplayName("Use legacy decimal handling strategy")
             .withType(Type.BOOLEAN)
@@ -852,7 +866,8 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
                     LOG_MINING_BUFFER_EHCACHE_GLOBAL_CONFIG, LOG_MINING_BUFFER_EHCACHE_TRANSACTIONS_CONFIG, LOG_MINING_BUFFER_EHCACHE_PROCESSED_TRANSACTIONS_CONFIG,
                     LOG_MINING_BUFFER_EHCACHE_SCHEMA_CHANGES_CONFIG, LOG_MINING_BUFFER_EHCACHE_EVENTS_CONFIG,
                     LOG_MINING_SQL_RELAXED_QUOTE_DETECTION, LOG_MINING_CLIENTID_INCLUDE_LIST, LOG_MINING_CLIENTID_EXCLUDE_LIST, LOG_MINING_RESUME_POSITION_INTERVAL_MS,
-                    LOG_MINING_BUFFER_DEFERRED_TRANSACTION_START, LOG_MINING_BUFFER_DEFERRED_TRANSACTION_RETENTION_MS, LOG_MINING_PATH_DICTIONARY,
+                    LOG_MINING_BUFFER_DEFERRED_TRANSACTION_START, LOG_MINING_BUFFER_DEFERRED_TRANSACTION_RETENTION_MS, LOG_MINING_BUFFER_REREAD_TRANSACTIONS,
+                    LOG_MINING_PATH_DICTIONARY,
                     LOG_MINING_USE_CTE_QUERY,
                     LOG_MINING_REDO_THREAD_SCN_ADJUSTMENT, LOG_MINING_HASH_AREA_SIZE, LOG_MINING_SORT_AREA_SIZE, LOG_MINING_LOG_COUNT_MIN,
                     LOG_MINING_LOG_COUNT_GROWTH_MAX)
@@ -2521,6 +2536,16 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
                         field.name(), LOB_ENABLED.name()));
                 return 1;
             }
+        }
+        return 0;
+    }
+
+    @SuppressWarnings("deprecation")
+    public static int validateLogMiningBufferRereadTransactions(Configuration config, Field field, ValidationOutput problems) {
+        if (config.hasKey(LOG_MINING_BUFFER_REREAD_TRANSACTIONS.name())) {
+            // Logged during validation rather than in the constructor so that it is logged once on start-up
+            LOGGER.warn("The '{}' option is deprecated, no longer has any effect, and will be removed in Debezium 4.0.",
+                    LOG_MINING_BUFFER_REREAD_TRANSACTIONS.name());
         }
         return 0;
     }

@@ -622,6 +622,32 @@ public class OracleConnectorConfigTest {
         assertThat(logInterceptor.containsWarnMessage("log.mining.use.cte.query")).isFalse();
     }
 
+    @Test
+    @FixFor("debezium/dbz#3032")
+    @SuppressWarnings("deprecation")
+    public void shouldWarnButPassValidationWhenDeprecatedRereadTransactionsIsSet() {
+        final LogInterceptor logInterceptor = new LogInterceptor(OracleConnectorConfig.class);
+        final Configuration config = logMinerConfig("logminer")
+                .with(OracleConnectorConfig.LOG_MINING_BUFFER_REREAD_TRANSACTIONS, false)
+                .build();
+
+        final List<Field> fields = List.of(OracleConnectorConfig.LOG_MINING_BUFFER_REREAD_TRANSACTIONS);
+        assertThat(config.validateAndRecord(fields, LOGGER::error)).isTrue();
+        assertThat(logInterceptor.containsWarnMessage("'log.mining.buffer.reread.transactions' option is deprecated")).isTrue();
+    }
+
+    @Test
+    @FixFor("debezium/dbz#3032")
+    @SuppressWarnings("deprecation")
+    public void shouldNotWarnWhenDeprecatedRereadTransactionsIsNotSet() {
+        final LogInterceptor logInterceptor = new LogInterceptor(OracleConnectorConfig.class);
+        final Configuration config = logMinerConfig("logminer").build();
+
+        final List<Field> fields = List.of(OracleConnectorConfig.LOG_MINING_BUFFER_REREAD_TRANSACTIONS);
+        assertThat(config.validateAndRecord(fields, LOGGER::error)).isTrue();
+        assertThat(logInterceptor.containsWarnMessage("log.mining.buffer.reread.transactions")).isFalse();
+    }
+
     private static Configuration.Builder logMinerConfig(String adapter) {
         return Configuration.create()
                 .with(CommonConnectorConfig.TOPIC_PREFIX, "myserver")

@@ -5,9 +5,14 @@
  */
 package io.debezium.connector.oracle.logminer.buffered.infinispan;
 
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Iterator;
+import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.SortedSet;
 import java.util.TreeSet;
 import java.util.function.Consumer;
 import java.util.function.Function;
@@ -31,6 +36,8 @@ public class InfinispanLogMinerTransactionCache extends AbstractLogMinerTransact
 
     // Heap-backed caches for quick access to specific metadata to speed up processing
     private final Map<String, TreeSet<Integer>> eventIdsByTransactionId = new HashMap<>();
+    // Rewound event ids whose off-heap entries remain until the re-read overwrites them
+    private final Map<String, Set<Integer>> staleEventIdsByTransactionId = new HashMap<>();
 
     public InfinispanLogMinerTransactionCache(BasicCache<String, InfinispanTransaction> transactionCache, BasicCache<String, LogMinerEvent> eventCache) {
         this.transactionCache = transactionCache;
@@ -51,6 +58,7 @@ public class InfinispanLogMinerTransactionCache extends AbstractLogMinerTransact
         if (previousEventIds != null) {
             transactionEvents -= previousEventIds.size();
         }
+        removeStaleTransactionEvents(transaction.getTransactionId());
     }
 
     @Override
@@ -119,6 +127,10 @@ public class InfinispanLogMinerTransactionCache extends AbstractLogMinerTransact
         if (eventIds.add(eventKey)) {
             transactionEvents++;
         }
+        final Set<Integer> staleEventIds = staleEventIdsByTransactionId.get(transaction.getTransactionId());
+        if (staleEventIds != null && staleEventIds.remove(eventKey) && staleEventIds.isEmpty()) {
+            staleEventIdsByTransactionId.remove(transaction.getTransactionId());
+        }
 
         if (event instanceof RollbackToSavepointEvent) {
             final Iterator<LogMinerEventEntry> reverseIterator = new LogMinerEventEntryIterator(
@@ -142,6 +154,7 @@ public class InfinispanLogMinerTransactionCache extends AbstractLogMinerTransact
             events.descendingSet().stream().map(transaction::getEventId).forEach(eventCache::remove);
             transactionEvents -= events.size();
         }
+        removeStaleTransactionEvents(transaction.getTransactionId());
     }
 
     @Override
@@ -162,10 +175,26 @@ public class InfinispanLogMinerTransactionCache extends AbstractLogMinerTransact
     }
 
     @Override
+    public void rewindTransaction(InfinispanTransaction transaction, int eventId) {
+        final TreeSet<Integer> eventIds = eventIdsByTransactionId.get(transaction.getTransactionId());
+        if (eventIds != null) {
+            final SortedSet<Integer> rewoundEventIds = eventIds.tailSet(eventId);
+            if (!rewoundEventIds.isEmpty()) {
+                staleEventIdsByTransactionId.computeIfAbsent(transaction.getTransactionId(), id -> new HashSet<>()).addAll(rewoundEventIds);
+                transactionEvents -= rewoundEventIds.size();
+                rewoundEventIds.clear();
+            }
+        }
+        transaction.rewindTo(eventId);
+        syncTransaction(transaction);
+    }
+
+    @Override
     public void clear() {
         transactionCache.clear();
         eventCache.clear();
         eventIdsByTransactionId.clear();
+        staleEventIdsByTransactionId.clear();
         transactionEvents = 0;
     }
 
@@ -186,18 +215,40 @@ public class InfinispanLogMinerTransactionCache extends AbstractLogMinerTransact
     }
 
     private void primeHeapCacheFromOffHeapCaches() {
-        // Primes the heap-based cache if the Infinispan disk caches contained data on start-up
+        // Primes the heap-based cache if the off-heap caches contained data on start-up
+        final List<String> staleEventKeys = new ArrayList<>();
+        final Map<String, Integer> numberOfEventsByTransactionId = new HashMap<>();
         eventKeys(keyStream -> {
             keyStream.map(k -> k.split("-", 2))
                     .filter(parts -> parts.length == 2)
                     .forEach(parts -> {
                         final String transactionId = parts[0];
                         final int eventId = Integer.parseInt(parts[1]);
-                        if (transactionCache.containsKey(transactionId)
-                                && eventIdsByTransactionId.computeIfAbsent(transactionId, k -> new TreeSet<>()).add(eventId)) {
+                        final int numberOfEvents = numberOfEventsByTransactionId.computeIfAbsent(transactionId, id -> {
+                            final InfinispanTransaction transaction = transactionCache.get(id);
+                            return transaction == null ? -1 : transaction.getNumberOfEvents();
+                        });
+                        if (numberOfEvents < 0) {
+                            return;
+                        }
+                        if (eventId >= numberOfEvents) {
+                            // Left behind by a rewind that the re-read had not yet overwritten
+                            staleEventKeys.add(toEventKey(transactionId, eventId));
+                        }
+                        else if (eventIdsByTransactionId.computeIfAbsent(transactionId, k -> new TreeSet<>()).add(eventId)) {
                             transactionEvents++;
                         }
                     });
         });
+        staleEventKeys.forEach(eventCache::remove);
+        // Transactions without events, such as those whose events were all rewound, still need a heap entry
+        transactions(stream -> stream.forEach(t -> eventIdsByTransactionId.computeIfAbsent(t.getTransactionId(), id -> new TreeSet<>())));
+    }
+
+    private void removeStaleTransactionEvents(String transactionId) {
+        final Set<Integer> staleEventIds = staleEventIdsByTransactionId.remove(transactionId);
+        if (staleEventIds != null) {
+            staleEventIds.forEach(id -> eventCache.remove(toEventKey(transactionId, id)));
+        }
     }
 }

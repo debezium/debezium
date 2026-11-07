@@ -26,6 +26,7 @@ import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
+import java.util.Arrays;
 import java.util.Calendar;
 import java.util.List;
 import java.util.Map;
@@ -102,6 +103,8 @@ public abstract class AbstractBufferedLogMinerStreamingChangeEventSourceTest ext
     private static final String PARTIAL_TXN_ID_PARTIAL = "0e001c00ffffffff";
     private static final String PARTIAL_TXN_ID_OTHER = "0f001d0087654321";
     private static final String PARTIAL_TXN_ID_SAME_PREFIX = "0e001c0087654321";
+    private static final byte[] XID_1 = new byte[]{ 1, 2, 3, 4, 5, 6, 7, 8 };
+    private static final byte[] XID_2 = new byte[]{ 8, 7, 6, 5, 4, 3, 2, 1 };
 
     protected ChangeEventSourceContext context;
     protected EventDispatcher<OraclePartition, TableId> dispatcher;
@@ -378,49 +381,235 @@ public abstract class AbstractBufferedLogMinerStreamingChangeEventSourceTest ext
     }
 
     @Test
-    @FixFor("DBZ-6679")
-    public void testNonEmptyResultSetWithMineRangeAdvancesCorrectly() throws Exception {
+    @FixFor({ "DBZ-6679", "debezium/dbz#3039" })
+    public void testNonEmptyResultSetWithMineRangeRereadsBufferedTransactions() throws Exception {
         if (!isTransactionAbandonmentSupported()) {
             return;
         }
 
         try (var source = getChangeEventSource(getConfig().build())) {
-            final ResultSet rs = Mockito.mock(ResultSet.class);
-            Mockito.when(rs.next()).thenReturn(true, false);
-            Mockito.when(rs.getString(1)).thenReturn("101");
-            Mockito.when(rs.getString(2)).thenReturn("insert into \"DEBEZIUM\".\"ABC\"(\"ID\",\"DATA\") values ('1','test');");
-            Mockito.when(rs.getInt(3)).thenReturn(EventType.INSERT.getValue());
-            Mockito.when(rs.getTimestamp(eq(4), any(Calendar.class))).thenReturn(Timestamp.valueOf(LocalDateTime.now()));
-            // Every mined row carries an XID, and the Ehcache processed-transactions cache rejects a null key
-            Mockito.when(rs.getBytes(5)).thenReturn(new byte[]{ 1, 2, 3, 4, 5, 6, 7, 8 });
-            Mockito.when(rs.getString(7)).thenReturn("ABC");
-            Mockito.when(rs.getString(8)).thenReturn("DEBEZIUM");
-            Mockito.when(rs.getString(10)).thenReturn("AAAAAAAAAAAAAAAAAB");
+            final BufferedStreamingChangeEventSource mock = spyWithMinedRows(source, insertRow(101, XID_1));
 
-            final PreparedStatement ps = Mockito.mock(PreparedStatement.class);
-            Mockito.when(ps.executeQuery()).thenReturn(rs);
+            // The next mining step re-reads from the transaction's last event
+            final ProcessResult result = mock.process(Scn.valueOf(100), Scn.valueOf(200));
+            assertThat(result.miningSessionStartScn()).isEqualTo(Scn.valueOf(100));
+            assertThat(result.readStartScn()).isEqualTo(Scn.valueOf(100));
+        }
+    }
 
-            final BufferedStreamingChangeEventSource mock = Mockito.spy(source);
-            Mockito.doReturn(ps).when(mock).createQueryStatement();
+    @Test
+    @FixFor("debezium/dbz#3032")
+    public void testReadPositionResumesAfterEldestLastEvent() throws Exception {
+        if (!isTransactionAbandonmentSupported()) {
+            return;
+        }
 
-            final OracleConnection connection = connectionFactory.mainConnection();
-            Mockito.doReturn("CREATE TABLE DEBEZIUM.ABC (ID primary key(9,0), data varchar2(50))")
-                    .when(connection)
-                    .getTableMetadataDdl(Mockito.any(TableId.class));
-
-            final Table table = OracleRelationalMetadataFactory.INSTANCE.tableEditor()
-                    .tableId(TableId.parse(TestHelper.getDatabaseName() + ".DEBEZIUM.ABC"))
-                    .addColumn(OracleRelationalMetadataFactory.INSTANCE.columnEditor().name("ID").create())
-                    .addColumn(OracleRelationalMetadataFactory.INSTANCE.columnEditor().name("DATA").create())
-                    .setPrimaryKeyNames("ID").create();
-
-            Mockito.doReturn(table)
-                    .when(mock)
-                    .dispatchSchemaChangeEventAndGetTableForNewConfiguredTable(Mockito.any(TableId.class));
+        try (var source = getChangeEventSource(getConfig().build())) {
+            final BufferedStreamingChangeEventSource mock = spyWithMinedRows(source,
+                    insertRow(101, XID_1), insertRow(120, XID_1), insertRow(150, XID_2));
 
             final ProcessResult result = mock.process(Scn.valueOf(100), Scn.valueOf(200));
             assertThat(result.miningSessionStartScn()).isEqualTo(Scn.valueOf(100));
-            assertThat(result.readStartScn()).isEqualTo(Scn.valueOf(101));
+            assertThat(result.readStartScn()).isEqualTo(Scn.valueOf(119));
+        }
+    }
+
+    @Test
+    @FixFor("debezium/dbz#3039")
+    public void testReadPositionIsNotAdvancedPastEldestTransactionByRowsOfOtherTransactions() throws Exception {
+        if (!isTransactionAbandonmentSupported()) {
+            return;
+        }
+
+        try (var source = getChangeEventSource(getConfig().build())) {
+            // A later transaction's row advances the last processed SCN past the eldest transaction
+            final BufferedStreamingChangeEventSource mock = spyWithMinedRows(source, insertRow(101, XID_1), insertRow(150, XID_2));
+
+            final ProcessResult result = mock.process(Scn.valueOf(100), Scn.valueOf(200));
+            assertThat(result.miningSessionStartScn()).isEqualTo(Scn.valueOf(100));
+            assertThat(result.readStartScn()).isEqualTo(Scn.valueOf(100));
+        }
+    }
+
+    @Test
+    @FixFor("debezium/dbz#3032")
+    public void testLateRowIsCapturedWithoutDuplicatingReReadEvents() throws Exception {
+        if (!isTransactionAbandonmentSupported()) {
+            return;
+        }
+
+        try (var source = getChangeEventSource(getConfig().build())) {
+            // The row at SCN 103 is returned by LogMiner only after the row at SCN 150 was read
+            final BufferedStreamingChangeEventSource mock = spyWithMinedSteps(source,
+                    List.of(insertRow(101, XID_1), insertRow(150, XID_2)),
+                    List.of(insertRow(101, XID_1), insertRow(103, XID_1), insertRow(150, XID_2), commitRow(160, XID_1), commitRow(161, XID_2)));
+
+            final ProcessResult first = mock.process(Scn.valueOf(100), Scn.valueOf(155));
+            assertThat(first.readStartScn()).isEqualTo(Scn.valueOf(100));
+            mock.process(first.readStartScn(), Scn.valueOf(200));
+
+            Mockito.verify(dispatcher, Mockito.times(3)).dispatchDataChangeEvent(any(), any(), any());
+        }
+    }
+
+    @Test
+    @FixFor("debezium/dbz#3039")
+    public void testRereadOfTransactionWithoutStartDoesNotDuplicateEvents() throws Exception {
+        if (!isTransactionAbandonmentSupported()) {
+            return;
+        }
+
+        try (var source = getChangeEventSource(getConfig().build())) {
+            // The transaction's START was not mined, e.g. it was in progress when streaming started
+            // Each step returns the rows after the previous step's read position
+            final BufferedStreamingChangeEventSource mock = spyWithMinedSteps(source,
+                    List.of(insertRow(101, XID_1)),
+                    List.of(insertRow(101, XID_1), insertRow(102, XID_1)),
+                    List.of(insertRow(102, XID_1), commitRow(103, XID_1)));
+
+            final ProcessResult first = mock.process(Scn.valueOf(100), Scn.valueOf(150));
+            final ProcessResult second = mock.process(first.readStartScn(), Scn.valueOf(150));
+            mock.process(second.readStartScn(), Scn.valueOf(150));
+
+            Mockito.verify(dispatcher, Mockito.times(2)).dispatchDataChangeEvent(any(), any(), any());
+        }
+    }
+
+    @Test
+    @FixFor("debezium/dbz#3032")
+    public void testFullRereadOfTransactionWithoutStartDoesNotDuplicateEvents() throws Exception {
+        if (!isTransactionAbandonmentSupported()) {
+            return;
+        }
+
+        // Including internal events re-reads every transaction from the mining session start
+        final Configuration config = getConfig().with(OracleConnectorConfig.LOG_MINING_INCLUDE_INTERNAL_EVENTS, true).build();
+        try (var source = getChangeEventSource(config)) {
+            // The transaction's START was not mined, e.g. it was in progress when streaming started
+            final BufferedStreamingChangeEventSource mock = spyWithMinedSteps(source,
+                    List.of(insertRow(101, XID_1)),
+                    List.of(insertRow(101, XID_1), insertRow(102, XID_1)),
+                    List.of(insertRow(101, XID_1), insertRow(102, XID_1), commitRow(103, XID_1)));
+
+            final ProcessResult first = mock.process(Scn.valueOf(100), Scn.valueOf(150));
+            final ProcessResult second = mock.process(first.readStartScn(), Scn.valueOf(150));
+            mock.process(second.readStartScn(), Scn.valueOf(150));
+
+            Mockito.verify(dispatcher, Mockito.times(2)).dispatchDataChangeEvent(any(), any(), any());
+        }
+    }
+
+    @Test
+    @FixFor("debezium/dbz#3032")
+    public void testWindowMaxReReadsTransactionsWithinWindowWithoutDuplicatingEvents() throws Exception {
+        if (!isTransactionAbandonmentSupported()) {
+            return;
+        }
+
+        final Configuration config = getConfig().with(OracleConnectorConfig.LOG_MINING_WINDOW_MAX_MS, 60_000).build();
+        final LocalDateTime now = LocalDateTime.now();
+        try (var source = getChangeEventSource(config)) {
+            // The first transaction is older than the window, and the second started within it
+            final BufferedStreamingChangeEventSource mock = spyWithMinedSteps(source,
+                    List.of(insertRow(101, XID_1).at(now.minusHours(1)), insertRow(120, XID_2)),
+                    List.of(insertRow(120, XID_2), commitRow(210, XID_1)),
+                    List.of(insertRow(120, XID_2), commitRow(260, XID_2)));
+
+            final ProcessResult first = mock.process(Scn.valueOf(100), Scn.valueOf(200));
+            assertThat(first.miningSessionStartScn()).isEqualTo(Scn.valueOf(119));
+            assertThat(first.readStartScn()).isEqualTo(Scn.valueOf(119));
+
+            final ProcessResult second = mock.process(first.readStartScn(), Scn.valueOf(250));
+            mock.process(second.readStartScn(), Scn.valueOf(300));
+
+            Mockito.verify(dispatcher, Mockito.times(2)).dispatchDataChangeEvent(any(), any(), any());
+        }
+    }
+
+    @Test
+    @FixFor("debezium/dbz#3032")
+    public void testTransactionsAreReReadFromStartWhenInternalEventsAreIncluded() throws Exception {
+        if (!isTransactionAbandonmentSupported()) {
+            return;
+        }
+
+        final Configuration config = getConfig().with(OracleConnectorConfig.LOG_MINING_INCLUDE_INTERNAL_EVENTS, true).build();
+        try (var source = getChangeEventSource(config)) {
+            final BufferedStreamingChangeEventSource mock = spyWithMinedRows(source, insertRow(101, XID_1), insertRow(120, XID_1));
+
+            final ProcessResult result = mock.process(Scn.valueOf(100), Scn.valueOf(200));
+            assertThat(result.readStartScn()).isEqualTo(Scn.valueOf(100));
+        }
+    }
+
+    @Test
+    @FixFor("debezium/dbz#3032")
+    public void testTransactionsAreReReadFromStartAfterRollbackToSavepoint() throws Exception {
+        if (!isTransactionAbandonmentSupported()) {
+            return;
+        }
+
+        try (var source = getChangeEventSource(getConfig().build())) {
+            final BufferedStreamingChangeEventSource mock = spyWithMinedRows(source,
+                    insertRow(101, XID_1), insertRow(120, XID_1), rollbackToSavepointRow(130, XID_1));
+
+            // A rollback after the read position may have removed events that would not be re-read
+            final ProcessResult result = mock.process(Scn.valueOf(100), Scn.valueOf(200));
+            assertThat(result.readStartScn()).isEqualTo(Scn.valueOf(100));
+        }
+    }
+
+    @Test
+    @FixFor("debezium/dbz#3032")
+    @SuppressWarnings("deprecation")
+    public void testDeprecatedRereadTransactionsOptionHasNoEffect() throws Exception {
+        if (!isTransactionAbandonmentSupported()) {
+            return;
+        }
+
+        final Configuration config = getConfig().with(OracleConnectorConfig.LOG_MINING_BUFFER_REREAD_TRANSACTIONS, false).build();
+        try (var source = getChangeEventSource(config)) {
+            final BufferedStreamingChangeEventSource mock = spyWithMinedRows(source, insertRow(101, XID_1), insertRow(150, XID_2));
+
+            final ProcessResult result = mock.process(Scn.valueOf(100), Scn.valueOf(200));
+            assertThat(result.readStartScn()).isEqualTo(Scn.valueOf(100));
+        }
+    }
+
+    @Test
+    @FixFor({ "debezium/dbz#2046", "debezium/dbz#3032" })
+    public void testDeferredTransactionStartReadPositionAdvancesBlockByBlock() throws Exception {
+        if (!isTransactionAbandonmentSupported()) {
+            return;
+        }
+
+        final Configuration config = getConfig().with(OracleConnectorConfig.LOG_MINING_BUFFER_DEFERRED_TRANSACTION_START, true).build();
+        try (var source = getChangeEventSource(config)) {
+            final BufferedStreamingChangeEventSource mock = spyWithMinedRows(source, insertRow(101, XID_1), insertRow(150, XID_2));
+
+            final ProcessResult result = mock.process(Scn.valueOf(100), Scn.valueOf(200));
+            assertThat(result.miningSessionStartScn()).isEqualTo(Scn.valueOf(149));
+            assertThat(result.readStartScn()).isEqualTo(Scn.valueOf(150));
+        }
+    }
+
+    @Test
+    @FixFor("debezium/dbz#3039")
+    public void testDeferredTransactionStartRereadOfPromotedTransactionDoesNotDuplicateEvents() throws Exception {
+        final Configuration config = getConfig().with(OracleConnectorConfig.LOG_MINING_BUFFER_DEFERRED_TRANSACTION_START, true).build();
+        try (var source = getChangeEventSource(config)) {
+            source.processEvent(getStartLogMinerEventRow(1, TRANSACTION_ID_1));
+            source.processEvent(getInsertLogMinerEventRow(2, TRANSACTION_ID_1));
+            // A re-read returns the START of the promoted transaction again
+            source.processEvent(getStartLogMinerEventRow(1, TRANSACTION_ID_1));
+            source.processEvent(getInsertLogMinerEventRow(2, TRANSACTION_ID_1));
+
+            assertThat(source.getDeferredTransactionCount()).isZero();
+            assertTransactionEvents(source.getTransactionCache(), 1);
+
+            source.processEvent(getCommitLogMinerEventRow(3, TRANSACTION_ID_1));
+            Mockito.verify(dispatcher, Mockito.times(1)).dispatchDataChangeEvent(any(), any(), any());
+            assertThat(source.getDeferredTransactionCount()).isZero();
         }
     }
 
@@ -1540,6 +1729,86 @@ public abstract class AbstractBufferedLogMinerStreamingChangeEventSourceTest ext
                 .build();
     }
 
+    private static MinedRow insertRow(long scn, byte[] xid) {
+        return new MinedRow(scn, EventType.INSERT, xid, false, "insert into \"DEBEZIUM\".\"ABC\"(\"ID\",\"DATA\") values ('" + scn + "','test');", null);
+    }
+
+    private static MinedRow commitRow(long scn, byte[] xid) {
+        return new MinedRow(scn, EventType.COMMIT, xid, false, "commit;", null);
+    }
+
+    private static MinedRow rollbackToSavepointRow(long scn, byte[] xid) {
+        // The undo of the latest insert of the same row
+        return new MinedRow(scn, EventType.DELETE, xid, true, "", null);
+    }
+
+    private BufferedStreamingChangeEventSource spyWithMinedRows(BufferedStreamingChangeEventSource source, MinedRow... rows) throws Exception {
+        return spyWithMinedSteps(source, List.of(rows));
+    }
+
+    /**
+     * Creates a spy of the source whose consecutive mining steps return the given rows, one list per step.
+     */
+    @SafeVarargs
+    private BufferedStreamingChangeEventSource spyWithMinedSteps(BufferedStreamingChangeEventSource source, List<MinedRow>... steps) throws Exception {
+        final BufferedStreamingChangeEventSource mock = Mockito.spy(source);
+
+        final PreparedStatement[] statements = new PreparedStatement[steps.length];
+        for (int i = 0; i < steps.length; i++) {
+            final ResultSet rs = minedResultSet(steps[i]);
+            statements[i] = Mockito.mock(PreparedStatement.class);
+            Mockito.when(statements[i].executeQuery()).thenReturn(rs);
+        }
+        Mockito.doReturn(statements[0], Arrays.copyOfRange(statements, 1, statements.length, Object[].class))
+                .when(mock).createQueryStatement();
+
+        final OracleConnection connection = connectionFactory.mainConnection();
+        Mockito.doReturn("CREATE TABLE DEBEZIUM.ABC (ID primary key(9,0), data varchar2(50))")
+                .when(connection)
+                .getTableMetadataDdl(Mockito.any(TableId.class));
+
+        final Table table = OracleRelationalMetadataFactory.INSTANCE.tableEditor()
+                .tableId(TableId.parse(TestHelper.getDatabaseName() + ".DEBEZIUM.ABC"))
+                .addColumn(OracleRelationalMetadataFactory.INSTANCE.columnEditor().name("ID").create())
+                .addColumn(OracleRelationalMetadataFactory.INSTANCE.columnEditor().name("DATA").create())
+                .setPrimaryKeyNames("ID").create();
+
+        Mockito.doReturn(table)
+                .when(mock)
+                .dispatchSchemaChangeEventAndGetTableForNewConfiguredTable(Mockito.any(TableId.class));
+
+        return mock;
+    }
+
+    private static ResultSet minedResultSet(List<MinedRow> rows) throws SQLException {
+        final ResultSet rs = Mockito.mock(ResultSet.class);
+        final int[] index = { -1 };
+        Mockito.when(rs.next()).thenAnswer(invocation -> ++index[0] < rows.size());
+        Mockito.when(rs.getString(1)).thenAnswer(invocation -> String.valueOf(rows.get(index[0]).scn()));
+        Mockito.when(rs.getString(2)).thenAnswer(invocation -> rows.get(index[0]).redoSql());
+        Mockito.when(rs.getInt(3)).thenAnswer(invocation -> rows.get(index[0]).eventType().getValue());
+        Mockito.when(rs.getTimestamp(eq(4), any(Calendar.class))).thenAnswer(invocation -> {
+            final LocalDateTime changeTime = rows.get(index[0]).changeTime();
+            return Timestamp.valueOf(changeTime == null ? LocalDateTime.now() : changeTime);
+        });
+        // Every mined row carries an XID, and the Ehcache processed-transactions cache rejects a null key
+        Mockito.when(rs.getBytes(5)).thenAnswer(invocation -> rows.get(index[0]).xid());
+        Mockito.when(rs.getString(7)).thenAnswer(invocation -> rows.get(index[0]).eventType() == EventType.COMMIT ? null : "ABC");
+        Mockito.when(rs.getString(8)).thenAnswer(invocation -> rows.get(index[0]).eventType() == EventType.COMMIT ? null : "DEBEZIUM");
+        Mockito.when(rs.getString(10)).thenReturn("AAAAAAAAAAAAAAAAAB");
+        Mockito.when(rs.getInt(11)).thenAnswer(invocation -> rows.get(index[0]).rollback() ? 1 : 0);
+        return rs;
+    }
+
+    /**
+     * A row returned by a mining step, with the current time as its change time unless one is given.
+     */
+    private record MinedRow(long scn, EventType eventType, byte[] xid, boolean rollback, String redoSql, LocalDateTime changeTime) {
+        MinedRow at(LocalDateTime time) {
+            return new MinedRow(scn, eventType, xid, rollback, redoSql, time);
+        }
+    }
+
     // Helper class that permits exposing some protected methods for mocking
     protected static class BufferedStreamingChangeEventSource extends BufferedLogMinerStreamingChangeEventSource {
 
@@ -1586,6 +1855,12 @@ public abstract class AbstractBufferedLogMinerStreamingChangeEventSourceTest ext
             var field = AbstractLogMinerTransactionCache.class.getDeclaredField("lastEnqueuedEventByTransactionId");
             field.setAccessible(true);
             return (Map<String, LogMinerEvent>) field.get(this.getTransactionCache());
+        }
+
+        public int getDeferredTransactionCount() throws Exception {
+            var field = BufferedLogMinerStreamingChangeEventSource.class.getDeclaredField("deferredTransactions");
+            field.setAccessible(true);
+            return ((Map<?, ?>) field.get(this)).size();
         }
 
         @Override
