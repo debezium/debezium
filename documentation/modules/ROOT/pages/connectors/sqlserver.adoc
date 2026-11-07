@@ -3231,6 +3231,18 @@ Defaults to the JDBC driver's default fetch size.
 |An integer value that specifies the maximum amount of time (in milliseconds) to wait to obtain table locks when performing a snapshot. If table locks cannot be acquired in this time interval, the snapshot will fail (also see xref:sqlserver-snapshots[snapshots]).
 When set to `0` the connector will fail immediately when it cannot obtain the lock. Value `-1` indicates infinite waiting.
 
+|[[sqlserver-property-snapshot-retry-max]]<<sqlserver-property-snapshot-retry-max, `+snapshot.retry.max+`>>
+|`0`
+|The number of times a transient read failure of a single table or chunk may be retried during the snapshot. The budget is per retriable unit; only failures the connector classifies as retriable are retried. A retried table or chunk resumes from the last emitted key where possible so that rows are not emitted twice. Defaults to `0` (no retries).
+
+|[[sqlserver-property-snapshot-retry-total-max]]<<sqlserver-property-snapshot-retry-total-max, `+snapshot.retry.total.max+`>>
+|`0`
+|An optional ceiling on the total number of retries across all tables and chunks during a single snapshot. Defaults to `0` (no overall ceiling; the per-unit `snapshot.retry.max` budget governs on its own).
+
+|[[sqlserver-property-snapshot-retry-delay-ms]]<<sqlserver-property-snapshot-retry-delay-ms, `+snapshot.retry.delay.ms+`>>
+|`10000`
+|The number of milliseconds to wait before retrying a table or chunk read that failed with a retriable error during the snapshot.
+
 |[[sqlserver-property-snapshot-select-statement-overrides]]<<sqlserver-property-snapshot-select-statement-overrides, `+snapshot.select.statement.overrides+`>>
 |No default
 |Specifies the tables for which the connector uses custom `SELECT` statements to determine which rows to include in a snapshot.

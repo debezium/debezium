@@ -64,6 +64,61 @@ public class SnapshotChunkQueryBuilder {
     }
 
     /**
+     * Build a SELECT query that resumes a partially processed chunk strictly after the last emitted key.
+     * <p>
+     * The chunk's inclusive lower bound ({@code key >= lower}) is replaced by an exclusive bound on the
+     * last emitted key ({@code key > lastEmittedKey}) so that rows already emitted before a retry are not
+     * re-read; the chunk's upper bound is retained. This mirrors the resume mechanism of the incremental
+     * snapshot's chunk queries.
+     *
+     * @param chunk The snapshot chunk being retried
+     * @param keyColumns The key columns used for chunking
+     * @param baseSelect The base select statement (without WHERE for boundaries)
+     * @param lastEmittedKey The key of the last row emitted before the failed attempt
+     * @return Complete SELECT statement resuming after the last emitted key
+     */
+    public String buildChunkQueryResumingFrom(SnapshotChunk chunk, List<Column> keyColumns, String baseSelect, Object[] lastEmittedKey) {
+        final StringBuilder whereClause = new StringBuilder();
+
+        // Resume strictly after the last emitted key: key > lastEmittedKey
+        connectionChunkQueryBuilder.addLowerBound(keyColumns, lastEmittedKey, whereClause, false);
+
+        // Retain the chunk's upper bound: key < upperBound (or key <= upperBound for last chunk)
+        if (chunk.hasUpperBound()) {
+            whereClause.append(" AND ");
+            connectionChunkQueryBuilder.addUpperBound(keyColumns, chunk.getUpperBounds(), whereClause, chunk.isLastChunk());
+        }
+
+        return injectWhereClause(baseSelect, whereClause.toString(), keyColumns);
+    }
+
+    /**
+     * Build a SELECT query resuming a full (non-chunked) table read strictly after the last emitted key,
+     * ordered by the key columns.
+     *
+     * @param keyColumns The key columns of the table
+     * @param baseSelect The base select statement
+     * @param lastEmittedKey The key of the last row emitted before the failed attempt
+     * @return Complete SELECT statement resuming after the last emitted key
+     */
+    public String buildResumeQuery(List<Column> keyColumns, String baseSelect, Object[] lastEmittedKey) {
+        final StringBuilder whereClause = new StringBuilder();
+        connectionChunkQueryBuilder.addLowerBound(keyColumns, lastEmittedKey, whereClause, false);
+        return injectWhereClause(baseSelect, whereClause.toString(), keyColumns);
+    }
+
+    /**
+     * Appends an {@code ORDER BY} over the key columns to the given select, replacing an existing
+     * {@code ORDER BY}, so that the scan order is deterministic and a retry can resume from the last
+     * emitted key.
+     */
+    public String ensureOrderedByKey(String baseSelect, List<Column> keyColumns) {
+        final int orderByIndex = baseSelect.toUpperCase().indexOf(" ORDER BY ");
+        final String prefix = orderByIndex >= 0 ? baseSelect.substring(0, orderByIndex) : baseSelect;
+        return prefix + " ORDER BY " + orderByClause(keyColumns);
+    }
+
+    /**
      * Inject WHERE clause into base select, adding ORDER BY for key columns.
      */
     private String injectWhereClause(String baseSelect, String whereClause, List<Column> keyColumns) {
@@ -74,9 +129,7 @@ public class SnapshotChunkQueryBuilder {
         final StringBuilder result = new StringBuilder();
 
         // Build ORDER BY clause
-        final String orderBy = String.join(", ", keyColumns.stream()
-                .map(c -> jdbcConnection.quoteIdentifier(c.name()))
-                .toList());
+        final String orderBy = orderByClause(keyColumns);
 
         if (whereIndex >= 0) {
             // Existing WHERE - add with AND
@@ -127,6 +180,34 @@ public class SnapshotChunkQueryBuilder {
             connectionChunkQueryBuilder.bindBoundaryParams(
                     statement, keyColumns, chunk.getUpperBounds(), paramIndex, jdbcConnection);
         }
+    }
+
+    /**
+     * Prepare a statement built by {@link #buildChunkQueryResumingFrom} and bind the resume key and the
+     * chunk's upper bound parameters.
+     */
+    public void prepareChunkStatementResumingFrom(PreparedStatement statement, SnapshotChunk chunk, List<Column> keyColumns, Object[] lastEmittedKey)
+            throws SQLException {
+        int paramIndex = connectionChunkQueryBuilder.bindBoundaryParams(
+                statement, keyColumns, lastEmittedKey, 1, jdbcConnection);
+
+        if (chunk.hasUpperBound()) {
+            connectionChunkQueryBuilder.bindBoundaryParams(
+                    statement, keyColumns, chunk.getUpperBounds(), paramIndex, jdbcConnection);
+        }
+    }
+
+    /**
+     * Prepare a statement built by {@link #buildResumeQuery} and bind the resume key parameters.
+     */
+    public void prepareResumeStatement(PreparedStatement statement, List<Column> keyColumns, Object[] lastEmittedKey) throws SQLException {
+        connectionChunkQueryBuilder.bindBoundaryParams(statement, keyColumns, lastEmittedKey, 1, jdbcConnection);
+    }
+
+    private String orderByClause(List<Column> keyColumns) {
+        return String.join(", ", keyColumns.stream()
+                .map(c -> jdbcConnection.quoteIdentifier(c.name()))
+                .toList());
     }
 
 }
