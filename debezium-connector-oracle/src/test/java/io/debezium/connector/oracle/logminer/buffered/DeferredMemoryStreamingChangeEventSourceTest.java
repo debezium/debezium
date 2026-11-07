@@ -455,7 +455,9 @@ public class DeferredMemoryStreamingChangeEventSourceTest extends AbstractAsyncE
         final PreparedStatement ps = Mockito.mock(PreparedStatement.class);
         Mockito.when(ps.executeQuery()).thenReturn(rs);
 
-        try (var source = getChangeEventSource(getConfig().build())) {
+        // The window advances block-by-block only when buffered transactions are not re-read
+        final Configuration config = getConfig().with(OracleConnectorConfig.LOG_MINING_BUFFER_REREAD_TRANSACTIONS, false).build();
+        try (var source = getChangeEventSource(config)) {
             final BufferedStreamingChangeEventSource mock = Mockito.spy(source);
             Mockito.doReturn(ps).when(mock).createQueryStatement();
 
@@ -527,7 +529,9 @@ public class DeferredMemoryStreamingChangeEventSourceTest extends AbstractAsyncE
 
         Mockito.when(commitScn.getMaxCommittedScn()).thenReturn(Scn.valueOf(500));
 
-        try (var source = getChangeEventSource(getConfig().build())) {
+        // The window advances block-by-block only when buffered transactions are not re-read
+        final Configuration config = getConfig().with(OracleConnectorConfig.LOG_MINING_BUFFER_REREAD_TRANSACTIONS, false).build();
+        try (var source = getChangeEventSource(config)) {
             final BufferedStreamingChangeEventSource mock = Mockito.spy(source);
             Mockito.doReturn(ps).when(mock).createQueryStatement();
 

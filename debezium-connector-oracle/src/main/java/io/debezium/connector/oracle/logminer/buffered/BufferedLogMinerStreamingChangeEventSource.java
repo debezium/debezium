@@ -22,6 +22,7 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -429,6 +430,13 @@ public class BufferedLogMinerStreamingChangeEventSource extends AbstractLogMiner
         final String transactionId = event.getTransactionId();
         if (!isRecentlyProcessed(transactionId)) {
             if (getConfig().isDeferredLogMinerTransactionStartBehaviorEnabled() && !Strings.isNullOrEmpty(transactionId)) {
+                final Transaction transaction = getTransactionCache().getTransaction(transactionId);
+                if (transaction != null) {
+                    // The transaction was promoted and its rows are being re-read
+                    LOGGER.trace("Transaction {} is not yet committed and START event detected.", transactionId);
+                    getTransactionCache().resetTransactionToStart(transaction);
+                    return;
+                }
                 deferredTransactions.computeIfAbsent(transactionId, id -> {
                     LOGGER.trace("Deferring transaction {} start event.", id);
                     return new DeferredTransaction(id, event.getScn(), event.getChangeTime(),
@@ -913,8 +921,8 @@ public class BufferedLogMinerStreamingChangeEventSource extends AbstractLogMiner
         getMetrics().setOldestScnDetails(minCacheScn, minCacheScnChangeTime);
 
         if (getConfig().isDeferredLogMinerTransactionStartBehaviorEnabled()) {
-            // When using deferred transaction start behavior, the mining window should not be pinned
-            // by transactions in the cache. Always use a sliding window block-by-block.
+            // When using deferred transaction start behavior, the mining window slides block-by-block,
+            // unless in-flight transactions are re-read below.
             final Scn miningSessionStartScn = endScn.subtract(Scn.ONE);
 
             // The offset SCN must not advance past the oldest in-flight transaction's start SCN,
@@ -950,6 +958,15 @@ public class BufferedLogMinerStreamingChangeEventSource extends AbstractLogMiner
             }
 
             getMetrics().setOffsetScn(getOffsetContext().getScn());
+
+            if (getConfig().isLogMiningBufferRereadTransactions() && !oldestScn.isNull()) {
+                // Re-read in-flight transactions so a late row with a lower SCN is not skipped. Deferred transactions
+                // without DML pin it too, as the late row may be their first one.
+                final Scn rereadStartScn = oldestScn.subtract(Scn.ONE);
+                resetTransactionsForReread();
+                return new ProcessResult(rereadStartScn, rereadStartScn);
+            }
+
             return new ProcessResult(miningSessionStartScn, endScn);
         }
 
@@ -966,7 +983,15 @@ public class BufferedLogMinerStreamingChangeEventSource extends AbstractLogMiner
             getOffsetContext().setScn(miningSessionStartScn);
 
             getMetrics().setOffsetScn(getOffsetContext().getScn());
-            return new ProcessResult(miningSessionStartScn, getConfig().isLobEnabled() ? miningSessionStartScn : endScn);
+
+            // Out-of-line LOB/XML rows can arrive after rows with higher SCNs, so re-read buffered transactions.
+            // Only possible if the window still covers the eldest transaction's start.
+            final boolean rereadTransactions = getConfig().isLobEnabled()
+                    || (getConfig().isLogMiningBufferRereadTransactions() && miningSessionStartScn.compareTo(minCacheScn) < 0);
+            if (rereadTransactions) {
+                resetTransactionsForReread();
+            }
+            return new ProcessResult(miningSessionStartScn, rereadTransactions ? miningSessionStartScn : endScn);
         }
         else {
             // Cache has no values
@@ -980,6 +1005,15 @@ public class BufferedLogMinerStreamingChangeEventSource extends AbstractLogMiner
             getMetrics().setOffsetScn(getOffsetContext().getScn());
             return new ProcessResult(miningSessionStartScn, endScn);
         }
+    }
+
+    /**
+     * Resets the buffered transactions before they are re-read. The re-read replays each transaction from its
+     * first event, so its events are matched by position, including transactions whose START was never mined.
+     */
+    private void resetTransactionsForReread() {
+        final LogMinerTransactionCache<Transaction> cache = getTransactionCache();
+        cache.streamTransactionsAndReturn(Stream::toList).forEach(cache::resetTransactionToStart);
     }
 
     /**
