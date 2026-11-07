@@ -776,6 +776,12 @@
               <version>${version.okhttp}</version>
             </dependency>
             <dependency>
+                <groupId>io.opentelemetry</groupId>
+                <artifactId>opentelemetry-sdk-testing</artifactId>
+                <version>${version.opentelemetry}</version>
+                <scope>test</scope>
+            </dependency>
+            <dependency>
                 <groupId>io.opentelemetry.javaagent</groupId>
                 <artifactId>opentelemetry-testing-common</artifactId>
                 <version>${version.opentelemetry.testing}</version>
