@@ -211,7 +211,12 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
         /**
          * Inject a custom snapshotter, which allows for more control over snapshots.
          */
-        CUSTOM("custom");
+        CUSTOM("custom"),
+
+        /**
+         * Combines `when_needed` and `no_data`.
+         */
+        WHEN_NEEDED_NO_DATA("when_needed_no_data");
 
         private final String value;
 
