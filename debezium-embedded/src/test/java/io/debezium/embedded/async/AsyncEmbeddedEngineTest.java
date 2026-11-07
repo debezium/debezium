@@ -22,6 +22,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.Function;
 import java.util.function.Supplier;
@@ -1492,6 +1493,95 @@ public class AsyncEmbeddedEngineTest {
                 .atMost(5, TimeUnit.SECONDS)
                 .untilAsserted(() -> assertThat(latch.getCount())
                         .isEqualTo(0L));
+    }
+
+    @Test
+    void testOffsetIsCommittedUponCustomShutdownInBatch() throws Exception {
+        assertBatchShutdownCompletes(new DebeziumShutdown.Builder<ChangeEvent<SourceRecord, SourceRecord>>()
+                .after()
+                .custom(event -> event.record().value().value().equals("Generated line number 2"))
+                .build(), 2);
+    }
+
+    @Test
+    void testOffsetIsCommittedBeforeCustomShutdownInBatch() throws Exception {
+        assertBatchShutdownCompletes(new DebeziumShutdown.Builder<ChangeEvent<SourceRecord, SourceRecord>>()
+                .before()
+                .custom(event -> event.record().value().value().equals("Generated line number 2"))
+                .build(), 2);
+    }
+
+    /**
+     * Stops a converting engine with a batch consumer through the given shutdown strategy, which matches the line
+     * {@code triggeringLine}. The engine must complete successfully, and a second run must resume after that line.
+     */
+    private void assertBatchShutdownCompletes(DebeziumEngine.Shutdown<ChangeEvent<SourceRecord, SourceRecord>> shutdown, int triggeringLine)
+            throws Exception {
+        final Properties props = new Properties();
+        props.setProperty(ConnectorConfig.NAME_CONFIG, "debezium-engine");
+        props.setProperty(ConnectorConfig.TASKS_MAX_CONFIG, "1");
+        props.setProperty(ConnectorConfig.CONNECTOR_CLASS_CONFIG, FileStreamSourceConnector.class.getName());
+        props.setProperty(StandaloneConfig.OFFSET_STORAGE_FILE_FILENAME_CONFIG, OFFSET_STORE_PATH.toAbsolutePath().toString());
+        props.setProperty(WorkerConfig.OFFSET_COMMIT_INTERVAL_MS_CONFIG, "0");
+        props.setProperty(FileStreamSourceConnector.FILE_CONFIG, TEST_FILE_PATH.toAbsolutePath().toString());
+        props.setProperty(FileStreamSourceConnector.TOPIC_CONFIG, "testTopic");
+        DebeziumEngine.Builder<ChangeEvent<SourceRecord, SourceRecord>> builder = DebeziumEngine.create(Connect.class, Connect.class, Connect.class,
+                ConvertingAsyncEngineBuilderFactory.class.getName());
+
+        appendLinesToSource(NUMBER_OF_LINES);
+        final AtomicBoolean completedWithSuccess = new AtomicBoolean(false);
+        final AtomicReference<Throwable> completionError = new AtomicReference<>();
+
+        final DebeziumEngine<ChangeEvent<SourceRecord, SourceRecord>> firstIteration = builder
+                .using(props)
+                .shutdown(shutdown)
+                .using(new TestEngineConnectorCallback())
+                .using((success, message, error) -> {
+                    completedWithSuccess.set(success);
+                    completionError.set(error);
+                })
+                .notifying((records, committer) -> {
+                    for (ChangeEvent<SourceRecord, SourceRecord> record : records) {
+                        committer.markProcessed(record);
+                    }
+                    committer.markBatchFinished();
+                })
+                .build();
+
+        firstIteration.run();
+
+        assertThat(completionError.get()).isNull();
+        assertThat(completedWithSuccess.get()).isTrue();
+
+        CountDownLatch latch = new CountDownLatch(NUMBER_OF_LINES - triggeringLine);
+        final AtomicReference<Object> firstValue = new AtomicReference<>();
+
+        final DebeziumEngine<ChangeEvent<SourceRecord, SourceRecord>> secondIteration = builder
+                .using(new TestEngineConnectorCallback())
+                .using((success, message, error) -> {
+                })
+                .notifying((records, committer) -> {
+                    for (ChangeEvent<SourceRecord, SourceRecord> record : records) {
+                        firstValue.compareAndSet(null, record.value().value());
+                        latch.countDown();
+                        committer.markProcessed(record);
+                    }
+                    committer.markBatchFinished();
+                })
+                .build();
+
+        engineExecSrv.submit(() -> {
+            LoggingContext.forConnector(getClass().getSimpleName(), "", "engine");
+            secondIteration.run();
+        });
+
+        Awaitility.await()
+                .atMost(5, TimeUnit.SECONDS)
+                .untilAsserted(() -> assertThat(latch.getCount())
+                        .isEqualTo(0L));
+        assertThat(firstValue.get()).isEqualTo("Generated line number " + (triggeringLine + 1));
+
+        secondIteration.close();
     }
 
     @Test

@@ -74,8 +74,8 @@ public class ParallelSmtAndConvertBatchProcessor<R> extends AbstractRecordProces
                 convertor,
                 new BatchProcessor.ObservableProcessor<>(watcher,
                         new ShutdownChangeConsumer<>(
-                                DefaultShutdownHandler.create(shutdown.before(), runner, committer, configuration),
-                                DefaultShutdownHandler.create(shutdown.after(), runner, committer, configuration),
+                                DefaultShutdownHandler.create(shutdown.before(), runner, sourceCommitter, configuration),
+                                DefaultShutdownHandler.create(shutdown.after(), runner, sourceCommitter, configuration),
                                 userHandler, watcher)));
 
     }
