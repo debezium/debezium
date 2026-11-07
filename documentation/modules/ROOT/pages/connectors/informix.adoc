@@ -424,12 +424,47 @@ include::{partialsdir}/modules/all-connectors/con-connector-ad-hoc-snapshots.ado
 [id="debezium-informix-incremental-snapshots"]
 === Incremental snapshots
 
-include::{partialsdir}/modules/all-connectors/con-connector-incremental-snapshot.adoc[leveloffset=+1]
+include::{partialsdir}/modules/all-connectors/con-connector-incremental-snapshot.adoc[leveloffset=+1,tags=incremental-snapshots-abstract]
 
 [WARNING]
 ====
 The {prodname} connector for Informix does not support schema changes while an incremental snapshot is running.
 ====
+
+// Type: concept
+// ModuleID: debezium-informix-incremental-snapshot-overview
+[id="informix-incremental-snapshot-overview"]
+==== Overview of incremental snapshots
+
+include::{partialsdir}/modules/all-connectors/con-connector-incremental-snapshot.adoc[leveloffset=+1,tags=incremental-snapshots-overview]
+
+// Type: concept
+// ModuleID: debezium-informix-incremental-snapshot-process
+[id="informix-incremental-snapshot-process"]
+==== Incremental snapshot process
+
+include::{partialsdir}/modules/all-connectors/con-connector-incremental-snapshot.adoc[leveloffset=+1,tags=incremental-snapshots-process]
+
+// Type: concept
+// ModuleID: debezium-informix-incremental-snapshot-collisions
+[id="informix-incremental-snapshot-collisions"]
+==== How {prodname} resolves collisions among records with the same primary key
+
+include::{partialsdir}/modules/all-connectors/con-connector-incremental-snapshot.adoc[leveloffset=+1,tags=incremental-snapshots-collisions]
+
+// Type: concept
+// ModuleID: debezium-informix-incremental-snapshot-snapshot-window
+[id="informix-incremental-snapshot-snapshot-window"]
+==== Snapshot window
+
+include::{partialsdir}/modules/all-connectors/con-connector-incremental-snapshot.adoc[leveloffset=+1,tags=incremental-snapshots-snapshot-window]
+
+// Type: concept
+// ModuleID: debezium-informix-incremental-snapshot-initiation-methods
+[id="informix-incremental-snapshot-initiation-methods"]
+==== Methods for initiating an incremental snapshot
+
+include::{partialsdir}/modules/all-connectors/con-connector-incremental-snapshot.adoc[leveloffset=+1,tags=incremental-snapshots-initiation-methods]
 
 // Type: procedure
 [id="informix-triggering-an-incremental-snapshot"]
