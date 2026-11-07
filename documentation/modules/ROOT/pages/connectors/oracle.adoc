@@ -446,12 +446,47 @@ include::{partialsdir}/modules/all-connectors/con-connector-ad-hoc-snapshots.ado
 // ModuleID: debezium-oracle-incremental-snapshots
 [id="debezium-oracle-incremental-snapshots"]
 === Incremental snapshots
-include::{partialsdir}/modules/all-connectors/con-connector-incremental-snapshot.adoc[leveloffset=+3]
+include::{partialsdir}/modules/all-connectors/con-connector-incremental-snapshot.adoc[leveloffset=+3,tags=incremental-snapshots-abstract]
 
 [WARNING]
 ====
 The {prodname} connector for Oracle does not support schema changes while an incremental snapshot is running.
 ====
+
+// Type: concept
+// ModuleID: debezium-oracle-incremental-snapshot-overview
+[id="oracle-incremental-snapshot-overview"]
+==== Overview of incremental snapshots
+
+include::{partialsdir}/modules/all-connectors/con-connector-incremental-snapshot.adoc[leveloffset=+3,tags=incremental-snapshots-overview]
+
+// Type: concept
+// ModuleID: debezium-oracle-incremental-snapshot-process
+[id="oracle-incremental-snapshot-process"]
+==== Incremental snapshot process
+
+include::{partialsdir}/modules/all-connectors/con-connector-incremental-snapshot.adoc[leveloffset=+3,tags=incremental-snapshots-process]
+
+// Type: concept
+// ModuleID: debezium-oracle-incremental-snapshot-collisions
+[id="oracle-incremental-snapshot-collisions"]
+==== How {prodname} resolves collisions among records with the same primary key
+
+include::{partialsdir}/modules/all-connectors/con-connector-incremental-snapshot.adoc[leveloffset=+3,tags=incremental-snapshots-collisions]
+
+// Type: concept
+// ModuleID: debezium-oracle-incremental-snapshot-snapshot-window
+[id="oracle-incremental-snapshot-snapshot-window"]
+==== Snapshot window
+
+include::{partialsdir}/modules/all-connectors/con-connector-incremental-snapshot.adoc[leveloffset=+3,tags=incremental-snapshots-snapshot-window]
+
+// Type: concept
+// ModuleID: debezium-oracle-incremental-snapshot-initiation-methods
+[id="oracle-incremental-snapshot-initiation-methods"]
+==== Methods for initiating an incremental snapshot
+
+include::{partialsdir}/modules/all-connectors/con-connector-incremental-snapshot.adoc[leveloffset=+3,tags=incremental-snapshots-initiation-methods]
 
 // Type: procedure
 [id="oracle-triggering-an-incremental-snapshot"]
