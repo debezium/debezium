@@ -4564,6 +4564,33 @@ Continues processing and ignores the timeout.
 |The maximum time, in milliseconds, that the connector waits for an LSN flush operation to complete.
 If the operation does not complete within the specified interval, the connector takes the action configured in the xref:postgresql-property-lsn-flush-timeout-action[`lsn.flush.timeout.action`] property.
 
+|[[postgresql-property-database-shutdown-drain-timeout-ms]]<<postgresql-property-database-shutdown-drain-timeout-ms, `+database.shutdown.drain.timeout.ms+`>>
+|`0`
+|The maximum time, in milliseconds, that the connector continues to read the replication stream after the database server terminates the connector's regular JDBC connection with SQLSTATE `57P01` (`admin_shutdown`), for example, during a fast shutdown.
+A fast shutdown keeps replication connections open, so that the connector can receive and confirm the remaining changes.
+On PostgreSQL 17 and later, `pg_upgrade` can migrate a replication slot only if all of its changes are confirmed before the server stops.
+
+The timeout starts when the connector's periodic connection check detects `57P01`.
+The drain cannot start while the streaming thread is blocked dispatching records.
+
+The drain ends in one of three ways:
+
+* Quiet exit: The stream stays quiet for xref:postgresql-property-status-update-interval-ms[`status.update.interval.ms`], and the runtime commits the offset of the last tracked record.
+The connector then also confirms the last processed commit LSN.
+* Timeout: The timeout expires.
+The connector reports the original retriable `57P01` error.
+LSNs that the runtime already committed stay confirmed, but the last changes might stay unconfirmed, so `pg_upgrade` can reject the replication slot.
+* Failure: The replication stream closes, or a query on a regular connection fails because the server terminated the connection.
+The connector applies its normal error handling.
+Examples are a schema refresh, an xmin lookup (when xref:postgresql-property-xmin-fetch-interval-ms[`xmin.fetch.interval.ms`] is greater than `0`), an incremental snapshot, and the query that is set in xref:postgresql-property-heartbeat-action-query[`heartbeat.action.query`].
+If such a query fails before the connection check detects `57P01`, the drain never starts.
+
+The runtime commits offsets at the interval that is set by {link-kafka-docs}/#connectconfigs_offset.flush.interval.ms[`offset.flush.interval.ms`], which defaults to 60 seconds in Kafka Connect, and in Debezium Engine with its default commit policy.
+A timeout longer than the sum of that interval and `status.update.interval.ms`, plus time to process the remaining changes, is a safe margin.
+
+The connector ignores this property if xref:postgresql-property-lsn-flush-mode[`lsn.flush.mode`] is `manual`.
+The default value of `0` disables draining.
+
 |[[postgresql-property-retriable-restart-connector-wait-ms]]<<postgresql-property-retriable-restart-connector-wait-ms, `+retriable.restart.connector.wait.ms+`>>
 |10000 (10 seconds)
 |The number of milliseconds to wait before restarting a connector after a retriable error occurs.
