@@ -53,4 +53,16 @@ public interface JdbcType extends Type {
     default Object[] convertArray(Schema schema, Collection<?> values) {
         return values.toArray();
     }
+
+    /**
+     * Resolve the default value clause value.
+     *
+     * @param schema field schema, never {@code null}
+     * @param value the default value, should not be {@code null}
+     * @param columnName the name of the column the default value belongs to, may be {@code null}
+     * @return the formatted default value for the SQL statement as a string
+     */
+    default String getDefaultValueBinding(Schema schema, Object value, String columnName) {
+        return getDefaultValueBinding(schema, value);
+    }
 }

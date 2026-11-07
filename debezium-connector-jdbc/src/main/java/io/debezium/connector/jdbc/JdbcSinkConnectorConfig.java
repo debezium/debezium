@@ -298,11 +298,15 @@ public class JdbcSinkConnectorConfig implements SinkConnectorConfig {
             .withWidth(ConfigDef.Width.SHORT)
             .withImportance(ConfigDef.Importance.LOW)
             .withDefault(false)
-            .withDescription("Specifies whether temporal values that cannot be represented by the target database, " +
-                    "for example BC-era timestamps emitted by an Oracle source, are clamped to the target database's " +
-                    "minimum or maximum supported timestamp, mirroring how explicit infinity markers are handled. " +
+            .withDescription("Specifies whether the temporal values that the connector writes into rows are clamped to the target " +
+                    "database's minimum or maximum supported timestamp when the target database cannot represent them, for example BC-era " +
+                    "timestamps emitted by an Oracle source, mirroring how explicit infinity markers are handled. " +
                     "When set to false (the default), out-of-range values are passed to the target database unchanged " +
-                    "and may cause the write to fail.");
+                    "and may cause the write to fail. " +
+                    "This property does not apply to column defaults. " +
+                    "For MySQL, MariaDB, and SingleStore targets, an io.debezium.time.ZonedTimestamp column default that the target database " +
+                    "cannot represent is clamped to the target database's minimum or maximum supported timestamp, " +
+                    "regardless of this property.");
 
     public static final Field COLLECTION_TABLE_FORMAT_FIELD = Field.create(COLLECTION_TABLE_FORMAT)
             .withDisplayName("Format string using table name")
