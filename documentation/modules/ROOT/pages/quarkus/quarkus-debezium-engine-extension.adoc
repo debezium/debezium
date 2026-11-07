@@ -512,6 +512,45 @@ public class PostProcessorHandler {
 }
 ```
 
+== Shutdown Methods
+
+The `@DebeziumShutdown` annotation stops the {prodname} engine when a method returns `true` for a record.
+The method is declared in a CDI bean. It must not be `static` or `private`, it must return `boolean`, and it takes a single `org.apache.kafka.connect.source.SourceRecord` parameter:
+
+```java
+import io.debezium.runtime.DebeziumShutdown;
+import io.debezium.runtime.DebeziumShutdown.Phase;
+import jakarta.enterprise.context.ApplicationScoped;
+import org.apache.kafka.connect.source.SourceRecord;
+
+@ApplicationScoped
+public class StopAfterFirstOrder {
+
+    @DebeziumShutdown(Phase.AFTER)
+    public boolean stopAfterFirstOrder(SourceRecord record) {
+        return "topic.inventory.orders".equals(record.topic());
+    }
+}
+```
+
+The `Phase` value sets when the method is evaluated, relative to the consumer:
+
+- `Phase.BEFORE`: every record of a batch is evaluated before the batch is handed to the consumer. When the method returns `true`, the engine stops and the consumer does not receive that batch.
+- `Phase.AFTER`: every record of a batch is evaluated after the consumer has handled the batch. The consumer receives the whole batch. When the method returns `true`, the engine stops after that batch.
+
+The method runs on the {prodname} polling thread, so keep it fast.
+The engine stops on the first match. After that, the method is no longer called, also for the records that follow the match in the same batch.
+
+Only one method per phase is allowed. The build fails when more than one method uses the same phase.
+
+The method always receives the `SourceRecord`, even when the records are converted with a custom serialization.
+
+[NOTE]
+====
+This annotation is incubating, so its API can change in future releases.
+The shutdown is not scoped to an engine yet. It applies to every engine of the application.
+====
+
 == DevService Support
 
 Quarkus automatically provisions unconfigured services in dev and test modes using Dev Services.
