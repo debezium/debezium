@@ -427,7 +427,8 @@ public class RelationalSnapshotChangeEventSourceRetryTest {
         final TestSnapshotSource source = new TestSnapshotSource(cfg, factory, notificationService) {
             @Override
             protected void connectionPoolConnectionCreated(
-                    RelationalSnapshotContext<Partition, OffsetContext> snapshotContext, JdbcConnection connection) throws SQLException {
+                                                           RelationalSnapshotContext<Partition, OffsetContext> snapshotContext, JdbcConnection connection)
+                    throws SQLException {
                 throw pinFailure;
             }
         };
@@ -469,7 +470,8 @@ public class RelationalSnapshotChangeEventSourceRetryTest {
         final TestSnapshotSource source = new TestSnapshotSource(cfg, factory, notificationService) {
             @Override
             protected void connectionPoolConnectionCreated(
-                    RelationalSnapshotContext<Partition, OffsetContext> snapshotContext, JdbcConnection connection) throws SQLException {
+                                                           RelationalSnapshotContext<Partition, OffsetContext> snapshotContext, JdbcConnection connection)
+                    throws SQLException {
                 throw pinFailure;
             }
         };
