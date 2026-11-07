@@ -21,6 +21,8 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import org.apache.kafka.connect.errors.ConnectException;
 import org.postgresql.core.BaseConnection;
@@ -139,6 +141,12 @@ public class TypeRegistry {
     private int ltreeArrayOid = Integer.MIN_VALUE;
     private int tsVectorOid = Integer.MIN_VALUE;
 
+    // The registry instance is shared between the main, replication and pooled snapshot connections,
+    // so the logging state below may be accessed concurrently
+    private final Set<Integer> warnedUnknownOids = Collections.newSetFromMap(new ConcurrentHashMap<>());
+    private final Set<String> warnedUnknownTypeNames = Collections.newSetFromMap(new ConcurrentHashMap<>());
+    private final AtomicBoolean typeCollisionWarned = new AtomicBoolean(false);
+
     public TypeRegistry(PostgresConnection connection) {
         this(connection, Collections.emptySet());
     }
@@ -184,7 +192,12 @@ public class TypeRegistry {
             }
             PostgresType currentType = nameToType.get(qualifiedName);
             if (!currentType.equals(type)) {
-                LOGGER.warn("Type [oid:{}, name:{}] is already mapped", type.getOid(), qualifiedName);
+                LOGGER.debug("Type [oid:{}, name:{}] is already mapped", type.getOid(), qualifiedName);
+                if (typeCollisionWarned.compareAndSet(false, true)) {
+                    LOGGER.warn(
+                            "Type [oid:{}, name:{}] is already mapped (previously registered with oid:{}); further type re-mappings will be logged at DEBUG level",
+                            type.getOid(), qualifiedName, currentType.getOid());
+                }
             }
         }
 
@@ -252,7 +265,12 @@ public class TypeRegistry {
         if (r == null) {
             r = resolveUnknownType(oid);
             if (r == null) {
-                LOGGER.warn("Unknown OID {} requested", oid);
+                if (warnedUnknownOids.add(oid)) {
+                    LOGGER.warn("Unknown OID {} requested; further lookups of this OID will be logged at DEBUG level", oid);
+                }
+                else {
+                    LOGGER.debug("Unknown OID {} requested", oid);
+                }
                 r = PostgresType.UNKNOWN;
             }
         }
@@ -360,7 +378,12 @@ public class TypeRegistry {
                 : cleanParts[0];
         r = resolveUnknownType(cleanName);
         if (r == null) {
-            LOGGER.warn("Unknown type named {} requested", name);
+            if (warnedUnknownTypeNames.add(name)) {
+                LOGGER.warn("Unknown type named {} requested; further lookups of this name will be logged at DEBUG level", name);
+            }
+            else {
+                LOGGER.debug("Unknown type named {} requested", name);
+            }
             r = PostgresType.UNKNOWN;
         }
         return r;
