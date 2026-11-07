@@ -427,7 +427,42 @@ include::{partialsdir}/modules/all-connectors/con-connector-ad-hoc-snapshots.ado
 [id="sqlserver-incremental-snapshots"]
 === Incremental snapshots
 
-include::{partialsdir}/modules/all-connectors/con-connector-incremental-snapshot.adoc[leveloffset=+1]
+include::{partialsdir}/modules/all-connectors/con-connector-incremental-snapshot.adoc[leveloffset=+1,tags=incremental-snapshots-abstract]
+
+// Type: concept
+// ModuleID: debezium-sqlserver-incremental-snapshot-overview
+[id="sqlserver-incremental-snapshot-overview"]
+==== Overview of incremental snapshots
+
+include::{partialsdir}/modules/all-connectors/con-connector-incremental-snapshot.adoc[leveloffset=+1,tags=incremental-snapshots-overview]
+
+// Type: concept
+// ModuleID: debezium-sqlserver-incremental-snapshot-process
+[id="sqlserver-incremental-snapshot-process"]
+==== Incremental snapshot process
+
+include::{partialsdir}/modules/all-connectors/con-connector-incremental-snapshot.adoc[leveloffset=+1,tags=incremental-snapshots-process]
+
+// Type: concept
+// ModuleID: debezium-sqlserver-incremental-snapshot-collisions
+[id="sqlserver-incremental-snapshot-collisions"]
+==== How {prodname} resolves collisions among records with the same primary key
+
+include::{partialsdir}/modules/all-connectors/con-connector-incremental-snapshot.adoc[leveloffset=+1,tags=incremental-snapshots-collisions]
+
+// Type: concept
+// ModuleID: debezium-sqlserver-incremental-snapshot-snapshot-window
+[id="sqlserver-incremental-snapshot-snapshot-window"]
+==== Snapshot window
+
+include::{partialsdir}/modules/all-connectors/con-connector-incremental-snapshot.adoc[leveloffset=+1,tags=incremental-snapshots-snapshot-window]
+
+// Type: concept
+// ModuleID: debezium-sqlserver-incremental-snapshot-initiation-methods
+[id="sqlserver-incremental-snapshot-initiation-methods"]
+==== Methods for initiating an incremental snapshot
+
+include::{partialsdir}/modules/all-connectors/con-connector-incremental-snapshot.adoc[leveloffset=+1,tags=incremental-snapshots-initiation-methods]
 
 // Type: concept
 [id="sqlserver-collation-considerations"]

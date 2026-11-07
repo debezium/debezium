@@ -351,7 +351,7 @@ include::{partialsdir}/modules/all-connectors/con-connector-ad-hoc-snapshots.ado
 [id="debezium-mongodb-incremental-snapshots"]
 === Incremental snapshots
 
-include::{partialsdir}/modules/all-connectors/con-connector-incremental-snapshot.adoc[leveloffset=+3]
+include::{partialsdir}/modules/all-connectors/con-connector-incremental-snapshot.adoc[leveloffset=+3,tags=incremental-snapshots-abstract]
 
 [WARNING]
 ====
@@ -362,9 +362,49 @@ When performing incremental snapshots, it's best to set the primary key to a dat
 For more information about BSON string types in MongoDB, see the https://www.mongodb.com/docs/manual/reference/bson-types/#string/[MongoDB documentation]).
 ====
 
+// Type: concept
+// ModuleID: debezium-mongodb-incremental-snapshot-overview
+[id="mongodb-incremental-snapshot-overview"]
+==== Overview of incremental snapshots
+
+include::{partialsdir}/modules/all-connectors/con-connector-incremental-snapshot.adoc[leveloffset=+3,tags=incremental-snapshots-overview]
+
+// Type: concept
+// ModuleID: debezium-mongodb-incremental-snapshot-process
+[id="mongodb-incremental-snapshot-process"]
+==== Incremental snapshot process
+
+include::{partialsdir}/modules/all-connectors/con-connector-incremental-snapshot.adoc[leveloffset=+3,tags=incremental-snapshots-process]
+
+// Type: concept
+// ModuleID: debezium-mongodb-incremental-snapshot-collisions
+[id="mongodb-incremental-snapshot-collisions"]
+==== How {prodname} resolves collisions among records with the same primary key
+
+include::{partialsdir}/modules/all-connectors/con-connector-incremental-snapshot.adoc[leveloffset=+3,tags=incremental-snapshots-collisions]
+
+// Type: concept
+// ModuleID: debezium-mongodb-incremental-snapshot-snapshot-window
+[id="mongodb-incremental-snapshot-snapshot-window"]
+==== Snapshot window
+
+include::{partialsdir}/modules/all-connectors/con-connector-incremental-snapshot.adoc[leveloffset=+3,tags=incremental-snapshots-snapshot-window]
+
+Although incremental snapshot queries return documents sorted by `_id`, the connector does not preserve that order when emitting incremental snapshot records, even when xref:mongodb-property-snapshot-max-threads[`snapshot.max.threads`] is set to `1`.
+If the connector restarts during an incremental snapshot, or receives a `resume-snapshot` signal after a `pause-snapshot` signal, it re-reads the current snapshot window to avoid skipping documents that have not been emitted.
+Re-reading the window can produce duplicate `read` events for documents already emitted, consistent with at-least-once delivery.
+The potential replay volume scales with the window size, which is based on the product of xref:mongodb-property-incremental-snapshot-chunk-size[`incremental.snapshot.chunk.size`] and xref:mongodb-property-snapshot-max-threads[`snapshot.max.threads`].
+
 .Incremental snapshots for sharded clusters
 
 To use incremental snapshots with sharded MongoDB clusters, you must set xref:mongodb-property-incremental-snapshot-chunk-size[`incremental.snapshot.chunk.size`] to a value that is high enough to compensate for the link:https://www.mongodb.com/docs/manual/administration/change-streams-production-recommendations/#sharded-clusters[increased complexity] of change stream pipelines.
+
+// Type: concept
+// ModuleID: debezium-mongodb-incremental-snapshot-initiation-methods
+[id="mongodb-incremental-snapshot-initiation-methods"]
+==== Methods for initiating an incremental snapshot
+
+include::{partialsdir}/modules/all-connectors/con-connector-incremental-snapshot.adoc[leveloffset=+3,tags=incremental-snapshots-initiation-methods]
 
 // Type: procedure
 [id="mongodb-triggering-an-incremental-snapshot"]
