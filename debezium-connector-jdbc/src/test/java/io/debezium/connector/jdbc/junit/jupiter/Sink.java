@@ -211,7 +211,7 @@ public class Sink extends JdbcConnectionProvider {
             case ORACLE:
                 commands.add("bash");
                 commands.add("-c");
-                commands.add("echo \"select * from " + tableName + ";\" | sqlplus debezium/dbz@ORCLPDB1");
+                commands.add("echo \"select * from " + tableName + ";\" | sqlplus debezium/dbz@" + JdbcOracleContainer.getPdbName());
                 break;
             case SQLSERVER:
                 commands.add("/opt/mssql-tools/bin/sqlcmd");

@@ -39,7 +39,6 @@ import org.testcontainers.containers.JdbcDatabaseContainer;
 import org.testcontainers.containers.MSSQLServerContainer;
 import org.testcontainers.containers.MySQLContainer;
 import org.testcontainers.containers.Network;
-import org.testcontainers.containers.OracleContainer;
 import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.lifecycle.Startable;
 import org.testcontainers.lifecycle.Startables;
@@ -47,6 +46,7 @@ import org.testcontainers.utility.DockerImageName;
 
 import io.debezium.connector.jdbc.junit.PostgresExtensionUtils;
 import io.debezium.connector.jdbc.junit.TestHelper;
+import io.debezium.connector.jdbc.junit.jupiter.JdbcOracleContainer;
 import io.debezium.connector.jdbc.junit.jupiter.WithPostgresExtension;
 import io.debezium.connector.jdbc.junit.jupiter.e2e.ForSource;
 import io.debezium.connector.jdbc.junit.jupiter.e2e.ForSourceNoMatrix;
@@ -83,10 +83,6 @@ public class SourcePipelineInvocationContextProvider implements BeforeAllCallbac
 
     private static final String SQLSERVER_IMAGE_NAME = "mcr.microsoft.com/mssql/server:2022-latest";
     private static final String SQLSERVER_PASSWORD = "Debezium1!";
-
-    private static final String ORACLE_IMAGE_NAME = "quay.io/rh_integration/dbz-oracle:19.3.0";
-    private static final String ORACLE_USERNAME = "debezium";
-    private static final String ORACLE_PASSWORD = "dbz";
 
     private static final Network network = Network.SHARED;
 
@@ -422,12 +418,8 @@ public class SourcePipelineInvocationContextProvider implements BeforeAllCallbac
                 containers.put(sourceType, container);
             }
             else if (SourceType.ORACLE.equals(sourceType)) {
-                final JdbcDatabaseContainer<?> container = new OracleContainer(
-                        DockerImageName.parse(ORACLE_IMAGE_NAME).asCompatibleSubstituteFor("gvenzl/oracle-xe"))
+                final JdbcDatabaseContainer<?> container = new JdbcOracleContainer(true)
                         .withNetwork(network)
-                        .withUsername(ORACLE_USERNAME)
-                        .withPassword(ORACLE_PASSWORD)
-                        .withDatabaseName("ORCLPDB1")
                         .withNetworkAliases(sourceType.getValue())
                         .withEnv("TZ", TestHelper.getSourceTimeZone());
                 containers.put(sourceType, container);

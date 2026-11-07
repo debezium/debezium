@@ -38,6 +38,7 @@ import io.debezium.connector.jdbc.JdbcSinkConnectorConfig;
 import io.debezium.connector.jdbc.JdbcSinkConnectorTask;
 import io.debezium.connector.jdbc.JdbcSinkTaskTestContext;
 import io.debezium.connector.jdbc.junit.TestHelper;
+import io.debezium.connector.jdbc.junit.jupiter.JdbcOracleContainer;
 import io.debezium.connector.jdbc.junit.jupiter.e2e.source.Source;
 import io.debezium.testing.testcontainers.ConnectorConfiguration;
 
@@ -280,8 +281,8 @@ public abstract class AbstractJdbcSinkIT extends AbstractBaseJdbcSinkTest {
                 break;
             case ORACLE:
                 sourceConfig.with("connector.class", "io.debezium.connector.oracle.OracleConnector");
-                sourceConfig.with("database.dbname", "ORCLCDB");
-                sourceConfig.with("database.pdb.name", "ORCLPDB1");
+                sourceConfig.with("database.dbname", JdbcOracleContainer.getCdbName());
+                sourceConfig.with("database.pdb.name", JdbcOracleContainer.getPdbName());
                 sourceConfig.with("database.port", "1521");
                 sourceConfig.with("database.password", "dbz");
                 sourceConfig.with("database.user", "c##dbzuser");
