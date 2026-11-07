@@ -1,12 +1,20 @@
+=== Incremental snapshots
+
+tag::incremental-snapshots-abstract[]
 To provide flexibility in managing snapshots, {prodname} includes a supplementary snapshot mechanism, known as _incremental snapshotting_.
 Incremental snapshots rely on the {prodname} mechanism for {link-prefix}:{link-signalling}#sending-signals-to-a-debezium-connector[sending signals to a {prodname} connector].
 ifdef::community[]
 Incremental snapshots are based on the link:https://github.com/debezium/debezium-design-documents/blob/main/DDD-3.md[DDD-3] design document.
 endif::community[]
+end::incremental-snapshots-abstract[]
 
+==== Overview of incremental snapshots
+
+tag::incremental-snapshots-overview[]
 In an incremental snapshot, instead of capturing the full state of a database all at once, as in an initial snapshot, {prodname} captures each {data-collection} in phases, in a series of configurable chunks.
 You can specify the {data-collection}s that you want the snapshot to capture and the xref:{context}-property-incremental-snapshot-chunk-size[size of each chunk].
 The chunk size determines the number of rows that the snapshot collects during each fetch operation on the database.
+
 The default chunk size for incremental snapshots is 1024 rows.
 
 As an incremental snapshot proceeds, {prodname} uses watermarks to track its progress, maintaining a record of each {data-collection} row that it captures.
@@ -18,27 +26,39 @@ This phased approach to capturing data provides the following advantages over th
   After the process resumes, the snapshot begins at the point where it stopped, rather than recapturing the {data-collection} from the beginning.
 * You can run an incremental snapshot on demand at any time, and repeat the process as needed to adapt to database updates.
   For example, you might re-run a snapshot after you modify the connector configuration to add a {data-collection} to its xref:{context}-property-{data-collection}-include-list[`{data-collection}.include.list`] property.
+end::incremental-snapshots-overview[]
 
-.Incremental snapshot process
+==== Incremental snapshot process
+
+tag::incremental-snapshots-process[]
 When you run an incremental snapshot, {prodname} sorts each {data-collection} by primary key and then splits the {data-collection} into chunks based on the xref:{context}-property-incremental-snapshot-chunk-size[configured chunk size].
 Working chunk by chunk, it then captures each {data-collection} row in a chunk.
+
 For each row that it captures, the snapshot emits a `READ` event.
 That event represents the value of the row when the snapshot for the chunk began.
 
 As a snapshot proceeds, it’s likely that other processes continue to access the database, potentially modifying {data-collection} records.
 To reflect such changes, `INSERT`, `UPDATE`, or `DELETE` operations are committed to the transaction log as per usual.
 Similarly, the ongoing {prodname} streaming process continues to detect these change events and emits corresponding change event records to Kafka.
+end::incremental-snapshots-process[]
 
-.How {prodname} resolves collisions among records with the same primary key
+==== How {prodname} resolves collisions among records with the same primary key
+
+tag::incremental-snapshots-collisions[]
 In some cases, the `UPDATE` or `DELETE` events that the streaming process emits are received out of sequence.
 That is, the streaming process might emit an event that modifies a {data-collection} row before the snapshot captures the chunk that contains the `READ` event for that row.
 When the snapshot eventually emits the corresponding `READ` event for the row, its value is already superseded.
+
 To ensure that incremental snapshot events that arrive out of sequence are processed in the correct logical order, {prodname} employs a buffering scheme for resolving collisions.
 Only after collisions between the snapshot events and the streamed events are resolved does {prodname} emit an event record to Kafka.
+end::incremental-snapshots-collisions[]
 
-.Snapshot window
+==== Snapshot window
+
+tag::incremental-snapshots-snapshot-window[]
 To assist in resolving collisions between late-arriving `READ` events and streamed events that modify the same {data-collection} row, {prodname} employs a so-called _snapshot window_.
 The snapshot window demarcates the interval during which an incremental snapshot captures data for a specified {data-collection} chunk.
+
 Before the snapshot window for a chunk opens, {prodname} follows its usual behavior and emits events from the transaction log directly downstream to the target Kafka topic.
 But from the moment that the snapshot for a particular chunk opens, until it closes, {prodname} performs a de-duplication step to resolve collisions between events that have the same primary key..
 
@@ -64,8 +84,14 @@ Write permission is unnecessary only for connectors that can be configured to pe
 (xref:mariadb-read-only-incremental-snapshots[MariaDB], xref:mysql-read-only-incremental-snapshots[MySQL], or xref:postgresql-read-only-incremental-snapshots[PostgreSQL]).
 endif::community[]
 ====
+end::incremental-snapshots-snapshot-window[]
 
-Currently, you can use either of the following methods to initiate an incremental snapshot:
+==== Methods for initiating an incremental snapshot
+
+tag::incremental-snapshots-initiation-methods[]
+To initiate an incremental snapshot, you send a signal to the connector.
+Currently, you can use either of the following methods to send the signal:
 
 * xref:{context}-triggering-an-incremental-snapshot[Send an ad hoc snapshot signal to the signaling {data-collection} on the source database].
 * xref:{context}-triggering-an-incremental-snapshot-kafka[Send a message to a configured Kafka signaling topic].
+end::incremental-snapshots-initiation-methods[]
