@@ -123,7 +123,42 @@ include::{partialsdir}/modules/all-connectors/con-connector-ad-hoc-snapshots.ado
 [id="debezium-mysql-incremental-snapshots"]
 === Incremental snapshots
 
-include::{partialsdir}/modules/all-connectors/con-connector-incremental-snapshot.adoc[leveloffset=+1]
+include::{partialsdir}/modules/all-connectors/con-connector-incremental-snapshot.adoc[leveloffset=+1,tags=incremental-snapshots-abstract]
+
+// Type: concept
+// ModuleID: debezium-mysql-incremental-snapshot-overview
+[id="mysql-incremental-snapshot-overview"]
+==== Overview of incremental snapshots
+
+include::{partialsdir}/modules/all-connectors/con-connector-incremental-snapshot.adoc[leveloffset=+1,tags=incremental-snapshots-overview]
+
+// Type: concept
+// ModuleID: debezium-mysql-incremental-snapshot-process
+[id="mysql-incremental-snapshot-process"]
+==== Incremental snapshot process
+
+include::{partialsdir}/modules/all-connectors/con-connector-incremental-snapshot.adoc[leveloffset=+1,tags=incremental-snapshots-process]
+
+// Type: concept
+// ModuleID: debezium-mysql-incremental-snapshot-collisions
+[id="mysql-incremental-snapshot-collisions"]
+==== How {prodname} resolves collisions among records with the same primary key
+
+include::{partialsdir}/modules/all-connectors/con-connector-incremental-snapshot.adoc[leveloffset=+1,tags=incremental-snapshots-collisions]
+
+// Type: concept
+// ModuleID: debezium-mysql-incremental-snapshot-snapshot-window
+[id="mysql-incremental-snapshot-snapshot-window"]
+==== Snapshot window
+
+include::{partialsdir}/modules/all-connectors/con-connector-incremental-snapshot.adoc[leveloffset=+1,tags=incremental-snapshots-snapshot-window]
+
+// Type: concept
+// ModuleID: debezium-mysql-incremental-snapshot-initiation-methods
+[id="mysql-incremental-snapshot-initiation-methods"]
+==== Methods for initiating an incremental snapshot
+
+include::{partialsdir}/modules/all-connectors/con-connector-incremental-snapshot.adoc[leveloffset=+1,tags=incremental-snapshots-initiation-methods]
 
 // Type: procedure
 [id="mysql-triggering-an-incremental-snapshot"]
