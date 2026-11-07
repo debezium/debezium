@@ -2680,7 +2680,7 @@ By enabling heartbeats, you help to ensure that the connector sends the latest o
 |No default
 |Specifies a query that the connector executes on the source database when the connector sends a heartbeat message.
 
-This is useful for resolving the situation where capturing changes from a low-traffic database on the same host as a high-traffic database prevents {prodname} from updating its last commited/restart LSN before the physical log files rotate.
+This is useful for resolving the situation where capturing changes from a low-traffic database on the same host as a high-traffic database prevents {prodname} from updating its last committed/restart LSN before the physical log files rotate.
 To address this situation, create a heartbeat table in the low-traffic database, and set this property to a statement that inserts records into that table, for example:
 
 `INSERT INTO test_heartbeat_table (text) VALUES ('test_heartbeat')`
