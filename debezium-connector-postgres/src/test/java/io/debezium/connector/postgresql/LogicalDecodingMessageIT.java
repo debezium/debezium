@@ -14,6 +14,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 
+import java.io.StringReader;
 import java.sql.SQLException;
 import java.util.Base64;
 import java.util.List;
@@ -24,8 +25,10 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.postgresql.PGConnection;
 
 import io.debezium.config.Configuration;
+import io.debezium.connector.postgresql.connection.PostgresConnection;
 import io.debezium.connector.postgresql.junit.SkipWhenDecoderPluginNameIsNot;
 import io.debezium.data.Envelope;
 import io.debezium.doc.FixFor;
@@ -83,6 +86,35 @@ public class LogicalDecodingMessageIT extends AbstractAsyncEngineConnectorTest {
         List<SourceRecord> logicalMessageRecords = records.recordsForTopic(topicName("message"));
         assertThat(insertRecords).hasSize(1);
         assertNull(logicalMessageRecords);
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2901")
+    @SkipWhenDecoderPluginNameIsNot(value = SkipWhenDecoderPluginNameIsNot.DecoderPluginName.PGOUTPUT, reason = "Only supported on PgOutput")
+    @SkipWhenDatabaseVersion(check = LESS_THAN, major = 14, minor = 0, reason = "Message not supported for PG version < 14")
+    public void shouldResetLsnEventCountForTransactionalMessageAfterCopy() throws Exception {
+        TestHelper.execute(SETUP_TABLES_STMT);
+        start(PostgresConnector.class, TestHelper.defaultConfig().build());
+        assertConnectorIsRunning();
+        waitForSnapshotToBeCompleted();
+
+        try (PostgresConnection connection = TestHelper.create()) {
+            connection.setAutoCommit(false);
+            final var copyData = """
+                    1\t1
+                    2\t2
+                    """;
+            connection.connection().unwrap(PGConnection.class).getCopyAPI()
+                    .copyIn("COPY s1.a (pk, aa) FROM STDIN", new StringReader(copyData));
+            connection.executeWithoutCommitting("SELECT pg_logical_emit_message(true, 'copy', 'checkpoint');");
+            connection.commit();
+        }
+
+        final var records = consumeRecordsByTopic(3);
+        final var copyOffset = records.recordsForTopic(topicName("s1.a")).get(1).sourceOffset();
+        final var messageOffset = records.recordsForTopic(topicName("message")).get(0).sourceOffset();
+        assertThat(copyOffset.get(PostgresOffsetContext.LSN_EVENTS_PROCESSED_KEY)).isEqualTo(2L);
+        assertThat(messageOffset.get(PostgresOffsetContext.LSN_EVENTS_PROCESSED_KEY)).isEqualTo(1L);
     }
 
     @Test
