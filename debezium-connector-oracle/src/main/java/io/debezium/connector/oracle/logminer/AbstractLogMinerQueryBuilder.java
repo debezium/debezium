@@ -198,7 +198,8 @@ public abstract class AbstractLogMinerQueryBuilder implements LogMinerQueryBuild
      */
     protected String getTableNamePredicate() {
         // The name of the column in the V$LOGMNR_CONTENTS view that represents the schema and table names.
-        final String fieldName = "SEG_OWNER || '.' || TABLE_NAME";
+        final String concatenatedFieldName = "SEG_OWNER || '.' || TABLE_NAME";
+        final String tableOnlyFieldName = "TABLE_NAME";
 
         final String includeList = connectorConfig.tableIncludeList();
         final String excludeList = connectorConfig.tableExcludeList();
@@ -213,6 +214,7 @@ public abstract class AbstractLogMinerQueryBuilder implements LogMinerQueryBuild
         else if (LogMiningQueryFilterMode.IN.equals(queryFilterMode)) {
             final List<String> includeTableList = getTableIncludeExcludeListAsInValueList(includeList);
             final List<String> excludeTableList = getTableIncludeExcludeListAsInValueList(excludeList);
+            final boolean upperAndConcatenateSchema = connectorConfig.isLogMiningQueryFilterSchemaTableConcatenate();
             final StringBuilder predicate = new StringBuilder();
             // Makes sure we get rows that have no TABLE_NAME or that have had an issue resolving the
             // table's object identifier due to a recent schema change causing a dictionary mismatch.
@@ -227,23 +229,38 @@ public abstract class AbstractLogMinerQueryBuilder implements LogMinerQueryBuild
 
             getSignalDataCollectionId(connectorConfig).ifPresent(signalTableId -> {
                 if (!tableIncludeListContains(includeTableList, signalTableId)) {
-                    predicate.append("UPPER(")
-                            .append(fieldName)
-                            .append(") = '")
-                            .append(signalTableId.schema().toUpperCase())
-                            .append('.')
-                            .append(signalTableId.table().toUpperCase())
-                            .append("' OR ");
+                    if (upperAndConcatenateSchema) {
+                        predicate.append("UPPER(")
+                                .append(concatenatedFieldName)
+                                .append(") = '")
+                                .append(signalTableId.schema().toUpperCase())
+                                .append('.')
+                                .append(signalTableId.table().toUpperCase())
+                                .append("' OR ");
+                    }
+                    else {
+                        predicate.append(tableOnlyFieldName).append(" = '").append(signalTableId.table()).append("' OR ");
+                    }
                 }
             });
 
-            predicate.append(IncludeExcludeInClause.builder()
-                    .withField(fieldName)
+            final IncludeExcludeInClause inClause = IncludeExcludeInClause.builder()
                     .withFilterMode(queryFilterMode)
-                    .withIncludeValues(includeTableList)
-                    .withExcludeValues(excludeTableList)
-                    .caseInsensitive()
-                    .build());
+                    .caseInsensitive();
+            if (upperAndConcatenateSchema) {
+                predicate.append(inClause
+                        .withField(concatenatedFieldName)
+                        .withIncludeValues(includeTableList)
+                        .withExcludeValues(excludeTableList)
+                        .build());
+            }
+            else {
+                predicate.append(existsFromDual(inClause
+                        .withField(tableOnlyFieldName)
+                        .withIncludeValues(getTableNamesOnly(includeTableList))
+                        .withExcludeValues(getTableNamesOnly(excludeTableList))
+                        .build()));
+            }
             predicate.append(")");
             return predicate.toString();
         }
@@ -265,7 +282,7 @@ public abstract class AbstractLogMinerQueryBuilder implements LogMinerQueryBuild
             getSignalDataCollectionId(connectorConfig).ifPresent(signalTableId -> {
                 if (!matches(includeTableList, signalTableId.identifier())) {
                     predicate.append("UPPER(")
-                            .append(fieldName)
+                            .append(concatenatedFieldName)
                             .append(") = '")
                             .append(signalTableId.schema().toUpperCase())
                             .append('.')
@@ -275,7 +292,7 @@ public abstract class AbstractLogMinerQueryBuilder implements LogMinerQueryBuild
             });
 
             predicate.append(IncludeExcludeRegExpLike.builder()
-                    .withField(fieldName)
+                    .withField(concatenatedFieldName)
                     .withFilterMode(queryFilterMode)
                     .withIncludeValues(includeTableList)
                     .withExcludeValues(excludeTableList)
@@ -316,7 +333,7 @@ public abstract class AbstractLogMinerQueryBuilder implements LogMinerQueryBuild
             final StringBuilder predicate = new StringBuilder();
             predicate.append("(").append(fieldName).append(" IS NULL OR ");
 
-            predicate.append(IncludeExcludeInClause.builder()
+            final String inClause = IncludeExcludeInClause.builder()
                     .withField(fieldName)
                     .withFilterMode(queryFilterMode)
                     .withIncludeValues(includeSchemasList)
@@ -324,7 +341,8 @@ public abstract class AbstractLogMinerQueryBuilder implements LogMinerQueryBuild
                     .withExcludeValues(excludeSchemasList)
                     .withDefaultExcludeValues(getBuiltInExcludedSchemas())
                     .caseInsensitive()
-                    .build());
+                    .build();
+            predicate.append(connectorConfig.isLogMiningQueryFilterSchemaTableConcatenate() ? inClause : existsFromDual(inClause));
             predicate.append(")");
             return predicate.toString();
         }
@@ -420,6 +438,20 @@ public abstract class AbstractLogMinerQueryBuilder implements LogMinerQueryBuild
 
     private static List<String> getTableIncludeExcludeListAsInValueList(String list) {
         return Strings.listOfTrimmed(list, s -> s.split("[,]"), v -> v.replaceAll("\\\\", ""));
+    }
+
+    private static List<String> getTableNamesOnly(List<String> tableIds) {
+        return tableIds.stream()
+                .map(tableId -> TableId.parse(tableId, false).table().toUpperCase())
+                .distinct()
+                .toList();
+    }
+
+    /**
+     * Wraps the predicate in an {@code EXISTS (SELECT 1 FROM DUAL WHERE ...)} sub-query.
+     */
+    private static String existsFromDual(String predicate) {
+        return "EXISTS (SELECT 1 FROM DUAL WHERE " + predicate + ")";
     }
 
     private static List<String> toUpperCase(Collection<String> values) {
