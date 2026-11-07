@@ -429,6 +429,13 @@ public class BufferedLogMinerStreamingChangeEventSource extends AbstractLogMiner
         final String transactionId = event.getTransactionId();
         if (!isRecentlyProcessed(transactionId)) {
             if (getConfig().isDeferredLogMinerTransactionStartBehaviorEnabled() && !Strings.isNullOrEmpty(transactionId)) {
+                final Transaction transaction = getTransactionCache().getTransaction(transactionId);
+                if (transaction != null) {
+                    // The transaction was promoted and its rows are being re-read
+                    LOGGER.trace("Transaction {} is not yet committed and START event detected.", transactionId);
+                    getTransactionCache().resetTransactionToStart(transaction);
+                    return;
+                }
                 deferredTransactions.computeIfAbsent(transactionId, id -> {
                     LOGGER.trace("Deferring transaction {} start event.", id);
                     return new DeferredTransaction(id, event.getScn(), event.getChangeTime(),
@@ -950,6 +957,13 @@ public class BufferedLogMinerStreamingChangeEventSource extends AbstractLogMiner
             }
 
             getMetrics().setOffsetScn(getOffsetContext().getScn());
+
+            if (getConfig().isLogMiningBufferRereadTransactions() && !oldestScn.isNull()) {
+                // Re-read in-flight transactions so a late row with a lower SCN is not skipped
+                final Scn rereadStartScn = oldestScn.subtract(Scn.ONE);
+                return new ProcessResult(rereadStartScn, rereadStartScn);
+            }
+
             return new ProcessResult(miningSessionStartScn, endScn);
         }
 
@@ -966,7 +980,12 @@ public class BufferedLogMinerStreamingChangeEventSource extends AbstractLogMiner
             getOffsetContext().setScn(miningSessionStartScn);
 
             getMetrics().setOffsetScn(getOffsetContext().getScn());
-            return new ProcessResult(miningSessionStartScn, getConfig().isLobEnabled() ? miningSessionStartScn : endScn);
+
+            // Out-of-line LOB/XML rows can arrive after rows with higher SCNs, so re-read buffered transactions.
+            // Only possible if the window still covers the eldest transaction's start.
+            final boolean rereadTransactions = getConfig().isLobEnabled()
+                    || (getConfig().isLogMiningBufferRereadTransactions() && miningSessionStartScn.compareTo(minCacheScn) < 0);
+            return new ProcessResult(miningSessionStartScn, rereadTransactions ? miningSessionStartScn : endScn);
         }
         else {
             // Cache has no values

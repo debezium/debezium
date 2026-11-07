@@ -778,6 +778,20 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
                     "emit a DML event. By default, deferred transaction metadata is retained for 24 hours. " +
                     "This is independent of log.mining.transaction.retention.ms which governs cached transactions with events.");
 
+    public static final Field LOG_MINING_BUFFER_REREAD_TRANSACTIONS = Field.create("log.mining.buffer.reread.transactions")
+            .withDisplayName("Re-read buffered transactions")
+            .withType(Type.BOOLEAN)
+            .withWidth(Width.SHORT)
+            .withImportance(Importance.LOW)
+            .withDefault(true)
+            .withDescription("Controls whether each mining step re-reads buffered transactions from the start of the eldest " +
+                    "in-flight transaction while the transaction buffer is not empty. " +
+                    "When enabled (the default), changes that LogMiner returns after a mining step with a lower SCN than " +
+                    "rows already read are captured. " +
+                    "When disabled, the read position advances to the last processed SCN when 'lob.enabled' is false or " +
+                    "when 'log.mining.buffer.deferred.transaction.start' is enabled, which reduces re-reads but can silently " +
+                    "lose changes to tables with out-of-line LOB or XML columns.");
+
     public static final Field LEGACY_DECIMAL_HANDLING_STRATEGY = Field.create("legacy.decimal.handling.strategy")
             .withDisplayName("Use legacy decimal handling strategy")
             .withType(Type.BOOLEAN)
@@ -852,7 +866,8 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
                     LOG_MINING_BUFFER_EHCACHE_GLOBAL_CONFIG, LOG_MINING_BUFFER_EHCACHE_TRANSACTIONS_CONFIG, LOG_MINING_BUFFER_EHCACHE_PROCESSED_TRANSACTIONS_CONFIG,
                     LOG_MINING_BUFFER_EHCACHE_SCHEMA_CHANGES_CONFIG, LOG_MINING_BUFFER_EHCACHE_EVENTS_CONFIG,
                     LOG_MINING_SQL_RELAXED_QUOTE_DETECTION, LOG_MINING_CLIENTID_INCLUDE_LIST, LOG_MINING_CLIENTID_EXCLUDE_LIST, LOG_MINING_RESUME_POSITION_INTERVAL_MS,
-                    LOG_MINING_BUFFER_DEFERRED_TRANSACTION_START, LOG_MINING_BUFFER_DEFERRED_TRANSACTION_RETENTION_MS, LOG_MINING_PATH_DICTIONARY,
+                    LOG_MINING_BUFFER_DEFERRED_TRANSACTION_START, LOG_MINING_BUFFER_DEFERRED_TRANSACTION_RETENTION_MS, LOG_MINING_BUFFER_REREAD_TRANSACTIONS,
+                    LOG_MINING_PATH_DICTIONARY,
                     LOG_MINING_USE_CTE_QUERY,
                     LOG_MINING_REDO_THREAD_SCN_ADJUSTMENT, LOG_MINING_HASH_AREA_SIZE, LOG_MINING_SORT_AREA_SIZE, LOG_MINING_LOG_COUNT_MIN,
                     LOG_MINING_LOG_COUNT_GROWTH_MAX)
@@ -938,6 +953,7 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
     private final boolean logMiningBufferTrackStartTimestamp;
     private final boolean logMiningDeferredTransactionStart;
     private final Duration logMiningDeferredTransactionRetention;
+    private final boolean logMiningBufferRereadTransactions;
     private final Integer logMiningMinimumLogCount;
     private final Integer logMiningLogCountGrowthMax;
 
@@ -1021,6 +1037,7 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
         this.logMiningBufferTrackStartTimestamp = config.getBoolean(LOG_MINING_BUFFER_TRACK_START_TIMESTAMP);
         this.logMiningDeferredTransactionStart = config.getBoolean(LOG_MINING_BUFFER_DEFERRED_TRANSACTION_START);
         this.logMiningDeferredTransactionRetention = Duration.ofMillis(config.getLong(LOG_MINING_BUFFER_DEFERRED_TRANSACTION_RETENTION_MS));
+        this.logMiningBufferRereadTransactions = config.getBoolean(LOG_MINING_BUFFER_REREAD_TRANSACTIONS);
         this.logMiningMinimumLogCount = config.getInteger(LOG_MINING_LOG_COUNT_MIN);
         this.logMiningLogCountGrowthMax = config.getInteger(LOG_MINING_LOG_COUNT_GROWTH_MAX);
 
@@ -2149,6 +2166,14 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
     @Override
     public OracleJdbcConfiguration getJdbcConfig() {
         return oracleJdbcConfig;
+    }
+
+    /**
+     * Whether buffered transactions are re-read from the start of the eldest in-flight transaction on each
+     * mining step while the transaction buffer is not empty.
+     */
+    public boolean isLogMiningBufferRereadTransactions() {
+        return logMiningBufferRereadTransactions;
     }
 
     /**
