@@ -638,17 +638,23 @@ public abstract class BinlogConnectorConfig extends HistorizedRelationalDatabase
                     + "'warn' the problematic event and its binlog position will be logged and the event will be skipped; "
                     + "'skip' the problematic event will be skipped.");
 
+    /**
+     * @deprecated The database already converts 2-digit years on input, will be removed in a future major version.
+     */
+    @Deprecated
     public static final Field ENABLE_TIME_ADJUSTER = Field.create("enable.time.adjuster")
             .withDisplayName("Enable Time Adjuster")
             .withType(ConfigDef.Type.BOOLEAN)
-            .withDefault(true)
+            .withDefault(false)
+            .withValidation(BinlogConnectorConfig::validateTimeAdjusterNotSet)
             .withWidth(ConfigDef.Width.SHORT)
             .withImportance(ConfigDef.Importance.LOW)
             .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR))
-            .withDescription("The database allows the user to insert year value as either 2-digit or 4-digit. "
-                    + "In case of two digit the value is automatically mapped into 1970 - 2069."
-                    + "false - delegates the implicit conversion to the database; "
-                    + "true - (the default) Debezium makes the conversion");
+            .withDescription("(Deprecated) Whether the connector adjusts DATE, DATETIME and TIMESTAMP values with a year between 0 and 99, "
+                    + "mapping years 0-69 to 2000-2069 and years 70-99 to 1970-1999. "
+                    + "The database already converts 2-digit years on input, so stored years between 0 and 99 were written with 4 digits. "
+                    + "'false' (the default) emits the stored value; "
+                    + "'true' adjusts the year.");
 
     public static final Field READ_ONLY_CONNECTION = Field.create("read.only")
             .withDisplayName("Read only connection")
@@ -1019,6 +1025,16 @@ public abstract class BinlogConnectorConfig extends HistorizedRelationalDatabase
             LOGGER.warn("Configuration option '{}' is deprecated, use to '{}' instead.",
                     EVENT_DESERIALIZATION_FAILURE_HANDLING_MODE.name(),
                     EVENT_PROCESSING_FAILURE_HANDLING_MODE.name());
+        }
+        return 0;
+    }
+
+    /**
+     * Logs a deprecation warning when using {@link #ENABLE_TIME_ADJUSTER}.
+     */
+    private static int validateTimeAdjusterNotSet(Configuration config, Field field, ValidationOutput problems) {
+        if (config.hasKey(ENABLE_TIME_ADJUSTER.name())) {
+            LOGGER.warn("Configuration option '{}' is deprecated and will be removed in a future release.", ENABLE_TIME_ADJUSTER.name());
         }
         return 0;
     }

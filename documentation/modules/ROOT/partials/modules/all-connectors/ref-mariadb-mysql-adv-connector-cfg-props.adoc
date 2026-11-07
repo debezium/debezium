@@ -282,17 +282,21 @@ Use the `legacy` grammar only if you encounter compatibility issues with existin
 
 
 [id="{context}-property-enable-time-adjuster"]
-xref:{context}-property-enable-time-adjuster[`enable.time.adjuster`]::
+xref:{context}-property-enable-time-adjuster[`enable.time.adjuster`] _Deprecated_::
 
-Default value::: `true`
+Default value::: `false`
 
 Description:::
-Boolean value that indicates whether the connector converts a 2-digit year specification to 4 digits.
-Set the value to `false` when conversion is fully delegated to the database.
+Boolean value that indicates whether the connector adjusts `DATE`, `DATETIME`, and `TIMESTAMP` values that have a year in the range 0 - 99.
+When set to `true`, the connector maps years 0 - 69 to 2000 - 2069, and years 70 - 99 to 1970 - 1999.
 +
-{connector-name} users can insert year values with either 2-digits or 4-digits.
-2-digit values are mapped to a year in the range 1970 - 2069.
-By default, the connector performs the conversion.
+{connector-name} converts 2-digit year values to 4 digits when they are inserted, so a stored year in the range 0 - 99 was written with 4 digits.
+By default, the connector emits the stored value.
++
+[NOTE]
+====
+This option is deprecated and will be removed in a future release.
+====
 
 
 
