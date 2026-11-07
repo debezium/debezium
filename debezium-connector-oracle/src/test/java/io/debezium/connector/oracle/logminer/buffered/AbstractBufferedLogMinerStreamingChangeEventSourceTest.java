@@ -390,7 +390,7 @@ public abstract class AbstractBufferedLogMinerStreamingChangeEventSourceTest ext
         try (var source = getChangeEventSource(getConfig().build())) {
             final BufferedStreamingChangeEventSource mock = spyWithMinedRows(source, insertRow(101, XID_1));
 
-            // The buffered transaction is re-read by the next mining step
+            // The next mining step re-reads from the transaction's last event
             final ProcessResult result = mock.process(Scn.valueOf(100), Scn.valueOf(200));
             assertThat(result.miningSessionStartScn()).isEqualTo(Scn.valueOf(100));
             assertThat(result.readStartScn()).isEqualTo(Scn.valueOf(100));
@@ -398,19 +398,19 @@ public abstract class AbstractBufferedLogMinerStreamingChangeEventSourceTest ext
     }
 
     @Test
-    @FixFor({ "DBZ-9664", "debezium/dbz#3039" })
-    public void testNonEmptyResultSetWithMineRangeAdvancesReadPositionWhenRereadTransactionsDisabled() throws Exception {
+    @FixFor("debezium/dbz#3032")
+    public void testReadPositionResumesAfterEldestLastEvent() throws Exception {
         if (!isTransactionAbandonmentSupported()) {
             return;
         }
 
-        final Configuration config = getConfig().with(OracleConnectorConfig.LOG_MINING_BUFFER_REREAD_TRANSACTIONS, false).build();
-        try (var source = getChangeEventSource(config)) {
-            final BufferedStreamingChangeEventSource mock = spyWithMinedRows(source, insertRow(101, XID_1));
+        try (var source = getChangeEventSource(getConfig().build())) {
+            final BufferedStreamingChangeEventSource mock = spyWithMinedRows(source,
+                    insertRow(101, XID_1), insertRow(120, XID_1), insertRow(150, XID_2));
 
             final ProcessResult result = mock.process(Scn.valueOf(100), Scn.valueOf(200));
             assertThat(result.miningSessionStartScn()).isEqualTo(Scn.valueOf(100));
-            assertThat(result.readStartScn()).isEqualTo(Scn.valueOf(101));
+            assertThat(result.readStartScn()).isEqualTo(Scn.valueOf(119));
         }
     }
 
@@ -432,39 +432,23 @@ public abstract class AbstractBufferedLogMinerStreamingChangeEventSourceTest ext
     }
 
     @Test
-    @FixFor("debezium/dbz#3039")
-    public void testDeferredTransactionStartReadPositionIsNotAdvancedPastEldestTransaction() throws Exception {
+    @FixFor("debezium/dbz#3032")
+    public void testLateRowIsCapturedWithoutDuplicatingReReadEvents() throws Exception {
         if (!isTransactionAbandonmentSupported()) {
             return;
         }
 
-        final Configuration config = getConfig().with(OracleConnectorConfig.LOG_MINING_BUFFER_DEFERRED_TRANSACTION_START, true).build();
-        try (var source = getChangeEventSource(config)) {
-            final BufferedStreamingChangeEventSource mock = spyWithMinedRows(source, insertRow(101, XID_1), insertRow(150, XID_2));
+        try (var source = getChangeEventSource(getConfig().build())) {
+            // The row at SCN 103 is returned by LogMiner only after the row at SCN 150 was read
+            final BufferedStreamingChangeEventSource mock = spyWithMinedSteps(source,
+                    List.of(insertRow(101, XID_1), insertRow(150, XID_2)),
+                    List.of(insertRow(101, XID_1), insertRow(103, XID_1), insertRow(150, XID_2), commitRow(160, XID_1), commitRow(161, XID_2)));
 
-            final ProcessResult result = mock.process(Scn.valueOf(100), Scn.valueOf(200));
-            assertThat(result.miningSessionStartScn()).isEqualTo(Scn.valueOf(100));
-            assertThat(result.readStartScn()).isEqualTo(Scn.valueOf(100));
-        }
-    }
+            final ProcessResult first = mock.process(Scn.valueOf(100), Scn.valueOf(155));
+            assertThat(first.readStartScn()).isEqualTo(Scn.valueOf(100));
+            mock.process(first.readStartScn(), Scn.valueOf(200));
 
-    @Test
-    @FixFor({ "debezium/dbz#2046", "debezium/dbz#3039" })
-    public void testDeferredTransactionStartReadPositionAdvancesWhenRereadTransactionsDisabled() throws Exception {
-        if (!isTransactionAbandonmentSupported()) {
-            return;
-        }
-
-        final Configuration config = getConfig()
-                .with(OracleConnectorConfig.LOG_MINING_BUFFER_DEFERRED_TRANSACTION_START, true)
-                .with(OracleConnectorConfig.LOG_MINING_BUFFER_REREAD_TRANSACTIONS, false)
-                .build();
-        try (var source = getChangeEventSource(config)) {
-            final BufferedStreamingChangeEventSource mock = spyWithMinedRows(source, insertRow(101, XID_1), insertRow(150, XID_2));
-
-            final ProcessResult result = mock.process(Scn.valueOf(100), Scn.valueOf(200));
-            assertThat(result.miningSessionStartScn()).isEqualTo(Scn.valueOf(149));
-            assertThat(result.readStartScn()).isEqualTo(Scn.valueOf(150));
+            Mockito.verify(dispatcher, Mockito.times(3)).dispatchDataChangeEvent(any(), any(), any());
         }
     }
 
@@ -476,6 +460,31 @@ public abstract class AbstractBufferedLogMinerStreamingChangeEventSourceTest ext
         }
 
         try (var source = getChangeEventSource(getConfig().build())) {
+            // The transaction's START was not mined, e.g. it was in progress when streaming started
+            // Each step returns the rows after the previous step's read position
+            final BufferedStreamingChangeEventSource mock = spyWithMinedSteps(source,
+                    List.of(insertRow(101, XID_1)),
+                    List.of(insertRow(101, XID_1), insertRow(102, XID_1)),
+                    List.of(insertRow(102, XID_1), commitRow(103, XID_1)));
+
+            final ProcessResult first = mock.process(Scn.valueOf(100), Scn.valueOf(150));
+            final ProcessResult second = mock.process(first.readStartScn(), Scn.valueOf(150));
+            mock.process(second.readStartScn(), Scn.valueOf(150));
+
+            Mockito.verify(dispatcher, Mockito.times(2)).dispatchDataChangeEvent(any(), any(), any());
+        }
+    }
+
+    @Test
+    @FixFor("debezium/dbz#3032")
+    public void testFullRereadOfTransactionWithoutStartDoesNotDuplicateEvents() throws Exception {
+        if (!isTransactionAbandonmentSupported()) {
+            return;
+        }
+
+        // Including internal events re-reads every transaction from the mining session start
+        final Configuration config = getConfig().with(OracleConnectorConfig.LOG_MINING_INCLUDE_INTERNAL_EVENTS, true).build();
+        try (var source = getChangeEventSource(config)) {
             // The transaction's START was not mined, e.g. it was in progress when streaming started
             final BufferedStreamingChangeEventSource mock = spyWithMinedSteps(source,
                     List.of(insertRow(101, XID_1)),
@@ -491,42 +500,96 @@ public abstract class AbstractBufferedLogMinerStreamingChangeEventSourceTest ext
     }
 
     @Test
-    @FixFor("debezium/dbz#3039")
-    public void testReadPositionAdvancesWhenWindowMaxAdvancesPastEldestTransaction() throws Exception {
+    @FixFor("debezium/dbz#3032")
+    public void testWindowMaxReReadsTransactionsWithinWindowWithoutDuplicatingEvents() throws Exception {
         if (!isTransactionAbandonmentSupported()) {
             return;
         }
 
         final Configuration config = getConfig().with(OracleConnectorConfig.LOG_MINING_WINDOW_MAX_MS, 60_000).build();
+        final LocalDateTime now = LocalDateTime.now();
         try (var source = getChangeEventSource(config)) {
-            // The first transaction is older than the window, so the window advances to the second transaction
-            final BufferedStreamingChangeEventSource mock = spyWithMinedRows(source,
-                    insertRow(101, XID_1).at(LocalDateTime.now().minusHours(1)), insertRow(150, XID_2));
+            // The first transaction is older than the window, and the second started within it
+            final BufferedStreamingChangeEventSource mock = spyWithMinedSteps(source,
+                    List.of(insertRow(101, XID_1).at(now.minusHours(1)), insertRow(120, XID_2)),
+                    List.of(insertRow(120, XID_2), commitRow(210, XID_1)),
+                    List.of(insertRow(120, XID_2), commitRow(260, XID_2)));
 
-            final ProcessResult result = mock.process(Scn.valueOf(100), Scn.valueOf(200));
-            assertThat(result.miningSessionStartScn()).isEqualTo(Scn.valueOf(149));
-            assertThat(result.readStartScn()).isEqualTo(Scn.valueOf(150));
+            final ProcessResult first = mock.process(Scn.valueOf(100), Scn.valueOf(200));
+            assertThat(first.miningSessionStartScn()).isEqualTo(Scn.valueOf(119));
+            assertThat(first.readStartScn()).isEqualTo(Scn.valueOf(119));
+
+            final ProcessResult second = mock.process(first.readStartScn(), Scn.valueOf(250));
+            mock.process(second.readStartScn(), Scn.valueOf(300));
+
+            Mockito.verify(dispatcher, Mockito.times(2)).dispatchDataChangeEvent(any(), any(), any());
         }
     }
 
     @Test
-    @FixFor("debezium/dbz#3039")
-    public void testDeferredTransactionStartReadPositionIsNotAdvancedByWindowMax() throws Exception {
+    @FixFor("debezium/dbz#3032")
+    public void testTransactionsAreReReadFromStartWhenInternalEventsAreIncluded() throws Exception {
         if (!isTransactionAbandonmentSupported()) {
             return;
         }
 
-        final Configuration config = getConfig()
-                .with(OracleConnectorConfig.LOG_MINING_BUFFER_DEFERRED_TRANSACTION_START, true)
-                .with(OracleConnectorConfig.LOG_MINING_WINDOW_MAX_MS, 60_000)
-                .build();
+        final Configuration config = getConfig().with(OracleConnectorConfig.LOG_MINING_INCLUDE_INTERNAL_EVENTS, true).build();
         try (var source = getChangeEventSource(config)) {
-            final BufferedStreamingChangeEventSource mock = spyWithMinedRows(source,
-                    insertRow(101, XID_1).at(LocalDateTime.now().minusHours(1)), insertRow(150, XID_2));
+            final BufferedStreamingChangeEventSource mock = spyWithMinedRows(source, insertRow(101, XID_1), insertRow(120, XID_1));
 
             final ProcessResult result = mock.process(Scn.valueOf(100), Scn.valueOf(200));
-            assertThat(result.miningSessionStartScn()).isEqualTo(Scn.valueOf(100));
             assertThat(result.readStartScn()).isEqualTo(Scn.valueOf(100));
+        }
+    }
+
+    @Test
+    @FixFor("debezium/dbz#3032")
+    public void testTransactionsAreReReadFromStartAfterRollbackToSavepoint() throws Exception {
+        if (!isTransactionAbandonmentSupported()) {
+            return;
+        }
+
+        try (var source = getChangeEventSource(getConfig().build())) {
+            final BufferedStreamingChangeEventSource mock = spyWithMinedRows(source,
+                    insertRow(101, XID_1), insertRow(120, XID_1), rollbackToSavepointRow(130, XID_1));
+
+            // A rollback after the read position may have removed events that would not be re-read
+            final ProcessResult result = mock.process(Scn.valueOf(100), Scn.valueOf(200));
+            assertThat(result.readStartScn()).isEqualTo(Scn.valueOf(100));
+        }
+    }
+
+    @Test
+    @FixFor("debezium/dbz#3032")
+    @SuppressWarnings("deprecation")
+    public void testDeprecatedRereadTransactionsOptionHasNoEffect() throws Exception {
+        if (!isTransactionAbandonmentSupported()) {
+            return;
+        }
+
+        final Configuration config = getConfig().with(OracleConnectorConfig.LOG_MINING_BUFFER_REREAD_TRANSACTIONS, false).build();
+        try (var source = getChangeEventSource(config)) {
+            final BufferedStreamingChangeEventSource mock = spyWithMinedRows(source, insertRow(101, XID_1), insertRow(150, XID_2));
+
+            final ProcessResult result = mock.process(Scn.valueOf(100), Scn.valueOf(200));
+            assertThat(result.readStartScn()).isEqualTo(Scn.valueOf(100));
+        }
+    }
+
+    @Test
+    @FixFor({ "debezium/dbz#2046", "debezium/dbz#3032" })
+    public void testDeferredTransactionStartReadPositionAdvancesBlockByBlock() throws Exception {
+        if (!isTransactionAbandonmentSupported()) {
+            return;
+        }
+
+        final Configuration config = getConfig().with(OracleConnectorConfig.LOG_MINING_BUFFER_DEFERRED_TRANSACTION_START, true).build();
+        try (var source = getChangeEventSource(config)) {
+            final BufferedStreamingChangeEventSource mock = spyWithMinedRows(source, insertRow(101, XID_1), insertRow(150, XID_2));
+
+            final ProcessResult result = mock.process(Scn.valueOf(100), Scn.valueOf(200));
+            assertThat(result.miningSessionStartScn()).isEqualTo(Scn.valueOf(149));
+            assertThat(result.readStartScn()).isEqualTo(Scn.valueOf(150));
         }
     }
 
@@ -1672,6 +1735,11 @@ public abstract class AbstractBufferedLogMinerStreamingChangeEventSourceTest ext
 
     private static MinedRow commitRow(long scn, byte[] xid) {
         return new MinedRow(scn, EventType.COMMIT, xid, false, "commit;", null);
+    }
+
+    private static MinedRow rollbackToSavepointRow(long scn, byte[] xid) {
+        // The undo of the latest insert of the same row
+        return new MinedRow(scn, EventType.DELETE, xid, true, "", null);
     }
 
     private BufferedStreamingChangeEventSource spyWithMinedRows(BufferedStreamingChangeEventSource source, MinedRow... rows) throws Exception {

@@ -1453,36 +1453,28 @@ endif::community[]
 ==== Re-reading in-progress transactions
 
 Oracle LogMiner does not always return rows in SCN order.
-For example, when a statement writes an out-of-line `CLOB`, `BLOB`, or `XMLTYPE` value, LogMiner returns the row for that statement only after the statement completes, and the row retains the SCN at which the statement started.
+For example, when a statement writes an out-of-line `CLOB`, `BLOB`, or `XMLTYPE` value, LogMiner can return the row for that statement only after the statement writes its redo, and the row retains the SCN at which the statement started.
 By the time that LogMiner returns the row, the connector might already have read rows with higher SCNs from other transactions.
-When xref:oracle-property-log-mining-buffer-reread-transactions[`log.mining.buffer.reread.transactions`] is set to `true`, the connector re-reads the in-progress transactions on the next mining step, so that it captures such rows.
 
-When this property is set to `false`, the connector advances the read position to the last row that it read, in the following configurations:
+To capture such rows, on each mining step the connector reads the changes of the in-progress transactions again:
 
-* xref:oracle-property-lob-enabled[`lob.enabled`] is set to `false`, which is the default.
-* xref:oracle-property-log-mining-buffer-deferred-transaction-start[`log.mining.buffer.deferred.transaction.start`] is set to `true`.
-In this configuration, the mining window also advances block-by-block rather than remaining pinned to the oldest in-progress transaction.
+* When xref:oracle-property-lob-enabled[`lob.enabled`] and xref:oracle-property-log-mining-include-internal-events[`log.mining.include.internal.events`] are both set to `false`, the connector resumes reading after the last change that it buffered for the oldest in-progress transaction, and replaces the buffered changes that it reads again.
+* Otherwise, the connector re-reads the in-progress transactions from their start.
 
-Advancing the read position reduces the volume of data that the connector reads on each mining step, which can improve performance in environments with many or large in-progress transactions.
+After the connector restarts, it re-reads the in-progress transactions from their start.
 
 [WARNING]
 ====
-When this property is set to `false`, the connector can silently lose change events.
-If a mining step ends while a statement that writes an out-of-line LOB or XML value is still running, and the connector reads rows of other transactions with higher SCNs during that step, the next mining step does not read the row of the statement.
-The connector does not emit a change event for the statement and does not log a warning.
-The transaction is otherwise emitted normally, so the loss is difficult to detect.
-
-The risk applies to any `INSERT` or `UPDATE` that writes an out-of-line LOB or XML value, even when `lob.enabled` is `false` and the connector does not emit LOB values.
-The risk increases with the size of LOB values, which lengthens the time that the statement runs, and with the volume of concurrent activity in the database.
-
-Set this property to `false` only if you have confirmed that the captured tables do not store LOB or XML values out-of-line, or if you can tolerate the loss of change events.
+When xref:oracle-property-log-mining-buffer-deferred-transaction-start[`log.mining.buffer.deferred.transaction.start`] is set to `true`, the mining window advances block-by-block, and the connector does not read the changes of in-progress transactions again.
+If a mining step ends while a statement that writes an out-of-line LOB or XML value is running, the connector can silently lose the change event for that statement.
+The connector does not log a warning, and the transaction is otherwise emitted normally.
+The risk increases with the size of LOB values and with the volume of concurrent activity in the database.
 ====
 
-When `lob.enabled` is set to `true`, the connector always re-reads the in-progress transactions, and this property has no effect.
-
 ifdef::community[]
-When xref:oracle-property-log-mining-window-max-ms[`log.mining.window.max.ms`] advances the mining window past the oldest in-progress transaction, the connector does not re-read any in-progress transaction during that mining step, and it advances the read position as if this property is set to `false`.
-The `log.mining.window.max.ms` property does not apply when xref:oracle-property-log-mining-buffer-deferred-transaction-start[`log.mining.buffer.deferred.transaction.start`] is set to `true`, so the mining window remains pinned to the oldest in-progress transaction while the connector re-reads in-progress transactions.
+When xref:oracle-property-log-mining-window-max-ms[`log.mining.window.max.ms`] advances the mining window past in-progress transactions, the connector cannot read the changes of those transactions again.
+It continues to read again the changes of the transactions that started within the mining window.
+If it cannot replace the changes that it reads again for the older transactions, for example after a restart, it advances the read position to the last row that it read, and it does not read the changes of any in-progress transaction again.
 endif::community[]
 
 // Type: concept
@@ -5126,8 +5118,8 @@ When set to `true`, the connector stores only lightweight transaction metadata a
 
 This option cannot be enabled when xref:oracle-property-lob-enabled[`lob.enabled`] is set to `true`.
 
-By default, while transactions are in progress, the mining window is pinned to the oldest in-progress transaction because xref:oracle-property-log-mining-buffer-reread-transactions[`log.mining.buffer.reread.transactions`] is set to `true`.
-To retain the block-by-block sliding mining window of deferred transaction start behavior, set `log.mining.buffer.reread.transactions` to `false`, after you review the risks that are described in xref:oracle-event-buffering-reread-transactions[Re-reading in-progress transactions].
+When this option is enabled, the mining window advances block-by-block, and the connector can silently lose the change event of a statement that writes an out-of-line LOB or XML value.
+For more information, see xref:oracle-event-buffering-reread-transactions[Re-reading in-progress transactions].
 
 |[[oracle-property-log-mining-transaction-retention-ms]]<<oracle-property-log-mining-transaction-retention-ms, `log.mining.transaction.retention.ms`>>
 |`0`
@@ -5149,10 +5141,9 @@ This setting does not affect transactions that have already been promoted into t
 
 |[[oracle-property-log-mining-buffer-reread-transactions]]<<oracle-property-log-mining-buffer-reread-transactions, `log.mining.buffer.reread.transactions`>>
 |`true`
-|Boolean value that specifies whether each mining step re-reads the buffered LogMiner transactions from the start of the oldest in-progress transaction while transactions are in progress.
-
-Setting this property to `false` can reduce the volume of data that the connector reads, but can cause the connector to silently lose change events.
-Before you change this property, review the risks that are described in xref:oracle-event-buffering-reread-transactions[Re-reading in-progress transactions].
+|Deprecated.
+This property no longer has any effect and will be removed in Debezium 4.0.
+For information about how the connector reads the changes of in-progress transactions, see xref:oracle-event-buffering-reread-transactions[Re-reading in-progress transactions].
 
 ifdef::community[]
 |[[oracle-property-log-mining-window-max-ms]]<<oracle-property-log-mining-window-max-ms, `log.mining.window.max.ms`>>

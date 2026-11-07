@@ -91,4 +91,11 @@ public interface Transaction {
      */
     void start();
 
+    /**
+     * Rewinds the event identifier so that the next event is assigned the given identifier.
+     *
+     * @param eventId the identifier of the next event, should not be negative
+     */
+    void rewindTo(int eventId);
+
 }
