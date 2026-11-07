@@ -360,10 +360,12 @@ By default, the following notification channels are available:
 * `sink`
 * `log`
 * `jmx`
+* `http`
 
 [IMPORTANT]
 ====
-To use the `sink` notification channel, you must also set the `notification.sink.topic.name` configuration property to the name of the topic where you want {prodname} to send notifications.
+* To use the `sink` notification channel, you must also set the `notification.sink.topic.name` configuration property to the name of the topic where you want {prodname} to send notifications.
+* To use the `http` notification channel, you must also set the `notification.http.url` configuration property to specify the HTTP endpoint URL where notifications will be sent.
 ====
 
 // Type: procedure
@@ -388,6 +390,115 @@ To discard a notification, call the `reset` operation on the bean.
 
 The notifications are also exposed as a JMX notification with type `debezium.notification`.
 To enable an application to listen for the JMX notifications that an MBean emits,  link:https://docs.oracle.com/javase/tutorial/jmx/notifs/index.html[subscribe the application to the notifications].
+
+// Type: procedure
+// ModuleID: enabling-debezium-notifications-to-report-events-via-log
+// Title: Enabling {prodname} notifications to report events via logging
+[id="access-debezium-log-notifications"]
+=== Configuring log notifications
+
+To enable {prodname} to deliver notifications via the application log, add `log` to the `notification.enabled.channels` property in the connector configuration.
+
+The log notification channel writes notifications to the connector's log output using the SLF4J logging framework.
+Each notification is logged at INFO level with the prefix `[Notification Service]`.
+
+==== Log notification behavior
+
+* Notifications are written synchronously to the log as they occur.
+* No additional configuration properties are required for the log channel.
+* The log output includes the complete notification object with all fields (id, aggregate_type, type, additional_data, timestamp).
+* Log notifications are useful for debugging and monitoring connector behavior without requiring external infrastructure.
+
+// Type: procedure
+// ModuleID: enabling-debezium-notifications-to-report-events-via-sink
+// Title: Enabling {prodname} notifications to report events via Kafka sink
+[id="access-debezium-sink-notifications"]
+=== Configuring sink notifications
+
+To enable {prodname} to deliver notifications via a Kafka topic, complete the following configuration steps:
+
+1. Add `sink` to the `notification.enabled.channels` property in the connector configuration.
+2. Set the `notification.sink.topic.name` property to specify the target Kafka topic name.
+
+The sink notification channel sends notifications through the Kafka Connect API to a configured topic.
+Each notification is sent as a Kafka message with a structured key and value.
+
+==== Sink notification configuration properties
+
+The following table describes the configuration properties for the sink notification channel:
+
+|===
+|Property |Required |Default |Description
+
+|`notification.sink.topic.name`
+|Yes
+|No default
+|The name of the Kafka topic where notifications will be sent. Required when `sink` is in the list of enabled channels.
+|===
+
+==== Sink notification behavior
+
+* Notifications are sent as Kafka Connect SourceRecords to the configured topic.
+* Each notification has a structured key containing the notification ID.
+* The notification value includes all notification fields: id, type, aggregate_type, additional_data, and timestamp.
+* Notifications are sent through the connector's change event queue for reliable delivery.
+* The sink channel is useful for integrating notifications with downstream systems that consume Kafka topics.
+
+// Type: procedure
+// ModuleID: enabling-debezium-notifications-to-report-events-via-http
+// Title: Enabling {prodname} notifications to report events via HTTP
+[id="access-debezium-http-notifications"]
+=== Configuring HTTP notifications
+
+To enable {prodname} to deliver notifications via HTTP POST requests, complete the following configuration steps:
+
+1. Add `http` to the `notification.enabled.channels` property in the connector configuration.
+2. Set the `notification.http.url` property to specify the target HTTP endpoint URL.
+3. Optionally configure additional HTTP notification properties as needed.
+
+The HTTP notification channel delivers notifications by POSTing a JSON representation to the configured URL.
+It uses SSRF-hardened HTTP transport with exponential-backoff retry logic to ensure reliable delivery.
+
+==== HTTP notification configuration properties
+
+The following table describes the configuration properties for the HTTP notification channel:
+
+|===
+|Property |Required |Default |Description
+
+|`notification.http.url`
+|Yes
+|No default
+|The URL to which notifications are POSTed as JSON. Must be a valid http(s) URL with a host. Required when `http` is in the list of enabled channels.
+
+|`notification.http.timeout.ms`
+|No
+|`5000`
+|Connect and read timeout, in milliseconds, for HTTP notification delivery.
+
+|`notification.http.retries`
+|No
+|`2`
+|Number of retries after the first failed HTTP notification delivery attempt. Terminal notifications (COMPLETED/ABORTED/SKIPPED) are always retried at least 3 times.
+
+|`notification.http.allow.private.networks`
+|No
+|`false`
+|When `true`, the SSRF guard permits notification URLs that resolve to loopback, site-local, or link-local addresses (e.g., an in-cluster Service). Defaults to `false` so only public addresses are allowed.
+
+|`notification.http.authorization`
+|No
+|No default
+|The complete value of the Authorization header sent with every HTTP notification request, e.g., `Bearer <token>` or `Basic <base64>`. Omitted when unset.
+|===
+
+==== HTTP notification delivery behavior
+
+* Notifications are delivered asynchronously on a dedicated single-threaded executor to prevent blocking the connector pipeline.
+* If the delivery queue is full (capacity: 1000), excess notifications are dropped rather than applying back-pressure.
+* Terminal notifications (COMPLETED, ABORTED, SKIPPED) receive higher retry priority because they are not self-correcting.
+* Failed deliveries are logged at WARN level for progress notifications and ERROR level for terminal notifications.
+* The HTTP client includes SSRF protection to prevent requests to private networks unless explicitly allowed.
 
 ifdef::community[]
 //   Type: assembly
