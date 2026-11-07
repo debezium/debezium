@@ -878,6 +878,12 @@ Do not use this mode to perform a snapshot if schema changes were committed to t
 
 * It cannot detect any topic offsets.
 * A previously recorded offset specifies a binlog position or GTID that is not available on the server.
+ifdef::MARIADB[]
++
+To find out whether the binlogs that contain the recorded GTID position were purged, the connector reads the `Gtid_list` event at the start of the oldest binlog on the server.
+This check requires the `BINLOG MONITOR` privilege, or the `REPLICATION SLAVE` privilege on MariaDB versions earlier than 10.5.
+If the connector cannot read the event, it logs a warning and does not detect purged binlogs.
+endif::MARIADB[]
 
 ifdef::community[]
 `configuration_based`:::: With this option, you control snapshot behavior through a set of connector properties that have the prefix 'snapshot.mode.configuration.based'.
