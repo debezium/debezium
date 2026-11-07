@@ -12,7 +12,9 @@ import static org.junit.jupiter.api.Assertions.fail;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -339,7 +341,7 @@ public class TransactionMetadataIT extends AbstractAsyncEngineConnectorTest {
         stopConnector();
 
         // No new changes, so the first iterations after the restart read no change and the
-        // source time of the restored transaction stays unknown when the timer ends it
+        // timer ends the restored transaction with the source time stored in the offset
         start(SqlServerConnector.class, config);
         assertConnectorIsRunning();
 
@@ -357,13 +359,60 @@ public class TransactionMetadataIT extends AbstractAsyncEngineConnectorTest {
 
         final Struct endValue = (Struct) end.get().value();
         assertThat(endValue.getString("id")).isEqualTo(txId);
-        assertThat(endValue.getInt64("ts_ms")).isNotNull();
+        assertThat(endValue.getInt64("ts_ms")).isEqualTo(((Struct) records.get(0).value()).getInt64("ts_ms"));
 
         // Streaming goes on
         connection.execute("INSERT INTO tablea VALUES(-2, '-a')");
         final SourceRecords afterRestart = consumeRecordsByTopic(2);
         assertBeginTransaction(afterRestart.recordsForTopic("server1.transaction").get(0));
         assertThat(afterRestart.recordsForTopic("server1.testDB1.dbo.tablea")).hasSize(1);
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2995")
+    void restartFromOffsetWithoutSourceTimeEndsRestoredTxWithNextChange() throws Exception {
+        final Configuration config = TestHelper.defaultConfig()
+                .with(SqlServerConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL)
+                .with(SqlServerConnectorConfig.PROVIDE_TRANSACTION_METADATA, true)
+                .build();
+
+        start(SqlServerConnector.class, config);
+        assertConnectorIsRunning();
+
+        // Wait for snapshot completion
+        consumeRecordsByTopic(1);
+
+        connection.execute("INSERT INTO tablea VALUES(-1, '-a')");
+
+        // BEGIN, data; stop before the timer ends the transaction
+        final List<SourceRecord> records = consumeRecordsByTopic(2).allRecordsInOrder();
+        final String txId = assertBeginTransaction(records.get(0));
+        stopConnector();
+
+        // An offset as an earlier version wrote it
+        final Map<String, ?> partition = records.get(0).sourcePartition();
+        final Map<String, Object> offset = new HashMap<>(readLastCommittedOffset(config, partition));
+        assertThat(offset).containsKey(SourceInfo.TIMESTAMP_KEY);
+        offset.remove(SourceInfo.TIMESTAMP_KEY);
+        storeOffsets(config, Map.of(partition, offset));
+
+        start(SqlServerConnector.class, config);
+        assertConnectorIsRunning();
+
+        // Longer than it takes the timer to fire: no END without a source time, and no failure
+        Awaitility.await().during(15, TimeUnit.SECONDS).atMost(30, TimeUnit.SECONDS)
+                .until(() -> isEngineRunning.get() && consumedLines.isEmpty());
+
+        // The next change ends the restored transaction with its own source time
+        connection.execute("INSERT INTO tablea VALUES(-2, '-a')");
+        final List<SourceRecord> transactionRecords = consumeRecordsByTopic(3).recordsForTopic("server1.transaction");
+        assertThat(transactionRecords).hasSize(2);
+
+        final Struct end = (Struct) transactionRecords.get(0).value();
+        assertThat(end.getString("status")).isEqualTo("END");
+        assertThat(end.getString("id")).isEqualTo(txId);
+        assertThat(end.getInt64("ts_ms")).isEqualTo(((Struct) transactionRecords.get(1).value()).getInt64("ts_ms"));
+        assertBeginTransaction(transactionRecords.get(1));
     }
 
     @Test

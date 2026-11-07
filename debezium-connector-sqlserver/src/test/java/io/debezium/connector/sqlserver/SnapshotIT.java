@@ -219,12 +219,13 @@ public class SnapshotIT extends AbstractAsyncEngineConnectorTest {
             final Struct value1 = (Struct) record1.value();
             assertRecord(key1, expectedKey1);
             assertRecord((Struct) value1.get("after"), expectedRow1);
-            assertThat(record1.sourceOffset()).hasSize(4);
+            assertThat(record1.sourceOffset()).hasSize(5);
 
             assertTrue(record1.sourceOffset().containsKey("change_lsn"));
             assertTrue(record1.sourceOffset().containsKey("commit_lsn"));
             assertTrue(record1.sourceOffset().containsKey("event_serial_no"));
             assertTrue(record1.sourceOffset().containsKey("command_id"));
+            assertTrue(record1.sourceOffset().containsKey("ts_ms"));
             assertNull(value1.get("before"));
         }
     }
