@@ -608,6 +608,19 @@ Set one of the following options:
 `avro`:: The SMT replaces any character that is invalid for Avro field names with an underscore character (`_`). It also adjusts the dot-separated segments of the output schema name individually, replacing invalid initial characters with an underscore to prevent Avro `SchemaParseException` errors when collection names begin with a digit.
 
 `avro_unicode`:: Similar to `avro`, but replaces invalid characters with their Unicode equivalent (e.g., `_u0031` for a leading `1`).
+
+The MongoDB new document state extraction SMT does not inherit connector-level `field.name.adjustment.mode`  or `schema.name.adjustment.mode` settings.
+To specify these values you must set the `field.name.adjustment.mode` property in the SMT, using the SMT alias (`unwrap`) as a configuration prefix, as in the following example:
+
+[source]
+----
+transforms=unwrap
+transforms.unwrap.type=io.debezium.connector.mongodb.transforms.ExtractNewDocumentState
+transforms.unwrap.field.name.adjustment.mode=avro
+----
+
+The SMT does not provide a separate `schema.name.adjustment.mode` property.
+This property controls the adjustment of both the field names and the schema name in the simplified record.
 |===
 
 // Type: reference
