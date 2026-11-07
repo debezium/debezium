@@ -71,6 +71,9 @@ public class SqlServerOffsetContext extends CommonOffsetContext<SourceInfo> {
                 sourceInfo.getChangeLsn() == null ? null : sourceInfo.getChangeLsn().toString());
         offset.put(SourceInfo.EVENT_SERIAL_NO_KEY, eventSerialNo);
         offset.put(SourceInfo.COMMAND_ID_KEY, sourceInfo.getCommandId());
+        if (sourceInfo.timestamp() != null) {
+            offset.put(SourceInfo.TIMESTAMP_KEY, sourceInfo.timestamp().toEpochMilli());
+        }
         return sourceInfo.isSnapshot() ? offset : incrementalSnapshotContext.store(transactionContext.store(offset));
     }
 
@@ -154,10 +157,18 @@ public class SqlServerOffsetContext extends CommonOffsetContext<SourceInfo> {
                 eventSerialNo = Long.valueOf(0);
             }
 
-            return new SqlServerOffsetContext(connectorConfig,
+            final SqlServerOffsetContext offsetContext = new SqlServerOffsetContext(connectorConfig,
                     TxLogPosition.valueOf(commitLsn, changeLsn, 0, commandId),
                     snapshot, snapshotCompleted, eventSerialNo,
                     TransactionContext.load(offset), SqlServerIncrementalSnapshotContext.load(offset));
+
+            // Not present in offsets written by earlier versions. The transaction restored above
+            // ends with this time, as it would have without a restart
+            final Number sourceTime = (Number) offset.get(SourceInfo.TIMESTAMP_KEY);
+            if (sourceTime != null) {
+                offsetContext.sourceInfo.setSourceTime(Instant.ofEpochMilli(sourceTime.longValue()));
+            }
+            return offsetContext;
         }
     }
 
