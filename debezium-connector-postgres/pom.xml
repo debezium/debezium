@@ -390,6 +390,7 @@
                         <database.password>${postgres.password}</database.password>
                         <database.dbname>${postgres.db.name}</database.dbname>
                         <plugin.name>${decoder.plugin.name}</plugin.name>
+                        <plugin.pgoutput.binary>${decoder.plugin.pgoutput.binary}</plugin.pgoutput.binary>
                         <skipLongRunningTests>${skipLongRunningTests}</skipLongRunningTests>
                     </systemPropertyVariables>
                     <!-- adds-opens needed for ChronicleQueue -->
@@ -569,6 +570,12 @@
             <id>pgoutput-decoder</id>
             <properties>
                 <decoder.plugin.name>pgoutput</decoder.plugin.name>
+            </properties>
+        </profile>
+        <profile>
+            <id>pgoutput-decoder-binary</id>
+            <properties>
+                <decoder.plugin.pgoutput.binary>true</decoder.plugin.pgoutput.binary>
             </properties>
         </profile>
         <profile>

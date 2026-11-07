@@ -67,6 +67,8 @@ import io.debezium.config.CommonConnectorConfig.BinaryHandlingMode;
 import io.debezium.connector.postgresql.PostgresConnectorConfig.HStoreHandlingMode;
 import io.debezium.connector.postgresql.PostgresConnectorConfig.IntervalHandlingMode;
 import io.debezium.connector.postgresql.connection.DateTimeFormat;
+import io.debezium.connector.postgresql.connection.pgoutput.PgBytes;
+import io.debezium.connector.postgresql.connection.pgoutput.PgSparseVector;
 import io.debezium.connector.postgresql.data.Ltree;
 import io.debezium.connector.postgresql.proto.PgProto;
 import io.debezium.data.Bits;
@@ -752,6 +754,9 @@ public class PostgresValueConverter extends JdbcValueConverters {
             else if (data instanceof PGobject typedData) {
                 r.deliver(DoubleVector.fromLogical(fieldDefn.schema(), typedData.getValue()));
             }
+            else if (data instanceof final List<?> vector) {
+                r.deliver(vector);
+            }
         });
     }
 
@@ -766,6 +771,9 @@ public class PostgresValueConverter extends JdbcValueConverters {
             else if (data instanceof PGobject typedData) {
                 r.deliver(FloatVector.fromLogical(fieldDefn.schema(), typedData.getValue()));
             }
+            else if (data instanceof final List<?> vector) {
+                r.deliver(vector);
+            }
         });
     }
 
@@ -779,6 +787,9 @@ public class PostgresValueConverter extends JdbcValueConverters {
             }
             else if (data instanceof PGobject typedData) {
                 r.deliver(SparseDoubleVector.fromLogical(fieldDefn.schema(), typedData.getValue()));
+            }
+            else if (data instanceof final PgSparseVector vector) {
+                r.deliver(SparseDoubleVector.fromComponents(fieldDefn.schema(), vector.dimensions(), vector.vector()));
             }
         });
     }
@@ -945,6 +956,14 @@ public class PostgresValueConverter extends JdbcValueConverters {
             int bitBytes = numBits / Byte.SIZE + (numBits % Byte.SIZE == 0 ? 0 : 1);
             return super.convertBits(column, fieldDefn, bitset, bitBytes);
         }
+
+        if (data instanceof final BitSet bitset) {
+            final var numBits = bitset.length();
+            // See the comment above
+            final var bitBytes = numBits / Byte.SIZE + (numBits % Byte.SIZE == 0 ? 0 : 1);
+            return super.convertBits(column, fieldDefn, bitset, bitBytes);
+        }
+
         return super.convertBits(column, fieldDefn, data, numBytes);
     }
 
@@ -1124,6 +1143,18 @@ public class PostgresValueConverter extends JdbcValueConverters {
             data = offsetTime.withOffsetSameInstant(ZoneOffset.UTC);
         }
 
+        // Time is received as OffsetTime in case pgoutput binary mode enabled
+        if (data instanceof final OffsetTime time) {
+            // In structured mode, we keep the timezone info
+            if (this.temporalPrecisionMode == TemporalPrecisionMode.STRUCTURED) {
+                return super.convertTimeWithZone(column, fieldDefn, time);
+            }
+            else {
+                // Normalize to UTC in other modes.
+                return super.convertTimeWithZone(column, fieldDefn, time.withOffsetSameInstant(ZoneOffset.UTC));
+            }
+        }
+
         return super.convertTimeWithZone(column, fieldDefn, data);
     }
 
@@ -1289,6 +1320,10 @@ public class PostgresValueConverter extends JdbcValueConverters {
                     PostgisGeometry geom = PostgisGeometry.fromHexEwkb((String) data);
                     r.deliver(io.debezium.data.geometry.Geometry.createValue(schema, geom.getWkb(), geom.getSrid()));
                 }
+                else if (data instanceof final PgBytes pgBytes) {
+                    final var geom = PostgisGeometry.fromEwkb(pgBytes.bytes());
+                    r.deliver(io.debezium.data.geometry.Geometry.createValue(schema, geom.getWkb(), geom.getSrid()));
+                }
             }
             catch (IllegalArgumentException e) {
                 logger.warn("Error converting to a Geometry type: {}", column);
@@ -1312,6 +1347,10 @@ public class PostgresValueConverter extends JdbcValueConverters {
                 }
                 else if (data instanceof String) {
                     PostgisGeometry geom = PostgisGeometry.fromHexEwkb((String) data);
+                    r.deliver(io.debezium.data.geometry.Geography.createValue(schema, geom.getWkb(), geom.getSrid()));
+                }
+                else if (data instanceof final PgBytes pgBytes) {
+                    final var geom = PostgisGeometry.fromEwkb(pgBytes.bytes());
                     r.deliver(io.debezium.data.geometry.Geography.createValue(schema, geom.getWkb(), geom.getSrid()));
                 }
             }
