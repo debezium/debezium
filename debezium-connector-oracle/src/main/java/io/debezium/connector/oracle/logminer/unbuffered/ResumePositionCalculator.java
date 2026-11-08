@@ -6,7 +6,6 @@
 package io.debezium.connector.oracle.logminer.unbuffered;
 
 import java.sql.SQLException;
-import java.time.Duration;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -22,14 +21,13 @@ import io.debezium.connector.oracle.logminer.LogFile;
 import io.debezium.connector.oracle.logminer.LogMinerSessionContext;
 import io.debezium.connector.oracle.logminer.events.EventType;
 import io.debezium.jdbc.JdbcConfiguration;
-import io.debezium.util.Clock;
 import io.debezium.util.HexConverter;
 import io.debezium.util.Strings;
-import io.debezium.util.Threads;
-import io.debezium.util.Threads.Timer;
 
 /**
- * Calculates the resume position for unbuffered LogMiner sessions on a periodic interval.
+ * Calculates the resume position for unbuffered LogMiner sessions.
+ * <p>
+ * When the calculation runs is decided by a {@link ResumePositionUpdateStrategy}.
  * <p>
  * The main LogMiner session used by the unbuffered implementation uses {@code COMMITTED_DATA_ONLY} mode,
  * which means that LogMiner only returns data that has been committed in the transaction logs, excluding
@@ -41,44 +39,46 @@ import io.debezium.util.Threads.Timer;
  *
  * @author Chris Cranford
  */
-public class ResumePositionProvider implements AutoCloseable {
+public class ResumePositionCalculator implements AutoCloseable {
 
-    private final Logger LOGGER = LoggerFactory.getLogger(ResumePositionProvider.class);
+    private final Logger LOGGER = LoggerFactory.getLogger(ResumePositionCalculator.class);
 
     private final OracleConnectorConfig connectorConfig;
     private final JdbcConfiguration jdbcConfig;
-    private final Duration updateInterval;
 
     private OracleConnection connection;
     private LogMinerSessionContext sessionContext;
-    private volatile Timer queryTimer;
 
-    public ResumePositionProvider(OracleConnectorConfig connectorConfig, JdbcConfiguration jdbcConfig) {
+    public ResumePositionCalculator(OracleConnectorConfig connectorConfig, JdbcConfiguration jdbcConfig) {
         this.connectorConfig = connectorConfig;
         this.jdbcConfig = jdbcConfig;
-        this.updateInterval = connectorConfig.getResumePositionUpdateInterval();
-        this.queryTimer = resetTimer();
     }
 
     @Override
     public void close() throws Exception {
         if (connection != null) {
-            LOGGER.info("Stopping the unbuffered resume position provider");
+            LOGGER.info("Stopping the unbuffered resume position calculator");
             sessionContext.close();
             connection.close();
         }
     }
 
-    public Scn computeResumePositionFromLogs(Scn currentResumeScn, Scn currentCommitScn, List<LogFile> logFiles) throws SQLException {
-        if (!queryTimer.expired()) {
-            return currentResumeScn;
-        }
-
+    /**
+     * Calculates the resume position from the start position of the eldest transaction that is still
+     * in progress at the given commit position.
+     *
+     * @param currentResumeScn the current resume system change number, should not be {@code null}
+     * @param currentCommitScn the current commit system change number, should not be {@code null}
+     * @param logFiles the logs to mine, should not be {@code null}
+     * @return the new resume system change number, never {@code null}
+     * @throws SQLException if a database exception occurs
+     */
+    public Scn calculate(Scn currentResumeScn, Scn currentCommitScn, List<LogFile> logFiles) throws SQLException {
         try {
 
             // Lazily create the connection if it doesn't exist.
             if (connection == null) {
-                LOGGER.info("Starting the unbuffered resume position provider");
+                LOGGER.info("Starting the unbuffered resume position calculator");
                 connection = new OracleConnection(connectorConfig, jdbcConfig, false);
 
                 // LogMiner must be run in the CDB
@@ -134,13 +134,10 @@ public class ResumePositionProvider implements AutoCloseable {
             return resumeScn;
         }
         finally {
-            sessionContext.endMiningSession();
-            queryTimer = resetTimer();
+            if (sessionContext != null) {
+                sessionContext.endMiningSession();
+            }
         }
-    }
-
-    private Timer resetTimer() {
-        return Threads.timer(Clock.SYSTEM, updateInterval);
     }
 
     private static class Transaction {
