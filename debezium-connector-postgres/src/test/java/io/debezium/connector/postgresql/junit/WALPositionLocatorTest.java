@@ -41,7 +41,11 @@ import io.debezium.doc.FixFor;
  * PHASE 2 - STREAMING PHASE:
  * - Call enableFiltering() to switch to streaming mode
  * - Only call skipMessage() to check if streaming LSNs should be skipped
- * - skipMessage() compares against the LSNs seen during the search phase
+ * - skipMessage() compares the LSN against the range of the LSNs the search phase has seen; the
+ *   messages it filters are the ones the replay delivers before the resume position
+ * - The first valid LSN that is not the resume position is compared with the LSN of the first
+ *   record the search phase read; when the two differ, the replay diverged from the search and
+ *   skipMessage() throws
  */
 
 public class WALPositionLocatorTest {
@@ -788,16 +792,20 @@ public class WALPositionLocatorTest {
         // The lowest LSN of the range is inside it
         assertThat(topLocator.skipMessage(Lsn.valueOf(110L))).isTrue();
 
-        // The resume position is at the bottom of the seen range
-        final var bottomLocator = new WalPositionLocator(lastCommitStoredLsn, lastEventStoredLsn, ReplicationMessage.Operation.BEGIN);
-        assertThat(bottomLocator.resumeFromLsn(Lsn.valueOf(110L), beginMessage)).isEmpty();
-        assertThat(bottomLocator.resumeFromLsn(Lsn.valueOf(140L), insertMessage)).isEmpty();
-        assertThat(bottomLocator.resumeFromLsn(Lsn.valueOf(140L), insertMessage)).isPresent();
+        // The stored offset is at a commit, so the location phase reads that commit and then
+        // the BEGIN of the next transaction, which began before the previous one committed and
+        // is therefore at a lower WAL position
+        final var commitLocator = new WalPositionLocator(Lsn.valueOf(200L), Lsn.valueOf(200L), ReplicationMessage.Operation.COMMIT);
+        assertThat(commitLocator.resumeFromLsn(Lsn.valueOf(200L), createCommitMessage(1L))).isEmpty();
+        assertThat(commitLocator.resumeFromLsn(Lsn.valueOf(150L), createBeginMessage(2L))).isPresent();
 
-        bottomLocator.enableFiltering();
+        commitLocator.enableFiltering();
 
-        // The highest LSN of the range is inside it
-        assertThat(bottomLocator.skipMessage(Lsn.valueOf(140L))).isTrue();
+        // The highest LSN of the range is the first record the location phase read, so the
+        // replay delivers it before the resume position and it is filtered
+        assertThat(commitLocator.skipMessage(Lsn.valueOf(200L))).isTrue();
+        // The lowest LSN of the range is the resume position, which switches the filtering off
+        assertThat(commitLocator.skipMessage(Lsn.valueOf(150L))).isFalse();
     }
 
     @Test
@@ -816,6 +824,8 @@ public class WALPositionLocatorTest {
 
         locator.enableFiltering();
 
+        // The first replayed message is the one the location phase saw first
+        assertThat(locator.skipMessage(Lsn.valueOf(110L))).isTrue();
         // The LSN lies between the ones the location phase has seen
         assertThat(locator.skipMessage(Lsn.valueOf(200L))).isTrue();
     }
@@ -906,12 +916,121 @@ public class WALPositionLocatorTest {
 
         locator.enableFiltering();
 
+        // The first replayed message is the one the location phase saw first
+        assertThat(locator.skipMessage(Lsn.valueOf(110L))).isTrue();
         // A message of the transaction is filtered
         assertThat(locator.skipMessage(Lsn.valueOf(115L))).isTrue();
         // A message from outside the transaction is not
         assertThatThrownBy(() -> locator.skipMessage(Lsn.valueOf(130L)))
                 .isInstanceOf(DebeziumException.class)
                 .hasMessageContaining("outside the range of LSNs seen in the location phase");
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2905")
+    void whenFirstReplayedLsnIsTheOneTheLocationPhaseStartedAtShouldBeFiltered() {
+        final Lsn lastCommitStoredLsn = Lsn.valueOf(100L);
+        final Lsn lastEventStoredLsn = Lsn.valueOf(140L);
+        final var locator = new WalPositionLocator(lastCommitStoredLsn, lastEventStoredLsn, ReplicationMessage.Operation.INSERT, 1);
+
+        final var beginMessage = createBeginMessage(1L);
+        final var insertMessage = createInsertMessage(1L);
+
+        assertThat(locator.resumeFromLsn(Lsn.valueOf(110L), beginMessage)).isEmpty();
+        assertThat(locator.resumeFromLsn(Lsn.valueOf(140L), insertMessage)).isEmpty();
+        assertThat(locator.resumeFromLsn(Lsn.valueOf(140L), insertMessage)).isPresent();
+
+        locator.enableFiltering();
+
+        // The first replayed message is the one the location phase saw first, so it is
+        // filtered as any other message of the range
+        assertThat(locator.skipMessage(Lsn.valueOf(110L))).isTrue();
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2905")
+    void whenFirstReplayedLsnDiffersFromTheLocationPhaseStartShouldThrow() {
+        final Lsn lastCommitStoredLsn = Lsn.valueOf(100L);
+        final Lsn lastEventStoredLsn = Lsn.valueOf(140L);
+        final var locator = new WalPositionLocator(lastCommitStoredLsn, lastEventStoredLsn, ReplicationMessage.Operation.INSERT, 1);
+
+        final var beginMessage = createBeginMessage(1L);
+        final var insertMessage = createInsertMessage(1L);
+
+        assertThat(locator.resumeFromLsn(Lsn.valueOf(110L), beginMessage)).isEmpty();
+        assertThat(locator.resumeFromLsn(Lsn.valueOf(140L), insertMessage)).isEmpty();
+        assertThat(locator.resumeFromLsn(Lsn.valueOf(140L), insertMessage)).isPresent();
+
+        locator.enableFiltering();
+
+        // The replay started at another LSN of the seen range, so the two streams diverged
+        assertThatThrownBy(() -> locator.skipMessage(Lsn.valueOf(120L)))
+                .isInstanceOf(DebeziumException.class)
+                .hasMessageContaining("Replay started at LSN 'LSN{0/78}'")
+                .hasMessageContaining("the location phase started at LSN 'LSN{0/6E}'");
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2905")
+    void whenFirstReplayedLsnIsInvalidShouldNotConsumeTheLocationPhaseCheck() {
+        final Lsn lastCommitStoredLsn = Lsn.valueOf(100L);
+        final Lsn lastEventStoredLsn = Lsn.valueOf(140L);
+        final var locator = new WalPositionLocator(lastCommitStoredLsn, lastEventStoredLsn, ReplicationMessage.Operation.INSERT, 1);
+
+        final var beginMessage = createBeginMessage(1L);
+        final var insertMessage = createInsertMessage(1L);
+
+        assertThat(locator.resumeFromLsn(Lsn.valueOf(110L), beginMessage)).isEmpty();
+        assertThat(locator.resumeFromLsn(Lsn.valueOf(140L), insertMessage)).isEmpty();
+        assertThat(locator.resumeFromLsn(Lsn.valueOf(140L), insertMessage)).isPresent();
+
+        locator.enableFiltering();
+
+        // An invalid LSN carries no position, so it is not checked and does not use up the check
+        assertThat(locator.skipMessage(Lsn.valueOf(0L))).isTrue();
+        // The check was not used up, so the next valid LSN is the one that is checked
+        assertThatThrownBy(() -> locator.skipMessage(Lsn.valueOf(120L)))
+                .isInstanceOf(DebeziumException.class)
+                .hasMessageContaining("Replay started at LSN 'LSN{0/78}'")
+                .hasMessageContaining("the location phase started at LSN 'LSN{0/6E}'");
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2905")
+    void whenFirstReplayedLsnIsTheResumePositionShouldSwitchOffTheFiltering() {
+        final Lsn lastCommitStoredLsn = Lsn.valueOf(100L);
+        final Lsn lastEventStoredLsn = Lsn.valueOf(140L);
+        final var locator = new WalPositionLocator(lastCommitStoredLsn, lastEventStoredLsn, ReplicationMessage.Operation.BEGIN);
+
+        final var beginMessage = createBeginMessage(1L);
+        final var insertMessage = createInsertMessage(1L);
+
+        assertThat(locator.resumeFromLsn(Lsn.valueOf(110L), beginMessage)).isEmpty();
+        assertThat(locator.resumeFromLsn(Lsn.valueOf(140L), insertMessage)).isEmpty();
+        assertThat(locator.resumeFromLsn(Lsn.valueOf(140L), insertMessage)).isPresent();
+
+        locator.enableFiltering();
+
+        // The first replayed message is the resume position, so the filtering is switched off
+        assertThat(locator.skipMessage(Lsn.valueOf(110L))).isFalse();
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2905")
+    void whenNoResumePositionWasFoundShouldNotCheckTheFirstReplayedLsn() {
+        final Lsn lastCommitStoredLsn = Lsn.valueOf(100L);
+        final Lsn lastEventStoredLsn = Lsn.valueOf(140L);
+        final var locator = new WalPositionLocator(lastCommitStoredLsn, lastEventStoredLsn, ReplicationMessage.Operation.INSERT);
+
+        final var beginMessage = createBeginMessage(1L);
+
+        // The location phase did not find a resume position
+        assertThat(locator.resumeFromLsn(Lsn.valueOf(110L), beginMessage)).isEmpty();
+
+        locator.enableFiltering();
+
+        // The first replayed message switches off the filtering, so its LSN is not checked
+        assertThat(locator.skipMessage(Lsn.valueOf(140L))).isFalse();
     }
 
     // =============================================================================

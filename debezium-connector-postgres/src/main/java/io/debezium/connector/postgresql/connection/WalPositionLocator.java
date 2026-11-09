@@ -62,6 +62,13 @@ public class WalPositionLocator {
      */
     private Lsn lowestLsnSeen = null;
     private Lsn highestLsnSeen = null;
+    /**
+     * Whether the first message of the replay phase still has to be checked against the LSN the
+     * location phase started at. Both phases read the same WAL from the same stored LSN, so the
+     * first message of the replay must be the one the location phase saw first. When it is not,
+     * the two streams diverged and the messages in between would be lost silently.
+     */
+    private boolean expectFirstReplayLsn = false;
     private long currentLsnEventCount = 0;
     private long startStreamingEventsToSkip = 0;
     private boolean skipProcessedLogicalMessage = false;
@@ -289,13 +296,23 @@ public class WalPositionLocator {
             highestLsnSeen = null;
             return false;
         }
-        if (lsn.isValid() && !isWithinSeenLsnRange(lsn)) {
-            throw new DebeziumException(String.format(
-                    "Message with LSN '%s' outside the range of LSNs seen in the location phase ('%s' to '%s'). "
-                            + "This is unexpected and can lead to an infinite loop or a data loss.",
-                    lsn,
-                    lowestLsnSeen,
-                    highestLsnSeen));
+        if (lsn.isValid()) {
+            if (!isWithinSeenLsnRange(lsn)) {
+                throw new DebeziumException(String.format(
+                        "Message with LSN '%s' outside the range of LSNs seen in the location phase ('%s' to '%s'). "
+                                + "This is unexpected and can lead to an infinite loop or a data loss.",
+                        lsn,
+                        lowestLsnSeen,
+                        highestLsnSeen));
+            }
+            if (expectFirstReplayLsn) {
+                expectFirstReplayLsn = false;
+                if (!lsn.equals(firstLsnReceived)) {
+                    throw new DebeziumException(String.format(
+                            "Replay started at LSN '%s' but the location phase started at LSN '%s'. The two streams diverged, which can lead to a data loss.",
+                            lsn, firstLsnReceived));
+                }
+            }
         }
         LOGGER.debug("Message with LSN '{}' filtered", lsn);
         return true;
@@ -324,6 +341,7 @@ public class WalPositionLocator {
      */
     public void enableFiltering() {
         passMessages = false;
+        expectFirstReplayLsn = true;
     }
 
     /**
