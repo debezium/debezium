@@ -12,6 +12,8 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.sql.SQLException;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -53,7 +55,7 @@ public abstract class AbstractIncrementalSnapshotWithSchemaChangesSupportTest<T 
 
         populateTable();
         startConnector();
-        executeSchemaChangesTest();
+        executeSchemaChangesTest(false);
     }
 
     @Test
@@ -65,9 +67,9 @@ public abstract class AbstractIncrementalSnapshotWithSchemaChangesSupportTest<T 
         // an explicit column projection, so a DDL landing mid-snapshot can also surface as an
         // undefined-column error on the query itself instead of only as a result-set mismatch.
         populateTable();
-        final LogInterceptor logInterceptor = new LogInterceptor(AbstractIncrementalSnapshotChangeEventSource.class);
+        final var logInterceptor = new LogInterceptor(AbstractIncrementalSnapshotChangeEventSource.class);
         startConnector(x -> x.with(RelationalDatabaseConnectorConfig.COLUMN_EXCLUDE_LIST, "no_such_schema\\.no_such_table\\.no_such_column"));
-        executeSchemaChangesTest();
+        executeSchemaChangesTest(true);
         if (expectsStaleSchemaDeferral()) {
             assertTrue(logInterceptor.containsMessage("is stale against the database"),
                     "the stale-schema deferral should have been exercised at least once");
@@ -85,7 +87,13 @@ public abstract class AbstractIncrementalSnapshotWithSchemaChangesSupportTest<T 
         return true;
     }
 
-    private void executeSchemaChangesTest() throws Exception {
+    /**
+     * @param ddlWhileSnapshotting when {@code true} each group of schema changes is issued from the
+     *            record consumer, once the previous batch of snapshot records arrived, so the DDL is
+     *            guaranteed to land while the snapshot is in flight rather than before the signal is
+     *            processed
+     */
+    private void executeSchemaChangesTest(boolean ddlWhileSnapshotting) throws Exception {
         waitForConnectorToStart();
 
         waitForAvailableRecords(1, TimeUnit.SECONDS);
@@ -94,23 +102,34 @@ public abstract class AbstractIncrementalSnapshotWithSchemaChangesSupportTest<T 
 
         sendAdHocSnapshotSignal();
 
-        try (JdbcConnection connection = databaseConnection()) {
-            connection.setAutoCommit(true);
-            connection.execute(String.format("INSERT INTO %s (pk, aa) VALUES (%s, %s)", tableName(), ROW_COUNT + 11, ROW_COUNT + 10));
-            connection.execute(alterColumnStatement(tableName(), "aa", "VARCHAR(5)"));
-            connection.execute(String.format("INSERT INTO %s (pk, aa) VALUES (%s, '%s')", tableName(), ROW_COUNT + 10, ROW_COUNT + 9));
-            for (int i = 0; i < 9 && !Thread.interrupted(); i += 3) {
-                connection.execute(String.format("ALTER TABLE %s ADD c INT", tableName()));
-                connection.execute(String.format("INSERT INTO %s (pk, aa, c) VALUES (%s, '%s', %s)", tableName(), i + ROW_COUNT + 1, i + ROW_COUNT, 1));
-                connection.execute(alterColumnStatement(tableName(), "c", "VARCHAR(5)"));
-                connection.execute(String.format("INSERT INTO %s (pk, aa, c) VALUES (%s, '%s', '%s')", tableName(), i + ROW_COUNT + 2, i + ROW_COUNT + 1, "1"));
-                connection.execute(String.format("ALTER TABLE %s DROP COLUMN c", tableName()));
-                connection.execute(String.format("INSERT INTO %s (pk, aa) VALUES (%s, '%s')", tableName(), i + ROW_COUNT + 3, i + ROW_COUNT + 2));
+        final List<String[]> schemaChanges = new ArrayList<>();
+        schemaChanges.add(new String[]{
+                String.format("INSERT INTO %s (pk, aa) VALUES (%s, %s)", tableName(), ROW_COUNT + 11, ROW_COUNT + 10),
+                alterColumnStatement(tableName(), "aa", "VARCHAR(5)"),
+                String.format("INSERT INTO %s (pk, aa) VALUES (%s, '%s')", tableName(), ROW_COUNT + 10, ROW_COUNT + 9) });
+        for (int i = 0; i < 9; i += 3) {
+            schemaChanges.add(new String[]{
+                    String.format("ALTER TABLE %s ADD c INT", tableName()),
+                    String.format("INSERT INTO %s (pk, aa, c) VALUES (%s, '%s', %s)", tableName(), i + ROW_COUNT + 1, i + ROW_COUNT, 1),
+                    alterColumnStatement(tableName(), "c", "VARCHAR(5)"),
+                    String.format("INSERT INTO %s (pk, aa, c) VALUES (%s, '%s', '%s')", tableName(), i + ROW_COUNT + 2, i + ROW_COUNT + 1, "1"),
+                    String.format("ALTER TABLE %s DROP COLUMN c", tableName()),
+                    String.format("INSERT INTO %s (pk, aa) VALUES (%s, '%s')", tableName(), i + ROW_COUNT + 3, i + ROW_COUNT + 2) });
+        }
+
+        final AtomicInteger nextSchemaChange = new AtomicInteger();
+        if (!ddlWhileSnapshotting) {
+            while (nextSchemaChange.get() < schemaChanges.size()) {
+                executeSchemaChange(schemaChanges.get(nextSchemaChange.getAndIncrement()));
             }
         }
 
         final int expectedRecordCount = ROW_COUNT + 11;
-        final Map<Integer, SourceRecord> dbChanges = consumeRecordsMixedWithIncrementalSnapshot(expectedRecordCount);
+        final Map<Integer, SourceRecord> dbChanges = consumeRecordsMixedWithIncrementalSnapshot(expectedRecordCount, x -> true, records -> {
+            if (ddlWhileSnapshotting && nextSchemaChange.get() < schemaChanges.size()) {
+                executeSchemaChange(schemaChanges.get(nextSchemaChange.getAndIncrement()));
+            }
+        });
         for (int i = 0; i < expectedRecordCount; i++) {
             assertTrue(dbChanges.containsKey(i + 1), String.format("missing PK %d", i + 1));
             SourceRecord record = dbChanges.get(i + 1);
@@ -123,6 +142,16 @@ public abstract class AbstractIncrementalSnapshotWithSchemaChangesSupportTest<T 
                 String value = ((Struct) record.value()).getStruct("after").getString(valueFieldName());
                 assertEquals(Integer.toString(i), value);
             }
+        }
+    }
+
+    private void executeSchemaChange(String... statements) {
+        try (JdbcConnection connection = databaseConnection()) {
+            connection.setAutoCommit(true);
+            connection.execute(statements);
+        }
+        catch (SQLException e) {
+            throw new RuntimeException(e);
         }
     }
 
