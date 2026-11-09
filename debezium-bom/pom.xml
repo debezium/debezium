@@ -282,8 +282,10 @@
             <!-- MongoDB Java driver -->
             <dependency>
                 <groupId>org.mongodb</groupId>
-                <artifactId>mongodb-driver-sync</artifactId>
+                <artifactId>mongodb-driver-bom</artifactId>
                 <version>${version.mongo.driver}</version>
+                <type>pom</type>
+                <scope>import</scope>
             </dependency>
 
             <!-- SQL Server driver -->
