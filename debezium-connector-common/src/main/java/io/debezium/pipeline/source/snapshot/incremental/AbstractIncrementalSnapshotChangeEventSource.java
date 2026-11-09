@@ -149,8 +149,7 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<P extends Par
             throw e;
         }
         catch (Exception e) {
-            // An exception escaping the signal processing path is swallowed and stalls the snapshot:
-            // skip the table visibly. The read-only sources emit on the streaming thread and keep failing fast.
+            // An exception escaping the signal processing path is swallowed and stalls the snapshot: skip the table visibly
             offsetContext.postSnapshotCompletion();
             window.clear();
             warnAndSkip(partition, offsetContext,
@@ -217,21 +216,25 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<P extends Par
             // The emission schema rotated after the window was buffered. The comparison is structural
             // because a refresh replaces the TableSchema instance even when nothing changed (pgoutput
             // relation messages). The whole window is re-read from its start (at-least-once): the
-            // position is restored first, so the state is consistent even when the deferral bound throws.
+            // position is restored first, so the state is consistent even when the deferral bound is hit.
             context.revertChunk();
             context.nextChunkPosition(windowStartPosition);
-            deferChunkOnStaleSchema(new DebeziumException(
+            deferChunkOrSkipTable(partition, offsetContext, new DebeziumException(
                     "The schema of table '%s' was refreshed after the window was buffered".formatted(currentTable.id())));
             return;
         }
+        // A chunk counts as progress only once it is both read and emitted: the window closed after a
+        // read-path deferral is empty and must keep counting against the bound
+        final var emitted = !window.isEmpty();
         offsetContext.incrementalSnapshotEvents();
         for (Object[] row : window.values()) {
             sendEvent(partition, dispatcher, offsetContext, row);
         }
         offsetContext.postSnapshotCompletion();
         window.clear();
-        // A chunk counts as progress only once it is both read and emitted
-        resetStaleSchemaDeferrals();
+        if (emitted) {
+            resetStaleSchemaDeferrals();
+        }
     }
 
     protected void sendEvent(P partition, EventDispatcher<P, T> dispatcher, OffsetContext offsetContext, Object[] row) throws InterruptedException {
@@ -939,9 +942,9 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<P extends Par
     }
 
     /**
-     * Read-path variant: reports whether the window must be closed to re-read the chunk; when the
-     * deferral bound is exhausted (or the schema cannot be refreshed) the table is skipped and the
-     * loop moves on to the next one, so the window still closes normally.
+     * Reports whether the chunk was deferred; when the deferral bound is exhausted (or the schema
+     * cannot be refreshed) the table is skipped instead and the snapshot moves on to the next one,
+     * on the read path as well as on the emission path of the signal-based and read-only sources.
      */
     private boolean deferChunkOrSkipTable(P partition, OffsetContext offsetContext, Exception cause) {
         try {

@@ -7,6 +7,7 @@ package io.debezium.connector.sqlserver;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.entry;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.sql.SQLException;
@@ -421,6 +422,8 @@ public class IncrementalSnapshotIT extends AbstractIncrementalSnapshotWithSchema
         for (int i = 0; i < ROW_COUNT; i++) {
             assertThat(dbChanges).containsKey(i + 1);
         }
+        assertEquals(3, logInterceptor.countOccurrences("re-reading the chunk in the next window"),
+                "the chunk should have been deferred exactly up to the bound");
         assertTrue(logInterceptor.containsMessage("is still stale against the database after 3 chunk deferrals"),
                 "the deferral bound should have been exhausted on the table whose schema never catches up");
         assertTrue(logInterceptor.containsMessage("skipping the table and continuing streaming"),
