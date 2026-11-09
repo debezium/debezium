@@ -10,7 +10,7 @@ import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
-import java.util.LinkedHashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -252,24 +252,9 @@ public class ReselectColumnsPostProcessor implements PostProcessor, BeanRegistry
             return;
         }
 
-        // Resolve the key columns/values once so cache reads, writes and invalidation all share the
-        // exact same row identity (whether the event key or the primary key is used).
-        final List<String> keyColumns = new ArrayList<>();
-        final List<Object> keyValues = new ArrayList<>();
-        if (reselectUseEventKeyFields) {
-            for (org.apache.kafka.connect.data.Field field : key.schema().fields()) {
-                keyColumns.add(field.name());
-                keyValues.add(resolveKeyFieldValue(key, field));
-            }
-        }
-        else {
-            for (Column column : table.primaryKeyColumns()) {
-                keyColumns.add(column.name());
-                keyValues.add(resolveKeyFieldValue(after, after.schema().field(column.name())));
-            }
-        }
-
-        final Set<String> requiredColumnSelections = getRequiredColumnSelections(tableId, after);
+        // Keyed by relational column name, which is what the include/exclude lists, the SQL query and the
+        // cache use; the event field name may differ when field name adjustment is enabled.
+        final Map<String, Column> requiredColumnSelections = getRequiredColumnSelections(tableId, table, after);
 
         // Resolve the row-scoped cache view once, keyed by the event's message key struct, so the row
         // identity is resolved a single time and reused for every column of this row. Using the key struct
@@ -282,7 +267,7 @@ public class ReselectColumnsPostProcessor implements PostProcessor, BeanRegistry
             // instead of re-querying. This also keeps the cache correct across row modifications without
             // depending on the TTL.
             if (isCacheEnabled()) {
-                cacheModifiedColumns(rowCache, tableId, after, requiredColumnSelections);
+                cacheModifiedColumns(rowCache, tableId, table, after, requiredColumnSelections.keySet());
             }
 
             if (requiredColumnSelections.isEmpty()) {
@@ -297,7 +282,7 @@ public class ReselectColumnsPostProcessor implements PostProcessor, BeanRegistry
             final Map<String, Object> selections = new HashMap<>();
             final List<String> columnsToQuery = new ArrayList<>();
             if (rowCache != null) {
-                for (String columnName : requiredColumnSelections) {
+                for (String columnName : requiredColumnSelections.keySet()) {
                     final Optional<ReselectColumnCache.Hit> cached = rowCache.get(columnName);
                     if (cached.isPresent()) {
                         selections.put(columnName, cached.get().value());
@@ -308,10 +293,16 @@ public class ReselectColumnsPostProcessor implements PostProcessor, BeanRegistry
                 }
             }
             else {
-                columnsToQuery.addAll(requiredColumnSelections);
+                columnsToQuery.addAll(requiredColumnSelections.keySet());
             }
 
             if (!columnsToQuery.isEmpty()) {
+                final List<String> keyColumns = new ArrayList<>();
+                final List<Object> keyValues = new ArrayList<>();
+                if (!resolveKeyColumns(tableId, table, key, after, keyColumns, keyValues)) {
+                    return;
+                }
+
                 final Map<String, Object> rawValues = new HashMap<>();
                 try {
                     final boolean found = jdbcConnection.reselectColumns(table, columnsToQuery, keyColumns, keyValues, source, rs -> {
@@ -341,8 +332,8 @@ public class ReselectColumnsPostProcessor implements PostProcessor, BeanRegistry
                     if (!rawValues.containsKey(columnName)) {
                         continue;
                     }
-                    final Column column = table.columnWithName(columnName);
-                    final org.apache.kafka.connect.data.Field field = after.schema().field(columnName);
+                    final Column column = requiredColumnSelections.get(columnName);
+                    final org.apache.kafka.connect.data.Field field = fieldFor(after, column);
                     final Object convertedValue = getConvertedValue(tableId, column, field, rawValues.get(columnName));
                     selections.put(columnName, convertedValue);
                     if (rowCache != null) {
@@ -353,14 +344,15 @@ public class ReselectColumnsPostProcessor implements PostProcessor, BeanRegistry
 
             // Iterate re-selection columns and override placeholder values with the re-selected (cached or
             // freshly queried) converted values.
-            for (String columnName : requiredColumnSelections) {
+            for (Map.Entry<String, Column> selection : requiredColumnSelections.entrySet()) {
+                final String columnName = selection.getKey();
                 if (!selections.containsKey(columnName)) {
                     continue;
                 }
-                final org.apache.kafka.connect.data.Field field = after.schema().field(columnName);
+                final org.apache.kafka.connect.data.Field field = fieldFor(after, selection.getValue());
                 final Object convertedValue = selections.get(columnName);
                 if (LOGGER.isTraceEnabled()) {
-                    LOGGER.trace("Replaced field {} value {} with {}", field.name(), value.get(field), convertedValue);
+                    LOGGER.trace("Replaced field {} value {} with {}", field.name(), after.get(field), convertedValue);
                 }
                 after.put(field.name(), convertedValue);
             }
@@ -383,13 +375,19 @@ public class ReselectColumnsPostProcessor implements PostProcessor, BeanRegistry
      * @param requiredColumnSelections columns being re-selected this event, which are skipped here since
      *                                 they will be cached after re-selection below.
      */
-    private void cacheModifiedColumns(ReselectColumnCache.RowCache rowCache, TableId tableId, Struct after, Set<String> requiredColumnSelections) {
+    private void cacheModifiedColumns(ReselectColumnCache.RowCache rowCache, TableId tableId, Table table, Struct after,
+                                      Set<String> requiredColumnSelections) {
         if (rowCache == null) {
             return;
         }
-        for (org.apache.kafka.connect.data.Field field : after.schema().fields()) {
-            final String columnName = field.name();
+        for (Column column : table.columns()) {
+            final String columnName = column.name();
             if (requiredColumnSelections.contains(columnName)) {
+                continue;
+            }
+            final org.apache.kafka.connect.data.Field field = fieldFor(after, column);
+            if (field == null) {
+                // Column is not part of the event, e.g. excluded
                 continue;
             }
             final String fullyQualifiedName = jdbcConnection.getQualifiedTableName(tableId) + ":" + columnName;
@@ -436,23 +434,88 @@ public class ReselectColumnsPostProcessor implements PostProcessor, BeanRegistry
         return key.get(field);
     }
 
-    private Set<String> getRequiredColumnSelections(TableId tableId, Struct after) {
-        final Set<String> columnSelections = new LinkedHashSet<>();
-        for (org.apache.kafka.connect.data.Field field : after.schema().fields()) {
+    /**
+     * Resolves the relational key column names and their values used in the re-select query's predicate,
+     * either from the event key or from the table's primary key columns in the event's {@code after}.
+     *
+     * @return {@code true} if all key columns were resolved, {@code false} if re-selection should be skipped
+     * @throws DebeziumException if a key column cannot be resolved and the error handling mode is {@code fail}
+     */
+    private boolean resolveKeyColumns(TableId tableId, Table table, Struct key, Struct after, List<String> keyColumns, List<Object> keyValues) {
+        if (reselectUseEventKeyFields) {
+            final Map<String, Column> columnsByFieldName = new HashMap<>();
+            for (Column column : table.columns()) {
+                columnsByFieldName.putIfAbsent(fieldNameFor(column), column);
+            }
+            for (org.apache.kafka.connect.data.Field field : key.schema().fields()) {
+                final Column column = columnsByFieldName.get(field.name());
+                if (column == null) {
+                    return handleUnresolvedKey(String.format(
+                            "Event key field '%s' does not match any column of table %s, unable to re-select columns.",
+                            field.name(), tableId));
+                }
+                keyColumns.add(column.name());
+                keyValues.add(resolveKeyFieldValue(key, field));
+            }
+        }
+        else {
+            for (Column column : table.primaryKeyColumns()) {
+                final org.apache.kafka.connect.data.Field field = fieldFor(after, column);
+                if (field == null) {
+                    return handleUnresolvedKey(String.format(
+                            "Key column '%s' of table %s is not present in the event, unable to re-select columns; "
+                                    + "consider setting '%s' to 'true' or removing the column from the column exclusions.",
+                            column.name(), tableId, RESELECT_USE_EVENT_KEY));
+                }
+                keyColumns.add(column.name());
+                keyValues.add(resolveKeyFieldValue(after, field));
+            }
+        }
+        return true;
+    }
+
+    private boolean handleUnresolvedKey(String message) {
+        if (errorHandlingMode == ErrorHandlingMode.FAIL) {
+            throw new DebeziumException(message);
+        }
+        LOGGER.warn(message);
+        return false;
+    }
+
+    private String fieldNameFor(Column column) {
+        return connectorConfig.getFieldNamer().fieldNameFor(column);
+    }
+
+    private org.apache.kafka.connect.data.Field fieldFor(Struct struct, Column column) {
+        return struct.schema().field(fieldNameFor(column));
+    }
+
+    /**
+     * Returns the columns to re-select, keyed by relational column name. The column selector is matched
+     * against the relational column name, while the value is read from the event field the column maps to.
+     */
+    private Map<String, Column> getRequiredColumnSelections(TableId tableId, Table table, Struct after) {
+        final Map<String, Column> columnSelections = new LinkedHashMap<>();
+        for (Column column : table.columns()) {
+            final org.apache.kafka.connect.data.Field field = fieldFor(after, column);
+            if (field == null) {
+                // Column is not part of the event, e.g. excluded
+                continue;
+            }
             final Object value = after.get(field);
             if (reselectUnavailableValues && isUnavailableValueHolder(field, value)) {
-                final String fullyQualifiedName = jdbcConnection.getQualifiedTableName(tableId) + ":" + field.name();
+                final String fullyQualifiedName = jdbcConnection.getQualifiedTableName(tableId) + ":" + column.name();
                 if (selector.test(fullyQualifiedName)) {
                     LOGGER.debug("Adding column {} for table {} to re-select list due to unavailable value placeholder.",
-                            field.name(), tableId);
-                    columnSelections.add(field.name());
+                            column.name(), tableId);
+                    columnSelections.put(column.name(), column);
                 }
             }
             else if (reselectNullValues && value == null) {
-                final String fullyQualifiedName = jdbcConnection.getQualifiedTableName(tableId) + ":" + field.name();
+                final String fullyQualifiedName = jdbcConnection.getQualifiedTableName(tableId) + ":" + column.name();
                 if (selector.test(fullyQualifiedName)) {
-                    LOGGER.debug("Adding empty column {} for table {} to re-select list.", field.name(), tableId);
-                    columnSelections.add(field.name());
+                    LOGGER.debug("Adding empty column {} for table {} to re-select list.", column.name(), tableId);
+                    columnSelections.put(column.name(), column);
                 }
             }
         }

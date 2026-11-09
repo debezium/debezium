@@ -255,6 +255,9 @@ Use the following format to specify column names:
 
 `__<schema>__.__<table>__:__<column>__`
 
+Specify the column names as they are defined in the source database, not as they appear in change events after the connector applies the `field.name.adjustment.mode` setting.
+For example, to reselect a column named `DOC$` that the connector emits as the field `DOC_`, specify `DOC\$`, escaping the `$` because each entry is a regular expression.
+
 Do not set this property if you set the `post.processors.reselect.columns.exclude.list` property.
 
 |[[reselect-columns-post-processor-property-reselect-columns-exclude-list]]<<reselect-columns-post-processor-property-reselect-columns-exclude-list, `+post.processors.reselect.columns.exclude.list+`>>
@@ -263,6 +266,8 @@ Do not set this property if you set the `post.processors.reselect.columns.exclud
 Use the following format to specify column names:
 
 `__<schema>__.__<table>__:__<column>__`
+
+As with the include list, specify the column names as they are defined in the source database, not as adjusted field names.
 
 Do not set this property if you set the `post.processors.reselect.columns.include.list` property.
 

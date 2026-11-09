@@ -526,6 +526,76 @@ public class OracleReselectColumnsProcessorIT extends AbstractReselectProcessorT
         }
     }
 
+    @Test
+    @FixFor("debezium/dbz#3050")
+    @SkipWhenLogMiningStrategyIs(value = SkipWhenLogMiningStrategyIs.Strategy.HYBRID, reason = "Cannot use lob.enabled with Hybrid")
+    public void testReselectWithAdjustedFieldNames() throws Exception {
+        TestHelper.dropTable(connection, "dbz3050");
+        TestHelper.dropTable(connection, "dbz3050b");
+        try {
+            final LogInterceptor logInterceptor = getReselectLogInterceptor();
+
+            // Re-selected table, whose key and LOB column names are both adjusted
+            connection.execute("CREATE TABLE dbz3050 (id$$ numeric(9,0) primary key, doc$ clob, data2 numeric(9,0))");
+            TestHelper.streamTable(connection, "dbz3050");
+
+            // Captured table not in the re-select include list, whose key column name is adjusted
+            connection.execute("CREATE TABLE dbz3050b (companyid$$ numeric(9,0) primary key, data clob, data2 numeric(9,0))");
+            TestHelper.streamTable(connection, "dbz3050b");
+
+            Configuration config = getConfigurationBuilder()
+                    .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "DEBEZIUM\\.DBZ3050,DEBEZIUM\\.DBZ3050B")
+                    .with(OracleConnectorConfig.LOB_ENABLED, "true")
+                    .with(OracleConnectorConfig.FIELD_NAME_ADJUSTMENT_MODE, "avro")
+                    .with("post.processors.reselector.reselect.columns.include.list", "DEBEZIUM\\.DBZ3050:DOC\\$")
+                    .build();
+
+            start(OracleConnector.class, config);
+            assertConnectorIsRunning();
+
+            waitForStreamingStarted();
+
+            // Inserts will always include the data
+            final String clobData = RandomStringUtils.randomAlphabetic(10000);
+            final Clob clob = connection.connection().createClob();
+            clob.setString(1, clobData);
+            connection.prepareQuery("INSERT INTO dbz3050 (id$$,doc$,data2) values (1,?,1)", ps -> ps.setClob(1, clob), null);
+            connection.prepareQuery("INSERT INTO dbz3050b (companyid$$,data,data2) values (1,?,1)", ps -> ps.setClob(1, clob), null);
+            connection.commit();
+
+            // Update rows without changing the clobs
+            connection.execute("UPDATE dbz3050b set data2=10 where companyid$$ = 1");
+            connection.execute("UPDATE dbz3050 set data2=10 where id$$ = 1");
+
+            final SourceRecords sourceRecords = consumeRecordsByTopic(4);
+
+            final List<SourceRecord> otherRecords = sourceRecords.recordsForTopic("server1.DEBEZIUM.DBZ3050B");
+            assertThat(otherRecords).hasSize(2);
+
+            Struct after = ((Struct) otherRecords.get(1).value()).getStruct(Envelope.FieldName.AFTER);
+            assertThat(after.get("COMPANYID__")).isEqualTo(1);
+            assertThat(after.get("DATA")).isEqualTo("__debezium_unavailable_value");
+            assertThat(after.get("DATA2")).isEqualTo(10);
+
+            final List<SourceRecord> tableRecords = sourceRecords.recordsForTopic("server1.DEBEZIUM.DBZ3050");
+            assertThat(tableRecords).hasSize(2);
+
+            SourceRecord update = tableRecords.get(1);
+            VerifyRecord.isValidUpdate(update, "ID__", 1);
+
+            after = ((Struct) update.value()).getStruct(Envelope.FieldName.AFTER);
+            assertThat(after.get("ID__")).isEqualTo(1);
+            assertThat(after.get("DOC_")).isEqualTo(clobData);
+            assertThat(after.get("DATA2")).isEqualTo(10);
+
+            assertColumnReselectedForUnavailableValue(logInterceptor, TestHelper.getDatabaseName() + ".DEBEZIUM.DBZ3050", "DOC$");
+        }
+        finally {
+            TestHelper.dropTable(connection, "dbz3050");
+            TestHelper.dropTable(connection, "dbz3050b");
+        }
+    }
+
     // Converts a clob column to true if not empty, otherwise to false if NOT NULL or null if nullable
     public static class ClobValueToBoolean implements CustomConverter<SchemaBuilder, RelationalColumn> {
         @Override
