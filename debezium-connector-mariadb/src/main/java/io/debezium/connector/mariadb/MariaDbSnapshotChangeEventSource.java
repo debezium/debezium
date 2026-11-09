@@ -20,6 +20,7 @@ import io.debezium.function.BlockingConsumer;
 import io.debezium.jdbc.MainConnectionProvidingConnectionFactory;
 import io.debezium.pipeline.EventDispatcher;
 import io.debezium.pipeline.notification.NotificationService;
+import io.debezium.pipeline.source.snapshot.incremental.IncrementalSnapshotContext;
 import io.debezium.relational.TableId;
 import io.debezium.snapshot.SnapshotterService;
 import io.debezium.util.Clock;
@@ -51,8 +52,9 @@ public class MariaDbSnapshotChangeEventSource extends BinlogSnapshotChangeEventS
     }
 
     @Override
-    protected MariaDbOffsetContext getInitialOffsetContext(BinlogConnectorConfig connectorConfig) {
-        return MariaDbOffsetContext.initial((MariaDbConnectorConfig) connectorConfig);
+    @SuppressWarnings("unchecked")
+    protected MariaDbOffsetContext getInitialOffsetContext(BinlogConnectorConfig connectorConfig, IncrementalSnapshotContext<?> carriedIncrementalSnapshotContext) {
+        return MariaDbOffsetContext.initial((MariaDbConnectorConfig) connectorConfig, (IncrementalSnapshotContext<TableId>) carriedIncrementalSnapshotContext);
     }
 
     @Override

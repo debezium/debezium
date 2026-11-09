@@ -287,6 +287,11 @@ public class PostgresOffsetContext extends CommonOffsetContext<SourceInfo> {
 
     public static PostgresOffsetContext initialContext(PostgresConnectorConfig connectorConfig, PostgresConnection jdbcConnection, Clock clock, Lsn lastCommitLsn,
                                                        Lsn lastCompletelyProcessedLsn) {
+        return initialContext(connectorConfig, jdbcConnection, clock, lastCommitLsn, lastCompletelyProcessedLsn, null);
+    }
+
+    public static PostgresOffsetContext initialContext(PostgresConnectorConfig connectorConfig, PostgresConnection jdbcConnection, Clock clock, Lsn lastCommitLsn,
+                                                       Lsn lastCompletelyProcessedLsn, IncrementalSnapshotContext<TableId> incrementalSnapshotContext) {
         try {
             LOGGER.info("Creating initial offset context");
             final Lsn lsn = Lsn.valueOf(jdbcConnection.currentXLogLocation());
@@ -304,9 +309,11 @@ public class PostgresOffsetContext extends CommonOffsetContext<SourceInfo> {
                     false,
                     false,
                     new TransactionContext(),
-                    connectorConfig.isReadOnlyConnection()
-                            ? new PostgresReadOnlyIncrementalSnapshotContext<>()
-                            : new SignalBasedIncrementalSnapshotContext<>(false));
+                    incrementalSnapshotContext != null
+                            ? incrementalSnapshotContext
+                            : (connectorConfig.isReadOnlyConnection()
+                                    ? new PostgresReadOnlyIncrementalSnapshotContext<>()
+                                    : new SignalBasedIncrementalSnapshotContext<>(false)));
         }
         catch (SQLException e) {
             throw new ConnectException("Database processing error", e);
