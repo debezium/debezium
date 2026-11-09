@@ -3372,6 +3372,9 @@ endif::community[]
 
 Note that changes to a primary key are not supported and can cause incorrect results if performed during an incremental snapshot. Another limitation is that if a schema change affects only columns' default values, then the change won't be detected until the DDL is processed from the transaction log stream. This doesn't affect the snapshot events' values, but the schema of snapshot events may have outdated defaults.
 
+Regardless of this setting, a chunk whose read or emission fails because the table schema changed is re-read in the next snapshot window.
+The connector learns about schema changes only through a new capture instance, so if none is created the retries are exhausted after three attempts and the connector skips the table, logs a warning, and emits a notification with the status `SQL_EXCEPTION`.
+
 |[[sqlserver-property-incremental-snapshot-chunk-size]]<<sqlserver-property-incremental-snapshot-chunk-size, `+incremental.snapshot.chunk.size+`>>
 |`1024`
 |The maximum number of rows that the connector fetches and reads into memory during an incremental snapshot chunk.

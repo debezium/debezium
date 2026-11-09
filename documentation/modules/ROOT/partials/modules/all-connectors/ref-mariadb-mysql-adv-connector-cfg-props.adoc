@@ -402,6 +402,9 @@ Changes to a primary key are not supported.
 Changing the primary during an incremental snapshot, can lead to incorrect results.
 A further limitation is that if a schema change affects only the default values of columns, then the change is not detected until the DDL is processed from the binlog stream.
 This does not affect the values of snapshot events, but the schema of these snapshot events may have outdated defaults.
++
+Regardless of this setting, a chunk whose read or emission fails because the table schema changed is re-read in the next snapshot window, after the DDL is processed from the binlog stream.
+If the schema still disagrees with the database after three consecutive attempts, the connector skips the table, logs a warning, and emits a notification with the status `SQL_EXCEPTION`.
 
 
 
