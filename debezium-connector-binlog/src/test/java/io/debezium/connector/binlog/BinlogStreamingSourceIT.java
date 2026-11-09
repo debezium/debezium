@@ -11,7 +11,6 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.sql.Connection;
 import java.sql.SQLException;
@@ -545,12 +544,10 @@ public abstract class BinlogStreamingSourceIT<C extends SourceConnector> extends
     @Test()
     @FixFor("DBZ-4029")
     public void testHeartbeatActionQueryExecuted() throws Exception {
-        final String HEARTBEAT_TOPIC_PREFIX_VALUE = "myheartbeat";
-
         config = simpleConfig()
                 .with(BinlogConnectorConfig.USER, "snapper")
                 .with(BinlogConnectorConfig.PASSWORD, "snapperpass")
-                .with(AbstractTopicNamingStrategy.DEFAULT_HEARTBEAT_TOPIC_PREFIX, HEARTBEAT_TOPIC_PREFIX_VALUE)
+                .with(AbstractTopicNamingStrategy.DEFAULT_HEARTBEAT_TOPIC_PREFIX, HEARTBEAT_TOPIC_PREFIX)
                 .with(Heartbeat.HEARTBEAT_INTERVAL, "100")
                 .with(DatabaseHeartbeatImpl.HEARTBEAT_ACTION_QUERY_PROPERTY_NAME,
                         String.format("INSERT INTO %s.test_heartbeat_table (text) VALUES ('test_heartbeat');",
@@ -610,7 +607,7 @@ public abstract class BinlogStreamingSourceIT<C extends SourceConnector> extends
                 .atMost(60, TimeUnit.SECONDS)
                 .untilAsserted(() -> assertThat(heartbeatActionQueryCount())
                         .as("Heartbeat action query executions within 60 heartbeat intervals")
-                        .isGreaterThanOrEqualTo(5));
+                        .isGreaterThanOrEqualTo(45));
     }
 
     /**
@@ -729,7 +726,7 @@ public abstract class BinlogStreamingSourceIT<C extends SourceConnector> extends
     }
 
     /**
-     * The two threads that dispatch the heartbeat are mutually exclusive, so the action query is executed
+     * The heartbeat is emitted under the configured interval guard, so the action query is executed
      * about once per interval and not once per received binlog event.
      */
     @Test
@@ -745,7 +742,7 @@ public abstract class BinlogStreamingSourceIT<C extends SourceConnector> extends
 
         // Create the captured tables and their content ...
         DATABASE.initialize();
-        consumeAtLeast(28);
+        consumeAtLeast(9 + 9 + 4 + 5 + 1); // only the inserts for our 4 tables in this database and 1 create table
 
         final int executionsBefore = heartbeatActionQueryCount();
         final long windowMillis = 10_000;
@@ -763,10 +760,14 @@ public abstract class BinlogStreamingSourceIT<C extends SourceConnector> extends
 
         final int executions = heartbeatActionQueryCount() - executionsBefore;
 
-        // The action query has to be executed about once per heartbeat interval, not twice ...
+        // The action query has to be executed about once per heartbeat interval, not twice and not never.
+        // The count comes in one execution below the number of intervals in the window and a slow action
+        // query can only lower it, so the lower bound leaves room for a loaded machine; the upper bound
+        // leaves room for an execution that happens just after the window ends.
+        final int intervals = (int) (windowMillis / 1000);
         assertThat(executions)
-                .as("Heartbeat action query executions within %s heartbeat intervals", windowMillis / 1000)
-                .isLessThanOrEqualTo((int) (windowMillis / 1000) + 2);
+                .as("Heartbeat action query executions within %s heartbeat intervals", intervals)
+                .isBetween(intervals - 3, intervals + 2);
     }
 
     /**
@@ -779,8 +780,8 @@ public abstract class BinlogStreamingSourceIT<C extends SourceConnector> extends
      * <p>
      * The heartbeat action query is read-only, so it produces no binlog event of its own and the
      * database stays completely idle while the heartbeat is measured. The heartbeat record and the
-     * heartbeat action query are emitted in the same guarded block, so the number of heartbeat records
-     * is the number of action query executions.
+     * heartbeat action query are emitted under the same interval guard, so the number of heartbeat
+     * records is the number of action query executions.
      */
     @Test
     @FixFor("debezium/dbz#1328")
@@ -820,7 +821,7 @@ public abstract class BinlogStreamingSourceIT<C extends SourceConnector> extends
             lockConnection.execute("LOCK TABLES " + snapshotTable + " WRITE");
 
             // Request the blocking snapshot through the file signal channel.
-            java.nio.file.Files.write(signalsFile, blockingSnapshotSignal(snapshotTable).getBytes(StandardCharsets.UTF_8));
+            java.nio.file.Files.writeString(signalsFile, blockingSnapshotSignal(snapshotTable));
 
             // The heartbeat stops while the streaming source is paused, so no heartbeat record may be
             // produced for a while.
@@ -886,7 +887,7 @@ public abstract class BinlogStreamingSourceIT<C extends SourceConnector> extends
         }
     }
 
-    private int heartbeatActionQueryCount() {
+    private int heartbeatActionQueryCount() throws SQLException {
         final String countQuery = String.format("SELECT COUNT(*) FROM %s.%s;", DATABASE.getDatabaseName(), HEARTBEAT_TABLE);
         final JdbcConnection.ResultSetMapper<Integer> countMapper = rs -> {
             rs.next();
@@ -894,9 +895,6 @@ public abstract class BinlogStreamingSourceIT<C extends SourceConnector> extends
         };
         try (BinlogTestConnection connection = getTestDatabaseConnection(DATABASE.getDatabaseName())) {
             return connection.queryAndMap(countQuery, countMapper);
-        }
-        catch (SQLException e) {
-            throw new IllegalStateException(e);
         }
     }
 
@@ -907,15 +905,11 @@ public abstract class BinlogStreamingSourceIT<C extends SourceConnector> extends
     }
 
     private int consumeHeartbeatRecords(AtomicInteger heartbeatCount) throws InterruptedException {
-        heartbeatCount.addAndGet(heartbeatRecords(consumeAvailableRecordsByTopic()).size());
-        return heartbeatCount.get();
+        return heartbeatCount.addAndGet(heartbeatRecords(consumeAvailableRecordsByTopic()).size());
     }
 
     private Configuration.Builder pausedHeartbeatConfig(String heartbeatIntervalMs) {
-        return simpleConfig()
-                .with(BinlogConnectorConfig.USER, "snapper")
-                .with(BinlogConnectorConfig.PASSWORD, "snapperpass")
-                .with(Heartbeat.HEARTBEAT_INTERVAL, heartbeatIntervalMs)
+        return heartbeatConfig(heartbeatIntervalMs)
                 .with(AbstractTopicNamingStrategy.TOPIC_HEARTBEAT_PREFIX, HEARTBEAT_TOPIC_PREFIX)
                 // The action query is read-only, so that it produces no binlog event of its own and the
                 // database stays completely idle while the heartbeat is measured.
