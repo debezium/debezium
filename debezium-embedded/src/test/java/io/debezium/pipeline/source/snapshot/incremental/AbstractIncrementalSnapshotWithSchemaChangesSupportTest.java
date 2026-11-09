@@ -26,6 +26,7 @@ import org.apache.kafka.connect.source.SourceRecord;
 import org.junit.jupiter.api.Test;
 
 import io.debezium.config.Configuration;
+import io.debezium.data.Envelope;
 import io.debezium.doc.FixFor;
 import io.debezium.jdbc.JdbcConnection;
 import io.debezium.junit.logging.LogInterceptor;
@@ -102,33 +103,43 @@ public abstract class AbstractIncrementalSnapshotWithSchemaChangesSupportTest<T 
 
         sendAdHocSnapshotSignal();
 
-        final List<String[]> schemaChanges = new ArrayList<>();
-        schemaChanges.add(new String[]{
+        final List<SchemaChange> schemaChanges = new ArrayList<>();
+        schemaChanges.add(new SchemaChange(ROW_COUNT + 10,
                 String.format("INSERT INTO %s (pk, aa) VALUES (%s, %s)", tableName(), ROW_COUNT + 11, ROW_COUNT + 10),
                 alterColumnStatement(tableName(), "aa", "VARCHAR(5)"),
-                String.format("INSERT INTO %s (pk, aa) VALUES (%s, '%s')", tableName(), ROW_COUNT + 10, ROW_COUNT + 9) });
+                String.format("INSERT INTO %s (pk, aa) VALUES (%s, '%s')", tableName(), ROW_COUNT + 10, ROW_COUNT + 9)));
         for (int i = 0; i < 9; i += 3) {
-            schemaChanges.add(new String[]{
+            schemaChanges.add(new SchemaChange(i + ROW_COUNT + 3,
                     String.format("ALTER TABLE %s ADD c INT", tableName()),
                     String.format("INSERT INTO %s (pk, aa, c) VALUES (%s, '%s', %s)", tableName(), i + ROW_COUNT + 1, i + ROW_COUNT, 1),
                     alterColumnStatement(tableName(), "c", "VARCHAR(5)"),
                     String.format("INSERT INTO %s (pk, aa, c) VALUES (%s, '%s', '%s')", tableName(), i + ROW_COUNT + 2, i + ROW_COUNT + 1, "1"),
                     String.format("ALTER TABLE %s DROP COLUMN c", tableName()),
-                    String.format("INSERT INTO %s (pk, aa) VALUES (%s, '%s')", tableName(), i + ROW_COUNT + 3, i + ROW_COUNT + 2) });
+                    String.format("INSERT INTO %s (pk, aa) VALUES (%s, '%s')", tableName(), i + ROW_COUNT + 3, i + ROW_COUNT + 2)));
         }
 
         final AtomicInteger nextSchemaChange = new AtomicInteger();
         if (!ddlWhileSnapshotting) {
             while (nextSchemaChange.get() < schemaChanges.size()) {
-                executeSchemaChange(schemaChanges.get(nextSchemaChange.getAndIncrement()));
+                executeSchemaChange(schemaChanges.get(nextSchemaChange.getAndIncrement()).statements());
             }
         }
 
+        // Each group of statements runs only once the streamed insert that closes the previous group has
+        // been received: the DDLs then reach the connector at its own pace, and the snapshot has to cope
+        // with a schema change while chunks are in flight rather than with a burst of changes
+        final AtomicInteger awaitedPk = new AtomicInteger(-1);
         final int expectedRecordCount = ROW_COUNT + 11;
         final Map<Integer, SourceRecord> dbChanges = consumeRecordsMixedWithIncrementalSnapshot(expectedRecordCount, x -> true, records -> {
-            if (ddlWhileSnapshotting && nextSchemaChange.get() < schemaChanges.size()) {
-                executeSchemaChange(schemaChanges.get(nextSchemaChange.getAndIncrement()));
+            if (!ddlWhileSnapshotting || nextSchemaChange.get() >= schemaChanges.size()) {
+                return;
             }
+            if (awaitedPk.get() >= 0 && records.stream().noneMatch(record -> isStreamedInsertOf(record, awaitedPk.get()))) {
+                return;
+            }
+            final var schemaChange = schemaChanges.get(nextSchemaChange.getAndIncrement());
+            executeSchemaChange(schemaChange.statements());
+            awaitedPk.set(schemaChange.lastInsertedPk());
         });
         for (int i = 0; i < expectedRecordCount; i++) {
             assertTrue(dbChanges.containsKey(i + 1), String.format("missing PK %d", i + 1));
@@ -143,6 +154,15 @@ public abstract class AbstractIncrementalSnapshotWithSchemaChangesSupportTest<T 
                 assertEquals(Integer.toString(i), value);
             }
         }
+    }
+
+    private boolean isStreamedInsertOf(SourceRecord record, int pk) {
+        final var value = (Struct) record.value();
+        return Envelope.Operation.CREATE.code().equals(value.getString(Envelope.FieldName.OPERATION))
+                && ((Struct) record.key()).getInt32(pkFieldName()) == pk;
+    }
+
+    private record SchemaChange(int lastInsertedPk, String... statements) {
     }
 
     private void executeSchemaChange(String... statements) {
