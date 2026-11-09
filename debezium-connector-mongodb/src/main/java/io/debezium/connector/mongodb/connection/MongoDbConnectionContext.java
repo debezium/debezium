@@ -15,6 +15,7 @@ import java.util.function.Consumer;
 import org.bson.BsonBoolean;
 import org.bson.BsonDocument;
 import org.bson.BsonInt32;
+import org.bson.codecs.Decoder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -107,10 +108,7 @@ public class MongoDbConnectionContext implements AutoCloseable {
         // Remove this internal API workaround once the driver supports explicit read preference for collection enumeration:
         // https://jira.mongodb.org/browse/DRIVERS-1186
         var nativeClient = nativeClient(client);
-        var listCollections = new ListCollectionsOperation<>(
-                databaseName,
-                nativeClient.getCodecRegistry().get(BsonDocument.class),
-                nativeClient.getSettings().getMaxAdaptiveRetries())
+        var listCollections = newListCollectionsOperation(nativeClient, databaseName)
                 .nameOnly(true)
                 .retryReads(nativeClient.getSettings().getRetryReads());
 
@@ -190,6 +188,34 @@ public class MongoDbConnectionContext implements AutoCloseable {
             return true;
         }
         return getClusterDescription().getType() != ClusterType.REPLICA_SET;
+    }
+
+    /**
+     * Creates the operation in a way that works with both the older driver versions that expose
+     * {@code ListCollectionsOperation(String, Decoder)} and the newer ones that require
+     * {@code ListCollectionsOperation(String, Decoder, Integer)} with the maximum adaptive retries
+     * taken from {@code MongoClientSettings#getMaxAdaptiveRetries()}.
+     * Both the constructor and the settings getter are driver API that differs between driver versions,
+     * so they are resolved reflectively.
+     */
+    @SuppressWarnings("unchecked")
+    private static ListCollectionsOperation<BsonDocument> newListCollectionsOperation(MongoClientImpl nativeClient, String databaseName) {
+        final var decoder = nativeClient.getCodecRegistry().get(BsonDocument.class);
+        try {
+            final var settings = nativeClient.getSettings();
+            try {
+                final var constructor = ListCollectionsOperation.class.getConstructor(String.class, Decoder.class, Integer.class);
+                final var maxAdaptiveRetries = settings.getClass().getMethod("getMaxAdaptiveRetries").invoke(settings);
+                return (ListCollectionsOperation<BsonDocument>) constructor.newInstance(databaseName, decoder, maxAdaptiveRetries);
+            }
+            catch (NoSuchMethodException e) {
+                final var constructor = ListCollectionsOperation.class.getConstructor(String.class, Decoder.class);
+                return (ListCollectionsOperation<BsonDocument>) constructor.newInstance(databaseName, decoder);
+            }
+        }
+        catch (ReflectiveOperationException e) {
+            throw new IllegalStateException("Unable to create the collection listing operation with the MongoDB driver in use", e);
+        }
     }
 
     private static MongoClientImpl nativeClient(MongoClient client) {
