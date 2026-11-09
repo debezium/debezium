@@ -27,6 +27,9 @@ import io.debezium.util.Strings;
  * Represents either a single or a collection of commit {@link Scn} positions that collectively
  * represents the high-watermark point for streaming changes.
  *
+ * Each redo thread's position is a checkpoint, the scn of the last commit or rollback seen on that thread.
+ * The value is still stored in the offsets as {@code commit_scn} for compatibility.
+ *
  * In a standalone Oracle environment, a commit {@link Scn} would normally represent a single position or
  * system change number in the logs as there is only ever a single redo thread. However, in an Oracle RAC
  * environment where each node maintains its own redo, there are multiple redo threads which maintain
@@ -54,11 +57,12 @@ public class CommitScn implements Comparable<Scn> {
     }
 
     /**
-     * Examines all redo threads and returns the minimum committed scn.
+     * Examines all redo threads and returns the minimum checkpoint scn, where each redo thread's
+     * checkpoint is the scn of its last commit or rollback.
      *
-     * @return the minimum recorded commit across all redo threads
+     * @return the minimum recorded checkpoint across all redo threads
      */
-    public Scn getMinCommittedScn() {
+    public Scn getMinCheckpointScn() {
         return redoThreadCommitScns.values().stream()
                 .map(RedoThreadCommitScn::getCommitScn)
                 .min(Scn::compareTo)
@@ -66,11 +70,12 @@ public class CommitScn implements Comparable<Scn> {
     }
 
     /**
-     * Examines all redo threads and returns the maximum committed scn.
+     * Examines all redo threads and returns the maximum checkpoint scn, where each redo thread's
+     * checkpoint is the scn of its last commit or rollback.
      *
-     * @return the maximum recorded commit across all redo threads
+     * @return the maximum recorded checkpoint across all redo threads
      */
-    public Scn getMaxCommittedScn() {
+    public Scn getMaxCheckpointScn() {
         return redoThreadCommitScns.values().stream()
                 .map(RedoThreadCommitScn::getCommitScn)
                 .max(Scn::compareTo)
@@ -136,11 +141,11 @@ public class CommitScn implements Comparable<Scn> {
     }
 
     /**
-     * Records the specified commit in the commit scn
+     * Records the specified commit or rollback as the checkpoint of its redo thread.
      *
-     * @param row the commit event, should never be {@code null}
+     * @param row the commit or rollback event, should never be {@code null}
      */
-    public void recordCommit(LogMinerEventRow row) {
+    public void recordCheckpoint(LogMinerEventRow row) {
         final RedoThreadCommitScn redoCommitScn = redoThreadCommitScns.get(row.getThread());
         if (redoCommitScn != null) {
             if (redoCommitScn.getCommitScn().compareTo(row.getScn()) == 0) {

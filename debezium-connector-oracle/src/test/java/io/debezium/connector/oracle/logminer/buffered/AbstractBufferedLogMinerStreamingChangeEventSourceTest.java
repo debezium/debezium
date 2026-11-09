@@ -595,6 +595,8 @@ public abstract class AbstractBufferedLogMinerStreamingChangeEventSourceTest ext
             source.abandonTransactions(Duration.ofHours(1L));
 
             assertThat(source.getTransactionCache().isEmpty()).isTrue();
+            // The next mining pass derives the offset from the cache or the checkpoint
+            Mockito.verify(offsetContext, Mockito.never()).setScn(any());
         }
     }
 
@@ -637,6 +639,7 @@ public abstract class AbstractBufferedLogMinerStreamingChangeEventSourceTest ext
             assertThat(source.getTransactionCache().isEmpty()).isFalse();
             assertThat(source.getTransactionCache().getTransaction(TRANSACTION_ID_1)).isNull();
             assertThat(source.getTransactionCache().getTransaction(TRANSACTION_ID_2)).isNotNull();
+            Mockito.verify(offsetContext, Mockito.never()).setScn(any());
         }
     }
 
@@ -695,6 +698,7 @@ public abstract class AbstractBufferedLogMinerStreamingChangeEventSourceTest ext
             assertThat(source.getTransactionCache().getTransaction(TRANSACTION_ID_1)).isNull();
             assertThat(source.getTransactionCache().getTransaction(TRANSACTION_ID_2)).isNull();
             assertThat(source.getTransactionCache().getTransaction(TRANSACTION_ID_3)).isNotNull();
+            Mockito.verify(offsetContext, Mockito.never()).setScn(any());
         }
     }
 
@@ -796,6 +800,82 @@ public abstract class AbstractBufferedLogMinerStreamingChangeEventSourceTest ext
             assertThat(source.getTransactionCache().containsTransaction(PARTIAL_TXN_ID_FULL)).isFalse();
             assertThat(source.getTransactionCache().containsTransaction(PARTIAL_TXN_ID_OTHER)).isTrue();
         }
+    }
+
+    @Test
+    @FixFor("debezium/dbz#3048")
+    public void testRollbackOfCachedTransactionRecordsCheckpointScn() throws Exception {
+        try (var source = getChangeEventSource(getConfig().build())) {
+            source.processEvent(getStartLogMinerEventRow(90, TRANSACTION_ID_1));
+            source.processEvent(getInsertLogMinerEventRow(95, TRANSACTION_ID_1));
+            source.processEvent(getCommitLogMinerEventRow(100, TRANSACTION_ID_1, 1));
+            source.processEvent(getStartLogMinerEventRow(200, TRANSACTION_ID_2));
+            source.processEvent(getInsertLogMinerEventRow(201, TRANSACTION_ID_2));
+            source.processEvent(getRollbackLogMinerEventRow(250, TRANSACTION_ID_2, 1));
+
+            assertThat(source.getTransactionCache().isEmpty()).isTrue();
+            assertThat(offsetContext.getCommitScn().getCommitScnForRedoThread(1)).isEqualTo(Scn.valueOf(250));
+        }
+    }
+
+    @Test
+    @FixFor("debezium/dbz#3048")
+    public void testRollbackOfTransactionNotInCacheRecordsCheckpointScn() throws Exception {
+        try (var source = getChangeEventSource(getConfig().build())) {
+            source.processEvent(getRollbackLogMinerEventRow(250, TRANSACTION_ID_1, 1));
+
+            assertThat(offsetContext.getCommitScn().getCommitScnForRedoThread(1)).isEqualTo(Scn.valueOf(250));
+        }
+    }
+
+    @Test
+    @FixFor("debezium/dbz#3048")
+    public void testRollbackMatchedByPrefixRecordsCheckpointScn() throws Exception {
+        try (var source = getChangeEventSource(getConfig().build())) {
+            source.processEvent(getStartLogMinerEventRow(1, PARTIAL_TXN_ID_FULL));
+            source.processEvent(getInsertLogMinerEventRow(2, PARTIAL_TXN_ID_FULL));
+            source.processEvent(getRollbackLogMinerEventRow(3, PARTIAL_TXN_ID_PARTIAL, 1));
+
+            assertThat(source.getTransactionCache().containsTransaction(PARTIAL_TXN_ID_FULL)).isFalse();
+            assertThat(offsetContext.getCommitScn().getCommitScnForRedoThread(1)).isEqualTo(Scn.valueOf(3));
+        }
+    }
+
+    @Test
+    @FixFor("debezium/dbz#3048")
+    public void testAlreadyHandledRollbackDoesNotMoveCheckpointScnBackward() throws Exception {
+        try (var source = getChangeEventSource(getConfig().build())) {
+            source.processEvent(getRollbackLogMinerEventRow(300, TRANSACTION_ID_1, 1));
+            // A rollback re-mined after a restart is older than the recorded checkpoint
+            source.processEvent(getRollbackLogMinerEventRow(250, TRANSACTION_ID_2, 1));
+
+            assertThat(offsetContext.getCommitScn().getCommitScnForRedoThread(1)).isEqualTo(Scn.valueOf(300));
+        }
+    }
+
+    @Test
+    @FixFor("debezium/dbz#3048")
+    public void testRollbackWithoutRedoThreadDoesNotRecordCheckpointScn() throws Exception {
+        try (var source = getChangeEventSource(getConfig().build())) {
+            source.processEvent(getRollbackLogMinerEventRow(250, TRANSACTION_ID_1, 0));
+
+            assertThat(offsetContext.getCommitScn().getRedoThreadCommitScn(0)).isNull();
+            assertThat(offsetContext.getCommitScn().getMaxCheckpointScn()).isEqualTo(Scn.NULL);
+        }
+    }
+
+    @Test
+    @FixFor("debezium/dbz#3048")
+    public void testOffsetScnAdvancesToRollbackScnWhenRollbackEmptiesCache() throws Exception {
+        assertOffsetScnAdvancesToRollbackScnWhenRollbackEmptiesCache(getConfig().build());
+    }
+
+    @Test
+    @FixFor("debezium/dbz#3048")
+    public void testOffsetScnAdvancesToRollbackScnWhenRollbackEmptiesCacheWithDeferredTransactionStart() throws Exception {
+        assertOffsetScnAdvancesToRollbackScnWhenRollbackEmptiesCache(getConfig()
+                .with(OracleConnectorConfig.LOG_MINING_BUFFER_DEFERRED_TRANSACTION_START, true)
+                .build());
     }
 
     @Test
@@ -1388,6 +1468,29 @@ public abstract class AbstractBufferedLogMinerStreamingChangeEventSourceTest ext
         return row;
     }
 
+    private void assertOffsetScnAdvancesToRollbackScnWhenRollbackEmptiesCache(Configuration config) throws Exception {
+        if (!isTransactionAbandonmentSupported()) {
+            return;
+        }
+
+        try (var source = getChangeEventSource(config)) {
+            // The mined row is the commit of an unknown transaction, which leaves the checkpoint unchanged
+            final BufferedStreamingChangeEventSource mock = spyWithMinedRows(source, commitRow(260, XID_1));
+
+            mock.processEvent(getStartLogMinerEventRow(90, TRANSACTION_ID_1));
+            mock.processEvent(getInsertLogMinerEventRow(95, TRANSACTION_ID_1));
+            mock.processEvent(getCommitLogMinerEventRow(100, TRANSACTION_ID_1, 1));
+            mock.processEvent(getStartLogMinerEventRow(200, TRANSACTION_ID_2));
+            mock.processEvent(getInsertLogMinerEventRow(201, TRANSACTION_ID_2));
+            mock.processEvent(getRollbackLogMinerEventRow(250, TRANSACTION_ID_2, 1));
+
+            mock.process(Scn.valueOf(240), Scn.valueOf(300));
+
+            Mockito.verify(offsetContext).setScn(Scn.valueOf(250));
+            Mockito.verify(offsetContext, Mockito.never()).setScn(Scn.valueOf(100));
+        }
+    }
+
     private static void assertTransactionEvents(LogMinerTransactionCache<Transaction> cache, int expected) {
         // The running count must always match the events of the cached transactions
         final int cachedEvents = cache.streamTransactionsAndReturn(stream -> stream.mapToInt(cache::getTransactionEventCount).sum());
@@ -1508,12 +1611,24 @@ public abstract class AbstractBufferedLogMinerStreamingChangeEventSourceTest ext
         return row;
     }
 
+    private LogMinerEventRow getCommitLogMinerEventRow(long scn, String transactionId, int thread) {
+        final LogMinerEventRow row = getCommitLogMinerEventRow(scn, transactionId);
+        Mockito.when(row.getThread()).thenReturn(thread);
+        return row;
+    }
+
     private LogMinerEventRow getRollbackLogMinerEventRow(long scn, String transactionId) {
         LogMinerEventRow row = Mockito.mock(LogMinerEventRow.class);
         Mockito.when(row.getEventType()).thenReturn(EventType.ROLLBACK);
         Mockito.when(row.getTransactionId()).thenReturn(transactionId);
         Mockito.when(row.getScn()).thenReturn(Scn.valueOf(scn));
         Mockito.when(row.getChangeTime()).thenReturn(Instant.now());
+        return row;
+    }
+
+    private LogMinerEventRow getRollbackLogMinerEventRow(long scn, String transactionId, int thread) {
+        final LogMinerEventRow row = getRollbackLogMinerEventRow(scn, transactionId);
+        Mockito.when(row.getThread()).thenReturn(thread);
         return row;
     }
 

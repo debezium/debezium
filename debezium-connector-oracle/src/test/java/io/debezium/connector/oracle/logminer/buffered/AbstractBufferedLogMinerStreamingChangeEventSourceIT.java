@@ -23,6 +23,7 @@ import io.debezium.connector.oracle.OracleConnection;
 import io.debezium.connector.oracle.OracleConnector;
 import io.debezium.connector.oracle.OracleConnectorConfig;
 import io.debezium.connector.oracle.Scn;
+import io.debezium.connector.oracle.SourceInfo;
 import io.debezium.connector.oracle.junit.SkipOnDatabaseParameter;
 import io.debezium.connector.oracle.util.OracleMetricsHelper;
 import io.debezium.connector.oracle.util.TestHelper;
@@ -336,6 +337,56 @@ public abstract class AbstractBufferedLogMinerStreamingChangeEventSourceIT exten
         }
         finally {
             TestHelper.dropTable(connection, "dbz1914");
+        }
+    }
+
+    @Test
+    @FixFor("debezium/dbz#3048")
+    public void shouldNotDuplicateOrLoseEventsOnRestartAfterRollback() throws Exception {
+        TestHelper.dropTable(connection, "dbz3048");
+        try {
+            connection.execute("CREATE TABLE dbz3048 (id numeric(9,0) primary key, data varchar2(50))");
+            TestHelper.streamTable(connection, "dbz3048");
+
+            Configuration config = getBufferImplementationConfig()
+                    .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "DEBEZIUM\\.DBZ3048")
+                    .build();
+            start(OracleConnector.class, config);
+            assertConnectorIsRunning();
+            waitForStreamingRunning(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
+
+            connection.execute("INSERT INTO dbz3048 (id,data) VALUES (1,'committed')");
+
+            List<SourceRecord> tableRecords = consumeRecordsByTopic(1).recordsForTopic("server1.DEBEZIUM.DBZ3048");
+            assertThat(tableRecords).hasSize(1);
+            final Struct value = (Struct) tableRecords.get(0).value();
+            assertThat(value.getStruct(Envelope.FieldName.AFTER).get("ID")).isEqualTo(1);
+            final Scn commitScn = Scn.valueOf(value.getStruct(Envelope.FieldName.SOURCE).getString(SourceInfo.COMMIT_SCN_KEY));
+
+            connection.executeWithoutCommitting("INSERT INTO dbz3048 (id,data) VALUES (2,'rolled back')");
+            connection.rollback();
+
+            // Wait for the offset to move past the committed row before restarting. This smoke test only checks
+            // that a restart after a rollback neither re-emits nor loses events; whether the offset advances to
+            // the rollback itself is covered by the unit tests, since other commits in the database also move it.
+            OracleMetricsHelper.waitForOffsetScnAfter(commitScn);
+            assertNoRecordsToConsume();
+
+            stopConnector();
+
+            start(OracleConnector.class, config);
+            assertConnectorIsRunning();
+            waitForStreamingRunning(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
+
+            connection.execute("INSERT INTO dbz3048 (id,data) VALUES (3,'after restart')");
+
+            tableRecords = consumeRecordsByTopic(1).recordsForTopic("server1.DEBEZIUM.DBZ3048");
+            assertThat(tableRecords).hasSize(1);
+            assertThat(((Struct) tableRecords.get(0).value()).getStruct(Envelope.FieldName.AFTER).get("ID")).isEqualTo(3);
+            assertNoRecordsToConsume();
+        }
+        finally {
+            TestHelper.dropTable(connection, "dbz3048");
         }
     }
 
