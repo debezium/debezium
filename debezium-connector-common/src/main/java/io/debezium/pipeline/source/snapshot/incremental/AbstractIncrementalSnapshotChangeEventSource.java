@@ -149,11 +149,8 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<P extends Par
             throw e;
         }
         catch (Exception e) {
-            // This is the signal processing path: an exception escaping here is swallowed by the
-            // signal processor and the snapshot stalls silently. What reaches this point is not
-            // schema drift (sendWindowEvents defers that before emitting) or has exhausted the
-            // deferral bound, so the table is skipped visibly. The read-only sources call
-            // sendWindowEvents on the streaming thread and keep their fail-fast behavior.
+            // An exception escaping the signal processing path is swallowed and stalls the snapshot:
+            // skip the table visibly. The read-only sources emit on the streaming thread and keep failing fast.
             offsetContext.postSnapshotCompletion();
             window.clear();
             warnAndSkip(partition, offsetContext,
@@ -233,8 +230,7 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<P extends Par
         }
         offsetContext.postSnapshotCompletion();
         window.clear();
-        // Progress means a chunk was both read and emitted: a read that succeeds but whose
-        // window is then deferred must keep counting against the bound.
+        // A chunk counts as progress only once it is both read and emitted
         resetStaleSchemaDeferrals();
     }
 
@@ -497,12 +493,9 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<P extends Par
     }
 
     /**
-     * The window transaction is normally committed by the watermark writes; an exception that
-     * skips {@code emitWindowClose} would leave it open, and the transaction keeps the table's
-     * metadata lock, blocking any subsequent DDL on it until the connection is closed. A commit,
-     * not a rollback: the transaction only reads, and a rollback would invalidate the open
-     * cursors of connectors whose streaming polls over the same connection, while held cursors
-     * survive a commit.
+     * An exception that skips {@code emitWindowClose} leaves the window transaction open, and its
+     * metadata lock blocks later DDL on the table. Commit rather than roll back: the transaction only
+     * reads, and a rollback would invalidate the cursors of connectors that stream over the same connection.
      */
     private void commitWindowTransaction() {
         try {
@@ -906,20 +899,19 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<P extends Par
     }
 
     /**
-     * A DDL landing while a chunk is in flight makes the cached table disagree with the database
-     * in any of several ways: the result set can carry a column the cache lacks (rejected by
-     * {@code ColumnUtils.toArray}), the chunk or schema-verification query can reference a column
-     * that no longer exists (undefined-column SQLSTATE), or rows buffered against the old schema
-     * can fail to emit once the schema rotates before the window closes. None of these is fatal: refreshing
-     * the schema and closing the window lets the connector re-verify it (and streaming deliver
-     * the pending DDL events) before the chunk is re-read. Consecutive deferrals are counted
-     * against the same observed schema, so a DDL storm keeps making progress while a genuinely
-     * broken state (the refreshed schema never changes) still fails after the bound. Any rows
-     * already buffered are discarded up front: a chunk read can fail mid {@code ResultSet}
-     * iteration, and the partial buffer must reach neither the window emission nor, on the
-     * bound-exceeded path, the skip handlers.
+     * Defers the current chunk when a DDL made the cached table disagree with the database: the chunk
+     * or verification query references a column that no longer exists, the result set carries a
+     * column the cache lacks, or the emission schema rotated before the window closed. Closing the
+     * window lets streaming deliver the pending DDL and the chunk is re-read in the next one.
+     * Consecutive deferrals on the same observed schema are bounded, so a DDL storm keeps making
+     * progress while a schema that never catches up ends with the table skipped. Recovery therefore
+     * relies on the connector learning the new schema before the bound: the binlog connectors
+     * receive the DDL from the log and PostgreSQL re-reads it from the catalog
+     * ({@link #refreshTableSchema}); where neither applies, SQL Server until a new capture instance
+     * exists for instance, the deferrals are exhausted and the table is skipped.
      */
     private void deferChunkOnStaleSchema(Exception cause) {
+        // A read can fail mid result set: the partial buffer must not reach the emission or the skip handlers
         window.clear();
         if (lastStaleTable != null && currentTable != null && !currentTable.equals(lastStaleTable)) {
             staleSchemaDeferrals = 0;

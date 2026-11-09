@@ -71,9 +71,9 @@ public abstract class BinlogConnectionIT<C extends SourceConnector> extends Abst
     @Test
     @FixFor("debezium/dbz#2452")
     void shouldClassifyUndefinedColumnError() throws SQLException {
-        final UniqueDatabase DATABASE = TestHelper.getUniqueDatabase("readbinlog", "readbinlog_test");
-        DATABASE.createAndInitialize();
-        try (BinlogConnectorConnection connection = connectorConnection(DATABASE.defaultConfig().build())) {
+        final var database = TestHelper.getUniqueDatabase("readbinlog", "readbinlog_test");
+        database.createAndInitialize();
+        try (BinlogConnectorConnection connection = connectorConnection(database.defaultConfig().build())) {
             connection.connect();
             try {
                 connection.execute("SELECT no_such_column FROM information_schema.tables");
