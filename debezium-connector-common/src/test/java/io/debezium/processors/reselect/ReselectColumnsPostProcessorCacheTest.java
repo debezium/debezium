@@ -44,6 +44,8 @@ import io.debezium.relational.RelationalDatabaseSchema;
 import io.debezium.relational.Table;
 import io.debezium.relational.TableId;
 import io.debezium.relational.ValueConverterProvider;
+import io.debezium.schema.FieldNameSelector;
+import io.debezium.schema.SchemaNameAdjuster;
 import io.debezium.service.spi.ServiceRegistry;
 
 /**
@@ -106,6 +108,7 @@ public class ReselectColumnsPostProcessorCacheTest {
 
         when(connectorConfig.getUnavailableValuePlaceholder()).thenReturn(UNAVAILABLE.getBytes());
         when(connectorConfig.isSignalDataCollection(any(TableId.class))).thenReturn(false);
+        when(connectorConfig.getFieldNamer()).thenReturn(FieldNameSelector.defaultSelector(SchemaNameAdjuster.NO_OP));
         when(relationalSchema.tableFor(tableId)).thenReturn(table);
         when(valueConverterProvider.converter(any(Column.class), any())).thenReturn(null);
         when(customConverterRegistry.getValueConverter(any(TableId.class), any(Column.class))).thenReturn(Optional.empty());
