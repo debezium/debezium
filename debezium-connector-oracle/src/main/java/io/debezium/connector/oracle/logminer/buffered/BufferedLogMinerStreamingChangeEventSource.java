@@ -310,7 +310,7 @@ public class BufferedLogMinerStreamingChangeEventSource extends AbstractLogMiner
 
             logPendingTransactions();
 
-            final ProcessResult result = calculateNewStartScn(startScn, endScn, getOffsetContext().getCommitScn().getMaxCommittedScn());
+            final ProcessResult result = calculateNewStartScn(startScn, endScn, getOffsetContext().getCommitScn().getMaxCheckpointScn());
 
             dispatchHeartbeatEvent();
 
@@ -637,7 +637,7 @@ public class BufferedLogMinerStreamingChangeEventSource extends AbstractLogMiner
             }
         }
 
-        getOffsetContext().getCommitScn().recordCommit(row);
+        getOffsetContext().getCommitScn().recordCheckpoint(row);
         getOffsetContext().setEventScn(commitScn);
         getOffsetContext().setRsId(row.getRsId());
         getOffsetContext().setRowId("");
@@ -746,6 +746,21 @@ public class BufferedLogMinerStreamingChangeEventSource extends AbstractLogMiner
             getTransactionCache().removeAbandonedTransaction(transactionId);
         }
 
+        // A rollback is a checkpoint of its redo thread, just like a commit, so that the offset can advance
+        // to it when the rollback leaves no in-flight transactions behind. A rollback mined again after a
+        // restart may be older than the recorded checkpoint, and recording it would move the checkpoint
+        // backward. Like commits of empty transactions, LogMiner may fail to resolve the redo thread and
+        // report 0, and recording it would create a checkpoint for a redo thread that does not exist.
+        if (getOffsetContext().getCommitScn().hasEventScnBeenHandled(event)) {
+            LOGGER.debug("Rollback of transaction {} with SCN {} has already been handled.", transactionId, event.getScn());
+        }
+        else if (event.getThread() == 0) {
+            LOGGER.debug("Skipping checkpoint for rollback of transaction {} with SCN {} with no redo thread.", transactionId, event.getScn());
+        }
+        else {
+            getOffsetContext().getCommitScn().recordCheckpoint(event);
+        }
+
         getMetrics().incrementRolledBackTransactionCount();
         getMetrics().addRolledBackTransactionId(transactionId);
         getBatchMetrics().rollbackObserved();
@@ -815,7 +830,7 @@ public class BufferedLogMinerStreamingChangeEventSource extends AbstractLogMiner
 
             // Should always advance the commit SCN point with schema changes
             LOGGER.debug("Schema change advanced offset commit SCN to {} for thread {}", event.getScn(), event.getThread());
-            getOffsetContext().getCommitScn().recordCommit(event);
+            getOffsetContext().getCommitScn().recordCheckpoint(event);
 
             if (getConfig().isLobEnabled()) {
                 getSchemaChangesCache().put(event.getScn().toString(), event.getTableId().identifier());
@@ -873,11 +888,11 @@ public class BufferedLogMinerStreamingChangeEventSource extends AbstractLogMiner
      *
      * @param startScn the current iteration's lower bounds system change number
      * @param endScn the current iteration's upper bounds system change number
-     * @param maxCommittedScn the current maximum scn committed
+     * @param maxCheckpointScn the current maximum scn of the last commit or rollback across redo threads
      * @return the new resume position change number for the next iteration
      * @throws InterruptedException if the thread is interrupted
      */
-    private ProcessResult calculateNewStartScn(Scn startScn, Scn endScn, Scn maxCommittedScn) throws InterruptedException {
+    private ProcessResult calculateNewStartScn(Scn startScn, Scn endScn, Scn maxCheckpointScn) throws InterruptedException {
 
         if (!getBatchMetrics().hasJdbcRows()) {
             // When no rows are processed, don't advance the SCN
@@ -942,11 +957,11 @@ public class BufferedLogMinerStreamingChangeEventSource extends AbstractLogMiner
             }
 
             final Scn offsetScn;
-            if (!oldestScn.isNull() && !maxCommittedScn.isNull() && oldestScn.compareTo(maxCommittedScn) < 0) {
+            if (!oldestScn.isNull() && !maxCheckpointScn.isNull() && oldestScn.compareTo(maxCheckpointScn) < 0) {
                 offsetScn = oldestScn.subtract(Scn.ONE);
             }
-            else if (!maxCommittedScn.isNull()) {
-                offsetScn = maxCommittedScn;
+            else if (!maxCheckpointScn.isNull()) {
+                offsetScn = maxCheckpointScn;
             }
             else {
                 offsetScn = Scn.NULL;
@@ -996,9 +1011,9 @@ public class BufferedLogMinerStreamingChangeEventSource extends AbstractLogMiner
             // Cache has no values
             final Scn miningSessionStartScn = endScn.subtract(Scn.ONE);
 
-            if (!maxCommittedScn.isNull()) {
-                // If transactions have been committed, advance to the max committed value
-                getOffsetContext().setScn(maxCommittedScn);
+            if (!maxCheckpointScn.isNull()) {
+                // If transactions have been committed or rolled back, advance to the max checkpoint value
+                getOffsetContext().setScn(maxCheckpointScn);
             }
 
             getMetrics().setOffsetScn(getOffsetContext().getScn());
@@ -1314,6 +1329,9 @@ public class BufferedLogMinerStreamingChangeEventSource extends AbstractLogMiner
     /**
      * Abandons all transactions that have been cached longer than the retention period based on the last
      * processed event's system change number. Passing {@link Duration#ZERO} skips the abandon step.
+     * <p>
+     * The offset is not changed here; the next mining pass derives it from the remaining transactions
+     * in the cache or from the last commit or rollback.
      *
      * @param retention the retention duration, should not be {@code null}
      * @throws InterruptedException if the thread is interrupted
@@ -1377,8 +1395,6 @@ public class BufferedLogMinerStreamingChangeEventSource extends AbstractLogMiner
                     getTransactionCache().getEldestTransactionScnDetailsInCache().ifPresentOrElse(
                             scnDetails -> getMetrics().setOldestScnDetails(scnDetails.scn(), scnDetails.changeTime()),
                             () -> getMetrics().setOldestScnDetails(Scn.NULL, null));
-
-                    getOffsetContext().setScn(thresholdScn);
                 }
             }
         }

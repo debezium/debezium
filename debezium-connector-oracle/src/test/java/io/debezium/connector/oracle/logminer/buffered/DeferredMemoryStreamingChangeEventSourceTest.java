@@ -257,7 +257,7 @@ public class DeferredMemoryStreamingChangeEventSourceTest extends AbstractAsyncE
             source.processEvent(getCommitLogMinerEventRow(2, TRANSACTION_ID_1));
 
             assertThat(source.getTransactionCache().isEmpty()).isTrue();
-            Mockito.verify(commitScn).recordCommit(any(LogMinerEventRow.class));
+            Mockito.verify(commitScn).recordCheckpoint(any(LogMinerEventRow.class));
         }
     }
 
@@ -268,6 +268,8 @@ public class DeferredMemoryStreamingChangeEventSourceTest extends AbstractAsyncE
             source.processEvent(getRollbackLogMinerEventRow(2, TRANSACTION_ID_1));
 
             assertThat(source.getTransactionCache().isEmpty()).isTrue();
+            assertThat(source.getDeferredTransactionCount()).isZero();
+            assertThat(commitScn.getCommitScnForRedoThread(1)).isEqualTo(Scn.valueOf(2));
         }
     }
 
@@ -360,7 +362,7 @@ public class DeferredMemoryStreamingChangeEventSourceTest extends AbstractAsyncE
 
             assertThat(source.getDeferredTransactionCount()).isZero();
             assertThat(source.getTransactionCache().isEmpty()).isTrue();
-            Mockito.verify(commitScn).recordCommit(any(LogMinerEventRow.class));
+            Mockito.verify(commitScn).recordCheckpoint(any(LogMinerEventRow.class));
         }
     }
 
@@ -527,7 +529,7 @@ public class DeferredMemoryStreamingChangeEventSourceTest extends AbstractAsyncE
         final PreparedStatement ps = Mockito.mock(PreparedStatement.class);
         Mockito.when(ps.executeQuery()).thenReturn(rs);
 
-        Mockito.when(commitScn.getMaxCommittedScn()).thenReturn(Scn.valueOf(500));
+        Mockito.when(commitScn.getMaxCheckpointScn()).thenReturn(Scn.valueOf(500));
 
         // The window advances block-by-block only when buffered transactions are not re-read
         final Configuration config = getConfig().with(OracleConnectorConfig.LOG_MINING_BUFFER_REREAD_TRANSACTIONS, false).build();
@@ -568,6 +570,44 @@ public class DeferredMemoryStreamingChangeEventSourceTest extends AbstractAsyncE
             Mockito.verify(offsetContext).setScn(Scn.valueOf(99));
             assertThat(result.miningSessionStartScn()).isEqualTo(Scn.valueOf(199));
             assertThat(result.readStartScn()).isEqualTo(Scn.valueOf(200));
+        }
+    }
+
+    @Test
+    @FixFor("debezium/dbz#3048")
+    public void testOffsetScnAdvancesToRollbackScnWhenRollbackEmptiesDeferredTransactions() throws Exception {
+        // The mined row is the commit of an unknown transaction, which leaves the checkpoint unchanged
+        final ResultSet rs = Mockito.mock(ResultSet.class);
+        Mockito.when(rs.next()).thenReturn(true, false);
+        Mockito.when(rs.getString(1)).thenReturn("260");
+        Mockito.when(rs.getString(2)).thenReturn("commit;");
+        Mockito.when(rs.getInt(3)).thenReturn(EventType.COMMIT.getValue());
+        Mockito.when(rs.getTimestamp(eq(4), any(Calendar.class))).thenReturn(Timestamp.valueOf(LocalDateTime.now()));
+        Mockito.when(rs.getBytes(5)).thenReturn(new byte[]{ 0x12, 0x34, 0x56, 0x78 });
+
+        final PreparedStatement ps = Mockito.mock(PreparedStatement.class);
+        Mockito.when(ps.executeQuery()).thenReturn(rs);
+
+        try (var source = getChangeEventSource(getConfig().build())) {
+            final BufferedStreamingChangeEventSource mock = Mockito.spy(source);
+            Mockito.doReturn(ps).when(mock).createQueryStatement();
+
+            mock.processEvent(getStartLogMinerEventRow(90, TRANSACTION_ID_1));
+            mock.processEvent(getInsertLogMinerEventRow(95, TRANSACTION_ID_1));
+            mock.processEvent(getCommitLogMinerEventRow(100, TRANSACTION_ID_1));
+
+            // A transaction without DML stays in the deferred map until its rollback removes it
+            mock.processEvent(getStartLogMinerEventRow(200, TRANSACTION_ID_2));
+            assertThat(mock.getDeferredTransactionCount()).isEqualTo(1);
+            mock.processEvent(getRollbackLogMinerEventRow(250, TRANSACTION_ID_2));
+
+            assertThat(mock.getDeferredTransactionCount()).isZero();
+            assertThat(mock.getTransactionCache().isEmpty()).isTrue();
+
+            mock.process(Scn.valueOf(240), Scn.valueOf(300));
+
+            Mockito.verify(offsetContext).setScn(Scn.valueOf(250));
+            Mockito.verify(offsetContext, Mockito.never()).setScn(Scn.valueOf(100));
         }
     }
 

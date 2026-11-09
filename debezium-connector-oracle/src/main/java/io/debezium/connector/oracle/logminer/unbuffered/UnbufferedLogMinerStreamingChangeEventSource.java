@@ -90,7 +90,7 @@ public class UnbufferedLogMinerStreamingChangeEventSource extends AbstractLogMin
         Scn upperBoundsScn = Scn.NULL;
 
         Scn minLogScn = getOffsetContext().getScn();
-        Scn minCommitScn = getOffsetContext().getCommitScn().getMinCommittedScn();
+        Scn minCommitScn = getOffsetContext().getCommitScn().getMinCheckpointScn();
 
         if (minCommitScn.isNull()) {
             minCommitScn = minLogScn;
@@ -411,7 +411,7 @@ public class UnbufferedLogMinerStreamingChangeEventSource extends AbstractLogMin
         final Instant commitStartTime = Instant.now();
 
         // These are COMMIT specific attributes that must be recorded
-        getOffsetContext().getCommitScn().recordCommit(event);
+        getOffsetContext().getCommitScn().recordCheckpoint(event);
         getOffsetContext().setEventScn(event.getScn());
         getOffsetContext().setEventCommitScn(event.getScn());
 
@@ -481,7 +481,7 @@ public class UnbufferedLogMinerStreamingChangeEventSource extends AbstractLogMin
                 final LogMinerDmlEntry parsedEvent = parseTruncateEvent(event);
 
                 // Truncate events are wrapped in START/COMMIT markers
-                getOffsetContext().getCommitScn().recordCommit(event);
+                getOffsetContext().getCommitScn().recordCheckpoint(event);
                 // getOffsetContext().setScn(event.getScn());
                 getOffsetContext().setEventScn(event.getScn());
                 getOffsetContext().setRedoThread(event.getThread());

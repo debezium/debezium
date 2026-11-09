@@ -2258,11 +2258,11 @@ public abstract class AbstractLogMinerStreamingChangeEventSource
         if (minimumLogCountPerThread > 0) {
             switch (connectorConfig.getLogMiningStrategy()) {
                 case HYBRID, ONLINE_CATALOG, DICTIONARY_FROM_FILE: {
-                    // The maximum committed SCN across redo threads is a lower bound on the upper
+                    // The maximum checkpoint SCN across redo threads is a lower bound on the upper
                     // boundary of the last mining session before a restart; seeding it restores the
                     // capped window sizing that would otherwise collapse to the minimum log count.
                     final CommitScn commitScn = getOffsetContext().getCommitScn();
-                    final Scn minedBoundary = commitScn != null ? commitScn.getMaxCommittedScn() : Scn.NULL;
+                    final Scn minedBoundary = commitScn != null ? commitScn.getMaxCheckpointScn() : Scn.NULL;
                     return new CappedLogFileSessionSelector(
                             minimumLogCountPerThread,
                             connectorConfig.getLogMiningLogCountGrowthMax(),

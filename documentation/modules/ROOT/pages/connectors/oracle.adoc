@@ -5175,6 +5175,11 @@ Because all of the DML operations that are part of a transaction are buffered un
 long-running transactions should be avoided in order to not overflow that buffer.
 Any transaction that exceeds this configured value is discarded entirely, and the connector does not emit any messages for the operations that were part of the transaction.
 
+Discarding a transaction does not move the connector offset past it.
+The offset continues to follow the oldest in-progress transaction and the last commit or rollback.
+As a result, if the connector restarts before it records a later commit or rollback, it reads the discarded transaction again from its start.
+If the connector then reads the transaction's commit before the transaction exceeds this configured value again, it emits the transaction.
+
 |[[oracle-property-log-mining-buffer-deferred-transaction-retention-ms]]<<oracle-property-log-mining-buffer-deferred-transaction-retention-ms, `log.mining.buffer.deferred.transaction.retention.ms`>>
 |`86400000`
 |Positive integer value that specifies the number of milliseconds to retain deferred transaction metadata for buffered LogMiner transactions that emit a `START` event but do not yet emit DML.

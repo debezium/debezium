@@ -45,7 +45,7 @@ public class OracleOffsetContextTest {
         final OracleOffsetContext offsetContext = (OracleOffsetContext) offsetLoader.load(offsetValues);
         assertThat(offsetContext.getScn()).isEqualTo(Scn.valueOf("12345"));
         if (TestHelper.isBufferedLogMiner()) {
-            assertThat(offsetContext.getCommitScn().getMaxCommittedScn()).isEqualTo(Scn.valueOf("23456"));
+            assertThat(offsetContext.getCommitScn().getMaxCheckpointScn()).isEqualTo(Scn.valueOf("23456"));
         }
     }
 
@@ -59,7 +59,7 @@ public class OracleOffsetContextTest {
         final OracleOffsetContext offsetContext = (OracleOffsetContext) offsetLoader.load(offsetValues);
         assertThat(offsetContext.getScn()).isEqualTo(Scn.valueOf("12345"));
         if (TestHelper.isBufferedLogMiner()) {
-            assertThat(offsetContext.getCommitScn().getMaxCommittedScn()).isEqualTo(Scn.valueOf("23456"));
+            assertThat(offsetContext.getCommitScn().getMaxCheckpointScn()).isEqualTo(Scn.valueOf("23456"));
         }
     }
 
@@ -72,7 +72,7 @@ public class OracleOffsetContextTest {
 
         final OracleOffsetContext offsetContext = (OracleOffsetContext) offsetLoader.load(offsetValues);
         assertThat(offsetContext.getScn()).isNull();
-        assertThat(offsetContext.getCommitScn().getMaxCommittedScn()).isEqualTo(Scn.NULL);
+        assertThat(offsetContext.getCommitScn().getMaxCheckpointScn()).isEqualTo(Scn.NULL);
     }
 
     @Test
@@ -117,7 +117,7 @@ public class OracleOffsetContextTest {
         final OracleOffsetContext offsetContext = (OracleOffsetContext) offsetLoader.load(offsetValues);
 
         assertThat(offsetContext.getScn()).isEqualTo(Scn.valueOf("12345"));
-        assertThat(offsetContext.getCommitScn().getMaxCommittedScn()).isEqualTo(Scn.valueOf("23456"));
+        assertThat(offsetContext.getCommitScn().getMaxCheckpointScn()).isEqualTo(Scn.valueOf("23456"));
         assertThat(offsetContext.getTransactionId()).isEqualTo("123");
         assertThat(offsetContext.getTransactionSequence()).isEqualTo(98765L);
     }
