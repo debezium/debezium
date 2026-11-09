@@ -1407,7 +1407,8 @@ If a mining step ends while a statement that writes an out-of-line LOB or XML va
 The connector does not emit a change event for the statement and does not log a warning.
 The transaction is otherwise emitted normally, so the loss is difficult to detect.
 
-The risk applies to any `INSERT` or `UPDATE` that writes an out-of-line LOB or XML value, even when `lob.enabled` is `false` and the connector does not emit LOB values.
+The risk applies to any `INSERT` or `UPDATE` on a captured table that has an out-of-line LOB or XML column, even when `lob.enabled` is `false` and the connector does not emit LOB values.
+If the transaction later rolls back to a savepoint that undoes such a statement, the connector can also discard an earlier change to the same row in that transaction.
 The risk increases with the size of LOB values, which lengthens the time that the statement runs, and with the volume of concurrent activity in the database.
 
 Set this property to `false` only if you have confirmed that the captured tables do not store LOB or XML values out-of-line, or if you can tolerate the loss of change events.
