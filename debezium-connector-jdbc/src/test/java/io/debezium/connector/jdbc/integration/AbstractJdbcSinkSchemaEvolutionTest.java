@@ -837,7 +837,7 @@ public abstract class AbstractJdbcSinkSchemaEvolutionTest extends AbstractJdbcSi
             consume(zonedTimestampDefaultRecord(factory, config, topicName, "1970-01-01T00:00:00Z", null));
 
             assertThat(warnings(logInterceptor)).singleElement().asString()
-                    .contains(destinationTableName(topicName, properties))
+                    .contains(targetTableInWarning(destinationTableName(topicName, properties)))
                     .contains("created_at")
                     .contains("1970-01-01T00:00:00Z")
                     .contains(sessionZoneDefaultLiteral("1970-01-01 00:00:01"));
@@ -860,7 +860,7 @@ public abstract class AbstractJdbcSinkSchemaEvolutionTest extends AbstractJdbcSi
         try {
             final JdbcKafkaSinkRecord lowerRecord = consumeZonedTimestampDefault(factory, config, "1970-01-01T00:00:00Z");
             assertThat(warnings(logInterceptor)).singleElement().asString()
-                    .contains(destinationTableName(lowerRecord.topicName(), properties))
+                    .contains(targetTableInWarning(destinationTableName(lowerRecord.topicName(), properties)))
                     .contains("created_at")
                     .contains("1970-01-01T00:00:00Z")
                     .contains(sessionZoneDefaultLiteral("1970-01-01 00:00:01"));
@@ -872,7 +872,7 @@ public abstract class AbstractJdbcSinkSchemaEvolutionTest extends AbstractJdbcSi
 
             final JdbcKafkaSinkRecord upperRecord = consumeZonedTimestampDefault(factory, config, "2038-01-19T03:14:08Z");
             assertThat(warnings(logInterceptor)).singleElement().asString()
-                    .contains(destinationTableName(upperRecord.topicName(), properties))
+                    .contains(targetTableInWarning(destinationTableName(upperRecord.topicName(), properties)))
                     .contains("created_at")
                     .contains("2038-01-19T03:14:08Z")
                     .contains(sessionZoneDefaultLiteral("2038-01-19 03:14:07"));
@@ -890,8 +890,9 @@ public abstract class AbstractJdbcSinkSchemaEvolutionTest extends AbstractJdbcSi
             assertThat(warnings(logInterceptor)).isEmpty();
             logInterceptor.clear();
 
-            consumeZonedTimestampDefault(factory, config, "1970-01-01T00:00:00Z", "propagated_column");
+            final JdbcKafkaSinkRecord propagatedRecord = consumeZonedTimestampDefault(factory, config, "1970-01-01T00:00:00Z", "propagated_column");
             assertThat(warnings(logInterceptor)).singleElement().asString()
+                    .contains(targetTableInWarning(destinationTableName(propagatedRecord.topicName(), properties)))
                     .contains("propagated_column")
                     .doesNotContain("created_at");
         }
@@ -956,6 +957,14 @@ public abstract class AbstractJdbcSinkSchemaEvolutionTest extends AbstractJdbcSi
                 .filter(event -> Level.WARN.equals(event.getLevel()))
                 .map(ILoggingEvent::getFormattedMessage)
                 .toList();
+    }
+
+    /**
+     * Returns the part of the clamping warning that names the target table, so that an assertion
+     * on it fails when the warning names anything other than the table.
+     */
+    private static String targetTableInWarning(String tableName) {
+        return "in table '" + tableName + "' is out of range";
     }
 
     private String sessionZoneDefaultLiteral(String utcLiteral) {

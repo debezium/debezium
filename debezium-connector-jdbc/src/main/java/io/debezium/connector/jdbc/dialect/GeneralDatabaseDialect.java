@@ -747,11 +747,19 @@ public class GeneralDatabaseDialect implements DatabaseDialect {
         if (field.getSchema().defaultValue() != null) {
             final String defaultValue = getSchemaType(field.getSchema())
                     .getDefaultValueBinding(field.getSchema(), field.getSchema().defaultValue(),
-                            new DefaultValueContext(collectionId, resolveColumnName(field)));
+                            new DefaultValueContext(targetTableId(collectionId), resolveColumnName(field)));
             if (defaultValue != null) {
                 columnSpec.append(" DEFAULT ").append(defaultValue);
             }
         }
+    }
+
+    /**
+     * Returns the identifier of the target table as the DDL statements name it, which is the
+     * namespace and the name of the table, without the catalog.
+     */
+    private static CollectionId targetTableId(CollectionId collectionId) {
+        return new CollectionId(collectionId.namespace(), collectionId.name());
     }
 
     protected String columnQueryBindingFromField(String fieldName, TableDescriptor table, JdbcSinkRecord record) {
