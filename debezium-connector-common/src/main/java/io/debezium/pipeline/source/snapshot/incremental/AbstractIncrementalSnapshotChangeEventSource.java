@@ -26,7 +26,6 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.OptionalLong;
 import java.util.Set;
-import java.util.TreeSet;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -978,16 +977,18 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<P extends Par
     private void skipStaleTable(P partition, OffsetContext offsetContext, StaleSchemaException e) {
         commitWindowTransaction();
         warnAndSkip(partition, offsetContext,
-                SQL_EXCEPTION,
+                UNKNOWN_SCHEMA,
                 "%s, skipping the table and continuing streaming".formatted(e.getMessage()),
                 e.getCause());
     }
 
     /**
-     * An undefined-column error is schema drift only when the database and the cached table disagree
-     * on the column names: the same SQLSTATE comes back for a column misspelled in an additional
-     * condition or surrogate key, and that must fail the table at once as before instead of being
-     * deferred. When the fresh read itself fails the error is treated as drift and the chunk is retried.
+     * An undefined-column error is schema drift only when a column the chunk projects no longer exists
+     * in the database: the same SQLSTATE comes back for a column misspelled in an additional condition
+     * or surrogate key, and that must fail the table at once as before instead of being deferred. The
+     * check is an inclusion, not an equality, because the cached table may legitimately carry fewer
+     * columns than the database (SQL Server capture instances). When the database cannot be read the
+     * error is treated as drift and the chunk is retried.
      */
     private boolean isStaleSchemaError(Exception e) {
         if (!isUndefinedColumn(e)) {
@@ -996,9 +997,9 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<P extends Par
         // PostgreSQL rejects the catalog read until the transaction aborted by the failed query is closed
         commitWindowTransaction();
         try {
-            return !columnNames(currentTable).equals(columnNames(readSchemaForTable(currentTable.id())));
+            return !columnNames(readSchemaForTable(currentTable.id())).containsAll(columnNames(currentTable));
         }
-        catch (SQLException | RuntimeException refreshFailure) {
+        catch (SQLException | DebeziumException refreshFailure) {
             LOGGER.debug("Could not read the schema of table '{}' to classify an undefined-column error, deferring the chunk",
                     currentTable.id(), refreshFailure);
             return true;
@@ -1006,9 +1007,7 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<P extends Par
     }
 
     private static Set<String> columnNames(Table table) {
-        final var names = new TreeSet<>(String.CASE_INSENSITIVE_ORDER);
-        names.addAll(table.retrieveColumnNames());
-        return names;
+        return Set.copyOf(table.retrieveColumnNames());
     }
 
     private static final class StaleSchemaException extends DebeziumException {
