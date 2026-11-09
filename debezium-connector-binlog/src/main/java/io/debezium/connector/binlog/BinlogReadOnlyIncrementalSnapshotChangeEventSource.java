@@ -173,6 +173,11 @@ public abstract class BinlogReadOnlyIncrementalSnapshotChangeEventSource<P exten
             getContext().closeWindow();
             sendWindowEvents(partition, offsetContext);
             readChunk(partition, offsetContext);
+            if (isChunkDeferred()) {
+                // The DDL that made the cached schema stale is still queued in the binlog behind this
+                // event: re-reading now would hit the same stale schema until the deferrals are exhausted
+                return;
+            }
             if (currentGtid == null && getContext().watermarksChanged()) {
                 return;
             }

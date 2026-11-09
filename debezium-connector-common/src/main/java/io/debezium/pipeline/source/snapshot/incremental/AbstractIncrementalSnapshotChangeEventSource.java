@@ -321,6 +321,7 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<P extends Par
             // This commit should be unnecessary and might be removed later
             jdbcConnection.commit();
             context.startNewChunk();
+            chunkDeferred = false;
             emitWindowOpen(partition, offsetContext);
             LOGGER.trace("Window open emitted");
             while (context.snapshotRunning()) {
@@ -963,6 +964,14 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<P extends Par
      * cannot be refreshed) the table is skipped instead and the snapshot moves on to the next one,
      * on the read path as well as on the emission path of the signal-based and read-only sources.
      */
+    /**
+     * Whether the last read deferred its chunk instead of filling the window. The read-only sources that
+     * re-read chunks back to back use it to let the streaming thread process the pending schema change first.
+     */
+    protected boolean isChunkDeferred() {
+        return chunkDeferred;
+    }
+
     private boolean deferChunkOrSkipTable(P partition, OffsetContext offsetContext, Exception cause) {
         try {
             deferChunkOnStaleSchema(cause);
