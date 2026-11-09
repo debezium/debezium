@@ -22,7 +22,6 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -963,7 +962,7 @@ public class BufferedLogMinerStreamingChangeEventSource extends AbstractLogMiner
                 // Re-read in-flight transactions so a late row with a lower SCN is not skipped. Deferred transactions
                 // without DML pin it too, as the late row may be their first one.
                 final Scn rereadStartScn = oldestScn.subtract(Scn.ONE);
-                resetTransactionsForReread();
+                resetTransactionsForReread(rereadStartScn);
                 return new ProcessResult(rereadStartScn, rereadStartScn);
             }
 
@@ -989,7 +988,7 @@ public class BufferedLogMinerStreamingChangeEventSource extends AbstractLogMiner
             final boolean rereadTransactions = getConfig().isLobEnabled()
                     || (getConfig().isLogMiningBufferRereadTransactions() && miningSessionStartScn.compareTo(minCacheScn) < 0);
             if (rereadTransactions) {
-                resetTransactionsForReread();
+                resetTransactionsForReread(miningSessionStartScn);
             }
             return new ProcessResult(miningSessionStartScn, rereadTransactions ? miningSessionStartScn : endScn);
         }
@@ -1008,12 +1007,14 @@ public class BufferedLogMinerStreamingChangeEventSource extends AbstractLogMiner
     }
 
     /**
-     * Resets the buffered transactions before they are re-read. The re-read replays each transaction from its
-     * first event, so its events are matched by position, including transactions whose START was never mined.
+     * Resets the buffered transactions that a re-read after the given SCN replays from their first event, so their
+     * events are matched by position, including transactions whose START was never mined. Transactions that started
+     * at or before the SCN are only partially re-read, so they keep their events.
      */
-    private void resetTransactionsForReread() {
+    private void resetTransactionsForReread(Scn readStartScn) {
         final LogMinerTransactionCache<Transaction> cache = getTransactionCache();
-        cache.streamTransactionsAndReturn(Stream::toList).forEach(cache::resetTransactionToStart);
+        cache.streamTransactionsAndReturn(stream -> stream.filter(t -> t.getStartScn().compareTo(readStartScn) > 0).toList())
+                .forEach(cache::resetTransactionToStart);
     }
 
     /**

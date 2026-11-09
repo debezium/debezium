@@ -1481,7 +1481,7 @@ Set this property to `false` only if you have confirmed that the captured tables
 When `lob.enabled` is set to `true`, the connector always re-reads the in-progress transactions, and this property has no effect.
 
 ifdef::community[]
-When xref:oracle-property-log-mining-window-max-ms[`log.mining.window.max.ms`] advances the mining window past the oldest in-progress transaction, the connector does not re-read any in-progress transaction during that mining step, and it advances the read position as if this property is set to `false`.
+When xref:oracle-property-log-mining-window-max-ms[`log.mining.window.max.ms`] advances the mining window past the oldest in-progress transaction and xref:oracle-property-lob-enabled[`lob.enabled`] is set to `false`, the connector does not re-read any in-progress transaction during that mining step, and it advances the read position as if this property is set to `false`.
 The `log.mining.window.max.ms` property does not apply when xref:oracle-property-log-mining-buffer-deferred-transaction-start[`log.mining.buffer.deferred.transaction.start`] is set to `true`, so the mining window remains pinned to the oldest in-progress transaction while the connector re-reads in-progress transactions.
 endif::community[]
 

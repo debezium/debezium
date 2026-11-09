@@ -511,6 +511,34 @@ public abstract class AbstractBufferedLogMinerStreamingChangeEventSourceTest ext
 
     @Test
     @FixFor("debezium/dbz#3039")
+    public void testLobRereadAfterWindowMaxAdvanceKeepsEventsOfTransactionsBeforeWindow() throws Exception {
+        if (!isTransactionAbandonmentSupported()) {
+            return;
+        }
+
+        final Configuration config = getConfig()
+                .with(OracleConnectorConfig.LOB_ENABLED, "true")
+                .with(OracleConnectorConfig.LOG_MINING_WINDOW_MAX_MS, 60_000)
+                .build();
+        try (var source = getChangeEventSource(config)) {
+            // The first transaction is older than the window, so the re-read starts within it and returns only its
+            // later rows, which must not be matched against its first events
+            final LocalDateTime old = LocalDateTime.now().minusHours(1);
+            final BufferedStreamingChangeEventSource mock = spyWithMinedSteps(source,
+                    List.of(insertRow(101, XID_1).at(old), insertRow(102, XID_1).at(old), insertRow(150, XID_2)),
+                    List.of(insertRow(150, XID_2), insertRow(160, XID_1)));
+
+            final ProcessResult first = mock.process(Scn.valueOf(100), Scn.valueOf(200));
+            assertThat(first.readStartScn()).isEqualTo(Scn.valueOf(149));
+            mock.process(first.readStartScn(), Scn.valueOf(200));
+
+            // The first transaction keeps its 2 earlier events and adds the new one, the second is not duplicated
+            assertTransactionEvents(mock.getTransactionCache(), 4);
+        }
+    }
+
+    @Test
+    @FixFor("debezium/dbz#3039")
     public void testDeferredTransactionStartReadPositionIsNotAdvancedByWindowMax() throws Exception {
         if (!isTransactionAbandonmentSupported()) {
             return;
