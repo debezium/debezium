@@ -554,16 +554,6 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
                     "in - The query uses SQL in-clause expressions to specify the schema or table filters." + System.lineSeparator() +
                     "regex - The query uses Oracle REGEXP_LIKE expressions to specify the schema or table filters." + System.lineSeparator());
 
-    public static final Field LOG_MINING_QUERY_FILTER_SCHEMA_TABLE_CONCATENATE = Field.createInternal("log.mining.query.filter.schema.table.concatenate")
-            .withDisplayName("Use the log miner query that filter tables on the upper-cased concatenation of schema and table names")
-            .withType(Type.BOOLEAN)
-            .withWidth(Width.SHORT)
-            .withImportance(Importance.LOW)
-            .withDefault(false)
-            .withDescription("When 'log.mining.query.filter.mode' is 'in', the query compares tables by table name alone. " +
-                    "Set this option to 'true' to restore the slower query that compares the " +
-                    "upper-cased concatenation of the schema and table names.");
-
     public static final Field LOG_MINING_FLUSH_TABLE_NAME = Field.create("log.mining.flush.table.name")
             .withDisplayName("Specifies the name of the flush table used by the connector")
             .withType(Type.STRING)
@@ -924,7 +914,6 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
                     LOG_MINING_READ_ONLY,
                     LOG_MINING_FLUSH_TABLE_NAME,
                     LOG_MINING_QUERY_FILTER_MODE,
-                    LOG_MINING_QUERY_FILTER_SCHEMA_TABLE_CONCATENATE,
                     LOG_MINING_RESTART_CONNECTION,
                     LOG_MINING_MAX_SCN_DEVIATION_MS,
                     LOG_MINING_SCHEMA_CHANGES_USERNAME_EXCLUDE_LIST,
@@ -1030,7 +1019,6 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
     private final Set<String> logMiningClientIdExcludes;
     private final String logMiningPathToDictionary;
     private final boolean logMiningUseCteQuery;
-    private final boolean logMiningQueryFilterSchemaTableConcatenate;
     private final OracleJdbcConfiguration oracleJdbcConfig;
     private final Integer logMiningRedoThreadScnAdjustment;
     private final Long logMiningHashAreaSize;
@@ -1117,7 +1105,6 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
         this.logMiningClientIdExcludes = Strings.setOfTrimmed(config.getString(LOG_MINING_CLIENTID_EXCLUDE_LIST), String::new);
         this.logMiningPathToDictionary = config.getString(LOG_MINING_PATH_DICTIONARY);
         this.logMiningUseCteQuery = config.getBoolean(LOG_MINING_USE_CTE_QUERY);
-        this.logMiningQueryFilterSchemaTableConcatenate = config.getBoolean(LOG_MINING_QUERY_FILTER_SCHEMA_TABLE_CONCATENATE);
 
         // Initialize logMiningWindowMaxMs, but disable if CTE is enabled as they are incompatible
         final Duration configuredWindowMaxMs = Duration.ofMillis(config.getLong(LOG_MINING_WINDOW_MAX_MS));
@@ -2236,13 +2223,6 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
      */
     public boolean isLogMiningUseCteQuery() {
         return logMiningUseCteQuery;
-    }
-
-    /**
-     * Should we use the previous more expensive log mining query with the schema concatenation and the case-insensitive schema and table name.
-     */
-    public boolean isLogMiningQueryFilterSchemaTableConcatenate() {
-        return logMiningQueryFilterSchemaTableConcatenate;
     }
 
     /**
