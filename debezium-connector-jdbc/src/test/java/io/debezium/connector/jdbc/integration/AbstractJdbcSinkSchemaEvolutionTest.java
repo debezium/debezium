@@ -46,13 +46,13 @@ import io.debezium.connector.jdbc.junit.jupiter.e2e.SkipWhenSink;
 import io.debezium.connector.jdbc.util.DebeziumSinkRecordFactory;
 import io.debezium.connector.jdbc.util.SinkRecordFactory;
 import io.debezium.doc.FixFor;
+import io.debezium.junit.logging.LogInterceptor;
 import io.debezium.time.ZonedTimestamp;
 import io.debezium.util.Strings;
 
 import ch.qos.logback.classic.Level;
 import ch.qos.logback.classic.Logger;
 import ch.qos.logback.classic.spi.ILoggingEvent;
-import ch.qos.logback.core.read.ListAppender;
 
 /**
  * Common schema evolution tests.
@@ -74,6 +74,12 @@ public abstract class AbstractJdbcSinkSchemaEvolutionTest extends AbstractJdbcSi
      * default to.
      */
     private static final String MYSQL_MAX_TIMESTAMP = "2038-01-19 03:14:07";
+
+    /**
+     * The part of the clamping warning that every clamping warning carries, used to pick the
+     * clamping warnings out of the captured log events.
+     */
+    private static final String CLAMP_WARNING = "is out of range for the target database";
 
     public AbstractJdbcSinkSchemaEvolutionTest(Sink sink) {
         super(sink);
@@ -804,6 +810,43 @@ public abstract class AbstractJdbcSinkSchemaEvolutionTest extends AbstractJdbcSi
         assertZonedTimestampDefaultWarnings(factory, properties);
     }
 
+    @ParameterizedTest
+    @ArgumentsSource(SinkRecordFactoryArgumentsProvider.class)
+    @SkipWhenSink(value = { SinkType.ORACLE, SinkType.POSTGRES, SinkType.SQLSERVER,
+            SinkType.DB2 }, reason = "Only the MySQL family clamps a ZonedTimestamp default")
+    @FixFor("debezium/dbz#1256")
+    public void shouldWarnWhenZonedTimestampDefaultIsAddedToExistingTable(SinkRecordFactory factory) {
+        final Map<String, String> properties = getDefaultSinkConfig();
+        properties.put(JdbcSinkConnectorConfig.SCHEMA_EVOLUTION, SchemaEvolutionMode.BASIC.getValue());
+        startSinkConnector(properties);
+        assertSinkConnectorIsRunning();
+
+        final JdbcSinkConnectorConfig config = getConfig(properties);
+        final Logger logger = (Logger) LoggerFactory.getLogger(ZonedTimestampType.class);
+        final Level previousLevel = logger.getLevel();
+        logger.setLevel(Level.WARN);
+        final LogInterceptor logInterceptor = new LogInterceptor(ZonedTimestampType.class.getName());
+
+        try {
+            final String topicName = topicName("server1", "schema", randomTableName());
+
+            // The record carries only the id column, so the sink creates the table.
+            consume(idOnlyRecord(factory, config, topicName));
+
+            // The record carries an extra column with an out-of-range default, so the sink alters the table.
+            consume(zonedTimestampDefaultRecord(factory, config, topicName, "1970-01-01T00:00:00Z", null));
+
+            assertThat(warnings(logInterceptor)).singleElement().asString()
+                    .contains(destinationTableName(topicName, properties))
+                    .contains("created_at")
+                    .contains("1970-01-01T00:00:00Z")
+                    .contains(sessionZoneDefaultLiteral("1970-01-01 00:00:01"));
+        }
+        finally {
+            logger.setLevel(previousLevel);
+        }
+    }
+
     private void assertZonedTimestampDefaultWarnings(SinkRecordFactory factory, Map<String, String> properties) {
         startSinkConnector(properties);
         assertSinkConnectorIsRunning();
@@ -812,49 +855,47 @@ public abstract class AbstractJdbcSinkSchemaEvolutionTest extends AbstractJdbcSi
         final Logger logger = (Logger) LoggerFactory.getLogger(ZonedTimestampType.class);
         final Level previousLevel = logger.getLevel();
         logger.setLevel(Level.WARN);
-        final ListAppender<ILoggingEvent> logAppender = new ListAppender<>();
-        logAppender.start();
-        logger.addAppender(logAppender);
+        final LogInterceptor logInterceptor = new LogInterceptor(ZonedTimestampType.class.getName());
 
         try {
-            consumeZonedTimestampDefault(factory, config, "1970-01-01T00:00:00Z");
-            assertThat(warnings(logAppender)).singleElement().asString()
+            final JdbcKafkaSinkRecord lowerRecord = consumeZonedTimestampDefault(factory, config, "1970-01-01T00:00:00Z");
+            assertThat(warnings(logInterceptor)).singleElement().asString()
+                    .contains(destinationTableName(lowerRecord.topicName(), properties))
                     .contains("created_at")
                     .contains("1970-01-01T00:00:00Z")
                     .contains(sessionZoneDefaultLiteral("1970-01-01 00:00:01"));
-            logAppender.list.clear();
+            logInterceptor.clear();
 
             consumeZonedTimestampDefault(factory, config, "1970-01-01T00:00:01Z");
-            assertThat(warnings(logAppender)).isEmpty();
-            logAppender.list.clear();
+            assertThat(warnings(logInterceptor)).isEmpty();
+            logInterceptor.clear();
 
-            consumeZonedTimestampDefault(factory, config, "2038-01-19T03:14:08Z");
-            assertThat(warnings(logAppender)).singleElement().asString()
+            final JdbcKafkaSinkRecord upperRecord = consumeZonedTimestampDefault(factory, config, "2038-01-19T03:14:08Z");
+            assertThat(warnings(logInterceptor)).singleElement().asString()
+                    .contains(destinationTableName(upperRecord.topicName(), properties))
                     .contains("created_at")
                     .contains("2038-01-19T03:14:08Z")
                     .contains(sessionZoneDefaultLiteral("2038-01-19 03:14:07"));
-            logAppender.list.clear();
+            logInterceptor.clear();
 
             consumeZonedTimestampDefault(factory, config, "2038-01-19T03:14:07Z");
-            assertThat(warnings(logAppender)).isEmpty();
-            logAppender.list.clear();
+            assertThat(warnings(logInterceptor)).isEmpty();
+            logInterceptor.clear();
 
             consumeZonedTimestampDefault(factory, config, "2024-06-15T12:00:00Z");
-            assertThat(warnings(logAppender)).isEmpty();
-            logAppender.list.clear();
+            assertThat(warnings(logInterceptor)).isEmpty();
+            logInterceptor.clear();
 
             consumeZonedTimestampDefault(factory, config, null);
-            assertThat(warnings(logAppender)).isEmpty();
-            logAppender.list.clear();
+            assertThat(warnings(logInterceptor)).isEmpty();
+            logInterceptor.clear();
 
             consumeZonedTimestampDefault(factory, config, "1970-01-01T00:00:00Z", "propagated_column");
-            assertThat(warnings(logAppender)).singleElement().asString()
+            assertThat(warnings(logInterceptor)).singleElement().asString()
                     .contains("propagated_column")
                     .doesNotContain("created_at");
         }
         finally {
-            logger.detachAppender(logAppender);
-            logAppender.stop();
             logger.setLevel(previousLevel);
         }
     }
@@ -864,6 +905,14 @@ public abstract class AbstractJdbcSinkSchemaEvolutionTest extends AbstractJdbcSi
     }
 
     private JdbcKafkaSinkRecord consumeZonedTimestampDefault(SinkRecordFactory factory, JdbcSinkConnectorConfig config, String defaultValue, String sourceColumnName) {
+        final String topicName = topicName("server1", "schema", randomTableName());
+        final JdbcKafkaSinkRecord record = zonedTimestampDefaultRecord(factory, config, topicName, defaultValue, sourceColumnName);
+        consume(record);
+        return record;
+    }
+
+    private JdbcKafkaSinkRecord zonedTimestampDefaultRecord(SinkRecordFactory factory, JdbcSinkConnectorConfig config, String topicName, String defaultValue,
+                                                            String sourceColumnName) {
         final SchemaBuilder zonedTimestamp = SchemaBuilder.string().name(ZonedTimestamp.SCHEMA_NAME);
         if (defaultValue != null) {
             zonedTimestamp.defaultValue(defaultValue);
@@ -876,10 +925,7 @@ public abstract class AbstractJdbcSinkSchemaEvolutionTest extends AbstractJdbcSi
                 .field("created_at", zonedTimestamp.build())
                 .build();
 
-        final String tableName = randomTableName();
-        final String topicName = topicName("server1", "schema", tableName);
-
-        final JdbcKafkaSinkRecord record = factory.createBuilder(config)
+        return factory.createBuilder(config)
                 .name("prefix")
                 .topic(topicName)
                 .keySchema(factory.basicKeySchema())
@@ -890,12 +936,23 @@ public abstract class AbstractJdbcSinkSchemaEvolutionTest extends AbstractJdbcSi
                 .after("created_at", "2024-06-15T12:00:00Z")
                 .source("ts_ms", (int) Instant.now().getEpochSecond())
                 .build();
-        consume(record);
-        return record;
     }
 
-    private List<String> warnings(ListAppender<ILoggingEvent> logAppender) {
-        return logAppender.list.stream()
+    private JdbcKafkaSinkRecord idOnlyRecord(SinkRecordFactory factory, JdbcSinkConnectorConfig config, String topicName) {
+        return factory.createBuilder(config)
+                .name("prefix")
+                .topic(topicName)
+                .keySchema(factory.basicKeySchema())
+                .recordSchema(SchemaBuilder.struct().field("id", Schema.INT8_SCHEMA).build())
+                .sourceSchema(factory.basicSourceSchema())
+                .key("id", (byte) 1)
+                .after("id", (byte) 1)
+                .source("ts_ms", (int) Instant.now().getEpochSecond())
+                .build();
+    }
+
+    private List<String> warnings(LogInterceptor logInterceptor) {
+        return logInterceptor.getLoggingEvents(CLAMP_WARNING).stream()
                 .filter(event -> Level.WARN.equals(event.getLevel()))
                 .map(ILoggingEvent::getFormattedMessage)
                 .toList();

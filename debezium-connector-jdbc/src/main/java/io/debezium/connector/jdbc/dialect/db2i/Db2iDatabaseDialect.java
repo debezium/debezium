@@ -234,11 +234,11 @@ public class Db2iDatabaseDialect extends GeneralDatabaseDialect {
     }
 
     @Override
-    protected void addColumnDefaultValue(FieldDescriptor field, StringBuilder columnSpec) {
+    protected void addColumnDefaultValue(FieldDescriptor field, StringBuilder columnSpec, CollectionId collectionId) {
         if (field.getSchema().isOptional()) {
             return;
         }
-        super.addColumnDefaultValue(field, columnSpec);
+        super.addColumnDefaultValue(field, columnSpec, collectionId);
     }
 
     @Override

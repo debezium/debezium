@@ -40,6 +40,7 @@ import io.debezium.connector.jdbc.dialect.GeneralDatabaseDialect;
 import io.debezium.connector.jdbc.dialect.SqlStatementBuilder;
 import io.debezium.connector.jdbc.relational.TableDescriptor;
 import io.debezium.connector.jdbc.type.JdbcType;
+import io.debezium.metadata.CollectionId;
 import io.debezium.sink.field.FieldDescriptor;
 import io.debezium.time.ZonedTimestamp;
 import io.debezium.util.Strings;
@@ -284,7 +285,7 @@ public class MySqlDatabaseDialect extends GeneralDatabaseDialect {
     }
 
     @Override
-    protected void addColumnDefaultValue(FieldDescriptor field, StringBuilder columnSpec) {
+    protected void addColumnDefaultValue(FieldDescriptor field, StringBuilder columnSpec, CollectionId collectionId) {
         Schema fieldSchema = field.getSchema();
         final String fieldType = getSchemaType(fieldSchema).getTypeName(fieldSchema, field.isKey());
         if (!Strings.isNullOrBlank(fieldType)) {
@@ -292,6 +293,6 @@ public class MySqlDatabaseDialect extends GeneralDatabaseDialect {
                 return;
             }
         }
-        super.addColumnDefaultValue(field, columnSpec);
+        super.addColumnDefaultValue(field, columnSpec, collectionId);
     }
 }

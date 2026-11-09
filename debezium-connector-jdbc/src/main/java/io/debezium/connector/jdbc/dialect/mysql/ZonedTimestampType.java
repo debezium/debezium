@@ -12,6 +12,7 @@ import org.apache.kafka.connect.data.Schema;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import io.debezium.connector.jdbc.type.DefaultValueContext;
 import io.debezium.connector.jdbc.type.JdbcType;
 import io.debezium.connector.jdbc.type.debezium.DebeziumZonedTimestampType;
 import io.debezium.time.ZonedTimestamp;
@@ -35,11 +36,12 @@ public class ZonedTimestampType extends DebeziumZonedTimestampType {
 
     @Override
     public String getDefaultValueBinding(Schema schema, Object value) {
-        return getDefaultValueBinding(schema, value, SchemaUtils.getSourceColumnName(schema).orElse(null));
+        return getDefaultValueBinding(schema, value,
+                new DefaultValueContext(null, SchemaUtils.getSourceColumnName(schema).orElse(null)));
     }
 
     @Override
-    public String getDefaultValueBinding(Schema schema, Object value, String columnName) {
+    public String getDefaultValueBinding(Schema schema, Object value, DefaultValueContext context) {
         if (value == null) {
             return super.getDefaultValueBinding(schema, value);
         }
@@ -48,8 +50,11 @@ public class ZonedTimestampType extends DebeziumZonedTimestampType {
         final ZonedDateTime clamped = clampToDialectBounds(parsed);
         final String binding = getDialect().getFormattedTimestampWithTimeZone(ZonedTimestamp.toIsoString(clamped, null, null));
         if (!clamped.isEqual(parsed)) {
-            LOGGER.warn("Default value '{}' of column '{}' is out of range for the target database and was clamped to {}.",
-                    value, columnName == null ? "unknown" : columnName, binding);
+            LOGGER.warn("Default value '{}' of column '{}' in table '{}' is out of range for the target database and was clamped to {}.",
+                    value,
+                    context == null || context.columnName() == null ? "unknown" : context.columnName(),
+                    context == null || context.collectionId() == null ? "unknown" : context.collectionId().toFullIdentiferString(),
+                    binding);
         }
         return binding;
     }
