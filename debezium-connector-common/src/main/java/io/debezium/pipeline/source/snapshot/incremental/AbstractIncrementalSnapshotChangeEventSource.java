@@ -79,6 +79,7 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<P extends Par
     private static final Logger LOGGER = LoggerFactory.getLogger(AbstractIncrementalSnapshotChangeEventSource.class);
 
     private static final int MAX_STALE_SCHEMA_DEFERRALS = 3;
+    private static final int MAX_STALE_TABLE_DEFERRALS = 10;
 
     protected final RelationalDatabaseConnectorConfig connectorConfig;
     private final Clock clock;
@@ -89,6 +90,8 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<P extends Par
     private long totalRowsScanned = 0;
     private int staleSchemaDeferrals = 0;
     private Table lastStaleTable;
+    private int staleTableDeferrals = 0;
+    private boolean chunkDeferred;
     private Object[] windowStartPosition;
     private TableSchema windowSchema;
 
@@ -906,9 +909,11 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<P extends Par
      * or verification query references a column that no longer exists, the result set carries a
      * column the cache lacks, or the emission schema rotated before the window closed. Closing the
      * window lets streaming deliver the pending DDL and the chunk is re-read in the next one.
-     * Consecutive deferrals on the same observed schema are bounded, so a DDL storm keeps making
-     * progress while a schema that never catches up ends with the table skipped. Recovery therefore
-     * relies on the connector learning the new schema before the bound: the binlog connectors
+     * Consecutive deferrals on the same observed schema are bounded, so a sequence of DDLs keeps
+     * making progress as long as the connector learns each new schema, while a schema that never
+     * catches up ends with the table skipped; a second bound on the total deferrals of the table
+     * stops alternating DDLs from deferring the chunk forever. Recovery therefore relies on the
+     * connector learning the new schema before the bound: the binlog connectors
      * receive the DDL from the log and PostgreSQL re-reads it from the catalog
      * ({@link #refreshTableSchema}); where neither applies, SQL Server until a new capture instance
      * exists for instance, the deferrals are exhausted and the table is skipped.
@@ -916,11 +921,16 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<P extends Par
     private void deferChunkOnStaleSchema(Exception cause) {
         // A read can fail mid result set: the partial buffer must not reach the emission or the skip handlers
         window.clear();
-        if (lastStaleTable != null && currentTable != null && !currentTable.equals(lastStaleTable)) {
+        if (lastStaleTable == null || !lastStaleTable.id().equals(currentTable.id())) {
+            staleSchemaDeferrals = 0;
+            staleTableDeferrals = 0;
+        }
+        else if (!lastStaleTable.equals(currentTable)) {
             staleSchemaDeferrals = 0;
         }
         lastStaleTable = currentTable;
         staleSchemaDeferrals++;
+        staleTableDeferrals++;
         if (staleSchemaDeferrals > MAX_STALE_SCHEMA_DEFERRALS) {
             resetStaleSchemaDeferrals();
             throw new StaleSchemaException(
@@ -928,8 +938,16 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<P extends Par
                             .formatted(currentTable.id(), MAX_STALE_SCHEMA_DEFERRALS),
                     cause);
         }
+        if (staleTableDeferrals > MAX_STALE_TABLE_DEFERRALS) {
+            resetStaleSchemaDeferrals();
+            throw new StaleSchemaException(
+                    "Schema of table '%s' kept changing across %d chunk deferrals without the chunk being read"
+                            .formatted(currentTable.id(), MAX_STALE_TABLE_DEFERRALS),
+                    cause);
+        }
         LOGGER.warn("Cached schema for table '{}' is stale against the database (deferral {}/{}): re-reading the chunk in the next window",
                 currentTable.id(), staleSchemaDeferrals, MAX_STALE_SCHEMA_DEFERRALS, cause);
+        chunkDeferred = true;
         // Strict drivers reject further statements on the aborted transaction until it is closed
         commitWindowTransaction();
         context.setSchemaVerificationPassed(false);
@@ -1027,6 +1045,7 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<P extends Par
 
     private void resetStaleSchemaDeferrals() {
         staleSchemaDeferrals = 0;
+        staleTableDeferrals = 0;
         lastStaleTable = null;
     }
 
