@@ -25,6 +25,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.OptionalLong;
+import java.util.Set;
+import java.util.TreeSet;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -215,19 +217,14 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<P extends Par
     protected void sendWindowEvents(P partition, OffsetContext offsetContext) throws InterruptedException {
         LOGGER.debug("Sending {} events from window buffer", window.size());
         if (!window.isEmpty() && windowSchema != null && !windowSchema.equals(databaseSchema.schemaFor(currentTable.id()))) {
-            // The emission schema changed after the window was buffered: the buffered rows no
-            // longer match it. The comparison is structural (key and value schemas), not by
-            // instance: a schema refresh replaces the TableSchema instance even when nothing
-            // changed (pgoutput sends a relation message the first time a table appears in the
-            // session), and only an actual column change must defer. The chunk position returns
-            // to the window start and the whole window is re-read (at-least-once); sendEvent
-            // advances lastEventKeySent before dispatching, so reverting to it would skip a row.
-            // Exceeding the deferral bound throws: closeWindow turns that into a visible skip on the
-            // signal processing path, the read-only sources let it fail the task as before.
-            deferChunkOnStaleSchema(new DebeziumException(
-                    "The schema of table '%s' was refreshed after the window was buffered".formatted(currentTable.id())));
+            // The emission schema rotated after the window was buffered. The comparison is structural
+            // because a refresh replaces the TableSchema instance even when nothing changed (pgoutput
+            // relation messages). The whole window is re-read from its start (at-least-once): the
+            // position is restored first, so the state is consistent even when the deferral bound throws.
             context.revertChunk();
             context.nextChunkPosition(windowStartPosition);
+            deferChunkOnStaleSchema(new DebeziumException(
+                    "The schema of table '%s' was refreshed after the window was buffered".formatted(currentTable.id())));
             return;
         }
         offsetContext.incrementalSnapshotEvents();
@@ -339,11 +336,12 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<P extends Par
                     }
                 }
                 catch (DebeziumException e) {
-                    // The verification query itself uses the cached projection, so it fails the
-                    // same way the chunk query does when a column was just dropped
-                    if (isUndefinedColumn(e)) {
-                        deferChunkOnStaleSchema(e);
-                        break;
+                    // The verification query uses the cached projection and fails like the chunk query does
+                    if (isStaleSchemaError(e)) {
+                        if (deferChunkOrSkipTable(partition, offsetContext, e)) {
+                            break;
+                        }
+                        continue;
                     }
                     throw e;
                 }
@@ -366,9 +364,11 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<P extends Par
                         if (e instanceof SQLNonTransientConnectionException) {
                             closeJdbcConnection();
                         }
-                        if (isUndefinedColumn(e)) {
-                            deferChunkOnStaleSchema(e);
-                            break;
+                        if (isStaleSchemaError(e)) {
+                            if (deferChunkOrSkipTable(partition, offsetContext, e)) {
+                                break;
+                            }
+                            continue;
                         }
                         LOGGER.error("Failed to read maximum key for table {}", currentTableId, e);
                         notificationService.incrementalSnapshotNotificationService().notifyTableScanCompleted(context, partition, offsetContext, totalRowsScanned,
@@ -377,8 +377,10 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<P extends Par
                         continue;
                     }
                     catch (StaleResultSetSchemaException e) {
-                        deferChunkOnStaleSchema(e.getCause());
-                        break;
+                        if (deferChunkOrSkipTable(partition, offsetContext, e.getCause())) {
+                            break;
+                        }
+                        continue;
                     }
                     if (context.maximumKey().isEmpty()) {
                         LOGGER.info(
@@ -430,6 +432,9 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<P extends Par
                     notificationService.incrementalSnapshotNotificationService().notifyTableScanCompleted(context, partition, offsetContext, totalRowsScanned,
                             SQL_EXCEPTION);
                     nextDataCollection(partition, offsetContext);
+                }
+                catch (StaleSchemaException e) {
+                    skipStaleTable(partition, offsetContext, e);
                 }
             }
             emitWindowClose(partition, offsetContext);
@@ -871,7 +876,7 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<P extends Par
             incrementTableRowsScanned(partition, rows);
         }
         catch (SQLException e) {
-            if (isUndefinedColumn(e)) {
+            if (isStaleSchemaError(e)) {
                 deferChunkOnStaleSchema(e);
                 return false;
             }
@@ -923,31 +928,86 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<P extends Par
         staleSchemaDeferrals++;
         if (staleSchemaDeferrals > MAX_STALE_SCHEMA_DEFERRALS) {
             resetStaleSchemaDeferrals();
-            throw new DebeziumException(
+            throw new StaleSchemaException(
                     "Cached schema for table '%s' is still stale against the database after %d chunk deferrals"
                             .formatted(currentTable.id(), MAX_STALE_SCHEMA_DEFERRALS),
                     cause);
         }
         LOGGER.warn("Cached schema for table '{}' is stale against the database (deferral {}/{}): re-reading the chunk in the next window",
                 currentTable.id(), staleSchemaDeferrals, MAX_STALE_SCHEMA_DEFERRALS, cause);
-        // Strict drivers treat the transaction as aborted after the error that caused the
-        // deferral and reject further statements until it is closed; the schema is refreshed
-        // over the same connection right below.
+        // Strict drivers reject further statements on the aborted transaction until it is closed
         commitWindowTransaction();
         context.setSchemaVerificationPassed(false);
         try {
             currentTable = chunkQueryBuilder.prepareTable(context, refreshTableSchema(currentTable));
         }
         catch (SQLException e) {
-            throw new DebeziumException("Schema refresh failed while deferring a chunk of table '%s'".formatted(currentTable.id()), e);
+            throw new StaleSchemaException("Schema refresh failed while deferring a chunk of table '%s'".formatted(currentTable.id()), e);
         }
     }
 
     /**
-     * The result set carrying a column the cached table does not know is the "cache behind the database"
-     * stale-schema signal, and {@link ColumnUtils#toArray} rejects it with an {@link IllegalArgumentException}.
-     * Only that call is classified: the same exception type raised by row conversion or key extraction is
-     * unrelated to schema drift and keeps its ordinary handling.
+     * Read-path variant: reports whether the window must be closed to re-read the chunk; when the
+     * deferral bound is exhausted (or the schema cannot be refreshed) the table is skipped and the
+     * loop moves on to the next one, so the window still closes normally.
+     */
+    private boolean deferChunkOrSkipTable(P partition, OffsetContext offsetContext, Exception cause) {
+        try {
+            deferChunkOnStaleSchema(cause);
+            return true;
+        }
+        catch (StaleSchemaException e) {
+            skipStaleTable(partition, offsetContext, e);
+            return false;
+        }
+    }
+
+    private void skipStaleTable(P partition, OffsetContext offsetContext, StaleSchemaException e) {
+        commitWindowTransaction();
+        warnAndSkip(partition, offsetContext,
+                SQL_EXCEPTION,
+                "%s, skipping the table and continuing streaming".formatted(e.getMessage()),
+                e.getCause());
+    }
+
+    /**
+     * An undefined-column error is schema drift only when the database and the cached table disagree
+     * on the column names: the same SQLSTATE comes back for a column misspelled in an additional
+     * condition or surrogate key, and that must fail the table at once as before instead of being
+     * deferred. When the fresh read itself fails the error is treated as drift and the chunk is retried.
+     */
+    private boolean isStaleSchemaError(Exception e) {
+        if (!isUndefinedColumn(e)) {
+            return false;
+        }
+        // PostgreSQL rejects the catalog read until the transaction aborted by the failed query is closed
+        commitWindowTransaction();
+        try {
+            return !columnNames(currentTable).equals(columnNames(readSchemaForTable(currentTable.id())));
+        }
+        catch (SQLException | RuntimeException refreshFailure) {
+            LOGGER.debug("Could not read the schema of table '{}' to classify an undefined-column error, deferring the chunk",
+                    currentTable.id(), refreshFailure);
+            return true;
+        }
+    }
+
+    private static Set<String> columnNames(Table table) {
+        final var names = new TreeSet<>(String.CASE_INSENSITIVE_ORDER);
+        names.addAll(table.retrieveColumnNames());
+        return names;
+    }
+
+    private static final class StaleSchemaException extends DebeziumException {
+
+        StaleSchemaException(String message, Throwable cause) {
+            super(message, cause);
+        }
+    }
+
+    /**
+     * A result set column the cached table does not know is rejected by {@link ColumnUtils#toArray}; only
+     * that call is classified, the same exception from row conversion or key extraction is unrelated to schema drift.
      */
     private ColumnUtils.ColumnArray columnArrayOrStale(ResultSet rs, Table table) throws SQLException {
         try {
