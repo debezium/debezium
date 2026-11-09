@@ -217,6 +217,7 @@
 
     <modules>
         <module>debezium-bom</module>
+        <module>debezium-bom-overlay</module>
         <module>debezium-parent</module>
         <module>support/checkstyle</module>
         <module>support/ide-configs</module>
