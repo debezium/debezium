@@ -7,7 +7,6 @@ package io.debezium.connector.binlog;
 
 import static io.debezium.junit.EqualityCheck.LESS_THAN;
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.junit.jupiter.api.Assertions.fail;
 
 import java.math.BigDecimal;
 import java.nio.file.Path;
@@ -27,12 +26,14 @@ import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoUnit;
 import java.time.temporal.TemporalAccessor;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceConnector;
 import org.apache.kafka.connect.source.SourceRecord;
+import org.awaitility.Awaitility;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -800,11 +801,11 @@ public abstract class BinlogDefaultValueIT<C extends SourceConnector> extends Ab
 
         waitForConnectorShutdown(getConnectorName(), DATABASE.getServerName());
 
-        final Throwable e = exception.get();
-        if (e == null) {
-            // it should be thrown
-            fail();
-        }
+        // The completion callback is invoked after the connector has shut down
+        Awaitility.await()
+                .alias("Connector should have failed with an exception")
+                .atMost(waitTimeForEngine(), TimeUnit.SECONDS)
+                .until(() -> exception.get() != null);
     }
 
     @Test
