@@ -64,14 +64,24 @@ public abstract class AbstractTemporalType extends AbstractType {
      */
     protected ZonedDateTime clampIfOutOfRange(ZonedDateTime value) {
         if (clampOutOfRangeValues) {
-            final ZonedDateTime minimum = getMinimumTimestampValue();
-            if (minimum != null && value.toInstant().isBefore(minimum.toInstant())) {
-                return minimum;
-            }
-            final ZonedDateTime maximum = getMaximumTimestampValue();
-            if (maximum != null && value.toInstant().isAfter(maximum.toInstant())) {
-                return maximum;
-            }
+            return clampToDialectBounds(value);
+        }
+        return value;
+    }
+
+    /**
+     * Clamps the supplied value to the dialect's minimum or maximum supported timestamp when the
+     * value lies outside that range, regardless of the {@code timestamp.clamp.out.of.range.values}
+     * setting.
+     */
+    protected ZonedDateTime clampToDialectBounds(ZonedDateTime value) {
+        final ZonedDateTime minimum = getMinimumTimestampValue();
+        if (minimum != null && value.toInstant().isBefore(minimum.toInstant())) {
+            return minimum;
+        }
+        final ZonedDateTime maximum = getMaximumTimestampValue();
+        if (maximum != null && value.toInstant().isAfter(maximum.toInstant())) {
+            return maximum;
         }
         return value;
     }

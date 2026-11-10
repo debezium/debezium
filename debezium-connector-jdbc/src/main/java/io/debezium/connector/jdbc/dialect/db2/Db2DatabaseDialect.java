@@ -170,13 +170,13 @@ public class Db2DatabaseDialect extends GeneralDatabaseDialect {
     }
 
     @Override
-    protected void addColumnDefaultValue(FieldDescriptor field, StringBuilder columnSpec) {
+    protected void addColumnDefaultValue(FieldDescriptor field, StringBuilder columnSpec, CollectionId collectionId) {
         if (field.getSchema().isOptional()) {
             // todo: should investigate why this is the case.
             // Db2 11.5 on Linux does not allow specifying default values on NULL-able fields.
             return;
         }
-        super.addColumnDefaultValue(field, columnSpec);
+        super.addColumnDefaultValue(field, columnSpec, collectionId);
     }
 
     @Override

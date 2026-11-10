@@ -51,6 +51,7 @@ import io.debezium.connector.jdbc.JdbcSinkRecord;
 import io.debezium.connector.jdbc.field.JdbcFieldDescriptor;
 import io.debezium.connector.jdbc.naming.ColumnNamingStrategy;
 import io.debezium.connector.jdbc.relational.TableDescriptor;
+import io.debezium.connector.jdbc.type.DefaultValueContext;
 import io.debezium.connector.jdbc.type.JdbcType;
 import io.debezium.connector.jdbc.type.connect.AbstractConnectSchemaType;
 import io.debezium.connector.jdbc.type.connect.AbstractConnectStructType;
@@ -278,7 +279,7 @@ public class GeneralDatabaseDialect implements DatabaseDialect {
 
             final StringBuilder columnSpec = new StringBuilder();
             columnSpec.append(columnName).append(" ").append(columnType);
-            addColumnDefaultValue(field, columnSpec);
+            addColumnDefaultValue(field, columnSpec, collectionId);
 
             if (field.isKey()) {
                 columnSpec.append(" NOT NULL");
@@ -343,7 +344,7 @@ public class GeneralDatabaseDialect implements DatabaseDialect {
             addColumnSpec.append(toIdentifier(columnNamingStrategy.resolveColumnName(field.getColumnName())));
             Schema fieldSchema = field.getSchema();
             addColumnSpec.append(" ").append(getSchemaType(fieldSchema).getTypeName(fieldSchema, field.isKey()));
-            addColumnDefaultValue(field, addColumnSpec);
+            addColumnDefaultValue(field, addColumnSpec, table.getId());
 
             addColumnSpec.append(field.getSchema().isOptional() ? " NULL" : " NOT NULL");
             addColumnSpec.append(getAlterTableColumnSuffix());
@@ -742,13 +743,23 @@ public class GeneralDatabaseDialect implements DatabaseDialect {
         return identifierHelper;
     }
 
-    protected void addColumnDefaultValue(FieldDescriptor field, StringBuilder columnSpec) {
+    protected void addColumnDefaultValue(FieldDescriptor field, StringBuilder columnSpec, CollectionId collectionId) {
         if (field.getSchema().defaultValue() != null) {
-            final String defaultValue = getSchemaType(field.getSchema()).getDefaultValueBinding(field.getSchema(), field.getSchema().defaultValue());
+            final String defaultValue = getSchemaType(field.getSchema())
+                    .getDefaultValueBinding(field.getSchema(), field.getSchema().defaultValue(),
+                            new DefaultValueContext(targetTableId(collectionId), resolveColumnName(field)));
             if (defaultValue != null) {
                 columnSpec.append(" DEFAULT ").append(defaultValue);
             }
         }
+    }
+
+    /**
+     * Returns the identifier of the target table as the DDL statements name it, which is the
+     * namespace and the name of the table, without the catalog.
+     */
+    private static CollectionId targetTableId(CollectionId collectionId) {
+        return new CollectionId(collectionId.namespace(), collectionId.name());
     }
 
     protected String columnQueryBindingFromField(String fieldName, TableDescriptor table, JdbcSinkRecord record) {

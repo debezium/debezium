@@ -247,7 +247,7 @@ public class StarRocksDatabaseDialect extends GeneralDatabaseDialect {
             else {
                 columnSpec.append(fieldSchema.isOptional() ? " NULL" : " NOT NULL");
             }
-            addColumnDefaultValue(field, columnSpec);
+            addColumnDefaultValue(field, columnSpec, collectionId);
 
             return columnSpec.toString();
         });
@@ -292,7 +292,7 @@ public class StarRocksDatabaseDialect extends GeneralDatabaseDialect {
 
             // StarRocks requires the NULL/NOT NULL constraint before the DEFAULT clause.
             addColumnSpec.append(fieldSchema.isOptional() ? " NULL" : " NOT NULL");
-            addColumnDefaultValue(field, addColumnSpec);
+            addColumnDefaultValue(field, addColumnSpec, table.getId());
 
             addColumnSpec.append(getAlterTableColumnSuffix());
             return addColumnSpec.toString();
@@ -352,7 +352,7 @@ public class StarRocksDatabaseDialect extends GeneralDatabaseDialect {
     }
 
     @Override
-    protected void addColumnDefaultValue(FieldDescriptor field, StringBuilder columnSpec) {
+    protected void addColumnDefaultValue(FieldDescriptor field, StringBuilder columnSpec, CollectionId collectionId) {
         final Schema fieldSchema = field.getSchema();
         final String fieldType = getSchemaType(fieldSchema).getTypeName(fieldSchema, field.isKey());
         if (!Strings.isNullOrBlank(fieldType)) {
@@ -362,6 +362,6 @@ public class StarRocksDatabaseDialect extends GeneralDatabaseDialect {
                 return;
             }
         }
-        super.addColumnDefaultValue(field, columnSpec);
+        super.addColumnDefaultValue(field, columnSpec, collectionId);
     }
 }
