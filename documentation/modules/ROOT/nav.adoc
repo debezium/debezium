@@ -49,6 +49,7 @@
 ** xref:transformations/filtering.adoc[Message Filtering]
 ** xref:transformations/schema-change-event-filter.adoc[Schema Change Event Filtering]
 ** xref:transformations/content-based-routing.adoc[Content-Based Routing]
+** xref:transformations/script-expression.adoc[Script Expression]
 ** xref:transformations/applying-transformations-selectively.adoc[Using SMT Predicates to Selectively Apply Transformations]
 ** xref:transformations/partition-routing.adoc[Partition Routing]
 ** xref:transformations/header-to-value.adoc[HeaderToValue]

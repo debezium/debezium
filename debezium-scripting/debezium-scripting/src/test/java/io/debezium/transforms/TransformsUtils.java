@@ -108,7 +108,7 @@ public class TransformsUtils {
     }
 
     public static SourceRecord createNullRecord() {
-        return new SourceRecord(new HashMap<>(), new HashMap<>(), "dummy", null, null, null, null);
+        return new SourceRecord(new HashMap<>(), new HashMap<>(), "dummy", null, null, createComplexCreateRecord().valueSchema(), null);
     }
 
     public static SourceRecord createComplexCreateRecord() {
