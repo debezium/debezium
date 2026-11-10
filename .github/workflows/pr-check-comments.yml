@@ -1,0 +1,136 @@
+name: PR check comments
+on:
+  # Posts comments for the pull_request based checks below, which only have a read-only token.
+  # Runs with a write token: never check out or run pull request code, and treat artifacts as untrusted.
+  workflow_run:
+    workflows:
+      - "Contributor Check"
+      - "Octocat commits check"
+      - "Commit Sign-off Check"
+      - "Commit message format check"
+    types:
+      - completed
+
+permissions:
+  actions: read
+  pull-requests: write
+
+jobs:
+  comment:
+    name: Comment on pull request
+    runs-on: ubuntu-latest
+    if: github.event.workflow_run.event == 'pull_request'
+    steps:
+      - name: Download check result
+        id: download
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          RUN_ID: ${{ github.event.workflow_run.id }}
+        run: |
+          if gh run download "$RUN_ID" --pattern 'pr-check-result-*' --dir pr-check-result; then
+            echo "found=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "No check result was recorded, nothing to do."
+            echo "found=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      # The artifact is produced by the pull request, so only strictly validated values are accepted, and
+      # the result must belong to the pull request whose head commit the triggering run was started for.
+      - name: Resolve pull request
+        id: pr
+        if: steps.download.outputs.found == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          RUN_HEAD_SHA: ${{ github.event.workflow_run.head_sha }}
+        run: |
+          PR_NUMBER=""
+          RESULTS=""
+          for CHECK in contributor octocat dco sanity; do
+            DIR="pr-check-result/pr-check-result-$CHECK"
+            [[ -f "$DIR/pr-number" && -f "$DIR/result" ]] || continue
+
+            NUMBER=$(head -c 16 "$DIR/pr-number" | tr -d '[:space:]')
+            RESULT=$(head -c 16 "$DIR/result" | tr -d '[:space:]')
+            if [[ ! "$NUMBER" =~ ^[0-9]{1,9}$ ]] || [[ "$RESULT" != "pass" && "$RESULT" != "fail" ]] || [[ -n "$PR_NUMBER" && "$NUMBER" != "$PR_NUMBER" ]]; then
+              echo "::error:: Unexpected check result content."
+              exit 1
+            fi
+
+            PR_NUMBER="$NUMBER"
+            RESULTS="$RESULTS$CHECK=$RESULT"$'\n'
+          done
+
+          if [[ -z "$PR_NUMBER" ]]; then
+            echo "No known check result found, nothing to do."
+            exit 0
+          fi
+
+          PR_HEAD_SHA=$(gh api "repos/$GH_REPO/pulls/$PR_NUMBER" --jq '.head.sha')
+          if [[ "$PR_HEAD_SHA" != "$RUN_HEAD_SHA" ]]; then
+            echo "Pull request #$PR_NUMBER head $PR_HEAD_SHA does not match run head $RUN_HEAD_SHA, skipping."
+            exit 0
+          fi
+
+          # One output per check, e.g. dco=fail
+          printf '%s' "$RESULTS" >> "$GITHUB_OUTPUT"
+          echo "number=$PR_NUMBER" >> "$GITHUB_OUTPUT"
+          echo "login=$(gh api "repos/$GH_REPO/pulls/$PR_NUMBER" --jq '.user.login')" >> "$GITHUB_OUTPUT"
+
+      - name: Contributor check comment
+        if: steps.pr.outputs.contributor == 'fail'
+        uses: peter-evans/create-or-update-comment@v5
+        with:
+          issue-number: ${{ steps.pr.outputs.number }}
+          body: |
+            Welcome as a new contributor to Debezium, @${{ steps.pr.outputs.login }}. Reviewers, please add missing author name(s) and alias name(s) to the [COPYRIGHT.txt](https://github.com/debezium/debezium/blob/main/COPYRIGHT.txt) and [Aliases.txt](https://github.com/debezium/debezium/blob/main/jenkins-jobs/scripts/config/Aliases.txt) respectively.
+
+      - name: Octocat commits comment
+        if: steps.pr.outputs.octocat == 'fail'
+        uses: peter-evans/create-or-update-comment@v5
+        with:
+          issue-number: ${{ steps.pr.outputs.number }}
+          body: |
+            Hi @${{ steps.pr.outputs.login }}. Thank you for your valuable contribution.
+            Please author your commit(s) using an email [linked to your GitHub account](https://docs.github.com/en/account-and-profile/setting-up-and-managing-your-github-profile/managing-contribution-graphs-on-your-profile/why-are-my-contributions-not-showing-up-on-my-profile).
+
+      - name: Commit message format comment
+        if: steps.pr.outputs.sanity == 'fail'
+        uses: peter-evans/create-or-update-comment@v5
+        with:
+          issue-number: ${{ steps.pr.outputs.number }}
+          body: |
+            Hi @${{ steps.pr.outputs.login }}, thanks for your contribution. Please prefix the commit message(s) with the [debezium/dbz#xxx GitHub issue key](https://github.com/debezium/debezium/blob/main/CONTRIBUTING.md#making-changes).
+
+      - name: Commit sign-off comment
+        if: steps.pr.outputs.dco == 'fail'
+        uses: peter-evans/create-or-update-comment@v5
+        with:
+          issue-number: ${{ steps.pr.outputs.number }}
+          body: |
+            :x: Developer Certificate of Origin (DCO) check failed.
+
+            Hi @${{ steps.pr.outputs.login }}, please sign off all commits with:
+            ```
+            git commit -s
+            ```
+            If pull request commits are not signed off, the pull request cannot be merged. For more information about why this is required, please see [our blog](https://debezium.io/blog/2025/12/12/contribution-requirements-changing/) about contribution requirement changes.
+
+      # Remove all DCO comments once the DCO check passes
+      - name: Cleanup commit sign-off comments
+        if: steps.pr.outputs.dco == 'pass'
+        uses: actions/github-script@v9
+        env:
+          PR_NUMBER: ${{ steps.pr.outputs.number }}
+        with:
+          script: |
+            const { owner, repo } = context.repo;
+            const comments = await github.paginate(github.rest.issues.listComments, {
+              owner, repo, issue_number: Number(process.env.PR_NUMBER),
+            });
+            for (const comment of comments) {
+              if (comment.body.includes('(DCO) check failed.') && comment.user.login === 'github-actions[bot]') {
+                await github.rest.issues.deleteComment({ owner, repo, comment_id: comment.id });
+              }
+            }
