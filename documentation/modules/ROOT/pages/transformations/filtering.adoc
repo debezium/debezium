@@ -154,7 +154,7 @@ As the filter SMT processes the event stream, it evaluates each event against th
 Only events that meet the criteria of the filter conditions are passed to the broker.
 
 To configure a {prodname} connector to filter change event records, configure the `Filter` SMT in the Kafka Connect configuration for the {prodname} connector.
-Configuration of the filter SMT requires you to specify a regular expression that defines the filtering criteria.
+Configuration of the filter SMT requires you to specify a script expression that defines the filtering criteria.
 
 For example, you might add the following configuration in your connector configuration.
 
@@ -169,7 +169,7 @@ transforms.filter.condition=value.op == 'u' && value.before.id == 2
 ----
 
 The preceding example specifies the use of the `Groovy` expression language.
-The regular expression `value.op == 'u' && value.before.id == 2` removes all messages, except those that represent update (`u`) records with `id` values that are equal to `2`.
+The groovy expression `value.op == 'u' && value.before.id == 2` removes all messages, except those that represent update (`u`) records with `id` values that are equal to `2`.
 
 ifdef::community[]
 When using Go:
