@@ -47,8 +47,6 @@ public abstract class BinlogConnectedServerIT<C extends SourceConnector> extends
             .toAbsolutePath();
 
     private static final int KEEP_ALIVE_INTERVAL_MS = 1_000;
-    // Only the MySQL connector observes the role of the server, MariaDB reports it as unknown
-    private static final String SERVER_ROLE_REFRESH_INTERVAL_MS = "connected.server.role.refresh.interval.ms";
 
     private final UniqueDatabase DATABASE = TestHelper.getUniqueDatabase("connectedserver", "empty")
             .withDbHistoryPath(SCHEMA_HISTORY_PATH);
@@ -138,6 +136,40 @@ public abstract class BinlogConnectedServerIT<C extends SourceConnector> extends
         }
     }
 
+    @Test
+    @FixFor("debezium/dbz#2969")
+    void shouldRefreshTheRoleOfTheSameServerWhenItReconnects() throws IOException, SQLException {
+        final LogInterceptor logInterceptor = new LogInterceptor(BinlogStreamingChangeEventSource.class);
+        try (DatabaseTcpProxy proxy = DatabaseTcpProxy.forward(primaryHost, primaryPort);
+                BinlogTestConnection admin = getTestDatabaseConnection(DATABASE.getDatabaseName())) {
+            final boolean readOnly = admin.queryAndMap("SELECT @@read_only", rs -> rs.next() && rs.getBoolean(1));
+            try {
+                startThrough(proxy);
+                final Map<String, String> primary = serverOf(getTestDatabaseConnection(DATABASE.getDatabaseName()));
+                awaitConnectedServer(primary);
+                awaitConnectedServerRole("PRIMARY");
+
+                admin.execute("SET GLOBAL read_only = ON");
+                // Role facts are a snapshot of the last connection, not a live topology monitor.
+                assertThat((String) streamingMetric("ConnectedServerRole")).isEqualTo("PRIMARY");
+
+                proxy.dropConnections();
+                Awaitility.await()
+                        .alias("connector to reconnect and refresh the server facts")
+                        .atMost(Duration.ofSeconds(60))
+                        .until(() -> logInterceptor.countOccurrences("Connected to binlog at") >= 2);
+                awaitConnectedServer(primary);
+                // A read-only server without replication sources has no role that can be inferred.
+                awaitConnectedServerRole("UNKNOWN");
+                assertThat(mapMetric("ConnectedServerState")).containsEntry("read_only", "true");
+                assertThat(numberOfConnectedServerChanges()).isZero();
+            }
+            finally {
+                admin.execute("SET GLOBAL read_only = " + (readOnly ? "ON" : "OFF"));
+            }
+        }
+    }
+
     private void startThrough(DatabaseTcpProxy proxy) {
         // A user that exists on the primary and on the replica
         final Configuration config = DATABASE.defaultConfig()
@@ -148,7 +180,6 @@ public abstract class BinlogConnectedServerIT<C extends SourceConnector> extends
                 .with(BinlogConnectorConfig.SNAPSHOT_MODE, BinlogConnectorConfig.SnapshotMode.NO_DATA)
                 .with(BinlogConnectorConfig.INCLUDE_SCHEMA_CHANGES, false)
                 .with(BinlogConnectorConfig.KEEP_ALIVE_INTERVAL_MS, KEEP_ALIVE_INTERVAL_MS)
-                .with(SERVER_ROLE_REFRESH_INTERVAL_MS, KEEP_ALIVE_INTERVAL_MS)
                 .build();
         start(getConnectorClass(), config);
         assertConnectorIsRunning();
@@ -172,18 +203,21 @@ public abstract class BinlogConnectedServerIT<C extends SourceConnector> extends
     }
 
     private void awaitConnectedServerRole(String role) {
-        final boolean observable = !isMariaDb();
-        final String expectedRole = observable ? role : "UNKNOWN";
+        final String expectedRole = role;
         Awaitility.await()
                 .alias("streaming metrics to report role " + expectedRole)
                 .atMost(Duration.ofSeconds(60))
                 .pollInterval(Duration.ofMillis(200))
                 .ignoreExceptions()
-                .until(() -> expectedRole.equals(streamingMetric("ConnectedServerRole")));
-        if (observable) {
+                .until(() -> expectedRole.equals(streamingMetric("ConnectedServerRole"))
+                        && (long) streamingMetric("MilliSecondsSinceConnectedServerRoleObserved") >= 0);
+        if (!"UNKNOWN".equals(role)) {
             // Neither test server is part of a replication group or Aurora, so the role is inferred
             assertThat((String) streamingMetric("ConnectedServerRoleSource")).isEqualTo("INFERRED");
-            assertThat(mapMetric("ConnectedServerState")).containsKeys("read_only", "super_read_only");
+            assertThat(mapMetric("ConnectedServerState")).containsKey("read_only");
+            if (!isMariaDb()) {
+                assertThat(mapMetric("ConnectedServerState")).containsKey("super_read_only");
+            }
             assertThat((long) streamingMetric("MilliSecondsSinceConnectedServerRoleObserved")).isNotNegative();
         }
     }

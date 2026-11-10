@@ -100,7 +100,6 @@ public class MariaDbChangeEventSourceFactory implements ChangeEventSourceFactory
         MariaDbStreamingChangeEventSource streamingSource = new MariaDbStreamingChangeEventSource(
                 configuration,
                 connectionFactory.mainConnection(),
-                connectionFactory,
                 dispatcher,
                 errorHandler,
                 clock,

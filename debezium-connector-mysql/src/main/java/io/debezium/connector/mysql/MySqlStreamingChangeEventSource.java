@@ -29,7 +29,6 @@ import com.github.shyiko.mysql.binlog.network.SSLMode;
 import io.debezium.connector.binlog.BinlogConnectorConfig;
 import io.debezium.connector.binlog.BinlogStreamingChangeEventSource;
 import io.debezium.connector.binlog.jdbc.BinlogConnectorConnection;
-import io.debezium.jdbc.ConnectionFactory;
 import io.debezium.pipeline.ErrorHandler;
 import io.debezium.pipeline.EventDispatcher;
 import io.debezium.relational.TableId;
@@ -49,7 +48,6 @@ public class MySqlStreamingChangeEventSource extends BinlogStreamingChangeEventS
 
     public MySqlStreamingChangeEventSource(MySqlConnectorConfig connectorConfig,
                                            BinlogConnectorConnection connection,
-                                           ConnectionFactory<? extends BinlogConnectorConnection> connectionFactory,
                                            EventDispatcher<MySqlPartition, TableId> dispatcher,
                                            ErrorHandler errorHandler,
                                            Clock clock,
@@ -58,7 +56,7 @@ public class MySqlStreamingChangeEventSource extends BinlogStreamingChangeEventS
                                            MySqlStreamingChangeEventSourceMetrics metrics,
                                            SnapshotterService snapshotterService,
                                            BinaryLogClient binaryLogClient) {
-        super(connectorConfig, connection, connectionFactory, dispatcher, errorHandler, clock, taskContext, schema, metrics, snapshotterService, binaryLogClient);
+        super(connectorConfig, connection, dispatcher, errorHandler, clock, taskContext, schema, metrics, snapshotterService, binaryLogClient);
         this.connectorConfig = connectorConfig;
     }
 
