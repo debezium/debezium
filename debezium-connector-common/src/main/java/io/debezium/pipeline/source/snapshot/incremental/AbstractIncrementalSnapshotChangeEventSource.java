@@ -12,7 +12,6 @@ import static io.debezium.pipeline.notification.IncrementalSnapshotNotificationS
 import static io.debezium.pipeline.notification.IncrementalSnapshotNotificationService.TableScanCompletionStatus.UNKNOWN_SCHEMA;
 import static io.debezium.util.Loggings.maybeRedactSensitiveData;
 
-import java.math.BigDecimal;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
