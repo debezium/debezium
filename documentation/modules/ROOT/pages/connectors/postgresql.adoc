@@ -2391,6 +2391,13 @@ Consequently, {prodname} follows these rules to handle toasted values:
 Similarly, when receiving a `DELETE` event, no TOAST columns, if any, are  in the `before` field.
 As {prodname} cannot safely provide the column value in this case, the connector returns a placeholder value as defined by the connector configuration property, `unavailable.value.placeholder`.
 
+For an `UPDATE` event, the connector also lists the names of the fields that contain the placeholder in the `__debezium.unavailable.after` header, so consumers do not need to compare field values with the placeholder.
+For example, the {link-prefix}:{link-event-flattening}#new-record-state-extraction[`ExtractNewRecordState` SMT] with `drop.fields.header.name` set to `__debezium.unavailable.after` removes these fields from the flattened record.
+With the default `drop.fields.keep.schema.compatible=true`, the SMT removes only optional fields.
+An `UPDATE` that changes the primary key is emitted as a `DELETE` event and a `CREATE` event, and the header is added to the `CREATE` event.
+If the listed fields are removed from that event, the record for the new key does not contain their values.
+If the {link-prefix}:{link-reselect-columns}#reselect-columns-post-processor[reselect columns post processor] is configured, the header still lists the fields that the post processor reselected.
+
 [id="postgresql-default-values"]
 === Default values
 If a default value is specified for a column in the database schema, the PostgreSQL connector will attempt to propagate this value to the Kafka schema whenever possible.

@@ -1894,6 +1894,38 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
     }
 
     @Test
+    @FixFor("debezium/dbz#3052")
+    public void shouldListUnchangedToastedColumnsInUnavailableHeaders() throws Exception {
+        TestHelper.execute(
+                "DROP TABLE IF EXISTS test_toast_table;",
+                "CREATE TABLE test_toast_table (id SERIAL PRIMARY KEY, not_toast integer, text TEXT, text_array TEXT[]);");
+        startConnector(Function.identity(), false);
+        final String toastedValue = RandomStringUtils.randomAlphanumeric(10000);
+
+        consumer = testConsumer(1);
+        executeAndWait("INSERT INTO test_toast_table (not_toast, text, text_array) values (1, '" + toastedValue + "', ARRAY ['" + toastedValue + "']);");
+        assertThat(consumer.remove().headers().lastWithName(RelationalChangeRecordEmitter.UNAVAILABLE_AFTER_HEADER)).isNull();
+
+        consumer.expects(1);
+        executeAndWait("UPDATE test_toast_table SET not_toast = 2;");
+        SourceRecord update = consumer.remove();
+        assertThat(update.headers().lastWithName(RelationalChangeRecordEmitter.UNAVAILABLE_BEFORE_HEADER)).isNull();
+        assertThat(update.headers().lastWithName(RelationalChangeRecordEmitter.UNAVAILABLE_AFTER_HEADER).value()).isEqualTo(List.of("text", "text_array"));
+
+        // a primary key change is emitted as DELETE, tombstone and CREATE
+        consumer.expects(3);
+        executeAndWait("UPDATE test_toast_table SET id = 100;");
+        assertThat(consumer.remove().headers().lastWithName(RelationalChangeRecordEmitter.UNAVAILABLE_BEFORE_HEADER)).isNull();
+        consumer.remove();
+        assertThat(consumer.remove().headers().lastWithName(RelationalChangeRecordEmitter.UNAVAILABLE_AFTER_HEADER).value()).isEqualTo(List.of("text", "text_array"));
+
+        // the old tuple of a REPLICA IDENTITY FULL table supplies the values
+        consumer.expects(1);
+        executeAndWait("ALTER TABLE test_toast_table REPLICA IDENTITY FULL; UPDATE test_toast_table SET not_toast = 3;");
+        assertThat(consumer.remove().headers().lastWithName(RelationalChangeRecordEmitter.UNAVAILABLE_AFTER_HEADER)).isNull();
+    }
+
+    @Test
     @FixFor("DBZ-4941")
     public void shouldHandleToastedArrayColumn() throws Exception {
         TestHelper.execute(
