@@ -124,6 +124,7 @@ public abstract class AbstractBufferedLogMinerStreamingChangeEventSourceTest ext
         this.partition = Mockito.mock(OraclePartition.class);
         this.offsetContext = Mockito.mock(OracleOffsetContext.class);
         final CommitScn commitScn = CommitScn.valueOf((String) null);
+        Mockito.when(this.offsetContext.getScn()).thenReturn(Scn.NULL);
         Mockito.when(this.offsetContext.getCommitScn()).thenReturn(commitScn);
         Mockito.when(this.offsetContext.getSnapshotCommitScn()).thenReturn(Scn.NULL);
         this.connectionFactory = createOracleConnectionFactory(false);
