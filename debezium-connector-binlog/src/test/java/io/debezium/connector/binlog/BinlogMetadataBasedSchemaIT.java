@@ -656,11 +656,11 @@ public abstract class BinlogMetadataBasedSchemaIT<C extends SourceConnector> ext
         start(getConnectorClass(), metadataChangeEventsConfig().build());
         waitForStreamingRunning(getConnectorName(), DATABASE.getServerName());
 
-        // The first TABLE_MAP event establishes the baseline with note VARCHAR(64)
+        // The first TABLE_MAP event establishes the baseline with price DECIMAL(12,3)
         insertMarkerOrder("UL01");
         assertThat(metadataSchemaChanges(consumeUntilOrders(1))).isEmpty();
 
-        alterWithoutBinlog("ALTER TABLE orders MODIFY COLUMN note VARCHAR(150)");
+        alterWithoutBinlog("ALTER TABLE orders MODIFY COLUMN price DECIMAL(14,3)");
         insertMarkerOrder("UL02");
         insertMarkerOrder("UL03");
 
@@ -678,9 +678,10 @@ public abstract class BinlogMetadataBasedSchemaIT<C extends SourceConnector> ext
         final Struct table = tableChanges.get(0).getStruct("table");
         assertThat(table.getArray("primaryKeyColumnNames")).containsExactly("id");
         final List<Struct> columns = table.getArray("columns");
-        final Struct note = columns.stream().filter(column -> "note".equals(column.getString("name"))).findFirst().orElseThrow();
-        assertThat(note.getString("typeName")).isEqualTo("VARCHAR");
-        assertThat(note.getInt32("length")).isEqualTo(150);
+        final Struct price = columns.stream().filter(column -> "price".equals(column.getString("name"))).findFirst().orElseThrow();
+        assertThat(price.getString("typeName")).isEqualTo("DECIMAL");
+        assertThat(price.getInt32("length")).isEqualTo(14);
+        assertThat(price.getInt32("scale")).isEqualTo(3);
 
         // The event precedes the first row event that was written with the new structure
         final List<SourceRecord> orders = ordersOf(records);
@@ -706,6 +707,53 @@ public abstract class BinlogMetadataBasedSchemaIT<C extends SourceConnector> ext
         assertThat(metadataSchemaChanges(records)).as("the DDL statement already produced its own event").isEmpty();
         assertThat(schemaChanges(records)).extracting(record -> ((Struct) record.value()).getString("ddl"))
                 .filteredOn(ddl -> ddl != null && ddl.contains("VARCHAR(150)")).hasSize(1);
+
+        stopConnector();
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2976")
+    public void shouldNotEmitMetadataSchemaChangeEventAfterLoggedRename() throws Exception {
+        start(getConnectorClass(), metadataChangeEventsConfig().build());
+        waitForStreamingRunning(getConnectorName(), DATABASE.getServerName());
+
+        insertMarkerOrder("RN01");
+        consumeUntilOrders(1);
+
+        // The table comes back under its name with another structure, through logged statements only
+        executeStatements(DATABASE.getDatabaseName(),
+                "ALTER TABLE orders RENAME TO orders_renamed",
+                "ALTER TABLE orders_renamed MODIFY COLUMN note VARCHAR(150)",
+                "ALTER TABLE orders_renamed RENAME TO orders");
+        insertMarkerOrder("RN02");
+
+        final List<SourceRecord> records = consumeUntilOrders(1);
+        assertThat(metadataSchemaChanges(records)).isEmpty();
+        assertThat(afterOf(ordersOf(records).get(0)).getString("code")).isEqualTo("RN02");
+
+        stopConnector();
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2976")
+    public void shouldNotEmitMetadataSchemaChangeEventAfterLoggedDropAndCreate() throws Exception {
+        start(getConnectorClass(), metadataChangeEventsConfig().build());
+        waitForStreamingRunning(getConnectorName(), DATABASE.getServerName());
+
+        insertMarkerOrder("DC01");
+        consumeUntilOrders(1);
+
+        executeStatements(DATABASE.getDatabaseName(),
+                "DROP TABLE orders",
+                "CREATE TABLE orders (id INT NOT NULL AUTO_INCREMENT, quantity BIGINT UNSIGNED, "
+                        + "status ENUM('NEW','SHIPPED','CANCELLED') NOT NULL DEFAULT 'NEW', price DECIMAL(12,3), "
+                        + "code CHAR(4) NOT NULL, note VARCHAR(150), created_at DATETIME(3), recreated INT, "
+                        + "PRIMARY KEY (id)) DEFAULT CHARSET=utf8mb4");
+        insertMarkerOrder("DC02");
+
+        final List<SourceRecord> records = consumeUntilOrders(1);
+        assertThat(metadataSchemaChanges(records)).isEmpty();
+        assertThat(afterOf(ordersOf(records).get(0)).schema().field("recreated")).isNotNull();
 
         stopConnector();
     }
@@ -816,7 +864,9 @@ public abstract class BinlogMetadataBasedSchemaIT<C extends SourceConnector> ext
     @Test
     @FixFor("debezium/dbz#2976")
     public void shouldRejectMetadataSchemaChangeEventsWithoutMetadataBasedSchema() throws Exception {
+        // Set explicitly, as the test suite can enable the mode for every configuration
         final Configuration config = DATABASE.defaultConfig()
+                .with(BinlogConnectorConfig.BINLOG_METADATA_BASED_SCHEMA, false)
                 .with(BinlogConnectorConfig.BINLOG_METADATA_BASED_SCHEMA_CHANGE_EVENTS, true)
                 .build();
         final var validation = getConnectorClass().getDeclaredConstructor().newInstance().validate(config.asMap());
@@ -835,8 +885,18 @@ public abstract class BinlogMetadataBasedSchemaIT<C extends SourceConnector> ext
     /**
      * Runs a DDL statement that is not written to the binlog, as in a replica-first schema change.
      */
-    private void alterWithoutBinlog(String ddl) {
+    private void alterWithoutBinlog(String ddl) throws SQLException, InterruptedException {
         executeStatements(DATABASE.getDatabaseName(), "SET sql_log_bin = 0", ddl, "SET sql_log_bin = 1");
+
+        final String primaryPort = System.getProperty("database.port", "3306");
+        final String replicaPort = System.getProperty("database.replica.port", "3306");
+        if (!primaryPort.equals(replicaPort)) {
+            // The statement is not replicated, so apply it to the replica as well, once it has caught up
+            Thread.sleep(5000L);
+            try (BinlogTestConnection db = getTestReplicaDatabaseConnection(DATABASE.getDatabaseName())) {
+                db.execute("SET sql_log_bin = 0", ddl, "SET sql_log_bin = 1");
+            }
+        }
     }
 
     /**

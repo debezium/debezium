@@ -220,6 +220,71 @@ public abstract class BinlogDatabaseSchemaTest<C extends BinlogConnectorConfig, 
 
     @Test
     @FixFor("debezium/dbz#2976")
+    void shouldDetectRenamedColumnInBinlogMetadata() {
+        schema = getSchema(metadataKeyConfig().build());
+        assertThat(schema.registerTableFromBinlogMetadataAndDetectChange(metadataNoteTableMap(200, false))).isEmpty();
+
+        final TableMapEventData renamed = metadataNoteTableMap(200, false);
+        renamed.getEventMetadata().setColumnNames(List.of("id", "memo"));
+        final var changed = schema.registerTableFromBinlogMetadataAndDetectChange(renamed);
+        assertThat(changed).isPresent();
+        assertThat(changed.get().retrieveColumnNames()).containsExactly("id", "memo");
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2976")
+    void shouldDetectChangedColumnTypeInBinlogMetadata() {
+        schema = getSchema(metadataKeyConfig().build());
+        assertThat(schema.registerTableFromBinlogMetadataAndDetectChange(metadataNoteTableMap(200, false))).isEmpty();
+
+        // id INT -> BIGINT
+        final TableMapEventData retyped = metadataNoteTableMap(200, false);
+        retyped.setColumnTypes(new byte[]{ 8, 15 });
+        final var changed = schema.registerTableFromBinlogMetadataAndDetectChange(retyped);
+        assertThat(changed).isPresent();
+        assertThat(changed.get().columnWithName("id").jdbcType()).isEqualTo(Types.BIGINT);
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2976")
+    void shouldDetectChangedColumnCharsetInBinlogMetadata() {
+        schema = getSchema(metadataKeyConfig().build());
+        assertThat(schema.registerTableFromBinlogMetadataAndDetectChange(metadataNoteTableMap(200, false))).isEmpty();
+
+        // VARCHAR(50) utf8mb4 -> VARCHAR(50) latin1: the same length in characters, another charset
+        final TableMapEventData latin1 = metadataNoteTableMap(50, false);
+        latin1.getEventMetadata().setColumnCharsets(List.of(8));
+        final var changed = schema.registerTableFromBinlogMetadataAndDetectChange(latin1);
+        assertThat(changed).isPresent();
+        assertThat(changed.get().columnWithName("note").length()).isEqualTo(50);
+        assertThat(changed.get().columnWithName("note").charsetName()).isEqualTo("latin1");
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2976")
+    void shouldDetectReorderedColumnsInBinlogMetadata() {
+        schema = getSchema(metadataKeyConfig().build());
+        final TableMapEventData original = metadataNoteTableMap(200, false);
+        original.getEventMetadata().setColumnNames(List.of("id", "note", "quantity"));
+        original.setColumnTypes(new byte[]{ 3, 15, 3 });
+        original.setColumnMetadata(new int[]{ 0, 200, 0 });
+        assertThat(schema.registerTableFromBinlogMetadataAndDetectChange(original)).isEmpty();
+
+        final TableMapEventData reordered = metadataNoteTableMap(200, false);
+        reordered.getEventMetadata().setColumnNames(List.of("id", "quantity", "note"));
+        reordered.setColumnTypes(new byte[]{ 3, 3, 15 });
+        reordered.setColumnMetadata(new int[]{ 0, 0, 200 });
+        final BitSet nullability = new BitSet();
+        nullability.set(1);
+        nullability.set(2);
+        reordered.setColumnNullability(nullability);
+        final var changed = schema.registerTableFromBinlogMetadataAndDetectChange(reordered);
+        assertThat(changed).isPresent();
+        assertThat(changed.get().retrieveColumnNames()).containsExactly("id", "quantity", "note");
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2976")
     void shouldNotDetectBinlogMetadataChangeForFilteredTable() {
         schema = getSchema(metadataKeyConfig()
                 .with(BinlogConnectorConfig.TABLE_INCLUDE_LIST, "connector_test.captured")
