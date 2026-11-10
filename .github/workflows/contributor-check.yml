@@ -1,9 +1,8 @@
 name: Contributor Check
 on:
-  # ATTENTION: See https://securitylab.github.com/research/github-actions-preventing-pwn-requests/
-  # re security implications of using this trigger; in particular, no code from PR branches must
-  # be executed in any flows triggered by it
-  pull_request_target:
+  # Runs with the read-only token of the pull request. Comments are posted by pr-check-comments.yml,
+  # which is triggered through workflow_run from the result recorded by this workflow.
+  pull_request:
     branches:
       - main
       - 1.*
@@ -11,14 +10,14 @@ on:
       - 3.*
       - 4.*
     types: [ opened, reopened, synchronize ]
+permissions: {}
+
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      # No checkout: this workflow runs on pull_request_target with the base repository's token, so the
-      # pull request's code must never be checked out or executed here. The three files are instead fetched
-      # as raw content from both the base branch and the pull request head, so that a pull request which
-      # adds the missing contributor details passes the check.
+      # No checkout: the three files are fetched as raw content from both the base branch and the pull
+      # request head, so that a pull request which adds the missing contributor details passes the check.
       - name: Check if COPYRIGHT.txt has author name?
         id: check
         env:
@@ -52,13 +51,20 @@ jobs:
             fi
           done < AUTHOR_NAME.txt
           echo "USER_NOT_FOUND=$USER_NOT_FOUND" >> $GITHUB_OUTPUT
-      - name: Create comment
-        if: ${{ steps.check.outputs.USER_NOT_FOUND == 'true' }}
-        uses: peter-evans/create-or-update-comment@v5
+      - name: Record check result
+        env:
+          pull_request_number: ${{ github.event.pull_request.number }}
+          check_result: ${{ steps.check.outputs.USER_NOT_FOUND == 'true' && 'fail' || 'pass' }}
+        run: |
+          mkdir pr-check-result
+          echo "$pull_request_number" > pr-check-result/pr-number
+          echo "$check_result" > pr-check-result/result
+      - name: Upload check result
+        uses: actions/upload-artifact@v7
         with:
-          issue-number: ${{ github.event.pull_request.number }}
-          body: |
-            Welcome as a new contributor to Debezium, @${{ github.event.pull_request.user.login }}. Reviewers, please add missing author name(s) and alias name(s) to the [COPYRIGHT.txt](https://github.com/debezium/debezium/blob/main/COPYRIGHT.txt) and [Aliases.txt](https://github.com/debezium/debezium/blob/main/jenkins-jobs/scripts/config/Aliases.txt) respectively.
+          name: pr-check-result-contributor
+          path: pr-check-result/
+          retention-days: 1
       - name: Check failure
         if: ${{ steps.check.outputs.USER_NOT_FOUND == 'true' }}
         uses: actions/github-script@v9

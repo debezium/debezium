@@ -1,15 +1,16 @@
 name: Commit message format check
 on:
-  # ATTENTION: See https://securitylab.github.com/research/github-actions-preventing-pwn-requests/
-  # re security implications of using this trigger; in particular, no code from PR branches must
-  # be executed in any flows triggered by it
-  pull_request_target:
+  # Runs with the read-only token of the pull request. Comments are posted by pr-check-comments.yml,
+  # which is triggered through workflow_run from the result recorded by this workflow.
+  pull_request:
     branches:
       - main
       - 1.*
       - 2.*
       - 3.*
       - 4.*
+
+permissions: {}
 
 jobs:
   build:
@@ -88,14 +89,20 @@ jobs:
             echo "PREFIX_COMMITS=true" >> $GITHUB_OUTPUT
           fi
 
-      - name: Create Comment
-        if: ${{ steps.check.outputs.PREFIX_COMMITS == 'false' }}
-        uses: peter-evans/create-or-update-comment@v5
+      - name: Record check result
+        env:
+          pull_request_number: ${{ github.event.pull_request.number }}
+          check_result: ${{ steps.check.outputs.PREFIX_COMMITS == 'false' && 'fail' || 'pass' }}
+        run: |
+          mkdir pr-check-result
+          echo "$pull_request_number" > pr-check-result/pr-number
+          echo "$check_result" > pr-check-result/result
+      - name: Upload check result
+        uses: actions/upload-artifact@v7
         with:
-          issue-number: ${{ github.event.pull_request.number }}
-          body: |
-            Hi @${{ github.event.pull_request.user.login }}, thanks for your contribution. Please prefix the commit message(s) with the [debezium/dbz#xxx GitHub issue key](https://github.com/debezium/debezium/blob/main/CONTRIBUTING.md#making-changes).
-
+          name: pr-check-result-sanity
+          path: pr-check-result/
+          retention-days: 1
       - name: Check failure
         if: ${{ steps.check.outputs.PREFIX_COMMITS == 'false' }}
         uses: actions/github-script@v9
