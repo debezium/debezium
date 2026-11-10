@@ -531,6 +531,22 @@ public abstract class BinlogConnectorConfig extends HistorizedRelationalDatabase
                     + "topic is created or required. Each captured table must have a primary key available in the "
                     + "binlog metadata or a matching 'message.key.columns' configuration. Defaults to 'false'.");
 
+    public static final Field BINLOG_METADATA_BASED_SCHEMA_CHANGE_EVENTS = Field.create("binlog.metadata.based.schema.change.events")
+            .withDisplayName("Emit schema change events for changes detected in binlog metadata")
+            .withType(ConfigDef.Type.BOOLEAN)
+            .withWidth(ConfigDef.Width.SHORT)
+            .withImportance(ConfigDef.Importance.LOW)
+            .withDefault(false)
+            .withValidation(Field::isBoolean, BinlogConnectorConfig::validateBinlogMetadataBasedSchemaChangeEvents)
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR_ADVANCED))
+            .withDescription("When 'true' and '" + BINLOG_METADATA_BASED_SCHEMA.name() + "' is enabled, the connector emits "
+                    + "a schema change event when the structure in a TABLE_MAP event differs from the structure of an "
+                    + "earlier TABLE_MAP event for the same table and no DDL statement for the change was read from the "
+                    + "binlog, for example after an ALTER TABLE that ran with 'sql_log_bin=OFF'. The event has no DDL "
+                    + "statement and describes the table as reconstructed from the binlog metadata. Detection is best "
+                    + "effort: the earlier structure is kept in memory only, so a change is not reported if the connector "
+                    + "restarts before it reads both structures. Defaults to 'false'.");
+
     public static final Field TOPIC_NAMING_STRATEGY = Field.create("topic.naming.strategy")
             .withDisplayName("Topic naming strategy class")
             .withType(ConfigDef.Type.CLASS)
@@ -742,7 +758,7 @@ public abstract class BinlogConnectorConfig extends HistorizedRelationalDatabase
                     GTID_SOURCE_INCLUDES,
                     GTID_SOURCE_EXCLUDES, GTID_SOURCE_FILTER_DML_EVENTS)
             .group(Field.Group.CONNECTOR_ADVANCED, ROW_COUNT_FOR_STREAMING_RESULT_SETS, BUFFER_SIZE_FOR_BINLOG_READER, INCLUDE_SQL_QUERY, IGNORE_GTID_ON_RECOVERY,
-                    BINLOG_METADATA_BASED_SCHEMA, UNAVAILABLE_VALUE_PLACEHOLDER)
+                    BINLOG_METADATA_BASED_SCHEMA, BINLOG_METADATA_BASED_SCHEMA_CHANGE_EVENTS, UNAVAILABLE_VALUE_PLACEHOLDER)
             .group(Field.Group.CONNECTOR_SNAPSHOT, SNAPSHOT_MODE, SNAPSHOT_QUERY_MODE, SNAPSHOT_QUERY_MODE_CUSTOM_NAME, INCREMENTAL_SNAPSHOT_CHUNK_SIZE,
                     INCREMENTAL_SNAPSHOT_ALLOW_SCHEMA_CHANGES)
             .group(Field.Group.FILTERS, TABLES_IGNORE_BUILTIN, DATABASE_INCLUDE_LIST, DATABASE_EXCLUDE_LIST)
@@ -921,6 +937,14 @@ public abstract class BinlogConnectorConfig extends HistorizedRelationalDatabase
         return config.getBoolean(BINLOG_METADATA_BASED_SCHEMA);
     }
 
+    /**
+     * @return whether schema changes that are detected from binlog TABLE_MAP metadata without a DDL statement
+     *         are emitted as schema change events; only applies to the binlog-metadata-based schema mode.
+     */
+    public boolean isBinlogMetadataBasedSchemaChangeEventsEnabled() {
+        return isBinlogMetadataBasedSchema() && config.getBoolean(BINLOG_METADATA_BASED_SCHEMA_CHANGE_EVENTS);
+    }
+
     @Override
     public SchemaHistory getSchemaHistory() {
         if (!isBinlogMetadataBasedSchema()) {
@@ -1046,6 +1070,15 @@ public abstract class BinlogConnectorConfig extends HistorizedRelationalDatabase
      * If {@code adaptive} is specified, this option has the potential to cause overflow which is why the
      * option was deprecated and no longer supported for this connector.
      */
+    private static int validateBinlogMetadataBasedSchemaChangeEvents(Configuration config, Field field, ValidationOutput problems) {
+        if (config.getBoolean(BINLOG_METADATA_BASED_SCHEMA_CHANGE_EVENTS) && !config.getBoolean(BINLOG_METADATA_BASED_SCHEMA)) {
+            problems.accept(BINLOG_METADATA_BASED_SCHEMA_CHANGE_EVENTS, true,
+                    "'" + BINLOG_METADATA_BASED_SCHEMA_CHANGE_EVENTS.name() + "' requires '" + BINLOG_METADATA_BASED_SCHEMA.name() + "=true'");
+            return 1;
+        }
+        return 0;
+    }
+
     private static int validateTimePrecisionMode(Configuration config, Field field, ValidationOutput problems) {
         if (config.hasKey(TIME_PRECISION_MODE.name())) {
             final String timePrecisionMode = config.getString(TIME_PRECISION_MODE.name());

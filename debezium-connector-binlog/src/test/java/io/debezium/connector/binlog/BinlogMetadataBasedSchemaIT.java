@@ -34,6 +34,7 @@ import io.debezium.connector.binlog.util.BinlogTestConnection;
 import io.debezium.connector.binlog.util.TestHelper;
 import io.debezium.connector.binlog.util.UniqueDatabase;
 import io.debezium.data.Envelope;
+import io.debezium.doc.FixFor;
 import io.debezium.relational.mapping.PropagateSourceMetadataToSchemaParameter;
 import io.debezium.util.Testing;
 
@@ -647,6 +648,224 @@ public abstract class BinlogMetadataBasedSchemaIT<C extends SourceConnector> ext
         assertOrderSchema(after);
 
         stopConnector();
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2976")
+    public void shouldEmitSchemaChangeEventForUnloggedSchemaChange() throws Exception {
+        start(getConnectorClass(), metadataChangeEventsConfig().build());
+        waitForStreamingRunning(getConnectorName(), DATABASE.getServerName());
+
+        // The first TABLE_MAP event establishes the baseline with note VARCHAR(64)
+        insertMarkerOrder("UL01");
+        assertThat(metadataSchemaChanges(consumeUntilOrders(1))).isEmpty();
+
+        alterWithoutBinlog("ALTER TABLE orders MODIFY COLUMN note VARCHAR(150)");
+        insertMarkerOrder("UL02");
+        insertMarkerOrder("UL03");
+
+        final List<SourceRecord> records = consumeUntilOrders(2);
+        final List<SourceRecord> changes = metadataSchemaChanges(records);
+        assertThat(changes).as("one event for the change, none for the repeated TABLE_MAP").hasSize(1);
+
+        final Struct change = (Struct) changes.get(0).value();
+        assertThat(change.getString("databaseName")).isEqualTo(DATABASE.getDatabaseName());
+        assertThat(change.getStruct("source").getString("table")).isEqualTo("orders");
+        final List<Struct> tableChanges = change.getArray("tableChanges");
+        assertThat(tableChanges).hasSize(1);
+        assertThat(tableChanges.get(0).getString("type")).isEqualTo("ALTER");
+        assertThat(tableChanges.get(0).getString("id")).contains("orders");
+        final Struct table = tableChanges.get(0).getStruct("table");
+        assertThat(table.getArray("primaryKeyColumnNames")).containsExactly("id");
+        final List<Struct> columns = table.getArray("columns");
+        final Struct note = columns.stream().filter(column -> "note".equals(column.getString("name"))).findFirst().orElseThrow();
+        assertThat(note.getString("typeName")).isEqualTo("VARCHAR");
+        assertThat(note.getInt32("length")).isEqualTo(150);
+
+        // The event precedes the first row event that was written with the new structure
+        final List<SourceRecord> orders = ordersOf(records);
+        assertThat(records.indexOf(changes.get(0))).isLessThan(records.indexOf(orders.get(0)));
+        assertThat(afterOf(orders.get(0)).getString("code")).isEqualTo("UL02");
+
+        stopConnector();
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2976")
+    public void shouldNotEmitMetadataSchemaChangeEventForLoggedDdl() throws Exception {
+        start(getConnectorClass(), metadataChangeEventsConfig().build());
+        waitForStreamingRunning(getConnectorName(), DATABASE.getServerName());
+
+        insertMarkerOrder("LG01");
+        consumeUntilOrders(1);
+
+        executeStatements(DATABASE.getDatabaseName(), "ALTER TABLE orders MODIFY COLUMN note VARCHAR(150)");
+        insertMarkerOrder("LG02");
+
+        final List<SourceRecord> records = consumeUntilOrders(1);
+        assertThat(metadataSchemaChanges(records)).as("the DDL statement already produced its own event").isEmpty();
+        assertThat(schemaChanges(records)).extracting(record -> ((Struct) record.value()).getString("ddl"))
+                .filteredOn(ddl -> ddl != null && ddl.contains("VARCHAR(150)")).hasSize(1);
+
+        stopConnector();
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2976")
+    public void shouldNotEmitMetadataSchemaChangeEventWhenOptionIsDisabled() throws Exception {
+        start(getConnectorClass(), metadataModeConfig().with(BinlogConnectorConfig.INCLUDE_SCHEMA_CHANGES, true).build());
+        waitForStreamingRunning(getConnectorName(), DATABASE.getServerName());
+
+        insertMarkerOrder("OF01");
+        consumeUntilOrders(1);
+
+        alterWithoutBinlog("ALTER TABLE orders ADD COLUMN unlogged INT");
+        insertMarkerOrder("OF02");
+
+        final List<SourceRecord> records = consumeUntilOrders(1);
+        assertThat(metadataSchemaChanges(records)).isEmpty();
+        assertThat(afterOf(ordersOf(records).get(0)).schema().field("unlogged")).as("schema still rebuilt").isNotNull();
+
+        stopConnector();
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2976")
+    public void shouldRebuildSchemaWithoutPublishingWhenSchemaChangesAreNotIncluded() throws Exception {
+        start(getConnectorClass(), metadataChangeEventsConfig().with(BinlogConnectorConfig.INCLUDE_SCHEMA_CHANGES, false).build());
+        waitForStreamingRunning(getConnectorName(), DATABASE.getServerName());
+
+        insertMarkerOrder("NI01");
+        consumeUntilOrders(1);
+
+        alterWithoutBinlog("ALTER TABLE orders ADD COLUMN unlogged INT");
+        insertMarkerOrder("NI02");
+
+        final List<SourceRecord> records = consumeUntilOrders(1);
+        assertThat(schemaChanges(records)).isEmpty();
+        assertThat(afterOf(ordersOf(records).get(0)).schema().field("unlogged")).isNotNull();
+
+        stopConnector();
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2976")
+    public void shouldNotEmitMetadataSchemaChangeEventForChangeMadeWhileStopped() throws Exception {
+        final Configuration config = metadataChangeEventsConfig().build();
+        start(getConnectorClass(), config);
+        waitForStreamingRunning(getConnectorName(), DATABASE.getServerName());
+
+        insertMarkerOrder("RS01");
+        consumeUntilOrders(1);
+        // The restart re-reads the last transaction, so let that be one of another table
+        insertAllTypesRow();
+        assertThat(consumeTable("all_types", 1)).hasSize(1);
+        stopConnector();
+
+        // The baseline is kept in memory only: after the restart, the first TABLE_MAP event read for the
+        // table already carries the new structure, so it becomes the baseline and the change is not reported.
+        alterWithoutBinlog("ALTER TABLE orders ADD COLUMN unlogged INT");
+
+        start(getConnectorClass(), config);
+        waitForStreamingRunning(getConnectorName(), DATABASE.getServerName());
+        insertMarkerOrder("RS02");
+
+        final List<SourceRecord> records = consumeUntilOrders(1);
+        assertThat(metadataSchemaChanges(records)).isEmpty();
+        assertThat(afterOf(ordersOf(records).get(0)).schema().field("unlogged")).isNotNull();
+
+        stopConnector();
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2976")
+    public void shouldEmitMetadataSchemaChangeEventWhenReplayingAcrossTheChange() throws Exception {
+        final Configuration config = metadataChangeEventsConfig().build();
+        start(getConnectorClass(), config);
+        waitForStreamingRunning(getConnectorName(), DATABASE.getServerName());
+
+        insertMarkerOrder("RP01");
+        consumeUntilOrders(1);
+        stopConnector();
+        // The inherited Testing.Files interface shadows java.nio.file.Files, hence the qualified name.
+        final byte[] rewindPoint = java.nio.file.Files.readAllBytes(OFFSET_STORE_PATH);
+
+        start(getConnectorClass(), config);
+        waitForStreamingRunning(getConnectorName(), DATABASE.getServerName());
+        insertMarkerOrder("RP02");
+        alterWithoutBinlog("ALTER TABLE orders ADD COLUMN unlogged INT");
+        insertMarkerOrder("RP03");
+        assertThat(metadataSchemaChanges(consumeUntilOrders(2))).hasSize(1);
+        stopConnector();
+
+        // Replaying the TABLE_MAP events from before and after the change detects it again
+        java.nio.file.Files.write(OFFSET_STORE_PATH, rewindPoint);
+        start(getConnectorClass(), config);
+        waitForStreamingRunning(getConnectorName(), DATABASE.getServerName());
+
+        final List<SourceRecord> replayed = consumeUntilOrders(2);
+        final List<SourceRecord> changes = metadataSchemaChanges(replayed);
+        assertThat(changes).hasSize(1);
+        final List<SourceRecord> orders = ordersOf(replayed);
+        assertThat(afterOf(orders.get(0)).getString("code")).isEqualTo("RP02");
+        assertThat(replayed.indexOf(changes.get(0))).isBetween(replayed.indexOf(orders.get(0)), replayed.indexOf(orders.get(1)));
+
+        stopConnector();
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2976")
+    public void shouldRejectMetadataSchemaChangeEventsWithoutMetadataBasedSchema() throws Exception {
+        final Configuration config = DATABASE.defaultConfig()
+                .with(BinlogConnectorConfig.BINLOG_METADATA_BASED_SCHEMA_CHANGE_EVENTS, true)
+                .build();
+        final var validation = getConnectorClass().getDeclaredConstructor().newInstance().validate(config.asMap());
+        assertThat(validation.configValues())
+                .filteredOn(value -> value.name().equals(BinlogConnectorConfig.BINLOG_METADATA_BASED_SCHEMA_CHANGE_EVENTS.name()))
+                .singleElement()
+                .satisfies(value -> assertThat(value.errorMessages()).anyMatch(message -> message.contains("binlog.metadata.based.schema=true")));
+    }
+
+    private Configuration.Builder metadataChangeEventsConfig() {
+        return metadataModeConfig()
+                .with(BinlogConnectorConfig.INCLUDE_SCHEMA_CHANGES, true)
+                .with(BinlogConnectorConfig.BINLOG_METADATA_BASED_SCHEMA_CHANGE_EVENTS, true);
+    }
+
+    /**
+     * Runs a DDL statement that is not written to the binlog, as in a replica-first schema change.
+     */
+    private void alterWithoutBinlog(String ddl) {
+        executeStatements(DATABASE.getDatabaseName(), "SET sql_log_bin = 0", ddl, "SET sql_log_bin = 1");
+    }
+
+    /**
+     * Consumes records of all topics, in order, until {@code expectedOrders} change records of the orders
+     * table have been read or a timeout elapses.
+     */
+    private List<SourceRecord> consumeUntilOrders(int expectedOrders) throws InterruptedException {
+        final List<SourceRecord> collected = new ArrayList<>();
+        final long deadline = System.currentTimeMillis() + TimeUnit.SECONDS.toMillis(30);
+        while (ordersOf(collected).size() < expectedOrders && System.currentTimeMillis() < deadline) {
+            collected.addAll(consumeRecordsByTopic(1).allRecordsInOrder());
+        }
+        assertThat(ordersOf(collected)).hasSize(expectedOrders);
+        return collected;
+    }
+
+    private List<SourceRecord> ordersOf(List<SourceRecord> records) {
+        return records.stream().filter(record -> record.topic().equals(DATABASE.topicForTable("orders"))).toList();
+    }
+
+    private List<SourceRecord> schemaChanges(List<SourceRecord> records) {
+        return records.stream().filter(record -> record.topic().equals(DATABASE.getServerName())).toList();
+    }
+
+    /**
+     * @return the schema change records without a DDL statement, i.e. the ones detected from TABLE_MAP metadata
+     */
+    private List<SourceRecord> metadataSchemaChanges(List<SourceRecord> records) {
+        return schemaChanges(records).stream().filter(record -> ((Struct) record.value()).getString("ddl") == null).toList();
     }
 
     protected Configuration.Builder metadataModeConfig() {

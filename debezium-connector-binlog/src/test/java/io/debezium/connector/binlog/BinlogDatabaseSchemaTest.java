@@ -190,6 +190,73 @@ public abstract class BinlogDatabaseSchemaTest<C extends BinlogConnectorConfig, 
         }
     }
 
+    @Test
+    @FixFor("debezium/dbz#2976")
+    void shouldDetectBinlogMetadataChangeOnlyAgainstEarlierTableMap() {
+        schema = getSchema(metadataKeyConfig().build());
+
+        // The first TABLE_MAP event only establishes the baseline, and an identical one changes nothing
+        assertThat(schema.registerTableFromBinlogMetadataAndDetectChange(metadataNoteTableMap(200, false))).isEmpty();
+        assertThat(schema.registerTableFromBinlogMetadataAndDetectChange(metadataNoteTableMap(200, false))).isEmpty();
+
+        final var changed = schema.registerTableFromBinlogMetadataAndDetectChange(metadataNoteTableMap(600, false));
+        assertThat(changed).isPresent();
+        assertThat(changed.get().id()).isEqualTo(METADATA_KEY_TABLE_ID);
+        assertThat(changed.get().columnWithName("note").length()).isEqualTo(150);
+
+        assertThat(schema.registerTableFromBinlogMetadataAndDetectChange(metadataNoteTableMap(600, false))).isEmpty();
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2976")
+    void shouldNotDetectBinlogMetadataChangeForEquivalentCharsetEncoding() {
+        schema = getSchema(metadataKeyConfig().build());
+        assertThat(schema.registerTableFromBinlogMetadataAndDetectChange(metadataNoteTableMap(200, false))).isEmpty();
+
+        // The same structure, with the charset as the table default rather than per column
+        assertThat(schema.registerTableFromBinlogMetadataAndDetectChange(metadataNoteTableMap(200, true))).isEmpty();
+        assertThat(schema.tableFor(METADATA_KEY_TABLE_ID).columnWithName("note").length()).isEqualTo(50);
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2976")
+    void shouldNotDetectBinlogMetadataChangeForFilteredTable() {
+        schema = getSchema(metadataKeyConfig()
+                .with(BinlogConnectorConfig.TABLE_INCLUDE_LIST, "connector_test.captured")
+                .build());
+        assertThat(schema.registerTableFromBinlogMetadataAndDetectChange(metadataNoteTableMap(200, false))).isEmpty();
+        assertThat(schema.registerTableFromBinlogMetadataAndDetectChange(metadataNoteTableMap(600, false))).isEmpty();
+        assertThat(schema.tableFor(METADATA_KEY_TABLE_ID)).isNull();
+    }
+
+    /**
+     * @return the TABLE_MAP event of {@code (id INT PRIMARY KEY, note VARCHAR(noteBytes / 4) utf8mb4)}
+     */
+    private TableMapEventData metadataNoteTableMap(int noteBytes, boolean charsetAsTableDefault) {
+        final int utf8mb4GeneralCi = 45;
+        final TableMapEventMetadata metadata = new TableMapEventMetadata();
+        metadata.setColumnNames(List.of("id", "note"));
+        metadata.setSimplePrimaryKeys(List.of(0));
+        if (charsetAsTableDefault) {
+            final TableMapEventMetadata.DefaultCharset defaultCharset = new TableMapEventMetadata.DefaultCharset();
+            defaultCharset.setDefaultCharsetCollation(utf8mb4GeneralCi);
+            metadata.setDefaultCharset(defaultCharset);
+        }
+        else {
+            metadata.setColumnCharsets(List.of(utf8mb4GeneralCi));
+        }
+        final TableMapEventData data = new TableMapEventData();
+        data.setDatabase(METADATA_KEY_TABLE_ID.catalog());
+        data.setTable(METADATA_KEY_TABLE_ID.table());
+        data.setColumnTypes(new byte[]{ 3, 15 });
+        data.setColumnMetadata(new int[]{ 0, noteBytes });
+        final BitSet nullability = new BitSet();
+        nullability.set(1);
+        data.setColumnNullability(nullability);
+        data.setEventMetadata(metadata);
+        return data;
+    }
+
     private Configuration.Builder metadataKeyConfig() {
         return DATABASE.defaultConfig()
                 .with(BinlogConnectorConfig.BINLOG_METADATA_BASED_SCHEMA, true)

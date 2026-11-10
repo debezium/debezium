@@ -163,6 +163,7 @@ Advantages of the binlog metadata mode::
 * The connector requires no schema history topic and no `schema.history.internal.*` settings; there is no history storage to provision, monitor, or recover.
 * The connector restarts without a history recovery phase.
 * Schema changes that are never written to the binlog, for example, an `ALTER TABLE` statement that runs with `sql_log_bin=OFF`, heal themselves as soon as the connector reads the next change for the table.
+By default, the connector emits no schema change event for such a change. To have the connector report the changes that it detects, on a best-effort basis, set xref:{context}-property-binlog-metadata-based-schema-change-events[`binlog.metadata.based.schema.change.events`] to `true`.
 * The connector offset can be seeded or rewound across past DDL statements to a position that the binlog still retains, provided that the events contain full metadata and meet the key requirements below.
 The connector reconstructs the schema that was in effect at that position.
 

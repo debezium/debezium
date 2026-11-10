@@ -13,6 +13,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.regex.Pattern;
@@ -296,11 +297,42 @@ public abstract class BinlogDatabaseSchema<P extends BinlogPartition, O extends 
         if (!filters.dataCollectionFilter().isIncluded(tableId)) {
             return false;
         }
+        registerCapturedTableFromBinlogMetadata(tableId, metadata);
+        return true;
+    }
+
+    /**
+     * Registers the table like {@link #registerTableFromBinlogMetadata(TableMapEventData)} and reports a
+     * schema change that was not read from the binlog as a DDL statement, such as one made with
+     * {@code sql_log_bin=OFF}.
+     * <p>
+     * A change is reported only when the table was already registered from an earlier {@code TABLE_MAP}
+     * event, that registration was not invalidated by a parsed DDL statement (which produces its own schema
+     * change event), and the reconstructed table differs from the registered one. The registrations are kept
+     * in memory only, so a change is not reported when the first {@code TABLE_MAP} event read for the table
+     * after a connector start already carries the new structure.
+     *
+     * @param metadata the {@code TABLE_MAP} event data, which must include FULL column metadata; never null
+     * @return the reconstructed table if such a change was detected; otherwise empty
+     */
+    public Optional<Table> registerTableFromBinlogMetadataAndDetectChange(TableMapEventData metadata) {
+        final TableId tableId = new TableId(metadata.getDatabase(), null, metadata.getTable());
+        if (!filters.dataCollectionFilter().isIncluded(tableId)) {
+            return Optional.empty();
+        }
+        return Optional.ofNullable(registerCapturedTableFromBinlogMetadata(tableId, metadata));
+    }
+
+    /**
+     * @return the reconstructed table if it replaced a different table that was registered from an earlier
+     *         {@code TABLE_MAP} event; otherwise null
+     */
+    private Table registerCapturedTableFromBinlogMetadata(TableId tableId, TableMapEventData metadata) {
         // Rebuild after either parsed DDL invalidates the registration or TABLE_MAP metadata changes.
         // The latter also catches schema changes made with sql_log_bin=OFF.
         final TableMapMetadataSnapshot registered = tablesRegisteredFromBinlogMetadata.get(tableId);
         if (registered != null && registered.matches(metadata) && schemaFor(tableId) != null) {
-            return true;
+            return null;
         }
         final Table table = metadataTableBuilder.build(tableId, metadata);
         validateBinlogMetadataKey(table);
@@ -316,7 +348,9 @@ public abstract class BinlogDatabaseSchema<P extends BinlogPartition, O extends 
         }
         refresh(table);
         tablesRegisteredFromBinlogMetadata.put(tableId, TableMapMetadataSnapshot.of(metadata));
-        return true;
+        // The reconstructed tables are compared rather than the raw metadata, as servers can encode the
+        // same structure differently, for example with a default charset or with a charset per column.
+        return registered != null && previousTable != null && !previousTable.equals(table) ? table : null;
     }
 
     /**
