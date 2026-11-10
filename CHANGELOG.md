@@ -1,6 +1,61 @@
 # Change log
 
 All notable changes are documented in this file. Release numbers follow [Semantic Versioning](http://semver.org)
+## 3.6.4.Final
+November 10th 2026 [Detailed release notes](https://github.com/orgs/debezium/projects/5/views/6?filterQuery=status%3AReleased+iteration%3A3.6.4.Final)
+
+### New features since 3.6.3.Final
+
+* Move Confluent Maven repository behind an opt-in profile [debezium/dbz#2965](https://github.com/debezium/dbz/issues/2965)
+* Oracle: Optimise logminer query by removing concatenation and UPPER function [debezium/dbz#2991](https://github.com/debezium/dbz/issues/2991)
+
+
+### Breaking changes since 3.6.3.Final
+
+None
+
+
+### Fixes since 3.6.3.Final
+
+* Schema history restricted by 'snapshot.include.collection.list' [DBZ-9717] [debezium/dbz#1443](https://github.com/debezium/dbz/issues/1443)
+* Missing validation: tasks.min must be <= tasks.max [debezium/dbz#1870](https://github.com/debezium/dbz/issues/1870)
+* Concatenated XML in one Kafka message. [debezium/dbz#2159](https://github.com/debezium/dbz/issues/2159)
+* Debezium build failure on slower hardware [debezium/dbz#2245](https://github.com/debezium/dbz/issues/2245)
+* SignalProcessor.executeWithSemaphore ignores tryAcquire result and runs the critical section unguarded on timeout [debezium/dbz#2458](https://github.com/debezium/dbz/issues/2458)
+* JdbcSchemaHistory never commits open transactions on read paths [debezium/dbz#2579](https://github.com/debezium/dbz/issues/2579)
+* LogFileCollector exception is misleading when Oracle ARC is slow to archive [debezium/dbz#2601](https://github.com/debezium/dbz/issues/2601)
+* MySQL TIME column with value 00:00:00 is emitted as null during initial snapshot, but correctly as 0 during streaming (binlog) [debezium/dbz#2631](https://github.com/debezium/dbz/issues/2631)
+* Oracle XMLTYPE with SCHEMA feature not supported by the parser [debezium/dbz#2656](https://github.com/debezium/dbz/issues/2656)
+* Allow to include INTERNAL events for rollbacks to savepoint with lob.enabled=false [debezium/dbz#2666](https://github.com/debezium/dbz/issues/2666)
+* Physical standby always uses CURRENT_SCN for upper boundary [debezium/dbz#2668](https://github.com/debezium/dbz/issues/2668)
+* [SQL Server] Arithmetic overflow error on tables > 2.14B rows during parallel chunked snapshot due to hardcoded COUNT(1) [debezium/dbz#2670](https://github.com/debezium/dbz/issues/2670)
+* ExtendedStringParser assigns schema and table names in reverse order [debezium/dbz#2671](https://github.com/debezium/dbz/issues/2671)
+* SelectLobParser.reset() does not reset the inherited parser state [debezium/dbz#2672](https://github.com/debezium/dbz/issues/2672)
+* debezium 3.6.2 DDL statement couldn't be parsed [debezium/dbz#2673](https://github.com/debezium/dbz/issues/2673)
+* CloudEventsConverter may fail to initialize [debezium/dbz#2697](https://github.com/debezium/dbz/issues/2697)
+* PartitionRouting crashes with NullPointerException when a nested field path traverses a null struct (e.g. before.name on INSERT events) [debezium/dbz#2698](https://github.com/debezium/dbz/issues/2698)
+* Regression with relaxed quote DML parsing [debezium/dbz#2700](https://github.com/debezium/dbz/issues/2700)
+* 3.7 ORA-02003: invalid USERENV parameter on oracle 12 [debezium/dbz#2704](https://github.com/debezium/dbz/issues/2704)
+* SQL Server: Retriable task startup failure does not clean up allocated resources [debezium/dbz#2714](https://github.com/debezium/dbz/issues/2714)
+* Oracle DDL parse failure with creating materialized views [debezium/dbz#2720](https://github.com/debezium/dbz/issues/2720)
+* Oracle XStream: task fails after a restart [debezium/dbz#2782](https://github.com/debezium/dbz/issues/2782)
+* Oracle LogMiner on RAC: change events at a capped log boundary SCN are silently skipped when another redo thread has an event at the same SCN [debezium/dbz#2862](https://github.com/debezium/dbz/issues/2862)
+* MongoDB 8 tests fail with Linux kernel incompatibilities [debezium/dbz#2931](https://github.com/debezium/dbz/issues/2931)
+* Description property for some connector configuration properties is not set correctly [DBZ-1520] [debezium/dbz#252](https://github.com/debezium/dbz/issues/252)
+* JDBC sink connector interprets connection.pool.timeout as milliseconds instead of seconds [debezium/dbz#2950](https://github.com/debezium/dbz/issues/2950)
+* Oracle LogMiner on RAC: changes in a CLOSED redo thread are silently skipped when `CappedLogFileSessionSelector` truncates that thread's logs [debezium/dbz#2957](https://github.com/debezium/dbz/issues/2957)
+* Oracle connector: heartbeat JDBC connection loses its PDB container after a reconnect (`alter session set container` is not replayed) [debezium/dbz#2972](https://github.com/debezium/dbz/issues/2972)
+* Reread buffered LogMiner transactions so late LOB/XML rows are not lost [debezium/dbz#3039](https://github.com/debezium/dbz/issues/3039)
+
+
+### Other changes since 3.6.3.Final
+
+* Oracle CI failure - ORA-26812: An active session currently attached to XStream server "DBZXOUT" [debezium/dbz#2497](https://github.com/debezium/dbz/issues/2497)
+* Update Hibernate to 7.4.10.Final [debezium/dbz#2681](https://github.com/debezium/dbz/issues/2681)
+* Bump MySQL Connector/J to 26.10.0 to address CVE-2025-30706 [debezium/dbz#3015](https://github.com/debezium/dbz/issues/3015)
+* Upgrade MongoDB driver to 5.14.x [debezium/dbz#3022](https://github.com/debezium/dbz/issues/3022)
+
+
 
 ## 3.6.3.Final
 September 18th 2026 [Detailed release notes](https://github.com/orgs/debezium/projects/5/views/6?filterQuery=status%3AReleased+iteration%3A3.6.3.Final)
