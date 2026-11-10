@@ -132,7 +132,6 @@ public class HttpNotificationChannel implements NotificationChannel {
      *
      * @param config the connector configuration containing HTTP notification settings
      */
-
     @Override
     public void init(CommonConnectorConfig config) {
         this.url = config.getNotificationHttpUrl();
