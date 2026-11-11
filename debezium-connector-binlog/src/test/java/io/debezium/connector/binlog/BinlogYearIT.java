@@ -61,6 +61,7 @@ public abstract class BinlogYearIT<C extends SourceConnector> extends AbstractBi
         // Use the DB configuration to define the connector's configuration ...
         config = DATABASE.defaultConfig()
                 .with(BinlogConnectorConfig.SNAPSHOT_MODE, BinlogConnectorConfig.SnapshotMode.INITIAL)
+                .with(BinlogConnectorConfig.ENABLE_TIME_ADJUSTER, false)
                 .build();
 
         // Start the connector ...
@@ -111,7 +112,6 @@ public abstract class BinlogYearIT<C extends SourceConnector> extends AbstractBi
         // Use the DB configuration to define the connector's configuration ...
         config = DATABASE.defaultConfig()
                 .with(BinlogConnectorConfig.SNAPSHOT_MODE, BinlogConnectorConfig.SnapshotMode.INITIAL)
-                .with(BinlogConnectorConfig.ENABLE_TIME_ADJUSTER, true)
                 .build();
 
         // Start the connector ...

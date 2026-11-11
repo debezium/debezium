@@ -284,18 +284,20 @@ Use the `legacy` grammar only if you encounter compatibility issues with existin
 [id="{context}-property-enable-time-adjuster"]
 xref:{context}-property-enable-time-adjuster[`enable.time.adjuster`] _Deprecated_::
 
-Default value::: `false`
+Default value::: `true`
 
 Description:::
 Boolean value that indicates whether the connector adjusts `DATE`, `DATETIME`, and `TIMESTAMP` values that have a year in the range 0 - 99.
 When set to `true`, the connector maps years 0 - 69 to 2000 - 2069, and years 70 - 99 to 1970 - 1999.
+When set to `false`, the connector emits the stored value.
 +
 {connector-name} converts 2-digit year values to 4 digits when they are inserted, so a stored year in the range 0 - 99 was written with 4 digits.
-By default, the connector emits the stored value.
 +
 [NOTE]
 ====
 This option is deprecated and will be removed in a future release.
+After the option is removed, the connector emits the stored value.
+Set the option to `false` after you verify that your pipelines and consumers handle the stored values.
 ====
 
 

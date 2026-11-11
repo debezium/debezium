@@ -645,16 +645,16 @@ public abstract class BinlogConnectorConfig extends HistorizedRelationalDatabase
     public static final Field ENABLE_TIME_ADJUSTER = Field.create("enable.time.adjuster")
             .withDisplayName("Enable Time Adjuster")
             .withType(ConfigDef.Type.BOOLEAN)
-            .withDefault(false)
-            .withValidation(BinlogConnectorConfig::validateTimeAdjusterNotSet)
+            .withDefault(true)
+            .withValidation(BinlogConnectorConfig::validateTimeAdjusterDisabled)
             .withWidth(ConfigDef.Width.SHORT)
             .withImportance(ConfigDef.Importance.LOW)
             .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR))
             .withDescription("(Deprecated) Whether the connector adjusts DATE, DATETIME and TIMESTAMP values with a year between 0 and 99, "
                     + "mapping years 0-69 to 2000-2069 and years 70-99 to 1970-1999. "
                     + "The database already converts 2-digit years on input, so stored years between 0 and 99 were written with 4 digits. "
-                    + "'false' (the default) emits the stored value; "
-                    + "'true' adjusts the year.");
+                    + "'true' (the default) adjusts the year; "
+                    + "'false' emits the stored value and is recommended once consumers have been verified.");
 
     public static final Field READ_ONLY_CONNECTION = Field.create("read.only")
             .withDisplayName("Read only connection")
@@ -1030,11 +1030,12 @@ public abstract class BinlogConnectorConfig extends HistorizedRelationalDatabase
     }
 
     /**
-     * Logs a deprecation warning when using {@link #ENABLE_TIME_ADJUSTER}.
+     * Logs a deprecation warning when {@link #ENABLE_TIME_ADJUSTER} is enabled, including by default.
      */
-    private static int validateTimeAdjusterNotSet(Configuration config, Field field, ValidationOutput problems) {
-        if (config.hasKey(ENABLE_TIME_ADJUSTER.name())) {
-            LOGGER.warn("Configuration option '{}' is deprecated and will be removed in a future release.", ENABLE_TIME_ADJUSTER.name());
+    private static int validateTimeAdjusterDisabled(Configuration config, Field field, ValidationOutput problems) {
+        if (config.getBoolean(ENABLE_TIME_ADJUSTER)) {
+            LOGGER.warn("Configuration option '{}' is deprecated and will be removed in a future release, after which stored values are emitted without adjustment. "
+                    + "Set it to 'false' once consumers have been verified to handle the stored values.", ENABLE_TIME_ADJUSTER.name());
         }
         return 0;
     }
