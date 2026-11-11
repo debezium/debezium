@@ -8,6 +8,7 @@ package io.debezium.connector.mysql.jdbc;
 import io.debezium.config.Configuration;
 import io.debezium.connector.binlog.BinlogConnectorConfig;
 import io.debezium.connector.binlog.jdbc.BinlogConnectionConfiguration;
+import io.debezium.connector.mysql.Module;
 import io.debezium.connector.mysql.MySqlConnectorConfig;
 import io.debezium.jdbc.JdbcConnection;
 import io.debezium.util.Strings;
@@ -24,6 +25,11 @@ public class MySqlConnectionConfiguration extends BinlogConnectionConfiguration 
 
     public MySqlConnectionConfiguration(Configuration config) {
         super(config);
+    }
+
+    @Override
+    protected String getConnectorName() {
+        return Module.name();
     }
 
     @Override

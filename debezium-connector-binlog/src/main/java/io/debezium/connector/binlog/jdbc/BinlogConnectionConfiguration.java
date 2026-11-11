@@ -13,6 +13,7 @@ import java.util.Objects;
 
 import io.debezium.config.Configuration;
 import io.debezium.connector.binlog.BinlogConnectorConfig;
+import io.debezium.jdbc.DriverOptionsFilter;
 import io.debezium.jdbc.JdbcConfiguration;
 import io.debezium.jdbc.JdbcConnection.ConnectionFactory;
 import io.debezium.util.Strings;
@@ -28,10 +29,12 @@ public abstract class BinlogConnectionConfiguration implements ConnectionConfigu
 
     public BinlogConnectionConfiguration(Configuration configuration) {
         this.configuration = configuration;
+        final var driverOptions = new DriverOptionsFilter(getConnectorName())
+                .filter(configuration.subset(DRIVER_CONFIG_PREFIX, true));
         this.jdbcConfig = getJdbcConfiguration(getDatabaseConfiguration(configuration)
                 .build()
                 .subset(DATABASE_CONFIG_PREFIX, true)
-                .merge(configuration.subset(DRIVER_CONFIG_PREFIX, true)));
+                .merge(driverOptions));
         this.factory = createFactory(configuration);
     }
 
@@ -137,5 +140,7 @@ public abstract class BinlogConnectionConfiguration implements ConnectionConfigu
     protected abstract String resolveConnectionTimeZone(Configuration configuration);
 
     protected abstract ConnectionFactory createFactory(Configuration configuration);
+
+    protected abstract String getConnectorName();
 
 }

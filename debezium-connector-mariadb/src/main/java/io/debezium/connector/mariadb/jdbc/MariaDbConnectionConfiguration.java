@@ -9,6 +9,7 @@ import io.debezium.config.Configuration;
 import io.debezium.connector.binlog.BinlogConnectorConfig;
 import io.debezium.connector.binlog.jdbc.BinlogConnectionConfiguration;
 import io.debezium.connector.mariadb.MariaDbConnectorConfig;
+import io.debezium.connector.mariadb.Module;
 import io.debezium.jdbc.JdbcConnection;
 import io.debezium.util.Strings;
 
@@ -22,6 +23,11 @@ public class MariaDbConnectionConfiguration extends BinlogConnectionConfiguratio
 
     public MariaDbConnectionConfiguration(Configuration configuration) {
         super(configuration);
+    }
+
+    @Override
+    protected String getConnectorName() {
+        return Module.name();
     }
 
     @Override
