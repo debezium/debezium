@@ -312,21 +312,26 @@ public class OracleOffsetContext extends CommonOffsetContext<SourceInfo> {
     }
 
     /**
-     * Retires the snapshot commit SCN once the offset SCN has reached it.
+     * Retires the snapshot commit SCN once the offset SCN and the last checkpoint have both reached it.
      * <p>
-     * Streaming resumes after the offset SCN, so from that point on no transaction that committed at or
-     * before the snapshot commit SCN can be mined again. Until then, a transaction that was open when the
-     * snapshot was taken keeps the offset SCN below it.
+     * Streaming resumes after the offset SCN, and the offset SCN only ever falls back to the last
+     * checkpoint, the last commit or rollback, once no transaction is in progress anymore. So once both are
+     * at or past the snapshot commit SCN, no transaction that committed at or before it can be mined
+     * again. Until then, a transaction that was open when the snapshot was taken keeps the offset SCN
+     * below it.
      */
     public void retireSnapshotCommitScnIfReached() {
-        if (isSnapshotCommitScnReached(getScn(), snapshotCommitScn)) {
+        final CommitScn commitScn = getCommitScn();
+        final Scn checkpointScn = commitScn != null ? commitScn.getMaxCheckpointScn() : Scn.NULL;
+        if (isSnapshotCommitScnReached(getScn(), checkpointScn, snapshotCommitScn)) {
             snapshotCommitScn = Scn.NULL;
         }
     }
 
-    private static boolean isSnapshotCommitScnReached(Scn scn, Scn snapshotCommitScn) {
-        return snapshotCommitScn != null && !snapshotCommitScn.isNull() && scn != null && !scn.isNull()
-                && scn.compareTo(snapshotCommitScn) >= 0;
+    private static boolean isSnapshotCommitScnReached(Scn scn, Scn checkpointScn, Scn snapshotCommitScn) {
+        return snapshotCommitScn != null && !snapshotCommitScn.isNull()
+                && scn != null && !scn.isNull() && scn.compareTo(snapshotCommitScn) >= 0
+                && checkpointScn != null && !checkpointScn.isNull() && checkpointScn.compareTo(snapshotCommitScn) >= 0;
     }
 
     public String getTransactionId() {
@@ -499,7 +504,8 @@ public class OracleOffsetContext extends CommonOffsetContext<SourceInfo> {
      * <p>
      * Offsets written by older versions only contain {@code snapshot_scn}, the SCN the snapshot was
      * taken at, which becomes the snapshot commit SCN. The snapshot commit SCN is not loaded when the
-     * offset SCN has already reached it, as in offsets of older versions written after the snapshot.
+     * offset SCN and the last checkpoint have already reached it, as in offsets of older versions written
+     * after the snapshot.
      *
      * @param offset the offset map
      * @param builder the offset context builder to apply the SCNs to
@@ -511,7 +517,7 @@ public class OracleOffsetContext extends CommonOffsetContext<SourceInfo> {
         if (snapshotCommitScn == null) {
             snapshotCommitScn = getScnFromOffsetMapByKey(offset, LEGACY_SNAPSHOT_SCN_KEY);
         }
-        if (isSnapshotCommitScnReached(scn, snapshotCommitScn)) {
+        if (isSnapshotCommitScnReached(scn, CommitScn.load(offset).getMaxCheckpointScn(), snapshotCommitScn)) {
             snapshotCommitScn = null;
         }
         return builder.scn(scn).snapshotCommitScn(snapshotCommitScn);
