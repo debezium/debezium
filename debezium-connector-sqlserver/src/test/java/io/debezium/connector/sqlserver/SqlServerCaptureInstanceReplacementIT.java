@@ -230,7 +230,7 @@ public class SqlServerCaptureInstanceReplacementIT extends AbstractAsyncEngineCo
 
     @Test
     @FixFor("debezium/dbz#2940")
-    void restartFromTheSchemaChangeRecordReReadsTheCurrentIterationOnly() throws Exception {
+    void restartFromTheSchemaChangeRecordReReadsFromTheCaptureStart() throws Exception {
         // The connector streams, so that its position is a real LSN
         final Configuration config = startConnectorStreaming(ORDERS);
 
@@ -245,23 +245,23 @@ public class SqlServerCaptureInstanceReplacementIT extends AbstractAsyncEngineCo
         TestHelper.enableTableCdc(connection, "orders", "orders_amount");
         connection.execute("INSERT INTO orders VALUES (2, 'paid', 20)");
 
-        final List<SourceRecord> consumed = consumeRecordsUntilAlterAndDataRecord();
+        final List<SourceRecord> consumed = consumeRecordsUntilAlterAndDataRecord(ORDERS_TOPIC);
         final SourceRecord schemaChange = firstAlterSchemaChange(consumed);
         final SourceRecord dataRecord = firstDataRecord(consumed);
 
         final Lsn schemaChangeCommitLsn = commitLsn(schemaChange);
         final Lsn dataCommitLsn = commitLsn(dataRecord);
 
-        // The connector cannot resume from its own position, because the change tables hold no LSN below the start LSN
-        // of the new capture instance, so the record carries the start LSN of the capture instance
+        // The record carries the start LSN of the new capture instance, which is the boundary the capture instance
+        // defines: the rows of the retired capture instance are below it and the rows of the new one are at or above it
         assertThat(schemaChangeCommitLsn).isEqualTo(captureInstanceStartLsn("orders_amount"));
 
         // The schema change record is not ahead of the record that follows it in the stream, so that a restart from its
         // offset does not skip that record
         assertThat(schemaChangeCommitLsn).isLessThanOrEqualTo(dataCommitLsn);
 
-        // A restart from the offset of the schema change record re-reads the rows of the current iteration only, so the
-        // row is delivered again, which is a duplicate and not a loss
+        // A restart from the offset of the schema change record re-reads from the start of the capture instance, so the
+        // row of the new capture instance is delivered again, which is a duplicate and not a loss
         stopConnector();
         storeOffsets(config, Map.of(schemaChange.sourcePartition(), schemaChange.sourceOffset()));
         start(SqlServerConnector.class, config);
@@ -269,13 +269,14 @@ public class SqlServerCaptureInstanceReplacementIT extends AbstractAsyncEngineCo
 
         final SourceRecords reread = consumeRecordsByTopic(1);
         assertSingleRecord(reread, ORDERS_TOPIC, "amount");
-        // The row of the first iteration is not read again, because it is before the offset of the schema change record
+        // The row of the retired capture instance is not read again, because it was committed before the capture
+        // instance was replaced and is therefore below its start LSN
         assertThat(idOf(reread.recordsForTopic(ORDERS_TOPIC).get(0))).isEqualTo(2);
     }
 
     @Test
     @FixFor("debezium/dbz#2940")
-    void schemaChangeRecordCarriesThePositionOfTheConnectorWhenItCanResumeFromIt() throws Exception {
+    void schemaChangeRecordCarriesTheStartLsnOfTheNewCaptureInstance() throws Exception {
         // The capture instance of the items table is not replaced, so the change tables still hold the LSN it started
         // at, which is below the position of the connector. The connector could therefore resume from its position.
         final Configuration config = startConnectorStreaming(ORDERS, ITEMS);
@@ -299,24 +300,25 @@ public class SqlServerCaptureInstanceReplacementIT extends AbstractAsyncEngineCo
         start(SqlServerConnector.class, config);
         assertConnectorIsRunning();
 
-        final List<SourceRecord> consumed = consumeRecordsUntilAlterAndDataRecord();
+        final List<SourceRecord> consumed = consumeRecordsUntilAlterAndDataRecord(ORDERS_TOPIC);
         final SourceRecord schemaChange = firstAlterSchemaChange(consumed);
         final SourceRecord dataRecord = firstDataRecord(consumed);
 
         final Lsn schemaChangeCommitLsn = commitLsn(schemaChange);
 
-        // The record carries the position of the connector, which the connector could resume from, and not the start
-        // LSN of the capture instance
-        assertThat(schemaChangeCommitLsn).isEqualTo(connectorPosition);
-        assertThat(schemaChangeCommitLsn).isNotEqualTo(captureStartLsn);
+        // The record carries the start LSN of the new capture instance and not the position of the connector, even though
+        // the connector could resume from its own position: the start LSN is the boundary the capture instance defines,
+        // the rows of the retired capture instance are below it and the rows of the new one are at or above it
+        assertThat(schemaChangeCommitLsn).isEqualTo(captureStartLsn);
+        assertThat(schemaChangeCommitLsn).isNotEqualTo(connectorPosition);
 
         // The schema change record is not ahead of the record that follows it in the stream, so that a restart from its
         // offset does not skip that record
         assertThat(schemaChangeCommitLsn)
                 .isLessThan(commitLsn(dataRecord));
 
-        // A restart from the offset of the schema change record re-reads the rows of the current iteration only, so the
-        // row is delivered again, which is a duplicate and not a loss
+        // A restart from the offset of the schema change record re-reads from the start of the capture instance, so the
+        // row of the new capture instance is delivered again, which is a duplicate and not a loss
         stopConnector();
         storeOffsets(config, Map.of(schemaChange.sourcePartition(), schemaChange.sourceOffset()));
         start(SqlServerConnector.class, config);
@@ -324,17 +326,18 @@ public class SqlServerCaptureInstanceReplacementIT extends AbstractAsyncEngineCo
 
         final SourceRecords reread = consumeRecordsByTopic(1);
         assertSingleRecord(reread, ORDERS_TOPIC, "amount");
-        // The row of the first iteration is not read again, because it is before the offset of the schema change record
+        // The row of the retired capture instance is not read again, because it was committed before the capture
+        // instance was replaced and is therefore below its start LSN
         assertThat(idOf(reread.recordsForTopic(ORDERS_TOPIC).get(0))).isEqualTo(2);
     }
 
     @Test
     @FixFor("debezium/dbz#2940")
-    void schemaChangeRecordIsNotAheadOfTheRowsOfTheOtherTables() throws Exception {
-        // The connector's offset carries no commit LSN, so the schema change record cannot carry the position of the
-        // connector. The row of the other table is committed before the capture instance of the orders table is
-        // replaced, so it is below the start LSN of that capture instance. The schema changes are included, so that the
-        // schema change record is part of the stream.
+    void schemaChangeRecordIsNotAheadOfTheRowsThatFollowIt() throws Exception {
+        // The connector's offset carries no commit LSN. The row of the other table is committed before the capture
+        // instance of the orders table is replaced, so it is below the start LSN of that capture instance and it
+        // precedes the schema change record in the stream. The schema changes are included, so that the schema change
+        // record is part of the stream.
         startConnectorWithoutCommitLsn(TestHelper.defaultConfig()
                 .with(RelationalDatabaseConnectorConfig.INCLUDE_SCHEMA_CHANGES, true), ORDERS, ITEMS);
 
@@ -345,17 +348,26 @@ public class SqlServerCaptureInstanceReplacementIT extends AbstractAsyncEngineCo
         connection.execute("INSERT INTO orders VALUES (1, 'paid', 10)");
         TestHelper.startCaptureJob(connection);
 
-        final List<SourceRecord> consumed = consumeRecordsUntilAlterAndDataRecord();
+        final List<SourceRecord> consumed = consumeRecordsUntilAlterAndDataRecord(ORDERS_TOPIC);
         final SourceRecord schemaChange = firstAlterSchemaChange(consumed);
-        final SourceRecord dataRecord = firstDataRecord(consumed);
+        final SourceRecord itemsRecord = firstDataRecord(consumed);
+        final SourceRecord ordersRecord = firstDataRecord(consumed, ORDERS_TOPIC);
+
+        // The record carries the start LSN of the new capture instance, which is the position the record sits at in the
+        // stream
+        assertThat(commitLsn(schemaChange)).isEqualTo(captureInstanceStartLsn("orders_amount"));
 
         // The row of the items table was committed before the capture instance of the orders table was replaced, so it
-        // is the record that follows the schema change record
-        assertThat(dataRecord.topic()).isEqualTo(ITEMS_TOPIC);
+        // is below the start LSN of that capture instance and it precedes the schema change record
+        assertThat(itemsRecord.topic()).isEqualTo(ITEMS_TOPIC);
+        assertThat(commitLsn(itemsRecord)).isLessThan(commitLsn(schemaChange));
 
-        // The schema change record is not ahead of the record that follows it in the stream, so that a restart from its
-        // offset does not skip that record
-        assertThat(commitLsn(schemaChange)).isLessThan(commitLsn(dataRecord));
+        // The row of the orders table was committed after the capture instance was replaced, so it is at or above the
+        // start LSN of that capture instance and it follows the schema change record. The schema change record is not
+        // ahead of it, so a restart from its offset skips no row that followed it. What the record gives up compared to
+        // a record that carries the position of the connector is the narrower re-read of such a restart, which re-reads
+        // from the start of the capture instance.
+        assertThat(commitLsn(schemaChange)).isLessThanOrEqualTo(commitLsn(ordersRecord));
     }
 
     /**
@@ -461,13 +473,14 @@ public class SqlServerCaptureInstanceReplacementIT extends AbstractAsyncEngineCo
     }
 
     /**
-     * Consumes the records until the schema change record of the ALTER and the data record have been received.
+     * Consumes the records until the schema change record of the ALTER and the data record of the given topic have been
+     * received.
      *
      * @return the consumed records
      */
-    private List<SourceRecord> consumeRecordsUntilAlterAndDataRecord() throws InterruptedException {
+    private List<SourceRecord> consumeRecordsUntilAlterAndDataRecord(String topic) throws InterruptedException {
         return consumeRecordsUntil(records -> records.stream().anyMatch(SqlServerCaptureInstanceReplacementIT::isAlterSchemaChange)
-                && records.stream().anyMatch(SqlServerCaptureInstanceReplacementIT::isDataRecord));
+                && records.stream().anyMatch(record -> isDataRecord(record) && topic.equals(record.topic())));
     }
 
     /**
@@ -561,6 +574,16 @@ public class SqlServerCaptureInstanceReplacementIT extends AbstractAsyncEngineCo
                 .filter(SqlServerCaptureInstanceReplacementIT::isDataRecord)
                 .findFirst()
                 .orElseThrow(() -> new AssertionError("The connector must emit the data record"));
+    }
+
+    /**
+     * @return the first data record of the given topic among the given records
+     */
+    private static SourceRecord firstDataRecord(List<SourceRecord> records, String topic) {
+        return records.stream()
+                .filter(record -> isDataRecord(record) && topic.equals(record.topic()))
+                .findFirst()
+                .orElseThrow(() -> new AssertionError("The connector must emit the data record of " + topic));
     }
 
     /**

@@ -163,34 +163,20 @@ public class SchemaHistoryTopicIT extends AbstractAsyncEngineConnectorTest {
         tableChanges = ((Struct) schemaRecord.value()).getArray("tableChanges");
         assertThat(tableChanges).hasSize(1);
         assertThat(tableChanges.get(0).get("type")).isEqualTo("ALTER");
-        final Lsn captureStartLsn = connection.queryAndMap(
+        final String captureStartLsn = connection.queryAndMap(
                 "SELECT start_lsn FROM cdc.change_tables WHERE capture_instance = 'after_change'",
                 rs -> {
                     assertThat(rs.next()).isTrue();
-                    return Lsn.valueOf(rs.getBytes(1));
+                    return Lsn.valueOf(rs.getBytes(1)).toString();
                 });
-        final Lsn schemaChangeLsn = Lsn.valueOf((String) schemaRecord.sourceOffset().get(SourceInfo.COMMIT_LSN_KEY));
-
-        // The connector could resume from its position, because the change tables still hold the capture instance of
-        // tablea, which started before the connector read anything. The record therefore carries the position of the
-        // connector and not the start LSN of the capture instance.
-        assertThat(schemaChangeLsn).isNotEqualTo(captureStartLsn);
-        assertThat(schemaChangeLsn)
-                .isGreaterThanOrEqualTo(Lsn.valueOf((String) lastUpdate.sourceOffset().get(SourceInfo.COMMIT_LSN_KEY)));
-        assertThat(Lsn.valueOf((String) schemaRecord.sourceOffset().get(SourceInfo.CHANGE_LSN_KEY))).isEqualTo(schemaChangeLsn);
-
-        // The connector can resume from the position of the record, so a restart from it does not fail
-        assertThat(minChangeTableLsn()).isLessThanOrEqualTo(schemaChangeLsn);
+        assertThat(schemaRecord.sourceOffset().get(SourceInfo.COMMIT_LSN_KEY)).isEqualTo(captureStartLsn);
+        assertThat(schemaRecord.sourceOffset().get(SourceInfo.CHANGE_LSN_KEY)).isEqualTo(captureStartLsn);
+        assertThat(schemaRecord.sourceOffset().get(SourceInfo.COMMIT_LSN_KEY))
+                .isNotEqualTo(lastUpdate.sourceOffset().get(SourceInfo.COMMIT_LSN_KEY));
 
         records = consumeRecordsByTopic(RECORDS_PER_TABLE * 2);
         assertThat(records.recordsForTopic("server1.testDB1.dbo.tablea")).hasSize(RECORDS_PER_TABLE);
         assertThat(records.recordsForTopic("server1.testDB1.dbo.tableb")).hasSize(RECORDS_PER_TABLE);
-
-        // The schema change record is before the first data record that follows it, so that a restart from its
-        // offset does not skip that record
-        final SourceRecord firstDataRecord = records.allRecordsInOrder().get(0);
-        assertThat(schemaChangeLsn)
-                .isLessThan(Lsn.valueOf((String) firstDataRecord.sourceOffset().get(SourceInfo.COMMIT_LSN_KEY)));
 
         records.recordsForTopic("server1.testDB1.dbo.tableb").forEach(record -> {
             assertSchemaMatchesStruct(
@@ -223,18 +209,6 @@ public class SchemaHistoryTopicIT extends AbstractAsyncEngineConnectorTest {
                             .field("newcolb", Schema.OPTIONAL_STRING_SCHEMA)
                             .build());
         });
-    }
-
-    /**
-     * @return the oldest start LSN among the change tables of the test database
-     */
-    private Lsn minChangeTableLsn() throws SQLException {
-        return connection.queryAndMap(
-                "SELECT min(start_lsn) FROM cdc.change_tables",
-                rs -> {
-                    assertThat(rs.next()).isTrue();
-                    return Lsn.valueOf(rs.getBytes(1));
-                });
     }
 
     @Test

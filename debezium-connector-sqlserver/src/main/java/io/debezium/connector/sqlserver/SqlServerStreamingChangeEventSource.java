@@ -492,18 +492,6 @@ public class SqlServerStreamingChangeEventSource implements StreamingChangeEvent
         }
     }
 
-    private void migrateTable(SqlServerPartition partition, final SqlServerChangeTable newTable, SqlServerOffsetContext offsetContext)
-            throws InterruptedException, SQLException {
-        final Table tableSchema = schemaToMigrate(partition, newTable);
-        if (tableSchema != null) {
-            // The migration is dispatched before the change tables of the iteration are read, so the record has to be
-            // below every row the iteration reads.
-            withPosition(offsetContext, positionBelowTheRowsOfTheIteration(partition, offsetContext),
-                    () -> dispatchSchemaChange(partition, newTable, tableSchema, offsetContext));
-            newTable.setSourceTable(tableSchema);
-        }
-    }
-
     /**
      * @return the schema of the source table, or {@code null} if the schema of the source table did not change
      */
@@ -525,45 +513,17 @@ public class SqlServerStreamingChangeEventSource implements StreamingChangeEvent
     }
 
     /**
-     * Determines the position of the schema change record of a migration that is dispatched before the change tables of
-     * the iteration are read. The record has to be below every row the iteration reads, or a restart from its offset
-     * skips a row that follows it. The position of the connector is below every row of the iteration, because the
-     * iteration reads from the increment of it, and so is the oldest LSN the change tables hold, because a change table
-     * only holds rows at or above its own start LSN. The record carries the position of the connector when the connector
-     * could resume from it, because the connector refuses to start from a position below the oldest LSN the change
-     * tables hold, and the oldest LSN the change tables hold otherwise.
-     */
-    private Lsn positionBelowTheRowsOfTheIteration(SqlServerPartition partition, SqlServerOffsetContext offsetContext) throws SQLException {
-        final Lsn oldestLsn = dataConnection.getMinLsnFromAllChangeTables(partition.getDatabaseName());
-        final Lsn connectorPosition = offsetContext.getChangePosition().getCommitLsn();
-        LOGGER.info("Oldest LSN in logs is '{}'", oldestLsn);
-        LOGGER.info("Position of the connector is '{}'", connectorPosition);
-        if (connectorPosition.isAvailable() && dataConnection.canResumeFrom(connectorPosition, oldestLsn)) {
-            return connectorPosition;
-        }
-        return oldestLsn;
-    }
-
-    /**
      * Emits the schema change record at the start LSN of the capture instance, so that it sorts after the last
      * old-structure row. A restart from that record re-reads from the capture start, which duplicates the rows read
      * since then but does not drop rows.
      */
     static void withCaptureStartPosition(SqlServerOffsetContext offsetContext, SqlServerChangeTable newTable, BlockingRunnable action)
             throws InterruptedException {
-        withPosition(offsetContext, newTable.getStartLsn(), action);
-    }
-
-    /**
-     * Emits the schema change record at the given LSN, so that it sorts at that position in the stream, and restores
-     * the position of the connector afterwards. The event serial number is reset, so that a restart from the offset of
-     * the schema change record does not skip the records at that position.
-     */
-    private static void withPosition(SqlServerOffsetContext offsetContext, Lsn lsn, BlockingRunnable action)
-            throws InterruptedException {
         final TxLogPosition currentPosition = offsetContext.getChangePosition();
         final long eventSerialNo = offsetContext.getEventSerialNo();
-        offsetContext.assignChangePosition(TxLogPosition.valueOf(lsn, lsn, currentPosition.getCommandId()), 0);
+        // The event serial number is reset, so that a restart from the offset of the schema change record does not
+        // skip the records at that position.
+        offsetContext.assignChangePosition(TxLogPosition.valueOf(newTable.getStartLsn(), newTable.getStartLsn(), currentPosition.getCommandId()), 0);
         try {
             action.run();
         }
@@ -665,16 +625,9 @@ public class SqlServerStreamingChangeEventSource implements StreamingChangeEvent
                 if (!connectorConfig.isOverrideCdcColumnFilter() && hasColumnMissingFromSchema(cachedSchema, newestTable)) {
                     LOGGER.info("The capture instance {} of table {} captures a column that the cached schema does not have, so the table will be migrated",
                             newestTable.getCaptureInstance(), newestTable.getSourceTableId());
-                    if (captures.size() > 1) {
-                        // The retired capture instance may still have rows that have to be read before the
-                        // migration, so the LSN window orders the migration.
-                        schemaChangeCheckpoints.add(newestTable);
-                    }
-                    else {
-                        // The retired capture instance is gone and there is no row that has to be read before
-                        // the migration, so it can happen right here, before the change tables are read.
-                        migrateTable(partition, newestTable, offsetContext);
-                    }
+                    // The migration is queued. The boundary of the new capture instance orders it: the rows of the retired
+                    // capture instance are below that boundary, so they are read before the migration.
+                    schemaChangeCheckpoints.add(newestTable);
                 }
             }
             tables.add(currentTable);
