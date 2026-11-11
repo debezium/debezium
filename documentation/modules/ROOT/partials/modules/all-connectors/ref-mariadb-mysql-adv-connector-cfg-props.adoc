@@ -1197,6 +1197,17 @@ For example, if the topic prefix is `fulfillment`, the default topic name is `fu
 
 
 
+[id="{context}-property-unavailable-value-placeholder"]
+xref:{context}-property-unavailable-value-placeholder[`unavailable.value.placeholder`]::
+
+Default value::: `__debezium_unavailable_value`
+
+Description:::
+Specifies the constant that the connector provides to indicate that the original value is unavailable and not provided by the database.
+For example, the connector emits this value for the columns that the binlog omits when `binlog_row_image` is set to `NOBLOB`.
+If the setting of `unavailable.value.placeholder` starts with the `hex:` prefix it is expected that the rest of the string represents hexadecimally encoded octets.
+If the rest of the string is not an even number of hexadecimal characters, the connector configuration fails validation.
+
 [id="{context}-property-use-nongraceful-disconnect"]
 xref:{context}-property-use-nongraceful-disconnect[`use.nongraceful.disconnect`]::
 

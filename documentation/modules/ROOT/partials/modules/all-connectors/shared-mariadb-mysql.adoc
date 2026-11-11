@@ -2929,7 +2929,7 @@ endif::MARIADB[]
 
 |`binlog_row_image`
 |The `binlog_row_image` must be set to `FULL` or `NOBLOB`.
-With `NOBLOB`, the connector emits the BLOB and TEXT columns that the binlog omits with the value of the `unavailable.value.placeholder` property.
+With `NOBLOB`, the connector emits the BLOB and TEXT columns that the binlog omits with the value of the xref:{context}-property-unavailable-value-placeholder[`unavailable.value.placeholder`] property.
 ifdef::MARIADB[]
 Because MariaDB stores `JSON` columns as `LONGTEXT`, the connector also emits the `JSON` columns that the binlog omits with this placeholder value.
 endif::MARIADB[]
