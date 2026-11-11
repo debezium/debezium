@@ -157,7 +157,7 @@ public class DriverOptionsFilter {
     }
 
     private Policy resolvePolicy(final Mode mode, final String systemPropertyName, final String environmentVariableName,
-                                        final Map<String, String> environment, final Properties systemProperties) {
+                                 final Map<String, String> environment, final Properties systemProperties) {
         final var systemPropertyValue = systemProperties.getProperty(systemPropertyName);
         if (!Strings.isNullOrBlank(systemPropertyValue)) {
             return new Policy(mode, systemPropertyValue.trim(), "system property " + systemPropertyName);
