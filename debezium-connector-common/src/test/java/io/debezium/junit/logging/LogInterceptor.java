@@ -25,10 +25,13 @@ import ch.qos.logback.core.AppenderBase;
 /**
  * Captures logged events for assertions in tests.
  * <p>
- * An interceptor is scoped to a single test method: after each test, {@link LogInterceptorCleanupExtension}
+ * An interceptor is scoped to where it is created: after each test, {@link LogInterceptorCleanupExtension}
  * restores the logger levels changed through {@link #setLoggerLevel(Class, Level)} or
- * {@link #changeLoggerLevel(String, Level)} and detaches every
- * interceptor. To clean up a single interceptor earlier, call {@link #close()}, e.g. with try-with-resources.
+ * {@link #changeLoggerLevel(String, Level)} during that test and detaches every interceptor created for it,
+ * including those held in instance fields. Interceptors and level changes created in static fields or
+ * {@code @BeforeAll} methods are shared by the test methods, so they are only cleaned up after all tests of
+ * the class have run. To clean up a single interceptor earlier, call {@link #close()}, e.g. with
+ * try-with-resources.
  *
  * @author Chris Cranford, Jiri Pechanec
  */
