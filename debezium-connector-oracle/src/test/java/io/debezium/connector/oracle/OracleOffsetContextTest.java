@@ -146,7 +146,7 @@ public class OracleOffsetContextTest {
 
     @Test
     @FixFor("debezium/dbz#2779")
-    public void shouldRetireSnapshotCommitScnOnceScnReachesIt() throws Exception {
+    public void shouldRetireSnapshotCommitScnOnceScnAndCheckpointReachIt() throws Exception {
         // A transaction from before the snapshot is still open, so the offset SCN is below it.
         OracleOffsetContext offsetContext = loadSnapshotBoundaryOffset("790", "700:1:");
         offsetContext.retireSnapshotCommitScnIfReached();
@@ -157,14 +157,22 @@ public class OracleOffsetContextTest {
         offsetContext.retireSnapshotCommitScnIfReached();
         assertThat(offsetContext.getOffset().get(OracleOffsetContext.SNAPSHOT_COMMIT_SCN_KEY)).isEqualTo("800");
 
-        // The offset SCN reaches it, so no transaction committed at or before it can be mined again.
+        // The offset SCN and a checkpoint have reached it, so no transaction committed at or before it can be
+        // mined again.
         offsetContext.setScn(Scn.valueOf(800));
         offsetContext.retireSnapshotCommitScnIfReached();
         assertThat(offsetContext.getOffset().get(OracleOffsetContext.SNAPSHOT_COMMIT_SCN_KEY)).isNull();
         assertThat(offsetContext.getSnapshotCommitScn()).isEqualTo(Scn.NULL);
 
-        // An offset whose SCN has already reached it does not load it.
+        // The offset SCN has reached it, but the last checkpoint has not, so the offset SCN can still fall
+        // back below it.
         offsetContext = loadSnapshotBoundaryOffset("800", "700:1:");
+        assertThat(offsetContext.getSnapshotCommitScn()).isEqualTo(Scn.valueOf(800));
+        offsetContext.retireSnapshotCommitScnIfReached();
+        assertThat(offsetContext.getOffset().get(OracleOffsetContext.SNAPSHOT_COMMIT_SCN_KEY)).isEqualTo("800");
+
+        // An offset whose SCN and last checkpoint have already reached it does not load it.
+        offsetContext = loadSnapshotBoundaryOffset("800", "700:1:,800:2:");
         assertThat(offsetContext.getSnapshotCommitScn()).isEqualTo(Scn.NULL);
         assertThat(offsetContext.getOffset().get(OracleOffsetContext.SNAPSHOT_COMMIT_SCN_KEY)).isNull();
     }
@@ -190,6 +198,7 @@ public class OracleOffsetContextTest {
         // Older versions also wrote snapshot_scn once streaming had moved past the snapshot
         offsetValues = new HashMap<>();
         offsetValues.put(SourceInfo.SCN_KEY, "100");
+        offsetValues.put(SourceInfo.COMMIT_SCN_KEY, "120:1:");
         offsetValues.put("snapshot_scn", "100");
 
         offsetContext = (OracleOffsetContext) offsetLoader.load(offsetValues);

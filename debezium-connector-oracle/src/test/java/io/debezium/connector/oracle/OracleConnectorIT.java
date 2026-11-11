@@ -3672,8 +3672,8 @@ public class OracleConnectorIT extends AbstractAsyncEngineConnectorTest {
             assertThat(streamingRecords).hasSize(1);
             assertThat(((Struct) streamingRecords.get(0).value()).getString("op")).isEqualTo(Envelope.Operation.CREATE.code());
 
-            // Once the in-progress transaction has committed, the offset SCN reaches the snapshot commit SCN and
-            // it is retired.
+            // Once the in-progress transaction has committed, the offset SCN reaches the snapshot commit SCN. Its
+            // commit is also a checkpoint past the snapshot commit SCN, so it is retired.
             Awaitility.await().atMost(Duration.ofMinutes(2)).until(() -> {
                 final Map<String, Object> committedOffset = readLastCommittedOffset(config, partition);
                 return committedOffset != null
