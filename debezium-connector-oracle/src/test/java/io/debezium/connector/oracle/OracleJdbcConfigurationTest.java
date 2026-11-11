@@ -6,10 +6,12 @@
 package io.debezium.connector.oracle;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
+import io.debezium.DebeziumException;
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
 import io.debezium.connector.oracle.jdbc.DualOracleConnectionFactory;
@@ -28,6 +30,9 @@ import ch.qos.logback.classic.Level;
  * @author Chris Cranford
  */
 public class OracleJdbcConfigurationTest {
+
+    private static final String URL_ALLOWED_PROPERTY = "oracle.connection.url.allowed";
+    private static final String URL_DENIED_PROPERTY = "oracle.connection.url.denied";
 
     private LogInterceptor providerLogInterceptor;
     private LogInterceptor standardFactoryLogInterceptor;
@@ -433,5 +438,58 @@ public class OracleJdbcConfigurationTest {
         assertThat(jdbcConfig.getSecondaryHostname()).isEqualTo("secondary");
         assertThat(jdbcConfig.getSecondaryDatabaseName()).isEqualTo("secondarydb");
         assertThat(jdbcConfig.getSecondaryPort()).isEqualTo(1522);
+    }
+
+    @Test
+    public void shouldRejectPrimaryUrlNotMatchingAllowedPattern() {
+        final Configuration config = Configuration.create()
+                .with("database.url", "jdbc:oracle:thin:@evil:1521/primarydb")
+                .build();
+
+        System.setProperty(URL_ALLOWED_PROPERTY, "jdbc:oracle:thin:@primary:.*");
+        try {
+            assertThatThrownBy(() -> OracleJdbcConfiguration.adaptWithSubset(config))
+                    .isInstanceOf(DebeziumException.class)
+                    .hasMessageContaining("database.url");
+        }
+        finally {
+            System.clearProperty(URL_ALLOWED_PROPERTY);
+        }
+    }
+
+    @Test
+    public void shouldRejectSecondaryUrlMatchingDeniedPattern() {
+        final Configuration config = Configuration.create()
+                .with("database.url", "jdbc:oracle:thin:@primary:1521/primarydb")
+                .with("database.secondary.url", "jdbc:oracle:thin:@evil:1521/secondarydb")
+                .build();
+
+        System.setProperty(URL_DENIED_PROPERTY, ".*@evil:.*");
+        try {
+            assertThatThrownBy(() -> OracleJdbcConfiguration.adaptWithSubset(config))
+                    .isInstanceOf(DebeziumException.class)
+                    .hasMessageContaining("database.secondary.url");
+        }
+        finally {
+            System.clearProperty(URL_DENIED_PROPERTY);
+        }
+    }
+
+    @Test
+    public void shouldAcceptUrlsSatisfyingAllowedPattern() {
+        final Configuration config = Configuration.create()
+                .with("database.url", "jdbc:oracle:thin:@primary:1521/primarydb")
+                .with("database.secondary.url", "jdbc:oracle:thin:@primary:1522/secondarydb")
+                .build();
+
+        System.setProperty(URL_ALLOWED_PROPERTY, "jdbc:oracle:thin:@primary:.*");
+        try {
+            final OracleJdbcConfiguration jdbcConfig = OracleJdbcConfiguration.adaptWithSubset(config);
+            assertThat(jdbcConfig.getUrl()).isEqualTo("jdbc:oracle:thin:@primary:1521/primarydb");
+            assertThat(jdbcConfig.getSecondaryUrl()).isEqualTo("jdbc:oracle:thin:@primary:1522/secondarydb");
+        }
+        finally {
+            System.clearProperty(URL_ALLOWED_PROPERTY);
+        }
     }
 }

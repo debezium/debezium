@@ -494,4 +494,53 @@ public class MongoDbConnectorConfigTest {
         }
     }
 
+    @Test
+    void shouldRejectConnectionStringNotMatchingAllowedPattern() {
+        final var config = TestHelper.getConfiguration().edit()
+                .with(MongoDbConnectorConfig.CONNECTION_STRING, "mongodb://evil:27017/?replicaSet=rs0")
+                .build();
+
+        System.setProperty("mongodb.connection.url.allowed", "mongodb://trusted:.*");
+        try {
+            assertThatThrownBy(() -> new MongoDbConnectorConfig(config))
+                    .isInstanceOf(DebeziumException.class)
+                    .hasMessageContaining(MongoDbConnectorConfig.CONNECTION_STRING.name());
+        }
+        finally {
+            System.clearProperty("mongodb.connection.url.allowed");
+        }
+    }
+
+    @Test
+    void shouldRejectConnectionStringMatchingDeniedPattern() {
+        final var config = TestHelper.getConfiguration().edit()
+                .with(MongoDbConnectorConfig.CONNECTION_STRING, "mongodb://evil:27017/?replicaSet=rs0")
+                .build();
+
+        System.setProperty("mongodb.connection.url.denied", ".*evil.*");
+        try {
+            assertThatThrownBy(() -> new MongoDbConnectorConfig(config))
+                    .isInstanceOf(DebeziumException.class)
+                    .hasMessageContaining(MongoDbConnectorConfig.CONNECTION_STRING.name());
+        }
+        finally {
+            System.clearProperty("mongodb.connection.url.denied");
+        }
+    }
+
+    @Test
+    void shouldAcceptConnectionStringMatchingAllowedPattern() {
+        final var config = TestHelper.getConfiguration().edit()
+                .with(MongoDbConnectorConfig.CONNECTION_STRING, "mongodb://trusted:27017/?replicaSet=rs0")
+                .build();
+
+        System.setProperty("mongodb.connection.url.allowed", "mongodb://trusted:.*");
+        try {
+            assertThat(new MongoDbConnectorConfig(config).getConnectionString().getHosts()).containsExactly("trusted:27017");
+        }
+        finally {
+            System.clearProperty("mongodb.connection.url.allowed");
+        }
+    }
+
 }
