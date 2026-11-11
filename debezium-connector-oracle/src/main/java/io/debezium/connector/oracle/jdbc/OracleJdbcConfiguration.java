@@ -15,6 +15,8 @@ import java.util.function.Predicate;
 import io.debezium.config.Configuration;
 import io.debezium.config.ConfigurationNames;
 import io.debezium.config.Field;
+import io.debezium.connector.oracle.Module;
+import io.debezium.jdbc.DriverOptionsFilter;
 import io.debezium.jdbc.JdbcConfiguration;
 import io.debezium.util.Collect;
 
@@ -80,7 +82,7 @@ public interface OracleJdbcConfiguration extends JdbcConfiguration {
 
     static OracleJdbcConfiguration adaptWithSubset(Configuration config) {
         return OracleJdbcConfiguration.adapt(config.subset(ConfigurationNames.DATABASE_CONFIG_PREFIX, true)
-                .merge(config.subset(DRIVER_CONFIG_PREFIX, true))
+                .merge(new DriverOptionsFilter(Module.name()).filter(config.subset(DRIVER_CONFIG_PREFIX, true)))
                 .merge(config.subset(OracleJdbcConfiguration.SECONDARY_PREFIX, false)));
     }
 

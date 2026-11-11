@@ -25,7 +25,9 @@ import io.debezium.DebeziumException;
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
 import io.debezium.config.ConfigurationNames;
+import io.debezium.connector.postgresql.Module;
 import io.debezium.connector.postgresql.connection.PostgresConnection;
+import io.debezium.jdbc.DriverOptionsFilter;
 import io.debezium.jdbc.JdbcConfiguration;
 import io.debezium.relational.TableId;
 
@@ -71,11 +73,13 @@ public class QueryInformationSchemaMetadata extends AbstractTimescaleDbMetadata 
 
     public QueryInformationSchemaMetadata(Configuration config) {
         super(config);
-        connection = new PostgresConnection(
-                JdbcConfiguration.adapt(config.subset(ConfigurationNames.DATABASE_CONFIG_PREFIX, true)
-                        .merge(config.subset(CommonConnectorConfig.DRIVER_CONFIG_PREFIX, true))),
-                "Debezium TimescaleDB metadata");
+        connection = new PostgresConnection(connectionConfig(config), "Debezium TimescaleDB metadata");
         chunkToHypertableQuery = resolveChunkToHypertableQuery();
+    }
+
+    static JdbcConfiguration connectionConfig(final Configuration config) {
+        return JdbcConfiguration.adapt(config.subset(ConfigurationNames.DATABASE_CONFIG_PREFIX, true)
+                .merge(new DriverOptionsFilter(Module.name()).filter(config.subset(CommonConnectorConfig.DRIVER_CONFIG_PREFIX, true))));
     }
 
     private String resolveChunkToHypertableQuery() {

@@ -29,6 +29,7 @@ import io.debezium.config.EnumeratedValue;
 import io.debezium.config.Field;
 import io.debezium.config.Field.ValidationOutput;
 import io.debezium.heartbeat.DatabaseHeartbeatImpl;
+import io.debezium.jdbc.DriverOptionsFilter;
 import io.debezium.jdbc.JdbcConfiguration;
 import io.debezium.jdbc.JdbcValueConverters.DecimalMode;
 import io.debezium.jdbc.TemporalPrecisionMode;
@@ -601,8 +602,10 @@ public abstract class RelationalDatabaseConnectorConfig extends CommonConnectorC
         this.tableIdMapper = tableIdMapper;
         this.useCatalogBeforeSchema = useCatalogBeforeSchema;
 
+        final var driverOptions = new DriverOptionsFilter(getConnectorName())
+                .filter(config.subset(DRIVER_CONFIG_PREFIX, true));
         this.jdbcConfig = JdbcConfiguration.adapt(
-                config.subset(ConfigurationNames.DATABASE_CONFIG_PREFIX, true).merge(config.subset(DRIVER_CONFIG_PREFIX, true)));
+                config.subset(ConfigurationNames.DATABASE_CONFIG_PREFIX, true).merge(driverOptions));
 
         if (systemTablesFilter != null && tableIdMapper != null) {
             this.tableFilters = new RelationalTableFilters(config, systemTablesFilter, tableIdMapper, useCatalogBeforeSchema);
