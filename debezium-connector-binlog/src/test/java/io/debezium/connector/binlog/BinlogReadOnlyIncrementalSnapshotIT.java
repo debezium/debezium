@@ -32,6 +32,7 @@ import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.condition.DisabledIfSystemProperty;
 import org.slf4j.LoggerFactory;
 
 import io.debezium.config.CommonConnectorConfig;
@@ -310,6 +311,9 @@ public abstract class BinlogReadOnlyIncrementalSnapshotIT<C extends SourceConnec
      */
     @Test
     @FixFor("debezium/dbz#1328")
+    // The InnoDB-based binary log keeps a pre-allocated next file and refuses to purge any binary log while the
+    // current one is in use, and this test needs a purged binary log.
+    @DisabledIfSystemProperty(named = "database.innodb.binlog", matches = "true", disabledReason = "Not supported with the InnoDB-based binary log")
     void shouldNotWarnAboutTheMissingSnapshotContext() throws Exception {
         final Logger snapshotLogger = (Logger) LoggerFactory.getLogger(BinlogReadOnlyIncrementalSnapshotChangeEventSource.class);
         final Logger binlogLogger = (Logger) LoggerFactory.getLogger(BinlogStreamingChangeEventSource.class);
