@@ -23,3 +23,127 @@ Although {prodname} is intended to be used as turnkey services, all of JARs and 
 We do provide a small library so applications can xref:development/engine.adoc[embed any Kafka Connect connector] and consume data change events read directly from the source system.
 This provides a light weight system (since Kafka and Kafka Connect services are not needed), but as a consequence it is not as fault tolerant or reliable since the application must manage and maintain all state normally kept inside Kafka's distributed and replicated logs.
 It's perfect for use in tests, and with careful consideration it may be useful in some applications.
+
+== Security Concerns
+
+=== Restricting JDBC driver pass-through properties
+
+Relational connectors pass every connector option that starts with `driver.` to the JDBC driver, with the `driver.` prefix removed.
+For example, `driver.sslMode=required` sets the driver property `sslMode`.
+Driver properties can change how and where the driver connects, so anyone who can modify a connector configuration can influence the connection in ways that are not otherwise visible in the connector options.
+To control this, the administrator who installs {prodname} can restrict which driver properties are passed to the driver with a policy that the connector configuration cannot override.
+
+The policy is set outside of the connector configuration, either as a Java system property or as an environment variable of the process that runs the connector.
+It is evaluated separately for each connector, using the following connector names:
+
+[cols="2,2",options="header"]
+|===
+|Connector |Connector name
+|Oracle |`oracle`
+|MariaDB |`mariadb`
+|MySQL |`mysql`
+|PostgreSQL |`postgresql`
+|SQL Server |`sqlserver`
+|===
+
+Two settings are available for each connector, where `<connector>` is the connector name from the table and `<CONNECTOR>` is the same name in upper case:
+
+[cols="1,2,2",options="header"]
+|===
+|Policy |System property |Environment variable
+|Allow |`<connector>.driver.options.allowed` |`<CONNECTOR>_DRIVER_OPTIONS_ALLOWED`
+|Deny |`<connector>.driver.options.denied` |`<CONNECTOR>_DRIVER_OPTIONS_DENIED`
+|===
+
+The value of each setting is one of the following:
+
+`ALL`:: Applies the policy to every driver property.
+`NONE`:: Applies the policy to no driver property.
+A comma-separated list of names:: Applies the policy to the listed driver properties, for example `sslMode,connectTimeout`.
+The names are given without the `driver.` prefix and are case sensitive.
+
+The keywords `ALL` and `NONE` are not case sensitive.
+The effect of the keywords depends on the policy:
+
+[cols="1,2,2",options="header"]
+|===
+|Value |Allow policy |Deny policy
+|`ALL` |All driver properties are passed to the driver. This is the default when no policy is set. |No driver property is passed to the driver.
+|`NONE` |No driver property is passed to the driver. |All driver properties are passed to the driver.
+|List of names |Only the listed driver properties are passed to the driver. |All driver properties except the listed ones are passed to the driver.
+|===
+
+If both the system property and the environment variable are set for the same policy, the system property takes precedence.
+Only one policy, either allow or deny, can be set for a connector.
+If both are set, the connector fails to start.
+If neither is set, all driver properties are passed to the driver.
+
+A driver property that the policy does not permit is omitted from the driver configuration, and the connector writes a warning to the log that lists the names of the omitted properties.
+The warning does not contain the property values.
+
+For example, the following setting allows a MySQL connector to pass only the `sslMode` and `connectTimeout` properties to the driver:
+
+[source,shell]
+----
+export KAFKA_OPTS='-Dmysql.driver.options.allowed=sslMode,connectTimeout'
+----
+
+The following setting prevents a PostgreSQL connector from passing the `sslfactory` property to the driver:
+
+[source,shell]
+----
+export POSTGRESQL_DRIVER_OPTIONS_DENIED='sslfactory'
+----
+
+=== Restricting connection URLs
+
+Some connectors accept the connection URL or connection string as a raw value in the connector configuration.
+Anyone who can create or modify a connector configuration can therefore point the connector at any host.
+To control this, the administrator who installs {prodname} can restrict the permitted URLs with a policy that the connector configuration cannot override.
+
+The policy is set outside of the connector configuration, either as a Java system property or as an environment variable of the process that runs the connector.
+The following connectors support the policy:
+
+[cols="2,3,3",options="header"]
+|===
+|Connector |Connector name |Options that are checked
+|Oracle |`oracle` |`database.url`, `database.secondary.url`
+|MongoDB |`mongodb` |`mongodb.connection.string`
+|===
+
+Two settings are available for each connector, where `<connector>` is the connector name from the table and `<CONNECTOR>` is the same name in upper case:
+
+[cols="1,2,2",options="header"]
+|===
+|Policy |System property |Environment variable
+|Allow |`<connector>.connection.url.allowed` |`<CONNECTOR>_CONNECTION_URL_ALLOWED`
+|Deny |`<connector>.connection.url.denied` |`<CONNECTOR>_CONNECTION_URL_DENIED`
+|===
+
+The value of each setting is a Java regular expression.
+The expression must match the entire URL, so use `.*` to match any part that is not significant.
+
+* With the allow policy, the connector accepts only URLs that match the expression.
+* With the deny policy, the connector rejects every URL that matches the expression.
+
+If both the system property and the environment variable are set for the same policy, the system property takes precedence.
+Only one policy, either allow or deny, can be set for a connector.
+If both are set, or if the regular expression is not valid, the connector fails to start.
+If neither is set, all URLs are accepted.
+
+When the connector rejects a URL, the error message names the option that contains the rejected value and the source of the policy.
+The message never contains the URL itself because it can include credentials.
+
+For example, the following setting allows an Oracle connector to connect only to hosts in the `db.example.com` domain:
+
+[source,shell]
+----
+export KAFKA_OPTS='-Doracle.connection.url.allowed=jdbc:oracle:thin:@[a-z0-9-]+\.db\.example\.com:\d+/.*'
+----
+
+The following setting prevents a MongoDB connector from connecting to a specific host:
+
+[source,shell]
+----
+export MONGODB_CONNECTION_URL_DENIED='.*untrusted\.example\.org.*'
+----
