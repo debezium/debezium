@@ -187,6 +187,11 @@ public class InfinispanLogMinerTransactionCache extends AbstractLogMinerTransact
 
     private void primeHeapCacheFromOffHeapCaches() {
         // Primes the heap-based cache if the Infinispan disk caches contained data on start-up
+        // A transaction may be persisted without any events, i.e. START mined with no captured DML yet
+        try (Stream<String> stream = transactionCache.keySet().stream()) {
+            stream.forEach(transactionId -> eventIdsByTransactionId.putIfAbsent(transactionId, new TreeSet<>()));
+        }
+
         eventKeys(keyStream -> {
             keyStream.map(k -> k.split("-", 2))
                     .filter(parts -> parts.length == 2)
