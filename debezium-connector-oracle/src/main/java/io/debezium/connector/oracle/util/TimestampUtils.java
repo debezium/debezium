@@ -55,18 +55,26 @@ public final class TimestampUtils {
      * Convert the supplied timestamp without a timezone.
      *
      * @param value the string-value to be converted
-     * @return the returned converted value or {@code null} if the value could not be converted
+     * @return the returned converted value or {@code null} if the value could not be converted or is a zero date
      */
     public static Instant convertTimestampNoZoneToInstant(String value) {
         final Matcher toTimestampMatcher = TO_TIMESTAMP.matcher(value);
         if (toTimestampMatcher.matches()) {
             String text = toTimestampMatcher.group(1);
+            if (OracleZeroDates.isZeroDateText(text)) {
+                // A zero month or day cannot be represented and must not be leniently rolled back
+                return null;
+            }
             final DateTimeFormatter formatter = resolveToTimestampFormatter(value, text);
             return LocalDateTime.from(formatter.parse(text.trim())).atZone(GMT_ZONE_ID).toInstant();
         }
 
         final Matcher toDateMatcher = TO_DATE.matcher(value);
         if (toDateMatcher.matches()) {
+            if (OracleZeroDates.isZeroDateText(toDateMatcher.group(1))) {
+                // A zero month or day cannot be represented and must not be leniently rolled back
+                return null;
+            }
             final DateTimeFormatter formatter = resolveToDateFormatter(value);
             return LocalDateTime.from(formatter.parse(toDateMatcher.group(1))).atZone(GMT_ZONE_ID).toInstant();
         }
