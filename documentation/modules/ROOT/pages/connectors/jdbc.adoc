@@ -406,6 +406,9 @@ When the {prodname} JDBC connector receives an event from a topic, if the schema
 If schema evolution is enabled, the connector prepares and executes an `ALTER TABLE` SQL statement before it applies the DML event to the destination table.
 Because changing column data types, dropping columns, and adjusting primary keys can be considered dangerous operations, the connector is prohibited from performing these operations.
 
+When several tasks write to the same destination table, more than one task might try to create or alter the table at the same time.
+If the database aborts a task's table metadata read or DDL statement because of a lock conflict, such as a deadlock with another task's `ALTER TABLE` statement, the connector rechecks the table and retries according to the xref:jdbc-property-flush-max-retries[`flush.max.retries`] and xref:jdbc-property-flush-retry-delay-ms[`flush.retry.delay.ms`] settings.
+
 The schema of each field determines whether a column is `NULL` or `NOT NULL`.
 The schema also defines the default values for each column.
 If the connector attempts to create a table with a nullability setting or a default value that don't want, you must either create the table manually, ahead of time, or adjust the schema of the associated field before the sink connector processes the event.
@@ -2113,6 +2116,8 @@ If you include this property in the configuration, do not set the `field.include
 |5
 |Specifies the maximum number of retries that the connector performs after an attempt to flush changes to the target database results in certain database errors.
 If the number of retries exceeds the retry value, the sink connector enters a _FAILED_ state.
+The connector applies the same limit when a lock conflict, such as a deadlock with a concurrent task, aborts the reading, creation, or alteration of a destination table during schema evolution.
+Setting this property to `0` disables these retries as well.
 
 |[[jdbc-property-flush-retry-delay-ms]]<<jdbc-property-flush-retry-delay-ms, `+flush.retry.delay.ms+`>>
 |1000
@@ -2121,6 +2126,7 @@ If the number of retries exceeds the retry value, the sink connector enters a _F
 ====
 When you set both the `flush.retry.delay.ms` and xref:jdbc-property-flush-max-retries[`flush.max.retries`] properties, it can affect the behavior of the Kafka link:https://kafka.apache.org/documentation/#consumerconfigs_max.poll.interval.ms[max.poll.interval.ms] property.
 To prevent the connector from rebalancing, set the total retry time (flush.retry.delay.ms * flush.max.retries) to a value that is less than the value of `max.poll.interval.ms` (default is 5 minutes).
+Because lock conflicts during schema evolution are retried separately before the flush, a single batch can spend up to several times this total retry time waiting, so leave enough headroom below `max.poll.interval.ms`.
 ====
 
 |[[jdbc-property-timestamp-clamp-out-of-range-values]]<<jdbc-property-timestamp-clamp-out-of-range-values, `+timestamp.clamp.out.of.range.values+`>>
