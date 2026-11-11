@@ -43,6 +43,7 @@ import io.debezium.config.Field;
 import io.debezium.connector.oracle.OracleConnectorConfig.ConnectorAdapter;
 import io.debezium.connector.oracle.logminer.SqlUtils;
 import io.debezium.connector.oracle.util.OracleUtils;
+import io.debezium.connector.oracle.util.OracleZeroDates;
 import io.debezium.jdbc.JdbcConfiguration;
 import io.debezium.jdbc.JdbcConnection;
 import io.debezium.pipeline.source.snapshot.incremental.ChunkQueryBuilder;
@@ -64,6 +65,11 @@ import oracle.sql.json.OracleJsonObject;
 public class OracleConnection extends JdbcConnection {
 
     private final static Logger LOGGER = LoggerFactory.getLogger(OracleConnection.class);
+
+    /**
+     * Logs each zero date read from the database; set this logger's level to {@code ERROR} to silence the warnings.
+     */
+    private final static Logger ZERO_DATE_LOGGER = LoggerFactory.getLogger(OracleConnection.class.getName() + ".ZeroDates");
 
     /**
      * Returned by column metadata in Oracle if no scale is set;
@@ -756,9 +762,36 @@ public class OracleConnection extends JdbcConnection {
             // The driver maps DATE columns to java.sql.Timestamp, which is bound to the hybrid
             // Julian/Gregorian calendar; that drops the era of BC values and day-shifts dates that
             // precede the Gregorian cut-over in 1582, so fetch such columns as LocalDateTime.
-            return rs.getObject(columnIndex, LocalDateTime.class);
+            try {
+                return rs.getObject(columnIndex, LocalDateTime.class);
+            }
+            catch (SQLException e) {
+                // ORA-17132: Invalid conversion requested
+                if (e.getErrorCode() == 17132 && isZeroDate(rs, columnIndex, e)) {
+                    // Zero dates written by OCI clients have no java.time representation; treat these as
+                    // an absent value so that the null, column default or fallback rules apply.
+                    ZERO_DATE_LOGGER.warn("Column '{}' in table '{}' contains a zero date (0000-00-00), which is emitted as an absent value.",
+                            column.name(), table != null ? table.id() : null);
+                    return null;
+                }
+                throw e;
+            }
         }
         return super.getColumnValue(rs, columnIndex, column, table);
+    }
+
+    /**
+     * Re-reads the column's raw bytes to check whether the value is a zero date. If the re-read fails, the
+     * supplied conversion failure is rethrown, with the re-read failure added as a suppressed exception.
+     */
+    private static boolean isZeroDate(ResultSet rs, int columnIndex, SQLException conversionFailure) throws SQLException {
+        try {
+            return OracleZeroDates.isZeroDate(rs.getBytes(columnIndex));
+        }
+        catch (SQLException e) {
+            conversionFailure.addSuppressed(e);
+            throw conversionFailure;
+        }
     }
 
     @Override

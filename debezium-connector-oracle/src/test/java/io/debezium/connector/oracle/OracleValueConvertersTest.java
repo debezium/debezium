@@ -5,6 +5,9 @@
  */
 package io.debezium.connector.oracle;
 
+import static io.debezium.connector.oracle.util.OracleZeroDates.ZERO_DATE_BYTES;
+import static io.debezium.connector.oracle.util.OracleZeroDates.ZERO_TIMESTAMP_BYTES;
+import static io.debezium.connector.oracle.util.OracleZeroDates.ZERO_TIMESTAMP_TZ_BYTES;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.sql.Types;
@@ -37,6 +40,7 @@ import oracle.sql.DATE;
 import oracle.sql.INTERVALDS;
 import oracle.sql.INTERVALYM;
 import oracle.sql.TIMESTAMP;
+import oracle.sql.TIMESTAMPLTZ;
 import oracle.sql.TIMESTAMPTZ;
 
 /**
@@ -213,6 +217,97 @@ public class OracleValueConvertersTest {
         final LocalDateTime minimum = LocalDateTime.of(-4711, 1, 1, 0, 0);
         assertThat(convertersUtf8.converter(column, field).convert(new DATE(minimum)))
                 .isEqualTo(minimum.toInstant(ZoneOffset.UTC).toEpochMilli());
+    }
+
+    @Test
+    @FixFor("debezium/dbz#3055")
+    public void shouldConvertZeroDateToNullForOptionalColumn() {
+        final Column column = dateColumn();
+        final Field field = adaptiveFieldFor(column);
+
+        assertThat(convertersUtf8.converter(column, field).convert(new DATE(ZERO_DATE_BYTES))).isNull();
+        assertThat(convertersUtf8.converter(column, field).convert("HEXTORAW('64640000010101')")).isNull();
+        assertThat(convertersUtf8.converter(column, field).convert("TO_DATE('0000-00-00 00:00:00', 'YYYY-MM-DD HH24:MI:SS')")).isNull();
+
+        final Column tsColumn = timestampColumn(true);
+        final Field tsField = adaptiveFieldFor(tsColumn);
+        assertThat(convertersUtf8.converter(tsColumn, tsField).convert(new TIMESTAMP(ZERO_TIMESTAMP_BYTES))).isNull();
+        assertThat(convertersUtf8.converter(tsColumn, tsField).convert("HEXTORAW('6464000001010100000000')")).isNull();
+        assertThat(convertersUtf8.converter(tsColumn, tsField).convert("TO_TIMESTAMP('0000-00-00 00:00:00.000000')")).isNull();
+    }
+
+    @Test
+    @FixFor("debezium/dbz#3055")
+    public void shouldConvertZeroDateToDefaultForRequiredColumnWithDefault() {
+        final Column column = requiredDateColumn();
+        final long defaultValue = LocalDateTime.of(2000, 1, 1, 0, 0).toInstant(ZoneOffset.UTC).toEpochMilli();
+        final Field field = new Field(column.name(), 0, convertersUtf8.schemaBuilder(column).defaultValue(defaultValue).build());
+
+        assertThat(convertersUtf8.converter(column, field).convert(new DATE(ZERO_DATE_BYTES))).isEqualTo(defaultValue);
+        assertThat(convertersUtf8.converter(column, field).convert("TO_DATE('0000-00-00 00:00:00', 'YYYY-MM-DD HH24:MI:SS')"))
+                .isEqualTo(defaultValue);
+    }
+
+    @Test
+    @FixFor("debezium/dbz#3055")
+    public void shouldConvertZeroDateToEpochForRequiredColumnWithoutDefault() {
+        final Column column = requiredDateColumn();
+        final Field field = new Field(column.name(), 0, convertersUtf8.schemaBuilder(column).build());
+
+        assertThat(convertersUtf8.converter(column, field).convert(new DATE(ZERO_DATE_BYTES))).isEqualTo(0L);
+        assertThat(convertersUtf8.converter(column, field).convert("HEXTORAW('64640000010101')")).isEqualTo(0L);
+        assertThat(convertersUtf8.converter(column, field).convert("TO_DATE('0000-00-00 00:00:00', 'YYYY-MM-DD HH24:MI:SS')")).isEqualTo(0L);
+
+        final Column tsColumn = timestampColumn(false);
+        final Field tsField = new Field(tsColumn.name(), 0, convertersUtf8.schemaBuilder(tsColumn).build());
+        assertThat(convertersUtf8.converter(tsColumn, tsField).convert(new TIMESTAMP(ZERO_TIMESTAMP_BYTES))).isEqualTo(0L);
+    }
+
+    @Test
+    @FixFor("debezium/dbz#3055")
+    public void shouldConvertZeroDateWithTimeZoneToNullForOptionalColumn() {
+        final Column tstzColumn = timestampWithTimeZoneColumn(OracleTypes.TIMESTAMPTZ, "TIMESTAMP(6) WITH TIME ZONE", true);
+        final Field tstzField = adaptiveFieldFor(tstzColumn);
+        assertThat(convertersUtf8.converter(tstzColumn, tstzField).convert(new TIMESTAMPTZ(ZERO_TIMESTAMP_TZ_BYTES))).isNull();
+        assertThat(convertersUtf8.converter(tstzColumn, tstzField).convert("HEXTORAW('6464000001010100000000143c')")).isNull();
+        assertThat(convertersUtf8.converter(tstzColumn, tstzField).convert("TO_TIMESTAMP_TZ('0000-00-00 00:00:00.000000000 +00:00 AD')")).isNull();
+
+        final Column tsltzColumn = timestampWithTimeZoneColumn(OracleTypes.TIMESTAMPLTZ, "TIMESTAMP(6) WITH LOCAL TIME ZONE", true);
+        final Field tsltzField = adaptiveFieldFor(tsltzColumn);
+        assertThat(convertersUtf8.converter(tsltzColumn, tsltzField).convert(new TIMESTAMPLTZ(ZERO_TIMESTAMP_BYTES))).isNull();
+        assertThat(convertersUtf8.converter(tsltzColumn, tsltzField).convert("TO_TIMESTAMP_TZ('0000-00-00 00:00:00.000000000 +00:00 AD')")).isNull();
+    }
+
+    @Test
+    @FixFor("debezium/dbz#3055")
+    public void shouldConvertZeroDateWithTimeZoneToEpochForRequiredColumnWithoutDefault() {
+        final Column tstzColumn = timestampWithTimeZoneColumn(OracleTypes.TIMESTAMPTZ, "TIMESTAMP(6) WITH TIME ZONE", false);
+        final Field tstzField = new Field(tstzColumn.name(), 0, convertersUtf8.schemaBuilder(tstzColumn).build());
+        assertThat(convertersUtf8.converter(tstzColumn, tstzField).convert(new TIMESTAMPTZ(ZERO_TIMESTAMP_TZ_BYTES))).isEqualTo("1970-01-01T00:00:00Z");
+        assertThat(convertersUtf8.converter(tstzColumn, tstzField).convert("TO_TIMESTAMP_TZ('0000-00-00 00:00:00.000000000 +00:00 AD')"))
+                .isEqualTo("1970-01-01T00:00:00Z");
+
+        final Column tsltzColumn = timestampWithTimeZoneColumn(OracleTypes.TIMESTAMPLTZ, "TIMESTAMP(6) WITH LOCAL TIME ZONE", false);
+        final Field tsltzField = new Field(tsltzColumn.name(), 0, convertersUtf8.schemaBuilder(tsltzColumn).build());
+        assertThat(convertersUtf8.converter(tsltzColumn, tsltzField).convert(new TIMESTAMPLTZ(ZERO_TIMESTAMP_BYTES))).isEqualTo("1970-01-01T00:00:00Z");
+
+        // A zero year with a valid month and day is not a zero date
+        assertThat(convertersUtf8.converter(tstzColumn, tstzField).convert("TO_TIMESTAMP_TZ('0001-01-02 00:00:00.000000000 +00:00 BC')"))
+                .isEqualTo("0000-01-02T00:00:00.000000Z");
+    }
+
+    @Test
+    @FixFor("debezium/dbz#3055")
+    public void shouldStillConvertZeroYearWithValidMonthAndDay() throws Exception {
+        final Column column = dateColumn();
+        final Field field = adaptiveFieldFor(column);
+
+        // Oracle year 1 BC is ISO proleptic year 0; only a zero month or day denotes a zero date
+        final LocalDateTime oneBc = LocalDateTime.of(0, 1, 2, 0, 0);
+        assertThat(convertersUtf8.converter(column, field).convert(new DATE(oneBc)))
+                .isEqualTo(oneBc.toInstant(ZoneOffset.UTC).toEpochMilli());
+        assertThat(convertersUtf8.converter(column, field).convert("TO_DATE('0000-01-02 00:00:00', 'YYYY-MM-DD HH24:MI:SS')"))
+                .isEqualTo(oneBc.toInstant(ZoneOffset.UTC).toEpochMilli());
     }
 
     @Test
@@ -401,6 +496,36 @@ public class OracleValueConvertersTest {
                 .jdbcType(Types.TIMESTAMP)
                 .scale(0)
                 .optional(true)
+                .create();
+    }
+
+    private static Column requiredDateColumn() {
+        return Column.editor()
+                .name("VAL_DATE")
+                .type("DATE")
+                .jdbcType(Types.TIMESTAMP)
+                .scale(0)
+                .optional(false)
+                .create();
+    }
+
+    private static Column timestampWithTimeZoneColumn(int jdbcType, String typeName, boolean optional) {
+        return Column.editor()
+                .name("TSTZ")
+                .type(typeName)
+                .jdbcType(jdbcType)
+                .scale(6)
+                .optional(optional)
+                .create();
+    }
+
+    private static Column timestampColumn(boolean optional) {
+        return Column.editor()
+                .name("TS")
+                .type("TIMESTAMP")
+                .jdbcType(Types.TIMESTAMP)
+                .scale(6)
+                .optional(optional)
                 .create();
     }
 

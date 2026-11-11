@@ -2958,6 +2958,21 @@ BC values stored in `TIMESTAMP(7 - 9)` columns exceed the representable range of
 If a column may contain BC values at nanosecond precision, use `time.precision.mode` set to `isostring` or `structured` to represent the values without loss.
 ====
 
+[id="oracle-temporal-types-zero-dates"]
+==== Zero dates
+
+Oracle does not permit SQL to store a `DATE`, `TIMESTAMP`, `TIMESTAMP WITH TIME ZONE`, or `TIMESTAMP WITH LOCAL TIME ZONE` value with a month or day of `0`, but some applications that use the Oracle Call Interface (OCI) can write such values, for example, `0000-00-00 00:00:00`, directly in their internal form.
+Because these zero dates do not represent a valid point in time, the connector emits them in the same way as an absent value:
+
+* If the column is optional, the connector emits `null`.
+* If the column is `NOT NULL` and has a default value, the connector emits the column default value.
+* If the column is `NOT NULL` and has no default value, the connector emits the epoch, `1970-01-01 00:00:00`, in the representation of the configured `time.precision.mode`.
+
+Only a month or day of `0` identifies a zero date; values with a zero year and a valid month and day are emitted as described in xref:oracle-temporal-types-bc-era[].
+During snapshots, the connector logs a warning for each zero date that it reads.
+To silence these warnings, set the level of the `io.debezium.connector.oracle.OracleConnection.ZeroDates` logger to `ERROR`.
+To replace zero dates in `DATE` and `TIMESTAMP` columns with a value of your choice, use the xref:debezium-oracle-connector-custom-converters-zero-date-fallback[zero date fallback converter].
+
 // Type: reference
 // ModuleID: oracle-rowid-data-type-mappings
 // Title: {prodname} Oracle connector ROWID data type mappings
@@ -3136,6 +3151,7 @@ The {prodname} Oracle connector provides the following custom converters:
 * xref:debezium-oracle-connector-custom-converters-number-to-boolean[`NUMBER(1)` to Boolean]
 * xref:debezium-oracle-connector-custom-converters-number-to-zero-scale[`NUMBER` To Zero Scale]
 * xref:debezium-oracle-connector-custom-converters-raw-to-string[`RAW` to String]
+* xref:debezium-oracle-connector-custom-converters-zero-date-fallback[Zero date fallback]
 
 
 // Type: reference
@@ -3224,6 +3240,65 @@ If you omit the `selector` property, the converter maps all `RAW` column types t
 For example, if the database encoding is `WE8ISO8859P1`, this field would need to be set as `ISO-8859-1`, the Java equivalent for the Oracle encoding.
 
 |===
+
+[id="debezium-oracle-connector-custom-converters-zero-date-fallback"]
+=== Zero date fallback
+
+By default, the connector emits an Oracle xref:oracle-temporal-types-zero-dates[zero date] in the same way as an absent value: `null` for an optional column, the column default for a `NOT NULL` column with a default value, or the epoch otherwise.
+To replace zero dates with a value of your choice, you can configure {prodname} to use the `ZeroDateFallbackConverter`.
+The converter applies to `DATE` and `TIMESTAMP` columns; it does not apply to `TIMESTAMP WITH TIME ZONE` or `TIMESTAMP WITH LOCAL TIME ZONE` columns, which always use the default zero date handling.
+The converter emits `DATE` and `TIMESTAMP(0 - 3)` columns as `io.debezium.time.Timestamp`, `TIMESTAMP(4 - 6)` columns as `io.debezium.time.MicroTimestamp`, and `TIMESTAMP(7 - 9)` columns as `io.debezium.time.NanoTimestamp`, regardless of the `time.precision.mode`.
+The following example shows how to add the `ZeroDateFallbackConverter` to the connector configuration:
+
+.Example: `ZeroDateFallbackConverter` configuration
+[source]
+----
+converters=zero-date
+zero-date.type=io.debezium.connector.oracle.converters.ZeroDateFallbackConverter
+zero-date.selector=.*.MY_TABLE.*
+zero-date.fallback.date=NULL
+zero-date.column.ORCLPDB1.MYSCHEMA.MY_TABLE.CREATED.fallback=1900-01-01 00:00:00
+----
+
+.ZeroDateFallbackConverter configuration properties
+[cols="1,2,7",options="header"]
+|===
+| Property |Default |Description
+
+|`target.types`
+|`DATE,TIMESTAMP`
+|A comma-separated list of the column types that the converter processes.
+
+|`fallback.date`
+|`NULL`
+|The value that the converter emits for a zero date or a `NULL` value in a `DATE` column.
+If set to `NULL`, the converter emits `null` and makes the field optional.
+Otherwise, specify a UTC value in the format `yyyy-MM-dd` or `yyyy-MM-dd HH:mm:ss`.
+The field's default value is set to the specified value, overriding any column default, and for `NOT NULL` columns the field remains required.
+
+|`fallback.timestamp`
+|`NULL`
+|The value that the converter emits for a zero date or a `NULL` value in a `TIMESTAMP` column, in the same format as `fallback.date`, optionally with fractional seconds.
+
+|`column.<database>.<schema>.<table>.<column>.fallback`
+|_n/a_
+|Overrides the type-level fallback for a single column.
+The database, schema, table, and column names in the property key are case-sensitive, and must match the names exactly as they are stored in the Oracle data dictionary, for example, `ORCLPDB1.MYSCHEMA.MY_TABLE.CREATED` for objects created with unquoted identifiers.
+
+|`selector`
+|`.*`
+|A comma-separated list of regular expressions, matched against `<database>.<schema>.<table>.<column>`, that specifies the columns that the converter processes.
+The regular expressions are matched case-insensitively.
+
+|===
+
+[IMPORTANT]
+====
+The converter cannot always distinguish a zero date from a `NULL` value, so it replaces every `NULL` value in a selected column with the configured fallback, during snapshots and streaming alike.
+If you configure a value other than `NULL`, genuine `NULL` values in optional columns are also emitted as that value.
+Because the default `selector` (`.*`) selects every `DATE` and `TIMESTAMP` column, combining it with a value other than `NULL` affects all optional temporal columns.
+To avoid this, use the `selector` to restrict the converter to `NOT NULL` columns.
+====
 
 // Type: assembly
 // ModuleID: setting-up-oracle-to-work-with-debezium
