@@ -203,6 +203,11 @@ public class EhcacheLogMinerTransactionCache extends AbstractLogMinerTransaction
 
     private void primeHeapCacheFromOffHeapCaches() {
         // Primes the heap-based cache if the Ehcache persistence caches contained data on start-up
+        // A transaction may be persisted without any events, i.e. START mined with no captured DML yet
+        try (var stream = StreamSupport.stream(transactionCache.spliterator(), false)) {
+            stream.map(Cache.Entry::getKey).forEach(transactionId -> eventIdsByTransactionId.putIfAbsent(transactionId, new TreeSet<>()));
+        }
+
         eventKeys(keyStream -> {
             keyStream.map(k -> k.split("-", 2))
                     .filter(parts -> parts.length == 2)
