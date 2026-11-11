@@ -743,10 +743,7 @@ public abstract class AbstractBufferedLogMinerStreamingChangeEventSourceTest ext
         }
 
         final LogInterceptor logInterceptor = new LogInterceptor(BufferedLogMinerStreamingChangeEventSource.class);
-        final ch.qos.logback.classic.Logger detailsLogger = (ch.qos.logback.classic.Logger) LoggerFactory
-                .getLogger(BufferedLogMinerStreamingChangeEventSource.class.getName() + ".AbandonedDetails");
-        final Level previousLevel = detailsLogger.getLevel();
-        detailsLogger.setLevel(Level.DEBUG);
+        LogInterceptor.changeLoggerLevel(BufferedLogMinerStreamingChangeEventSource.class.getName() + ".AbandonedDetails", Level.DEBUG);
         try (var source = getChangeEventSource(getConfig().build())) {
             Mockito.when(offsetContext.getScn()).thenReturn(Scn.valueOf(1L));
             Mockito.when(offsetContext.getSnapshotScn()).thenReturn(Scn.NULL);
@@ -760,9 +757,6 @@ public abstract class AbstractBufferedLogMinerStreamingChangeEventSourceTest ext
 
             assertThat(source.getTransactionCache().isEmpty()).isTrue();
             assertThat(logInterceptor.containsWarnMessage("1 tables [ORCLPDB1.DEBEZIUM.TEST_TABLE]) is being abandoned")).isTrue();
-        }
-        finally {
-            detailsLogger.setLevel(previousLevel);
         }
     }
 

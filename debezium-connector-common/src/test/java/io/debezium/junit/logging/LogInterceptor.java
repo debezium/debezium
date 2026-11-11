@@ -23,9 +23,16 @@ import ch.qos.logback.classic.spi.IThrowableProxy;
 import ch.qos.logback.core.AppenderBase;
 
 /**
+ * Captures logged events for assertions in tests.
+ * <p>
+ * An interceptor is scoped to a single test method: after each test, {@link LogInterceptorCleanupExtension}
+ * restores the logger levels changed through {@link #setLoggerLevel(Class, Level)} or
+ * {@link #changeLoggerLevel(String, Level)} and detaches every
+ * interceptor. To clean up a single interceptor earlier, call {@link #close()}, e.g. with try-with-resources.
+ *
  * @author Chris Cranford, Jiri Pechanec
  */
-public class LogInterceptor extends AppenderBase<ILoggingEvent> {
+public class LogInterceptor extends AppenderBase<ILoggingEvent> implements AutoCloseable {
     private List<ILoggingEvent> events = new CopyOnWriteArrayList<>();
 
     /**
@@ -36,7 +43,7 @@ public class LogInterceptor extends AppenderBase<ILoggingEvent> {
         try {
             final Logger rootLogger = (Logger) LoggerFactory.getLogger(ROOT_LOGGER_NAME);
             this.start();
-            rootLogger.addAppender(this);
+            attach(rootLogger);
         }
         catch (Exception e) {
             throw new RuntimeException("Failed to obtain logback logger for log interceptor.", e);
@@ -73,9 +80,42 @@ public class LogInterceptor extends AppenderBase<ILoggingEvent> {
         this.events.add(loggingEvent);
     }
 
+    /**
+     * Changes the level of the logger for the given class. The original level is restored when the test ends.
+     *
+     * @param loggerClass the class whose logger is changed
+     * @param level the new level
+     */
     public void setLoggerLevel(Class<?> loggerClass, Level level) {
-        Logger logger = (Logger) org.slf4j.LoggerFactory.getLogger(loggerClass.getName());
+        changeLoggerLevel(loggerClass.getName(), level);
+    }
+
+    /**
+     * Changes the level of the logger with the given name. The original level is restored when the test ends,
+     * so tests that have no interceptor at hand can use this instead of saving and restoring the level themselves.
+     *
+     * @param loggerName the name of the logger that is changed
+     * @param level the new level
+     */
+    public static void changeLoggerLevel(String loggerName, Level level) {
+        final var logger = (Logger) LoggerFactory.getLogger(loggerName);
+        LogInterceptorRegistry.recordOriginalLevel(logger);
         logger.setLevel(level);
+    }
+
+    /**
+     * Detaches this interceptor from every logger it was attached to, stops it and discards the captured events.
+     * Calling this more than once, or after detaching the interceptor manually, has no effect.
+     * <p>
+     * This is separate from {@link #stop()}, which logback calls itself when its context is reset.
+     */
+    @Override
+    public void close() {
+        for (Logger logger : LogInterceptorRegistry.unregister(this)) {
+            logger.detachAppender(this);
+        }
+        stop();
+        events.clear();
     }
 
     public List<String> getLogEntriesThatContainsMessage(String text) {
@@ -227,14 +267,19 @@ public class LogInterceptor extends AppenderBase<ILoggingEvent> {
             LoggerContext context = (LoggerContext) LoggerFactory.getILoggerFactory();
             for (Logger logger : context.getLoggerList()) {
                 if (logger.getName().equals(loggerName) || logger.getName().startsWith(loggerName + ".")) {
-                    logger.addAppender(this);
+                    attach(logger);
                 }
             }
         }
         else {
             // Apply to explicit logger only.
             final Logger logger = (Logger) LoggerFactory.getLogger(loggerName);
-            logger.addAppender(this);
+            attach(logger);
         }
+    }
+
+    private void attach(Logger logger) {
+        LogInterceptorRegistry.registerAttachment(this, logger);
+        logger.addAppender(this);
     }
 }

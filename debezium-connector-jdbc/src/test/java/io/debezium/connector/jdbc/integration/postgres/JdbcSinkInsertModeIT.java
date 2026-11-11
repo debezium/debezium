@@ -51,6 +51,7 @@ import io.debezium.connector.jdbc.util.SinkRecordFactory;
 import io.debezium.data.SchemaAndValueField;
 import io.debezium.data.geometry.Geometry;
 import io.debezium.doc.FixFor;
+import io.debezium.junit.logging.LogInterceptor;
 import io.debezium.sink.SinkConnectorConfig.PrimaryKeyMode;
 
 import ch.qos.logback.classic.Level;
@@ -461,8 +462,7 @@ public class JdbcSinkInsertModeIT extends AbstractJdbcSinkInsertModeTest {
                 Arrays.asList(new Object[]{ epochMillis2, epochDays2 }), config);
 
         Logger unnestLogger = (Logger) LoggerFactory.getLogger(UnnestRecordWriter.class);
-        Level previousLevel = unnestLogger.getLevel();
-        unnestLogger.setLevel(Level.DEBUG);
+        LogInterceptor.changeLoggerLevel(unnestLogger.getName(), Level.DEBUG);
         ListAppender<ILoggingEvent> logAppender = new ListAppender<>();
         logAppender.start();
         unnestLogger.addAppender(logAppender);
@@ -493,7 +493,6 @@ public class JdbcSinkInsertModeIT extends AbstractJdbcSinkInsertModeTest {
         finally {
             unnestLogger.detachAppender(logAppender);
             logAppender.stop();
-            unnestLogger.setLevel(previousLevel);
         }
     }
 

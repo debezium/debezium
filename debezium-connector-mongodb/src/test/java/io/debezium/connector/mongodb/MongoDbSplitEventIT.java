@@ -55,7 +55,6 @@ import io.debezium.junit.logging.LogInterceptor;
 import io.debezium.util.LoggingContext;
 
 import ch.qos.logback.classic.Level;
-import ch.qos.logback.classic.Logger;
 import ch.qos.logback.classic.spi.ILoggingEvent;
 
 @SkipWhenDatabaseVersion(check = LESS_THAN, major = 6, minor = 0, patch = 9, reason = "Splitting Change Stream events requires MongoDB 6.0.9 or newer.")
@@ -90,9 +89,7 @@ public class MongoDbSplitEventIT extends AbstractMongoConnectorIT {
         final var continueProcessing = new Semaphore(0);
         final var gateFailure = new AtomicReference<Throwable>();
         final var engineFailure = new AtomicReference<Throwable>();
-        final var splitLogger = (Logger) org.slf4j.LoggerFactory.getLogger(SplitEventHandler.class);
-        final var previousLevel = splitLogger.getLevel();
-        final var interceptor = new LogInterceptor(splitLogger.getName()) {
+        final var interceptor = new LogInterceptor(SplitEventHandler.class) {
             @Override
             protected void append(ILoggingEvent event) {
                 if (!"streaming".equals(event.getMDCPropertyMap().get(LoggingContext.CONNECTOR_CONTEXT))
@@ -116,7 +113,7 @@ public class MongoDbSplitEventIT extends AbstractMongoConnectorIT {
                 }
             }
         };
-        splitLogger.setLevel(Level.TRACE);
+        interceptor.setLoggerLevel(SplitEventHandler.class, Level.TRACE);
 
         try (var client = connect()) {
             final var collection = createSnapshotCollection(client.getDatabase("dbit"));
@@ -175,9 +172,7 @@ public class MongoDbSplitEventIT extends AbstractMongoConnectorIT {
         finally {
             continueProcessing.release(fragmentCount);
             stopConnector();
-            splitLogger.detachAppender(interceptor);
-            splitLogger.setLevel(previousLevel);
-            interceptor.stop();
+            interceptor.close();
         }
     }
 
@@ -388,11 +383,10 @@ public class MongoDbSplitEventIT extends AbstractMongoConnectorIT {
                 final var updated = new CountDownLatch(1);
                 final var updateStarted = new AtomicBoolean();
                 final var updateFailure = new AtomicReference<Throwable>();
-                final var commandLogger = (Logger) org.slf4j.LoggerFactory.getLogger("org.mongodb.driver.protocol.command");
-                final var previousLevel = commandLogger.getLevel();
+                final var commandLoggerName = "org.mongodb.driver.protocol.command";
                 // Run the write synchronously before the snapshot probe's first getMore is sent.
                 // This places the update after cursor creation without timing sleeps or production test hooks.
-                final var interceptor = new LogInterceptor(commandLogger.getName()) {
+                final var interceptor = new LogInterceptor(commandLoggerName) {
                     @Override
                     protected void append(ILoggingEvent event) {
                         if ("snapshot".equals(event.getMDCPropertyMap().get(LoggingContext.CONNECTOR_CONTEXT))
@@ -411,7 +405,7 @@ public class MongoDbSplitEventIT extends AbstractMongoConnectorIT {
                         }
                     }
                 };
-                commandLogger.setLevel(Level.DEBUG);
+                LogInterceptor.changeLoggerLevel(commandLoggerName, Level.DEBUG);
                 try {
                     final var engineFailure = new AtomicReference<Throwable>();
                     start(MongoDbConnector.class, config, (success, message, error) -> {
@@ -444,9 +438,7 @@ public class MongoDbSplitEventIT extends AbstractMongoConnectorIT {
                     assertThat(engineFailure.get()).isNull();
                 }
                 finally {
-                    commandLogger.detachAppender(interceptor);
-                    commandLogger.setLevel(previousLevel);
-                    interceptor.stop();
+                    interceptor.close();
                 }
             }
         }
