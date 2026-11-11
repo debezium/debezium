@@ -435,8 +435,9 @@ public class RelationalSnapshotChangeEventSourceRetryTest {
 
         final Object[][] rows = { { 1, "a" }, { 2, "b" }, { 3, "c" } };
         final ResultSet rs = mockResultSet(rows, 2, retriableError());
-        when(sqlConnection.createStatement()).thenReturn(mock(Statement.class));
-        when(sqlConnection.createStatement().executeQuery(anyString())).thenReturn(rs);
+        final PreparedStatement ps = mock(PreparedStatement.class);
+        when(ps.executeQuery()).thenReturn(rs);
+        when(sqlConnection.prepareStatement(anyString())).thenReturn(ps);
 
         final Table table = keyedTable();
         final SnapshotChunk chunk = keyedSingleChunk(table);
@@ -450,8 +451,9 @@ public class RelationalSnapshotChangeEventSourceRetryTest {
                 new ConcurrentLinkedQueue<>(List.of(offset)));
 
         assertThatThrownBy(callable::call)
-                .isInstanceOf(SQLException.class)
-                .hasMessageContaining("SET TRANSACTION SNAPSHOT failed");
+                .isInstanceOf(ConnectException.class)
+                .hasCauseInstanceOf(SQLException.class)
+                .hasRootCauseMessage("SET TRANSACTION SNAPSHOT failed");
     }
 
     @Test
@@ -478,8 +480,9 @@ public class RelationalSnapshotChangeEventSourceRetryTest {
 
         final Object[][] rows = { { 1, "a" }, { 2, "b" }, { 3, "c" } };
         final ResultSet rs = mockResultSet(rows, 2, retriableError());
-        when(sqlConnection.createStatement()).thenReturn(mock(Statement.class));
-        when(sqlConnection.createStatement().executeQuery(anyString())).thenReturn(rs);
+        final PreparedStatement ps = mock(PreparedStatement.class);
+        when(ps.executeQuery()).thenReturn(rs);
+        when(sqlConnection.prepareStatement(anyString())).thenReturn(ps);
 
         final Table table = keyedTable();
         final SnapshotChunk chunk = keyedSingleChunk(table);
@@ -493,8 +496,9 @@ public class RelationalSnapshotChangeEventSourceRetryTest {
                 new ConcurrentLinkedQueue<>(List.of(offset)));
 
         assertThatThrownBy(callable::call)
-                .isInstanceOf(SQLException.class)
-                .hasMessageContaining("SET TRANSACTION SNAPSHOT failed");
+                .isInstanceOf(ConnectException.class)
+                .hasCauseInstanceOf(SQLException.class)
+                .hasRootCauseMessage("SET TRANSACTION SNAPSHOT failed");
     }
 
     @Test
