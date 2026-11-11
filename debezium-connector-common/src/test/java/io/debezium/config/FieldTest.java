@@ -201,4 +201,25 @@ public class FieldTest {
         assertThat(valueDependants).containsKey("logminer_unbuffered");
         assertThat(valueDependants.get("logminer_unbuffered")).containsExactly("log.mining.buffer.type");
     }
+
+    @Test
+    public void shouldAcceptOnlyFinitePositiveDoubles() {
+        final Field field = Field.create("test.multiplier");
+
+        assertThat(isValidPositiveDouble(field, "2.0")).isTrue();
+        assertThat(isValidPositiveDouble(field, "0.5")).isTrue();
+
+        assertThat(isValidPositiveDouble(field, "0")).isFalse();
+        assertThat(isValidPositiveDouble(field, "-1.5")).isFalse();
+        assertThat(isValidPositiveDouble(field, "abc")).isFalse();
+        assertThat(isValidPositiveDouble(field, "NaN")).isFalse();
+        assertThat(isValidPositiveDouble(field, "Infinity")).isFalse();
+        assertThat(isValidPositiveDouble(field, "-Infinity")).isFalse();
+    }
+
+    private static boolean isValidPositiveDouble(Field field, String value) {
+        final Configuration config = Configuration.create().with(field.name(), value).build();
+        return Field.isPositiveDouble(config, field, (f, v, problem) -> {
+        }) == 0;
+    }
 }

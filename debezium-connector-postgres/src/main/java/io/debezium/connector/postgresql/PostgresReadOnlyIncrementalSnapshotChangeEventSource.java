@@ -121,7 +121,7 @@ public class PostgresReadOnlyIncrementalSnapshotChangeEventSource<P extends Post
             return;
         }
 
-        LOGGER.debug("Checking window for table '{}', key '{}', window contains '{}'", dataCollectionId, key, window);
+        LOGGER.debug("Checking window for table '{}', key '{}', window open: {}", dataCollectionId, key, hasOpenWindow());
         getContext().updateWindowState(offsetContext);
 
         boolean windowClosed = getContext().isWindowClosed();
@@ -129,7 +129,7 @@ public class PostgresReadOnlyIncrementalSnapshotChangeEventSource<P extends Post
             sendWindowEvents(partition, offsetContext);
             readChunk(partition, offsetContext);
         }
-        else if (!window.isEmpty() && getContext().deduplicationNeeded()) {
+        else if (hasOpenWindow() && getContext().deduplicationNeeded()) {
             LOGGER.trace("Deduplicating");
             deduplicateWindow(dataCollectionId, key);
         }
@@ -247,6 +247,16 @@ public class PostgresReadOnlyIncrementalSnapshotChangeEventSource<P extends Post
         catch (SQLException e) {
             throw new DebeziumException(e);
         }
+    }
+
+    @Override
+    protected boolean supportsParallelSnapshot() {
+        return true;
+    }
+
+    @Override
+    protected JdbcConnection createSnapshotConnection() {
+        return new PostgresConnection((PostgresConnectorConfig) connectorConfig, jdbcConnection.getTypeRegistry(), "Debezium Parallel Snapshot Worker");
     }
 
 }

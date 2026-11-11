@@ -104,7 +104,7 @@ public class SignalBasedIncrementalSnapshotChangeEventSource<P extends Partition
             return;
         }
         LOGGER.trace("Checking window for table '{}', key '{}', window contains '{}'", dataCollectionId, maybeRedactSensitiveData(key), window);
-        if (!window.isEmpty() && context.deduplicationNeeded()) {
+        if (hasOpenWindow() && context.deduplicationNeeded()) {
             deduplicateWindow(dataCollectionId, key);
         }
     }
