@@ -73,7 +73,7 @@ public class SignalDataCollectionValidator {
                 .filter(match -> isInConfiguredNamespace(parsed, match))
                 .collect(Collectors.toSet());
         if (matches.isEmpty()) {
-            errors.add(String.format("Signal data collection '%s' does not exist.", rawValue));
+            errors.add(String.format("Signal data collection '%s' does not exist or is not visible to the connector user.", rawValue));
             return;
         }
 
@@ -106,11 +106,14 @@ public class SignalDataCollectionValidator {
         checkColumnSizes(rawValue, effectiveColumns, warnings);
     }
 
-    /** Flags skipped operations the connector drops before reading signals, which would silently lose every signal. */
+    /** Flags skipped operations dropped before signals are read: 'c' loses every signal, and 'd' under insert_delete leaves incremental snapshot windows open. */
     private static void checkSkippedSignalOperations(String rawValue, Set<Operation> skippedSignalOperations, List<String> errors) {
-        if (!skippedSignalOperations.isEmpty()) {
-            errors.add(String.format("Signal data collection '%s' will never receive signals because skipped.operations must not include 'c', "
-                    + "and 'd' for the insert_delete watermarking strategy.", rawValue));
+        if (skippedSignalOperations.contains(Operation.CREATE)) {
+            errors.add(String.format("Signal data collection '%s' will never receive signals because skipped.operations includes 'c'.", rawValue));
+        }
+        if (skippedSignalOperations.contains(Operation.DELETE)) {
+            errors.add(String.format("Signal data collection '%s' cannot close incremental snapshot windows because skipped.operations "
+                    + "includes 'd', which the insert_delete watermarking strategy requires.", rawValue));
         }
     }
 

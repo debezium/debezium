@@ -159,7 +159,7 @@ public class SignalDataCollectionValidatorTest {
         SignalDataCollectionValidationResult result = SignalDataCollectionValidator.validate(
                 enabledRequest(ALWAYS_SIGNAL_DATA_COLLECTION, MATCH_ALL, RAW_VALUE));
 
-        assertThat(result.errors()).containsExactly("Signal data collection '" + RAW_VALUE + "' does not exist.");
+        assertThat(result.errors()).containsExactly("Signal data collection '" + RAW_VALUE + "' does not exist or is not visible to the connector user.");
         verify(connection, never()).getColumnSizes(any());
     }
 
@@ -199,7 +199,7 @@ public class SignalDataCollectionValidatorTest {
         SignalDataCollectionValidationResult result = SignalDataCollectionValidator.validate(
                 enabledRequest(table -> false, MATCH_ALL, rawValue));
 
-        assertThat(result.errors()).containsExactly("Signal data collection '" + rawValue + "' does not exist.");
+        assertThat(result.errors()).containsExactly("Signal data collection '" + rawValue + "' does not exist or is not visible to the connector user.");
     }
 
     @Test
@@ -309,8 +309,10 @@ public class SignalDataCollectionValidatorTest {
         SignalDataCollectionValidationResult result = SignalDataCollectionValidator.validate(
                 enabledRequest(EnumSet.of(Operation.CREATE, Operation.DELETE), ConnectorValidator.NONE));
 
-        assertThat(result.errors()).containsExactly("Signal data collection '" + RAW_VALUE
-                + "' will never receive signals because skipped.operations must not include 'c', and 'd' for the insert_delete watermarking strategy.");
+        assertThat(result.errors()).containsExactly(
+                "Signal data collection '" + RAW_VALUE + "' will never receive signals because skipped.operations includes 'c'.",
+                "Signal data collection '" + RAW_VALUE + "' cannot close incremental snapshot windows because skipped.operations "
+                        + "includes 'd', which the insert_delete watermarking strategy requires.");
     }
 
     @Test
@@ -347,7 +349,7 @@ public class SignalDataCollectionValidatorTest {
         SignalDataCollectionValidationResult result = SignalDataCollectionValidator.validate(
                 enabledRequest(ALWAYS_SIGNAL_DATA_COLLECTION, MATCH_ALL, RAW_VALUE, secondRawValue));
 
-        assertThat(result.errors()).containsExactly("Signal data collection '" + secondRawValue + "' does not exist.");
+        assertThat(result.errors()).containsExactly("Signal data collection '" + secondRawValue + "' does not exist or is not visible to the connector user.");
     }
 
     @Test
@@ -360,7 +362,7 @@ public class SignalDataCollectionValidatorTest {
                 enabledRequest(ALWAYS_SIGNAL_DATA_COLLECTION, MATCH_ALL, RAW_VALUE, secondRawValue));
 
         assertThat(logInterceptor.containsWarnMessage("Could not validate signal data collection '" + RAW_VALUE + "'")).isTrue();
-        assertThat(result.errors()).containsExactly("Signal data collection '" + secondRawValue + "' does not exist.");
+        assertThat(result.errors()).containsExactly("Signal data collection '" + secondRawValue + "' does not exist or is not visible to the connector user.");
     }
 
     @Test

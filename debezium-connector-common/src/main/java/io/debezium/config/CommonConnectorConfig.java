@@ -989,8 +989,8 @@ public abstract class CommonConnectorConfig {
             .withWidth(Width.SHORT)
             .withImportance(Importance.LOW)
             .withDefault(false)
-            .withDescription("Enables validation of 'signal.data.collection': existence, accepted shape, "
-                    + "and (where applicable) column count and sizing.");
+            .withDescription("Enables validation of 'signal.data.collection' when the connector starts: existence, accepted shape, "
+                    + "column count, names and sizes, and connector settings that would prevent signals from being received.");
 
     public static final Field SIGNAL_POLL_INTERVAL_MS = Field.create("signal.poll.interval.ms")
             .withDisplayName("Signal processor poll interval")

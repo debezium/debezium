@@ -60,6 +60,7 @@ public class SignalDataCollectionValidatorTest {
             target.addAll(List.of(collectionNames));
             return target;
         }).when(iterable).into(any());
+        when(iterable.filter(any())).thenReturn(iterable);
 
         MongoDatabase database = mock(MongoDatabase.class);
         when(database.listCollectionNames()).thenReturn(iterable);
@@ -112,7 +113,7 @@ public class SignalDataCollectionValidatorTest {
 
         SignalDataCollectionValidationResult result = SignalDataCollectionValidator.validate(client, enabledRequest(RAW_VALUE));
 
-        assertThat(result.errors()).containsExactly("Signal data collection '" + RAW_VALUE + "' does not exist.");
+        assertThat(result.errors()).containsExactly("Signal data collection '" + RAW_VALUE + "' does not exist or is not visible to the connector user.");
     }
 
     @Test
@@ -130,8 +131,8 @@ public class SignalDataCollectionValidatorTest {
         SignalDataCollectionValidationResult result = SignalDataCollectionValidator.validate(client,
                 new SignalDataCollectionValidationRequest(List.of(RAW_VALUE), true, true, true, EnumSet.of(Operation.CREATE)));
 
-        assertThat(result.errors()).containsExactly("Signal data collection '" + RAW_VALUE
-                + "' will never receive signals because skipped.operations must not include 'c', and 'd' for the insert_delete watermarking strategy.");
+        assertThat(result.errors()).containsExactly(
+                "Signal data collection '" + RAW_VALUE + "' will never receive signals because skipped.operations includes 'c'.");
     }
 
     @Test
@@ -142,7 +143,7 @@ public class SignalDataCollectionValidatorTest {
 
         SignalDataCollectionValidationResult result = SignalDataCollectionValidator.validate(client, enabledRequest(RAW_VALUE, secondRawValue));
 
-        assertThat(result.errors()).containsExactly("Signal data collection '" + secondRawValue + "' does not exist.");
+        assertThat(result.errors()).containsExactly("Signal data collection '" + secondRawValue + "' does not exist or is not visible to the connector user.");
     }
 
     @Test

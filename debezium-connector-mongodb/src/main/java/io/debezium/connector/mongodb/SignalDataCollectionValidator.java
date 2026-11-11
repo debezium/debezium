@@ -13,6 +13,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.mongodb.client.MongoClient;
+import com.mongodb.client.model.Filters;
 
 import io.debezium.data.Envelope.Operation;
 import io.debezium.util.Strings;
@@ -65,18 +66,22 @@ public class SignalDataCollectionValidator {
         }
 
         // A nonexistent database yields an empty (not an error) collection list, so this also covers that case.
+        // Views are excluded because they emit no change events.
         List<String> collectionNames = new ArrayList<>();
-        client.getDatabase(collectionId.dbName()).listCollectionNames().into(collectionNames);
+        client.getDatabase(collectionId.dbName()).listCollectionNames().filter(Filters.eq("type", "collection")).into(collectionNames);
         if (!collectionNames.contains(collectionId.name())) {
-            errors.add(String.format("Signal data collection '%s' does not exist.", rawValue));
+            errors.add(String.format("Signal data collection '%s' does not exist or is not visible to the connector user.", rawValue));
         }
     }
 
-    /** Flags skipped operations the change stream pipeline drops before reading signals, which would silently lose every signal. */
+    /** Flags skipped operations dropped before signals are read: 'c' loses every signal, and 'd' under insert_delete leaves incremental snapshot windows open. */
     private static void checkSkippedSignalOperations(String rawValue, Set<Operation> skippedSignalOperations, List<String> errors) {
-        if (!skippedSignalOperations.isEmpty()) {
-            errors.add(String.format("Signal data collection '%s' will never receive signals because skipped.operations must not include 'c', "
-                    + "and 'd' for the insert_delete watermarking strategy.", rawValue));
+        if (skippedSignalOperations.contains(Operation.CREATE)) {
+            errors.add(String.format("Signal data collection '%s' will never receive signals because skipped.operations includes 'c'.", rawValue));
+        }
+        if (skippedSignalOperations.contains(Operation.DELETE)) {
+            errors.add(String.format("Signal data collection '%s' cannot close incremental snapshot windows because skipped.operations "
+                    + "includes 'd', which the insert_delete watermarking strategy requires.", rawValue));
         }
     }
 }

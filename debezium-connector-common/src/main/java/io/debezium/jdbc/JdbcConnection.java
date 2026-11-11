@@ -1128,17 +1128,28 @@ public class JdbcConnection implements AutoCloseable {
     }
 
     /**
-     * Get the identifiers of the tables matching the given table identifier, with its schema and table names
-     * escaped so that they are matched literally rather than as patterns.
+     * Get the identifiers of the tables whose schema and table names match the given table identifier, ignoring case.
+     * Names are passed unescaped and the results are filtered, because drivers treat them as LIKE patterns and not
+     * every server honors the reported escape (e.g. MySQL with {@code NO_BACKSLASH_ESCAPES}).
      *
      * @param tableId the table identifier to match
      * @return the set of {@link TableId}s; never null but possibly empty
      * @throws SQLException if an error occurs while accessing the database metadata
      */
     public Set<TableId> readTableNames(TableId tableId) throws SQLException {
-        String searchStringEscape = connection().getMetaData().getSearchStringEscape();
-        return readTableNames(tableId.catalog(), createPatternFromName(tableId.schema(), searchStringEscape),
-                createPatternFromName(tableId.table(), searchStringEscape), null);
+        return readTableNames(tableId.catalog(), tableId.schema(), tableId.table(), getCapturableTableTypes()).stream()
+                .filter(match -> match.table().equalsIgnoreCase(tableId.table()))
+                .filter(match -> tableId.schema() == null || match.schema() == null || match.schema().equalsIgnoreCase(tableId.schema()))
+                .collect(Collectors.toSet());
+    }
+
+    /**
+     * Returns the table types that can be captured, used to exclude views and other objects that emit no change events.
+     *
+     * @return the table types passed to {@link DatabaseMetaData#getTables}
+     */
+    protected String[] getCapturableTableTypes() {
+        return new String[]{ "TABLE" };
     }
 
     /**
@@ -1150,16 +1161,21 @@ public class JdbcConnection implements AutoCloseable {
      * @throws SQLException if an error occurs while accessing the database metadata
      */
     public Map<String, Integer> getColumnSizes(TableId tableId) throws SQLException {
-        DatabaseMetaData metadata = connection().getMetaData();
-        String schemaNamePattern = createPatternFromName(tableId.schema(), metadata.getSearchStringEscape());
-        String tableNamePattern = createPatternFromName(tableId.table(), metadata.getSearchStringEscape());
-        try (ResultSet rs = metadata.getColumns(tableId.catalog(), schemaNamePattern, tableNamePattern, null)) {
+        try (ResultSet rs = connection().getMetaData().getColumns(tableId.catalog(), tableId.schema(), tableId.table(), null)) {
             Map<String, Integer> columnSizes = new LinkedHashMap<>();
             while (rs.next()) {
-                columnSizes.put(rs.getString(4), rs.getInt(7));
+                if (isSameName(tableId.catalog(), rs.getString(1)) && isSameName(tableId.schema(), rs.getString(2))
+                        && tableId.table().equals(rs.getString(3))) {
+                    columnSizes.put(rs.getString(4), rs.getInt(7));
+                }
             }
             return columnSizes;
         }
+    }
+
+    /** Compares a table name part, treating a part the identifier or the driver does not report as matching. */
+    private static boolean isSameName(String expected, String actual) {
+        return expected == null || actual == null || expected.equals(actual);
     }
 
     /**
