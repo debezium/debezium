@@ -12,6 +12,7 @@ import io.debezium.connector.oracle.OracleConnector;
 import io.debezium.connector.oracle.converters.NumberOneToBooleanConverter;
 import io.debezium.connector.oracle.converters.NumberToZeroScaleConverter;
 import io.debezium.connector.oracle.converters.RawToStringConverter;
+import io.debezium.connector.oracle.converters.ZeroDateFallbackConverter;
 import io.debezium.metadata.ComponentMetadata;
 import io.debezium.metadata.ComponentMetadataFactory;
 import io.debezium.metadata.ComponentMetadataProvider;
@@ -30,6 +31,7 @@ public class OracleMetadataProvider implements ComponentMetadataProvider {
                         "Captures row-level changes from an Oracle database in near real-time.", Module.version()),
                 componentMetadataFactory.createComponentMetadata(new NumberToZeroScaleConverter(), Module.version()),
                 componentMetadataFactory.createComponentMetadata(new RawToStringConverter(), Module.version()),
-                componentMetadataFactory.createComponentMetadata(new NumberOneToBooleanConverter(), Module.version()));
+                componentMetadataFactory.createComponentMetadata(new NumberOneToBooleanConverter(), Module.version()),
+                componentMetadataFactory.createComponentMetadata(new ZeroDateFallbackConverter(), Module.version()));
     }
 }

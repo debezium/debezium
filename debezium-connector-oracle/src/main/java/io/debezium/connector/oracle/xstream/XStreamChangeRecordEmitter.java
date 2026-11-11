@@ -11,6 +11,7 @@ import io.debezium.DebeziumException;
 import io.debezium.connector.oracle.BaseChangeRecordEmitter;
 import io.debezium.connector.oracle.OracleConnectorConfig;
 import io.debezium.connector.oracle.OracleDatabaseSchema;
+import io.debezium.connector.oracle.util.OracleZeroDates;
 import io.debezium.data.Envelope.Operation;
 import io.debezium.pipeline.spi.OffsetContext;
 import io.debezium.pipeline.spi.Partition;
@@ -137,7 +138,8 @@ public class XStreamChangeRecordEmitter extends BaseChangeRecordEmitter<ColumnVa
             if (isIgnoredColumn(columnValue.getColumnName())) {
                 continue;
             }
-            values[columnIndex(table, columnValue.getColumnName())] = columnValue.getColumnData();
+            // Zero dates have no java.time representation and are passed on as absent values
+            values[columnIndex(table, columnValue.getColumnName())] = OracleZeroDates.nullIfZeroDate(columnValue.getColumnData());
         }
     }
 

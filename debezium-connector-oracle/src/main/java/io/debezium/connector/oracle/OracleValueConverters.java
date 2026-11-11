@@ -38,6 +38,7 @@ import io.debezium.DebeziumException;
 import io.debezium.config.CommonConnectorConfig.BinaryHandlingMode;
 import io.debezium.connector.oracle.jdbc.OracleDatabaseSettings;
 import io.debezium.connector.oracle.logminer.UnistrHelper;
+import io.debezium.connector.oracle.util.OracleZeroDates;
 import io.debezium.connector.oracle.util.TimestampUtils;
 import io.debezium.data.Json;
 import io.debezium.data.SpecialValueDecimal;
@@ -697,6 +698,9 @@ public class OracleValueConverters extends JdbcValueConverters {
     }
 
     protected Object fromOracleTimeClasses(Column column, Object data) {
+        // A zero date has no java.time representation; treat it as an absent value so that the
+        // null, column default or fallback rules of the conversion apply.
+        data = OracleZeroDates.nullIfZeroDate(data);
         try {
             // Conversions must use the java.time accessors; java.sql.Timestamp is bound to the hybrid
             // Julian/Gregorian calendar, which drops the era of BC values and day-shifts dates that
@@ -779,6 +783,9 @@ public class OracleValueConverters extends JdbcValueConverters {
 
     private Instant resolveTimestampStringAsInstant(String data) {
         if (isHexToRawFunctionCall(data)) {
+            if (OracleZeroDates.isZeroDateLiteral(data)) {
+                return null;
+            }
             return convertHexToRawFunctionToTimestamp(data).toInstant();
         }
         return TimestampUtils.convertTimestampNoZoneToInstant(data);
@@ -810,7 +817,11 @@ public class OracleValueConverters extends JdbcValueConverters {
     protected Object convertTimestampWithZone(Column column, Field fieldDefn, Object data) {
         if (data instanceof String) {
             String s = (String) data;
-            if (isHexToRawFunctionCall(s)) {
+            if (OracleZeroDates.isZeroDateLiteral(s)) {
+                // A zero date has no java.time representation; treat it as an absent value
+                data = null;
+            }
+            else if (isHexToRawFunctionCall(s)) {
                 data = convertHexToRawFunctionToTimestamp(s);
             }
             else {

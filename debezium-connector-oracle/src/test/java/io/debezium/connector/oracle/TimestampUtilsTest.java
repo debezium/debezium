@@ -40,6 +40,22 @@ public class TimestampUtilsTest {
     }
 
     @Test
+    @FixFor("debezium/dbz#3055")
+    public void testZeroDateReturnsNull() {
+        assertThat(TimestampUtils.convertTimestampNoZoneToInstant("TO_DATE('0000-00-00 00:00:00', 'YYYY-MM-DD HH24:MI:SS')")).isNull();
+        assertThat(TimestampUtils.convertTimestampNoZoneToInstant("TO_DATE('2020-00-15 00:00:00', 'YYYY-MM-DD HH24:MI:SS')")).isNull();
+        assertThat(TimestampUtils.convertTimestampNoZoneToInstant("TO_DATE('2020-05-00 00:00:00', 'YYYY-MM-DD HH24:MI:SS')")).isNull();
+    }
+
+    @Test
+    @FixFor("debezium/dbz#3055")
+    public void testZeroTimestampReturnsNull() {
+        assertThat(TimestampUtils.convertTimestampNoZoneToInstant("TO_TIMESTAMP('0000-00-00 00:00:00.000000')")).isNull();
+        assertThat(TimestampUtils.convertTimestampNoZoneToInstant("TO_TIMESTAMP('2020-00-15 00:00:00.000000')")).isNull();
+        assertThat(TimestampUtils.convertTimestampNoZoneToInstant("TO_TIMESTAMP('2020-05-00 00:00:00.000000')")).isNull();
+    }
+
+    @Test
     @FixFor("dbz#1508")
     public void testNormalTimestamp() {
         final String value = "TO_TIMESTAMP('2025-01-02 01:02:03.123456789')";
