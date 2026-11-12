@@ -17,16 +17,16 @@ jobs:
       max-parallel: ${{ inputs.max-parallel }}
       fail-fast: false
       matrix:
-        profile: [ 'mariadb-ci', 'mariadb-ci-gtids', 'mariadb-ci-ssl', 'mariadb-innodb-binlog', 'mariadb-ci,mariadb-feature-binlog-metadata' ]
+        profile: [ 'mariadb-ci', 'mariadb-ci-gtids-ssl', 'mariadb-innodb-binlog', 'mariadb-ci,mariadb-feature-binlog-metadata' ]
         version-mariadb-server: [ "11.4", "11.8", "12.3" ]
         exclude:
-          - profile: "mariadb-ci-gtids"
+          - profile: "mariadb-ci"
+            version-mariadb-server: "11.4"
+          - profile: "mariadb-ci"
             version-mariadb-server: "11.8"
-          - profile: "mariadb-ci-ssl"
+          - profile: "mariadb-ci-gtids-ssl"
             version-mariadb-server: "11.8"
-          - profile: "mariadb-ci-gtids"
-            version-mariadb-server: "12.3"
-          - profile: "mariadb-ci-ssl"
+          - profile: "mariadb-ci-gtids-ssl"
             version-mariadb-server: "12.3"
           - profile: "mariadb-innodb-binlog"
             version-mariadb-server: "11.4"
