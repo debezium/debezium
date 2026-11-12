@@ -170,7 +170,7 @@ public class PostgresReadOnlyIncrementalSnapshotChangeEventSource<P extends Post
 
     private void readUntilNewTransactionChange(P partition, OffsetContext offsetContext) throws InterruptedException {
 
-        Long eventTxId = offsetContext.getSourceInfo().getInt64(SourceInfo.TXID_KEY);
+        Long eventTxId = ((PostgresOffsetContext) offsetContext).lastKnownTxId();
 
         LOGGER.debug("Event txId {}, snapshot is running {}, reachedHighWatermark {}",
                 eventTxId, getContext().snapshotRunning(), getContext().isTransactionVisible(eventTxId));
