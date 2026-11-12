@@ -83,6 +83,16 @@ On a relationship delete the foreign-key column is set to `null` (still `op=u`),
 
 The foreign-key column name follows `relationship.fk.naming` + `column.naming`, or the `relationship.<TYPE>.fk.column` override.
 
+[NOTE]
+====
+Foreign-key mode emits a *partial update* of the owner row, with the same event primary key of the the owner node's event.
+As a result the node's full-row change and the relationship's foreign-key update share a key when they reach the {prodname} JDBC sink.
+
+Configure the JDBC sink with `buffer.mode=passthrough`.
+With the default `buffer.mode=deduplication`, same-key records are reduced within a batch (last-write-wins), which can drop the foreign-key update so the column is never written.
+`passthrough` keeps the two records as separate writes.
+====
+
 [[neo4j-debezium-converter-qualified]]
 === Qualifying a relationship by endpoints
 
@@ -184,6 +194,7 @@ Set `tombstones.enabled=false` to drop tombstones instead.
 * *Primary-key value changes are not supported.* A stateless one-record SMT cannot represent a key change as the delete+create pair the JDBC sink expects, so an update that changes a key value is handled per `field.missing.behavior`.
 * A node label with no `keys` entry (no Neo4j key/uniqueness constraint) yields no portable primary key; provide `label.<Label>.key.properties` or the record is handled per `field.missing.behavior`.
 * The SMT requires schema-typed `Struct` values (`EXTENDED` payload mode); schemaless `Map` values are not supported.
+* *Foreign-key mode depends on the JDBC sink's buffering.* A relationship mapped with `relationship.<TYPE>.mode=foreign_key` is emitted as a partial update on the owner row, using the same primary key as the owner node's own change events. Configure the {prodname} JDBC sink with `buffer.mode=passthrough` so the node change and the foreign-key update are not reduced into a single write. See <<neo4j-debezium-converter-foreign-key>>.
 
 [[neo4j-debezium-converter-source-connector]]
 == Recommended Neo4j source connector configuration
@@ -428,3 +439,5 @@ transforms.neo4j.relationship.PLACED_BY.table=orders
 ----
 
 Each `PLACED_BY` event becomes a partial update (`op=u`) of the `orders` row identified by `id`, setting the `customer_id` foreign-key column. A relationship delete sets `customer_id` to `null`.
+
+Because this is a partial update on the same primary key as the `Order` node's own change events, configure the {prodname} JDBC sink with `buffer.mode=passthrough` (see <<neo4j-debezium-converter-foreign-key>>).
