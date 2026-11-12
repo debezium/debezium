@@ -9,10 +9,9 @@ import static io.debezium.relational.RelationalChangeRecordEmitter.PK_UPDATE_NEW
 import static io.debezium.relational.RelationalChangeRecordEmitter.UNAVAILABLE_AFTER_HEADER;
 import static io.debezium.relational.RelationalChangeRecordEmitter.UNAVAILABLE_BEFORE_HEADER;
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.when;
 
 import java.sql.Types;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -28,15 +27,18 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import io.debezium.config.CommonConnectorConfig.EventConvertingFailureHandlingMode;
+import io.debezium.connector.SnapshotRecord;
 import io.debezium.data.Envelope.Operation;
 import io.debezium.doc.FixFor;
 import io.debezium.jdbc.JdbcValueConverters;
 import io.debezium.pipeline.spi.ChangeRecordEmitter.Receiver;
 import io.debezium.pipeline.spi.OffsetContext;
 import io.debezium.pipeline.spi.Partition;
+import io.debezium.pipeline.txmetadata.TransactionContext;
 import io.debezium.schema.FieldNameSelector;
 import io.debezium.schema.SchemaNameAdjuster;
 import io.debezium.schema.SchemaTopicNamingStrategy;
+import io.debezium.spi.schema.DataCollectionId;
 import io.debezium.util.Clock;
 
 public class RelationalChangeRecordEmitterTest {
@@ -44,7 +46,7 @@ public class RelationalChangeRecordEmitterTest {
     private static final Object UNAVAILABLE = new Object();
 
     private final Schema sourceSchema = SchemaBuilder.struct().build();
-    private final OffsetContext offset = mock(OffsetContext.class);
+    private final OffsetContext offset = new TestOffsetContext();
     private final List<Operation> operations = new ArrayList<>();
     private final List<Headers> headers = new ArrayList<>();
     private final Receiver<Partition> receiver = (partition, schema, operation, key, value, offsetContext, recordHeaders) -> {
@@ -55,19 +57,18 @@ public class RelationalChangeRecordEmitterTest {
 
     @BeforeEach
     public void beforeEach() {
-        Table table = Table.editor()
+        final var table = Table.editor()
                 .tableId(new TableId("catalog", "schema", "table"))
                 .addColumns(
                         Column.editor().name("id").type("INTEGER").jdbcType(Types.INTEGER).optional(false).create(),
                         Column.editor().name("lob").type("VARCHAR").jdbcType(Types.VARCHAR).optional(true).create())
                 .setPrimaryKeyNames("id")
                 .create();
-        Properties topicProperties = new Properties();
+        final var topicProperties = new Properties();
         topicProperties.put("topic.prefix", "test");
         tableSchema = new TableSchemaBuilder(new JdbcValueConverters(), null, SchemaNameAdjuster.NO_OP, new CustomConverterRegistry(null),
                 sourceSchema, FieldNameSelector.defaultSelector(SchemaNameAdjuster.NO_OP), false, EventConvertingFailureHandlingMode.FAIL)
                 .create(new SchemaTopicNamingStrategy(topicProperties, false), table, null, null, null);
-        when(offset.getSourceInfo()).thenReturn(new Struct(sourceSchema));
     }
 
     @Test
@@ -96,7 +97,7 @@ public class RelationalChangeRecordEmitterTest {
     @Test
     @FixFor("debezium/dbz#3052")
     public void shouldBuildPrimaryKeyChangeHeadersFromValuesFilledInBySubclass() throws InterruptedException {
-        Object[] newValues = { 2, UNAVAILABLE };
+        final Object[] newValues = { 2, UNAVAILABLE };
         new TestEmitter(Operation.UPDATE, new Object[]{ 1, UNAVAILABLE }, newValues) {
             @Override
             protected void emitUpdateAsPrimaryKeyChangeRecord(Receiver<Partition> receiver, TableSchema tableSchema, Struct oldKey,
@@ -162,6 +163,54 @@ public class RelationalChangeRecordEmitterTest {
         @Override
         protected boolean isUnavailableValue(Object value) {
             return value == UNAVAILABLE;
+        }
+    }
+
+    private class TestOffsetContext implements OffsetContext {
+
+        @Override
+        public Map<String, ?> getOffset() {
+            return Map.of();
+        }
+
+        @Override
+        public Schema getSourceInfoSchema() {
+            return sourceSchema;
+        }
+
+        @Override
+        public Struct getSourceInfo() {
+            return new Struct(sourceSchema);
+        }
+
+        @Override
+        public boolean isInitialSnapshotRunning() {
+            return false;
+        }
+
+        @Override
+        public void markSnapshotRecord(SnapshotRecord record) {
+        }
+
+        @Override
+        public void preSnapshotStart(boolean onDemand) {
+        }
+
+        @Override
+        public void preSnapshotCompletion() {
+        }
+
+        @Override
+        public void postSnapshotCompletion() {
+        }
+
+        @Override
+        public void event(DataCollectionId collectionId, Instant timestamp) {
+        }
+
+        @Override
+        public TransactionContext getTransactionContext() {
+            return null;
         }
     }
 }

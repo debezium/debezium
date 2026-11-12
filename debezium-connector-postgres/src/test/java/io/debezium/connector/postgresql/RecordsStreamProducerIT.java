@@ -1908,7 +1908,7 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
 
         consumer.expects(1);
         executeAndWait("UPDATE test_toast_table SET not_toast = 2;");
-        SourceRecord update = consumer.remove();
+        final var update = consumer.remove();
         assertThat(update.headers().lastWithName(RelationalChangeRecordEmitter.UNAVAILABLE_BEFORE_HEADER)).isNull();
         assertThat(update.headers().lastWithName(RelationalChangeRecordEmitter.UNAVAILABLE_AFTER_HEADER).value()).isEqualTo(List.of("text", "text_array"));
 

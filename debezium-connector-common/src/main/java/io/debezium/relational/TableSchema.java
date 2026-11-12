@@ -83,7 +83,7 @@ public class TableSchema implements DataCollectionSchema {
 
     /**
      * @param valueFieldNamesByPosition the value field name for each position of the column data; {@code null} where the
-     *            column is not part of the value
+     *            column is not part of the value; may be null
      */
     public TableSchema(TableId id, Schema keySchema, StructGenerator keyGenerator, Envelope envelopeSchema, Schema valueSchema, StructGenerator valueGenerator,
                        String[] valueFieldNamesByPosition) {
@@ -93,7 +93,7 @@ public class TableSchema implements DataCollectionSchema {
         this.valueSchema = valueSchema;
         this.keyGenerator = keyGenerator != null ? keyGenerator : (row) -> null;
         this.valueGenerator = valueGenerator != null ? valueGenerator : (row) -> null;
-        this.valueFieldNamesByPosition = valueFieldNamesByPosition;
+        this.valueFieldNamesByPosition = valueFieldNamesByPosition != null ? valueFieldNamesByPosition : new String[0];
     }
 
     @Override
