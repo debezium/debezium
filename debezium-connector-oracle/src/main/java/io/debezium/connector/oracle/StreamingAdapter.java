@@ -87,6 +87,18 @@ public interface StreamingAdapter<T extends AbstractOracleStreamingChangeEventSo
     }
 
     /**
+     * Returns whether the change event source coordinator sets the streaming {@code Connected} metric.
+     *
+     * Adapters that need to defer reporting a connected state, e.g. until a connection to a remote
+     * process has been established, should return {@code false} and update the metric themselves.
+     *
+     * @return {@code true} if the coordinator handles the connected metric, {@code false} otherwise
+     */
+    default boolean isConnectionMetricHandledByCoordinator() {
+        return true;
+    }
+
+    /**
      * Returns the offset context based on the snapshot state.
      *
      * @param ctx the relational snapshot context, should never be {@code null}

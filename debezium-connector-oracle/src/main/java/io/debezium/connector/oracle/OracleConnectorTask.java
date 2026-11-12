@@ -221,7 +221,7 @@ public class OracleConnectorTask extends BaseSourceTask<OraclePartition, OracleO
                 connectorConfig,
                 new OracleChangeEventSourceFactory(connectorConfig, connectionFactory, errorHandler, dispatcher, clock, schema, jdbcConfig, taskContext,
                         streamingMetrics, snapshotterService),
-                new OracleChangeEventSourceMetricsFactory(streamingMetrics),
+                new OracleChangeEventSourceMetricsFactory(streamingMetrics, connectorConfig),
                 dispatcher,
                 schema, signalProcessor,
                 notificationService, snapshotterService);

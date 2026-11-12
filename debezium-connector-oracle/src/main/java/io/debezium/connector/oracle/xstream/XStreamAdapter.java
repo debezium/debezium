@@ -63,6 +63,12 @@ public class XStreamAdapter extends AbstractStreamingAdapter<XStreamStreamingCha
     }
 
     @Override
+    public boolean isConnectionMetricHandledByCoordinator() {
+        // XStream reports itself as connected only once it has attached to the outbound server
+        return false;
+    }
+
+    @Override
     public HistoryRecordComparator getHistoryRecordComparator() {
         return new HistoryRecordComparator() {
             @Override
