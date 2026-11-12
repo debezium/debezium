@@ -27,6 +27,7 @@ import java.util.TimeZone;
 import org.apache.kafka.connect.data.Decimal;
 import org.apache.kafka.connect.data.Field;
 import org.apache.kafka.connect.data.SchemaBuilder;
+import org.apache.kafka.connect.errors.DataException;
 import org.junit.jupiter.api.Test;
 import org.postgresql.PGStatement;
 import org.postgresql.core.Oid;
@@ -90,6 +91,27 @@ class PostgresValueConverterTest {
                 PostgresType.UNKNOWN, elementConverter, "{1.100,2.200}"))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("Unexpected value for JDBC type " + Types.ARRAY);
+    }
+
+    @FixFor("debezium/dbz#2418")
+    @Test
+    public void shouldConvertUnchangedToastedArrayToPlaceholderOfElementType() {
+        Object converted = converter.convertArray(NUMERIC_ARRAY_COLUMN, NUMERIC_ARRAY_FIELD, PostgresType.UNKNOWN,
+                elementConverter, UnchangedToastedReplicationMessageColumn.UNCHANGED_TOAST_VALUE);
+
+        assertThat(converted).isEqualTo(DecoderDifferences.toastedValueDecimalPlaceholder(3));
+    }
+
+    @FixFor("debezium/dbz#2418")
+    @Test
+    public void shouldRejectUnchangedToastedArrayWithoutPlaceholderRepresentation() {
+        final Column column = Column.editor().name("bool_array").type("_bool").jdbcType(Types.ARRAY).optional(true).create();
+        final Field field = new Field("bool_array", 0, SchemaBuilder.array(SchemaBuilder.OPTIONAL_BOOLEAN_SCHEMA).optional().build());
+
+        assertThatThrownBy(() -> converter.convertArray(column, field, PostgresType.UNKNOWN, elementConverter,
+                UnchangedToastedReplicationMessageColumn.UNCHANGED_TOAST_VALUE))
+                .isInstanceOf(DataException.class)
+                .hasMessageContaining("bool_array");
     }
 
     private static Array jdbcArrayOf(Object[] values) {
