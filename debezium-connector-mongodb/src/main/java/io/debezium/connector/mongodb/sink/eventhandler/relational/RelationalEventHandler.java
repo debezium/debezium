@@ -9,7 +9,6 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
 
-import org.apache.kafka.connect.errors.DataException;
 import org.bson.BsonDocument;
 import org.bson.BsonInvalidOperationException;
 import org.bson.BsonObjectId;
@@ -18,6 +17,7 @@ import org.slf4j.LoggerFactory;
 
 import com.mongodb.client.model.WriteModel;
 
+import io.debezium.DebeziumDataException;
 import io.debezium.connector.mongodb.sink.MongoDbSinkConnectorConfig;
 import io.debezium.connector.mongodb.sink.converters.SinkDocument;
 import io.debezium.connector.mongodb.sink.eventhandler.EventHandler;
@@ -79,7 +79,7 @@ public class RelationalEventHandler extends EventHandler {
                 return filter;
             }
             catch (BsonInvalidOperationException exc) {
-                throw new DataException(
+                throw new DebeziumDataException(
                         "Value doc 'before' field is empty or has invalid type"
                                 + " for update/delete operation.  -> defensive actions taken!",
                         exc);
@@ -100,7 +100,7 @@ public class RelationalEventHandler extends EventHandler {
                 || valueDoc.get(JSON_DOC_AFTER_FIELD).isNull()
                 || !valueDoc.get(JSON_DOC_AFTER_FIELD).isDocument()
                 || valueDoc.getDocument(JSON_DOC_AFTER_FIELD).isEmpty()) {
-            throw new DataException(
+            throw new DebeziumDataException(
                     "Value document must contain non-empty 'after' field"
                             + " of type document for insert/update operation");
         }

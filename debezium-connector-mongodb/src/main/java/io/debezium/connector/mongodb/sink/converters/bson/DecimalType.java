@@ -8,10 +8,11 @@ package io.debezium.connector.mongodb.sink.converters.bson;
 import java.math.BigDecimal;
 
 import org.apache.kafka.connect.data.Decimal;
-import org.apache.kafka.connect.errors.DataException;
 import org.bson.BsonDecimal128;
 import org.bson.BsonValue;
 import org.bson.types.Decimal128;
+
+import io.debezium.DebeziumDataException;
 
 public class DecimalType extends AbstractBsonType {
 
@@ -25,7 +26,7 @@ public class DecimalType extends AbstractBsonType {
             return new BsonDecimal128(new Decimal128((BigDecimal) data));
         }
 
-        throw new DataException(
+        throw new DebeziumDataException(
                 "Decimal conversion not possible when data is of type " + data.getClass().getName());
     }
 }

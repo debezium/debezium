@@ -24,7 +24,6 @@ import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.data.Time;
 import org.apache.kafka.connect.data.Timestamp;
 import org.apache.kafka.connect.errors.ConnectException;
-import org.apache.kafka.connect.errors.DataException;
 import org.bson.BsonArray;
 import org.bson.BsonDocument;
 import org.bson.BsonNull;
@@ -32,6 +31,7 @@ import org.bson.BsonValue;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import io.debezium.DebeziumDataException;
 import io.debezium.connector.mongodb.sink.converters.bson.AbstractBsonType;
 import io.debezium.connector.mongodb.sink.converters.bson.BooleanType;
 import io.debezium.connector.mongodb.sink.converters.bson.BytesType;
@@ -81,7 +81,7 @@ class SchemaValueConverter implements SinkValueConverter {
     @Override
     public BsonDocument convert(final Schema schema, final Object value) {
         if (schema == null || value == null) {
-            throw new DataException("Schema-ed conversion failed due to record key and/or value was null");
+            throw new DebeziumDataException("Schema-ed conversion failed due to record key and/or value was null");
         }
         return toBsonDoc(schema, value).asDocument();
     }
@@ -183,11 +183,11 @@ class SchemaValueConverter implements SinkValueConverter {
                 case ARRAY:
                     return toBsonArray(field.schema(), struct.get(field));
                 default:
-                    throw new DataException("Unexpected / unsupported schema type " + field.schema().type());
+                    throw new DebeziumDataException("Unexpected / unsupported schema type " + field.schema().type());
             }
         }
         catch (Exception e) {
-            throw new DataException("Error while processing field " + field.name(), e);
+            throw new DebeziumDataException("Error while processing field " + field.name(), e);
         }
     }
 

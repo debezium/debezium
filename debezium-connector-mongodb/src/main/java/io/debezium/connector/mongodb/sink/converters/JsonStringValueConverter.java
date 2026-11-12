@@ -6,15 +6,16 @@
 package io.debezium.connector.mongodb.sink.converters;
 
 import org.apache.kafka.connect.data.Schema;
-import org.apache.kafka.connect.errors.DataException;
 import org.bson.BsonDocument;
+
+import io.debezium.DebeziumDataException;
 
 class JsonStringValueConverter implements SinkValueConverter {
 
     @Override
     public BsonDocument convert(final Schema schema, final Object value) {
         if (value == null) {
-            throw new DataException("JSON string conversion failed due to record key and/or value was null");
+            throw new DebeziumDataException("JSON string conversion failed due to record key and/or value was null");
         }
 
         return BsonDocument.parse((String) value);
