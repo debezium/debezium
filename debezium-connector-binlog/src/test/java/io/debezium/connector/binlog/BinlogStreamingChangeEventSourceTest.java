@@ -17,6 +17,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.security.KeyStore;
+import java.time.Duration;
 
 import org.junit.jupiter.api.Test;
 
@@ -28,7 +29,7 @@ import io.debezium.connector.binlog.jdbc.ConnectionConfiguration;
 import io.debezium.doc.FixFor;
 
 /**
- * Unit tests for {@link BinlogStreamingChangeEventSource#getBinlogSslSocketFactory}.
+ * Unit tests for {@link BinlogStreamingChangeEventSource}.
  */
 public class BinlogStreamingChangeEventSourceTest {
 
@@ -70,6 +71,34 @@ public class BinlogStreamingChangeEventSourceTest {
                 .getBinlogSslSocketFactory(mock(BinlogConnectorConfig.class), connection);
 
         verify(connection, times(1)).loadKeyStore(eq("/path/to/keystore"), any());
+    }
+
+    @Test
+    @FixFor("debezium/dbz#1328")
+    public void shouldKeepTheKeepAlivePeriodWhenTheHeartbeatIsDisabled() {
+        assertThat(BinlogStreamingChangeEventSource.serverHeartbeatPeriod(Duration.ofMillis(0), 48_000))
+                .isEqualTo(48_000);
+    }
+
+    @Test
+    @FixFor("debezium/dbz#1328")
+    public void shouldFloorTheServerHeartbeatPeriodAtTheMinimumPeriod() {
+        assertThat(BinlogStreamingChangeEventSource.serverHeartbeatPeriod(Duration.ofMillis(100), 48_000))
+                .isEqualTo(50);
+    }
+
+    @Test
+    @FixFor("debezium/dbz#1328")
+    public void shouldCapTheServerHeartbeatPeriodAtTheKeepAlivePeriod() {
+        assertThat(BinlogStreamingChangeEventSource.serverHeartbeatPeriod(Duration.ofMillis(300_000), 8_000))
+                .isEqualTo(8_000);
+    }
+
+    @Test
+    @FixFor("debezium/dbz#1328")
+    public void shouldRequestAnEighthOfTheHeartbeatInterval() {
+        assertThat(BinlogStreamingChangeEventSource.serverHeartbeatPeriod(Duration.ofMillis(1_000), 48_000))
+                .isEqualTo(125);
     }
 
     private static BinlogStreamingChangeEventSource<?, ?> newSource(SSLMode sslMode) {
