@@ -488,46 +488,35 @@ tag::initial-snap-global[]
 You can customize the way that the connector creates snapshots by changing the value of the `snapshot.mode` property.
 If you configure a different snapshot mode, the connector completes the snapshot by using a modified version of this workflow.
 For information about the snapshot process in environments that do not permit global read locks, see the xref:{context}-initial-snapshot-workflow-with-table-level-locks[snapshot workflow for table-level locks].
+end::initial-snap-global[]
 
-.Default workflow that the {prodname} {connector-name} connector uses to perform an initial snapshot with a global read lock
-The following table shows the steps in the workflow that {prodname} follows to create a snapshot with a global read lock.
 
-[cols="1a,9a",options="header",subs="+attributes"]
-|===
-|Step |Action
+===== Default workflow that the {prodname} {connector-name} connector uses to perform an initial snapshot with a global read lock
 
-|1
-a|Establish a connection to the database.
+tag::initial-snap-global-workflow[]
+The following list shows the steps in the workflow that {prodname} follows to create a snapshot with a global read lock.
 
-|2
-|Determine the tables to be captured.
+. Establish a connection to the database.
+. Determine the tables to be captured.
 By default, the connector captures the data for all non-system tables.
 After the snapshot completes, the connector continues to stream data for the specified tables.
 If you want the connector to capture data only from specific tables you can direct the connector to capture the data for only a subset of tables or table elements by setting properties such as xref:{context}-property-table-include-list[`table.include.list`] or xref:{context}-property-table-exclude-list[`table.exclude.list`].
-
-|3
-|Obtain a global read lock on the tables to be captured to block _writes_ by other database clients.
-
+. Obtain a global read lock on the tables to be captured to block _writes_ by other database clients.
++
 The snapshot itself does not prevent other clients from applying DDL that might interfere with the connector's attempt to read the binlog position and table schemas.
 The connector retains the global read lock while it reads the binlog position, and releases the lock as described in a later step.
-
-|4
 include::{snippetsdir}/frag-{context}-props-snippets.adoc[tags=snapshots-default-workflow-repeatable-read-semantics]
-
++
 [NOTE]
 ====
 The use of these isolation semantics can slow the progress of the snapshot.
 If the snapshot takes too long to complete, consider using a different isolation configuration, or skip the initial snapshot and run an xref:debezium-{context}-incremental-snapshots[incremental snapshot] instead.
 ====
-
-|5
-|Read the current binlog position.
-
-|6
-a|Capture the structure of all tables in the database, or all tables that are designated for capture.
+. Read the current binlog position.
+. Capture the structure of all tables in the database, or all tables that are designated for capture.
 The connector persists schema information in its internal database schema history topic, including all necessary `DROP...` and `CREATE...` DDL statements.
 The schema history provides information about the structure that is in effect when a change event occurs.
-
++
 [NOTE]
 ====
 By default, the connector captures the schema of every table in the database, including tables that are not configured for capture.
@@ -535,30 +524,19 @@ If tables are not configured for capture, the initial snapshot captures only the
 
 For more information about why snapshots persist schema information for tables that you did not include in the initial snapshot, see xref:understanding-why-initial-snapshots-capture-the-schema-history-for-all-tables[Understanding why initial snapshots capture the schema for all tables].
 ====
-
-|7
-|Release the global read lock obtained in Step 3.
+. Release the global read lock obtained in Step 3.
 Other database clients can now write to the database.
-
-|8
-a|At the binlog position that the connector read in Step 5, the connector begins to scan the tables that are designated for capture.
+. At the binlog position that the connector read in Step 5, the connector begins to scan the tables that are designated for capture.
 During the scan, the connector completes the following tasks:
-
-. Confirms that the table was created before the snapshot began.
+.. Confirms that the table was created before the snapshot began.
 If the table was created after the snapshot began, the connector skips the table.
 After the snapshot is complete, and the connector transitions to streaming, it emits change events for any tables that were created after the snapshot began.
-. Produces a `read` event for each row that is captured from a table.
+.. Produces a `read` event for each row that is captured from a table.
 All `read` events contain the same binlog position, which is the position that was obtained in step 5.
-. Emits each `read` event to the Kafka topic for the source table.
-. Releases data table locks, if applicable.
-
-|9
-|Commit the transaction.
-
-|10
-|Record the successful completion of the snapshot in the connector offsets.
-
-|===
+.. Emits each `read` event to the Kafka topic for the source table.
+.. Releases data table locks, if applicable.
+. Commit the transaction.
+. Record the successful completion of the snapshot in the connector offsets.
 
 The resulting initial snapshot captures the current state of each row in the captured tables.
 From this baseline state, the connector captures subsequent changes as they occur.
@@ -573,7 +551,7 @@ After the connector restarts, if the logs have been pruned, the connector's posi
 The connector then fails, and returns an error that indicates that a new snapshot is required.
 To configure the connector to automatically initiate a snapshot in this situation, set the value of the xref:{context}-property-snapshot-mode[`snapshot.mode`] property to `when_needed`.
 For more tips on troubleshooting the {prodname} {connector-name} connector, see xref:{context}-when-things-go-wrong[behavior when things go wrong].
-end::initial-snap-global[]
+end::initial-snap-global-workflow[]
 
 
 
@@ -584,37 +562,26 @@ tag::initial-snap-table-lock[]
 In some database environments, administrators do not permit global read locks.
 If the {prodname} {connector-name} connector detects that global read locks are not permitted, the connector uses table-level locks when it performs snapshots.
 For the connector to perform a snapshot that uses table-level locks, the database account that the {prodname} connector uses to connect to {connector-name} must have `LOCK TABLES` privileges.
+end::initial-snap-table-lock[]
 
-.Default workflow that the {prodname} {connector-name} connector uses to perform an initial snapshot with table-level locks
-The following table shows the steps in the workflow that {prodname} follows to create a snapshot with table-level read locks.
+
+===== Default workflow that the {prodname} {connector-name} connector uses to perform an initial snapshot with table-level locks
+
+tag::initial-snap-table-lock-workflow[]
+The following list shows the steps in the workflow that {prodname} follows to create a snapshot with table-level read locks.
 For information about the snapshot process in environments that do not permit global read locks, see the xref:{context}-initial-snapshot-workflow-with-global-read-lock[snapshot workflow for global read locks].
 
-[cols="1,9",options="header",subs="+attributes"]
-|===
-|Step |Action
-
-|1
-|Establish a connection to the database.
-
-|2
-|Determine the tables to be captured.
+. Establish a connection to the database.
+. Determine the tables to be captured.
 By default, the connector captures all non-system tables.
 To have the connector capture a subset of tables or table elements, you can set a number of `include` and `exclude` properties to filter the data, for example, xref:{context}-property-table-include-list[`table.include.list`] or xref:{context}-property-table-exclude-list[`table.exclude.list`].
-
-|3
-|Obtain table-level locks.
-
-|4
+. Obtain table-level locks.
 include::{snippetsdir}/frag-{context}-props-snippets.adoc[tags=snapshots-default-workflow-repeatable-read-semantics]
-
-|5
-a|Read the current binlog position.
-
-|6
-a|Read the schema of the databases and tables for which the connector is configured to capture changes.
+. Read the current binlog position.
+. Read the schema of the databases and tables for which the connector is configured to capture changes.
 The connector persists schema information in its internal database schema history topic, including all necessary `DROP...` and `CREATE...` DDL statements.
 The schema history provides information about the structure that is in effect when a change event occurs.
-
++
 [NOTE]
 ====
 By default, the connector captures the schema of every table in the database, including tables that are not configured for capture.
@@ -622,90 +589,77 @@ If tables are not configured for capture, the initial snapshot captures only the
 
 For more information about why snapshots persist schema information for tables that you did not include in the initial snapshot, see xref:understanding-why-initial-snapshots-capture-the-schema-history-for-all-tables[Understanding why initial snapshots capture the schema for all tables].
 ====
-
-|7
-a|At the binlog position that the connector read in Step 5, the connector begins to scan the tables that are designated for capture.
+. At the binlog position that the connector read in Step 5, the connector begins to scan the tables that are designated for capture.
 During the scan, the connector completes the following tasks:
-
-. Confirms that the table was created before the snapshot began.
+.. Confirms that the table was created before the snapshot began.
 If the table was created after the snapshot began, the connector skips the table.
 After the snapshot is complete, and the connector transitions to streaming, it emits change events for any tables that were created after the snapshot began.
-. Produces a `read` event for each row that is captured from a table.
+.. Produces a `read` event for each row that is captured from a table.
 All `read` events contain the same binlog position, which is the position that was obtained in step 5.
-. Emits each `read` event to the Kafka topic for the source table.
-. Releases data table locks, if applicable.
-
-|8
-a|Commit the transaction.
-
-|9
-|Release the table-level locks.
+.. Emits each `read` event to the Kafka topic for the source table.
+.. Releases data table locks, if applicable.
+. Commit the transaction.
+. Release the table-level locks.
 Other database clients can now write to any previously locked tables.
+. Record the successful completion of the snapshot in the connector offsets.
+end::initial-snap-table-lock-workflow[]
 
-|10
-a|Record the successful completion of the snapshot in the connector offsets.
 
-|===
+==== Settings for `snapshot.mode` connector configuration property
 
-[id="{context}-connector-snapshot-mode-options"]
-.Settings for `snapshot.mode` connector configuration property
-[cols="30%a,70%a",options="header"]
-|===
-|Setting |Description
-
-|`always`
-|The connector performs a snapshot every time that it starts.
+tag::snapshot-mode-options[]
+`always`::
+The connector performs a snapshot every time that it starts.
 The snapshot includes the structure and data of the captured tables.
 Specify this value to populate topics with a complete representation of the data from the captured tables every time that the connector starts.
 After the snapshot completes, the connector begins to stream event records for subsequent database changes.
 
-|`initial`
-|The connector performs a database snapshot as described in the xref:{context}-initial-snapshot-workflow-with-global-read-lock[default workflow for creating an initial snapshot].
+`initial`::
+The connector performs a database snapshot as described in the xref:{context}-initial-snapshot-workflow-with-global-read-lock[default workflow for creating an initial snapshot].
 After the snapshot completes, the connector begins to stream event records for subsequent database changes.
 
-|`initial_only`
-|The connector performs a database snapshot.
+`initial_only`::
+The connector performs a database snapshot.
 After the snapshot completes, the connector stops, and does not stream event records for subsequent database changes.
 
-|`schema_only`
-|Deprecated, see `no_data`.
+`schema_only`::
+Deprecated, see `no_data`.
 
-|`no_data`
-|The connector captures the structure of all relevant tables, performing all the steps described in the xref:{context}-initial-snapshot-workflow-with-global-read-lock[default workflow for creating an initial snapshot], except that it does not create `READ` events to represent the data set at the point of the connector's start-up (Step 7.2).
+`no_data`::
+The connector captures the structure of all relevant tables, performing all the steps described in the xref:{context}-initial-snapshot-workflow-with-global-read-lock[default workflow for creating an initial snapshot], except that it does not create `READ` events to represent the data set at the point of the connector's start-up (Step 8, substep b).
 
-|`schema_only_recovery`
-|Deprecated, see `recovery`.
+`schema_only_recovery`::
+Deprecated, see `recovery`.
 
-|`recovery`
-|Set this option to restore a database schema history topic that is lost or corrupted.
+`recovery`::
+Set this option to restore a database schema history topic that is lost or corrupted.
 After a restart, the connector runs a snapshot that rebuilds the topic from the source tables.
 You can also set the property to periodically prune a database schema history topic that experiences unexpected growth.
-
++
 WARNING: Do not use this mode to perform a snapshot if schema changes were committed to the database after the last connector shutdown.
 
-|`when_needed`
-|After the connector starts, it performs a snapshot only if it detects one of the following circumstances:
-
+`when_needed`::
+After the connector starts, it performs a snapshot only if it detects one of the following circumstances:
++
 * It cannot detect any topic offsets.
 * A previously recorded offset specifies a log position that is not available on the server.
 
 ifdef::community[]
-|`configuration_based`
-|Set the snapshot mode to `configuration_based` to control snapshot behavior through the set of connector properties that have the prefix 'snapshot.mode.configuration.based'.
+`configuration_based`::
+Set the snapshot mode to `configuration_based` to control snapshot behavior through the set of connector properties that have the prefix 'snapshot.mode.configuration.based'.
 endif::community[]
 
 ifdef::community[]
-|`custom`
-|The `custom` snapshot mode lets you inject your own implementation of the `io.debezium.spi.snapshot.Snapshotter` interface.
+`custom`::
+The `custom` snapshot mode lets you inject your own implementation of the `io.debezium.spi.snapshot.Snapshotter` interface.
 Set the `snapshot.mode.custom.name` configuration property to the name provided by the `name()` method of your implementation.
 The name is specified on the classpath of your Kafka Connect cluster.
 If you use the `DebeziumEngine`, the name is included in the connector JAR file.
 For more information, see xref:connector-custom-snapshot[custom snapshotter SPI].
 endif::community[]
 
-|===
 For more information, see xref:{context}-property-snapshot-mode[`snapshot.mode`] in the table of connector configuration properties.
-end::initial-snap-table-lock[]
+end::snapshot-mode-options[]
 
 
 
@@ -884,7 +838,12 @@ end::adhoc-ro-incremental[]
 tag::set-binlog-position-intro[]
 In certain situations it can be useful to precisely control the point in the binlog from which the connector begins to capture database changes.
 You can send a {prodname} `set-binlog-position` signal at run time to dynamically specify where the {connector-name} connector begins reading from the database binlog (binary log).
+end::set-binlog-position-intro[]
 
+
+==== Considerations for resetting the binlog position
+
+tag::set-binlog-position-considerations[]
 [IMPORTANT]
 ====
 Depending on the position that you specify in the `set-binlog-position` signal, the connector either excludes events from the log, or sends duplicate events.
@@ -905,7 +864,7 @@ By resuming streaming from a specific recent point, you skip historical events t
 Partial replication:: When diverting captured data to a new Kafka topic, you want the connector to process the log from a specific point to exclude the full event history and send only a specific subset of database changes.
 By using this approach, you prevent the connector from processing obsolete, older data so that the connector captures only the relevant recent changes.
 Testing:: Test the connector with a specific subset of data, excluding the full history captured by snapshots.
-end::set-binlog-position-intro[]
+end::set-binlog-position-considerations[]
 
 
 ==== Format of a `set-binlog-position` signal
@@ -1146,6 +1105,19 @@ end::trans-meta[]
 tag::data-chg-events[]
 The {prodname} {connector-name} connector generates a data change event for each row-level `INSERT`, `UPDATE`, and `DELETE` operation. Each event contains a key and a value. The structure of the key and the value depends on the table that was changed.
 
+ifdef::product[]
+More details are in the following topics:
+
+* xref:about-keys-in-debezium-{context}-change-events[]
+* xref:about-values-in-debezium-{context}-change-events[]
+endif::product[]
+end::data-chg-events[]
+
+
+
+=== Change event structure
+
+tag::change-event-structure[]
 {prodname} and Kafka Connect are designed around _continuous streams of event messages_.
 However, the structure of these events may change over time, which can be difficult for consumers to handle.
 To address this, each event contains the schema for its content or, if you are using a schema registry, a schema ID that a consumer can use to obtain the schema from the registry.
@@ -1199,7 +1171,13 @@ Typically, the event value schema contains nested schemas.
 `payload`::
 The second `payload` field is part of the event value.
 The payload structure reflects the structure of the preceding event value `schema`, and it contains the actual data for the row that was changed.
+end::change-event-structure[]
 
+
+
+=== Schema name requirements
+
+tag::change-event-schema-names[]
 By default, the connector streams change event records to topics with names that are the same as the event's originating table.
 For more information, see xref:{context}-topic-names[topic names].
 
@@ -1209,14 +1187,7 @@ The {connector-name} connector ensures that all Kafka Connect schema names adher
 
 This can lead to unexpected conflicts if the logical server name, a database name, or a table name contains invalid characters, and the only characters that distinguish names from one another are invalid and thus replaced with underscores.
 ====
-
-ifdef::product[]
-More details are in the following topics:
-
-* xref:about-keys-in-debezium-{context}-change-events[]
-* xref:about-values-in-debezium-{context}-change-events[]
-endif::product[]
-end::data-chg-events[]
+end::change-event-schema-names[]
 
 
 
@@ -1302,10 +1273,16 @@ end::event-keys[]
 === Change event values
 
 tag::event-values[]
-A change event value contains the full row state before and after an operation,
-along with source metadata and operation type, structured as a Kafka Connect `Envelope`.
+A change event value contains the full row state before and after an operation, along with source metadata and operation type, structured as a Kafka Connect `Envelope`.
+end::event-values[]
 
-The value in a change event is a bit more complicated than the key. Like the key, the value has a `schema` section and a `payload` section. The `schema` section contains the schema that describes the `Envelope` structure of the `payload` section, including its nested fields. Change events for operations that create, update or delete data all have a value payload with an envelope structure.
+
+==== Schema and payload of a change event value
+
+tag::event-value-schema-and-payload[]
+Similar to a change event key, a change event value has a `schema` section and a `payload` section.
+The `schema` section contains the schema that describes the `Envelope` structure of the `payload` section, including its nested fields.
+Change events for operations that create, update or delete data all have a value payload with an envelope structure.
 
 Consider the same sample table that was used to show an example of a change event key:
 
@@ -1327,7 +1304,7 @@ The value portion of a change event for a change to this table is described for:
 * <<{context}-delete-events,_delete_ events>>
 * <<{context}-tombstone-events,Tombstone events>>
 * <<{context}-truncate-events,_truncate_ events>>
-end::event-values[]
+end::event-value-schema-and-payload[]
 
 
 
@@ -1962,19 +1939,9 @@ end::truncate-events[]
 == Data type mappings
 
 tag::data-type-mappings[]
-
-The {prodname} {connector-name} connector represents changes to rows with events that are structured like the table in which the row exists. The event contains a field for each column value.
+The {prodname} {connector-name} connector represents changes to rows with events that are structured like the table in which the row exists.
+The event contains a field for each column value.
 The {connector-name} data type of that column dictates how {prodname} represents the value in the event.
-
-Columns that store strings are defined in {connector-name} with a character set and collation.
-The {connector-name} connector uses the column's character set when reading the binary representation of the column values in the binlog events.
-
-The connector can map {connector-name} data types to both _literal_ and _semantic_ types.
-
-* *Literal type*: how the value is represented using Kafka Connect schema types.
-* *Semantic type*: how the Kafka Connect schema captures the meaning of the field (schema name).
-
-If the default data type conversions do not meet your needs, you can {link-prefix}:{link-custom-converters}#custom-converters[create a custom converter] for the connector.
 
 ifdef::product[]
 Details are in the following sections:
@@ -1986,8 +1953,24 @@ Details are in the following sections:
 * xref:{context}-spatial-types[]
 * xref:{context}-vector-types[]
 endif::product[]
-
 end::data-type-mappings[]
+
+
+=== Data types in change events
+
+tag::data-type-mapping-concepts[]
+The connector maps each {connector-name} data type to a type for the corresponding field in the change event.
+
+Columns that store strings are defined in {connector-name} with a character set and collation.
+The {connector-name} connector uses the column's character set when reading the binary representation of the column values in the binlog events.
+
+The connector can map {connector-name} data types to both _literal_ and _semantic_ types.
+
+* *Literal type*: how the value is represented using Kafka Connect schema types.
+* *Semantic type*: how the Kafka Connect schema captures the meaning of the field (schema name).
+
+If the default data type conversions do not meet your needs, you can {link-prefix}:{link-custom-converters}#custom-converters[create a custom converter] for the connector.
+end::data-type-mapping-concepts[]
 
 === Basic types
 
@@ -2529,8 +2512,6 @@ end::spatial-data-types[]
 
 
 tag::vector-data-types[]
-=== Vector types
-
 Currently, the {prodname} {connector-name} connector supports the following vector data types.
 
 .Description of vector type mappings
