@@ -45,12 +45,11 @@ public class LogInterceptorCleanupExtension
     }
 
     @Override
-    public void beforeAll(ExtensionContext context) throws Exception {
+    public void beforeAll(ExtensionContext context) {
         store(context).put(MARK, takeMark());
-        // Initialize the class now, so that interceptors in static fields are registered as class scoped
-        // rather than when the first test instance is constructed.
-        final var testClass = context.getRequiredTestClass();
-        Class.forName(testClass.getName(), true, testClass.getClassLoader());
+        // Interceptors in static fields are registered as class scoped even when the class is only
+        // initialized as the first test instance is constructed.
+        LogInterceptorRegistry.enterClassScope(context.getRequiredTestClass());
     }
 
     @Override
@@ -65,6 +64,7 @@ public class LogInterceptorCleanupExtension
 
     @Override
     public void afterAll(ExtensionContext context) {
+        LogInterceptorRegistry.exitClassScope(context.getRequiredTestClass());
         LogInterceptorRegistry.cleanup(markOf(context));
     }
 

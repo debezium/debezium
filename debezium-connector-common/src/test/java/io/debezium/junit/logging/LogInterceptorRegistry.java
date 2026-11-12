@@ -44,7 +44,49 @@ final class LogInterceptorRegistry {
     // The marker at which the current scope, a test class or a test method, started.
     private static volatile long scopeStart;
 
+    private static final StackWalker STACK_WALKER = StackWalker.getInstance(StackWalker.Option.RETAIN_CLASS_REFERENCE);
+
+    // The test class that is running, and the sequence number given to what its static initializer registers.
+    private static volatile Class<?> testClass;
+    private static volatile long classSequence;
+
     private LogInterceptorRegistry() {
+    }
+
+    /**
+     * Starts the scope of a test class, so that interceptors and level changes registered while the class,
+     * or one of its superclasses, is initialized belong to the class, whenever that initialization happens.
+     * Must be called after the marker of the class is taken, and before that of any of its test methods.
+     *
+     * @param testClass the test class
+     */
+    static void enterClassScope(Class<?> testClass) {
+        classSequence = SEQUENCE.incrementAndGet();
+        LogInterceptorRegistry.testClass = testClass;
+    }
+
+    /**
+     * Ends the scope of the given test class.
+     *
+     * @param testClass the test class
+     */
+    static void exitClassScope(Class<?> testClass) {
+        if (LogInterceptorRegistry.testClass == testClass) {
+            LogInterceptorRegistry.testClass = null;
+        }
+    }
+
+    private static long nextSequence() {
+        final var current = testClass;
+        if (current != null && isInitializing(current)) {
+            return classSequence;
+        }
+        return SEQUENCE.incrementAndGet();
+    }
+
+    private static boolean isInitializing(Class<?> testClass) {
+        return STACK_WALKER.walk(frames -> frames.anyMatch(
+                frame -> "<clinit>".equals(frame.getMethodName()) && frame.getDeclaringClass().isAssignableFrom(testClass)));
     }
 
     /**
@@ -58,7 +100,7 @@ final class LogInterceptorRegistry {
     }
 
     static void registerAttachment(LogInterceptor interceptor, Logger logger) {
-        REGISTERED_AT.computeIfAbsent(interceptor, key -> SEQUENCE.incrementAndGet());
+        REGISTERED_AT.computeIfAbsent(interceptor, key -> nextSequence());
         ATTACHMENTS.computeIfAbsent(interceptor, key -> ConcurrentHashMap.newKeySet()).add(logger);
     }
 
@@ -72,7 +114,7 @@ final class LogInterceptorRegistry {
         synchronized (ORIGINAL_LEVELS) {
             final var entries = ORIGINAL_LEVELS.computeIfAbsent(logger, key -> new ArrayList<>());
             if (entries.isEmpty() || entries.get(entries.size() - 1).sequence() <= scopeStart) {
-                entries.add(new OriginalLevel(logger.getLevel(), SEQUENCE.incrementAndGet()));
+                entries.add(new OriginalLevel(logger.getLevel(), nextSequence()));
             }
         }
     }
