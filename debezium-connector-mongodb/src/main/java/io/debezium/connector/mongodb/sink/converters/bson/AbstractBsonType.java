@@ -6,11 +6,12 @@
 package io.debezium.connector.mongodb.sink.converters.bson;
 
 import org.apache.kafka.connect.data.Schema;
-import org.apache.kafka.connect.errors.DataException;
 import org.bson.BsonNull;
 import org.bson.BsonValue;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import io.debezium.DebeziumDataException;
 
 public abstract class AbstractBsonType {
 
@@ -31,7 +32,7 @@ public abstract class AbstractBsonType {
     public BsonValue toBson(final Object data, final Schema fieldSchema) {
         if (!fieldSchema.isOptional()) {
             if (data == null) {
-                throw new DataException("Schema of field \"" + fieldSchema.name() + "\" is not defined as optional but value is null");
+                throw new DebeziumDataException("Schema of field \"" + fieldSchema.name() + "\" is not defined as optional but value is null");
             }
             LOGGER.trace("Non-optional field \"{}\" with value \"{}\"", fieldSchema.name(), data);
             return toBson(data);

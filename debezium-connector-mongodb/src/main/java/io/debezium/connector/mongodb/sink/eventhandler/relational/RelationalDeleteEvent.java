@@ -5,12 +5,12 @@
  */
 package io.debezium.connector.mongodb.sink.eventhandler.relational;
 
-import org.apache.kafka.connect.errors.DataException;
 import org.bson.BsonDocument;
 
 import com.mongodb.client.model.DeleteOneModel;
 import com.mongodb.client.model.WriteModel;
 
+import io.debezium.DebeziumDataException;
 import io.debezium.connector.mongodb.sink.converters.SinkDocument;
 import io.debezium.connector.mongodb.sink.eventhandler.EventOperation;
 import io.debezium.data.Envelope.Operation;
@@ -23,18 +23,18 @@ public class RelationalDeleteEvent implements EventOperation {
 
         BsonDocument keyDoc = doc.getKeyDoc()
                 .orElseThrow(
-                        () -> new DataException("Key document must not be missing for delete operation"));
+                        () -> new DebeziumDataException("Key document must not be missing for delete operation"));
 
         BsonDocument valueDoc = doc.getValueDoc()
                 .orElseThrow(
-                        () -> new DataException("Value document must not be missing for delete operation"));
+                        () -> new DebeziumDataException("Value document must not be missing for delete operation"));
 
         try {
             BsonDocument filterDoc = RelationalEventHandler.generateFilterDoc(keyDoc, valueDoc, Operation.DELETE, columnNamingStrategy);
             return new DeleteOneModel<>(filterDoc);
         }
         catch (Exception exc) {
-            throw new DataException(exc);
+            throw new DebeziumDataException(exc);
         }
     }
 }

@@ -16,12 +16,12 @@ import java.util.Set;
 import java.util.function.BiFunction;
 
 import org.apache.kafka.connect.data.Schema;
-import org.apache.kafka.connect.errors.DataException;
 import org.bson.BsonDocument;
 import org.bson.BsonValue;
 
 import com.mongodb.lang.Nullable;
 
+import io.debezium.DebeziumDataException;
 import io.debezium.sink.DebeziumSinkRecord;
 
 /**
@@ -156,7 +156,7 @@ public class LazyBsonDocument extends BsonDocument {
                         unwrapped = converter.apply(record.keySchema(), record.key());
                     }
                     catch (Exception e) {
-                        throw new DataException(
+                        throw new DebeziumDataException(
                                 format(
                                         "Could not convert key %s into a BsonDocument.",
                                         unambiguousToString(record.key())),
@@ -168,7 +168,7 @@ public class LazyBsonDocument extends BsonDocument {
                         unwrapped = converter.apply(record.valueSchema(), record.value());
                     }
                     catch (Exception e) {
-                        throw new DataException(
+                        throw new DebeziumDataException(
                                 format(
                                         "Could not convert value %s into a BsonDocument.",
                                         unambiguousToString(record.value())),
@@ -176,7 +176,7 @@ public class LazyBsonDocument extends BsonDocument {
                     }
                     break;
                 default:
-                    throw new DataException(format("Unknown data type %s.", dataType));
+                    throw new DebeziumDataException(format("Unknown data type %s.", dataType));
             }
         }
         return unwrapped;

@@ -16,7 +16,6 @@ import java.util.OptionalLong;
 import java.util.stream.Collectors;
 
 import org.apache.kafka.connect.connector.ConnectRecord;
-import org.apache.kafka.connect.errors.DataException;
 import org.apache.kafka.connect.sink.SinkRecord;
 import org.bson.BsonDocument;
 
@@ -26,6 +25,7 @@ import com.mongodb.bulk.BulkWriteResult;
 import com.mongodb.client.model.BulkWriteOptions;
 import com.mongodb.client.model.WriteModel;
 
+import io.debezium.DebeziumDataException;
 import io.debezium.DebeziumException;
 import io.debezium.connector.common.DebeziumTaskState;
 import io.debezium.connector.mongodb.connection.client.MongoDbClient;
@@ -139,7 +139,7 @@ final class MongoDbChangeEventSink implements ChangeEventSink, AutoCloseable {
                                                final boolean logErrors,
                                                final boolean tolerateErrors) {
         if (e instanceof MongoBulkWriteException) {
-            throw new DataException(e);
+            throw new DebeziumDataException(e);
         }
         else {
             if (logErrors) {
@@ -149,7 +149,7 @@ final class MongoDbChangeEventSink implements ChangeEventSink, AutoCloseable {
                 batch.forEach(record -> errorReporter.report(record, e));
             }
             else {
-                throw new DataException(e);
+                throw new DebeziumDataException(e);
             }
         }
     }

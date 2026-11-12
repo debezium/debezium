@@ -7,7 +7,6 @@ package io.debezium.connector.mongodb.sink;
 
 import static io.debezium.connector.mongodb.sink.MongoDbSinkConnectorConfig.ID_FIELD;
 
-import org.apache.kafka.connect.errors.DataException;
 import org.apache.kafka.connect.sink.SinkRecord;
 import org.bson.BsonDocument;
 import org.bson.BsonValue;
@@ -15,6 +14,7 @@ import org.bson.BsonValue;
 import com.mongodb.client.model.DeleteOneModel;
 import com.mongodb.client.model.WriteModel;
 
+import io.debezium.DebeziumDataException;
 import io.debezium.connector.mongodb.sink.converters.SinkDocument;
 
 public class DeleteDefaultStrategy implements WriteModelStrategy {
@@ -35,7 +35,7 @@ public class DeleteDefaultStrategy implements WriteModelStrategy {
     @Override
     public WriteModel<BsonDocument> createWriteModel(final SinkDocument document) {
         document.getKeyDoc()
-                .orElseThrow(() -> new DataException("Could not build the WriteModel,the key document was missing unexpectedly"));
+                .orElseThrow(() -> new DebeziumDataException("Could not build the WriteModel,the key document was missing unexpectedly"));
 
         BsonDocument deleteFilter;
         if (idStrategy instanceof DefaultIdFieldStrategy) {

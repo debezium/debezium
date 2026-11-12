@@ -9,11 +9,11 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
 
-import org.apache.kafka.connect.errors.DataException;
 import org.bson.BsonDocument;
 
 import com.mongodb.client.model.WriteModel;
 
+import io.debezium.DebeziumDataException;
 import io.debezium.connector.mongodb.sink.MongoDbSinkConnectorConfig;
 import io.debezium.connector.mongodb.sink.converters.SinkDocument;
 import io.debezium.data.Envelope.Operation;
@@ -49,19 +49,19 @@ public abstract class EventHandler {
 
             if (!doc.containsKey(OPERATION_TYPE_FIELD_PATH)
                     || !doc.get(OPERATION_TYPE_FIELD_PATH).isString()) {
-                throw new DataException("Value document is missing or CDC operation is not a string");
+                throw new DebeziumDataException("Value document is missing or CDC operation is not a string");
             }
             EventOperation op = operations.get(
                     Operation.forCode(doc.get(OPERATION_TYPE_FIELD_PATH).asString().getValue()));
             if (op == null) {
-                throw new DataException(
+                throw new DebeziumDataException(
                         "No CDC operation found in mapping for op="
                                 + doc.get(OPERATION_TYPE_FIELD_PATH).asString().getValue());
             }
             return op;
         }
         catch (IllegalArgumentException exc) {
-            throw new DataException("Parsing CDC operation failed", exc);
+            throw new DebeziumDataException("Parsing CDC operation failed", exc);
         }
     }
 }

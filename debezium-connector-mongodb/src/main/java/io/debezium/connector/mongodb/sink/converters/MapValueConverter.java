@@ -8,11 +8,12 @@ package io.debezium.connector.mongodb.sink.converters;
 import java.util.Map;
 
 import org.apache.kafka.connect.data.Schema;
-import org.apache.kafka.connect.errors.DataException;
 import org.bson.BsonDocument;
 import org.bson.Document;
 
 import com.mongodb.MongoClientSettings;
+
+import io.debezium.DebeziumDataException;
 
 /** Used for converting Maps e.g. schema-less JSON */
 class MapValueConverter implements SinkValueConverter {
@@ -21,7 +22,7 @@ class MapValueConverter implements SinkValueConverter {
     @Override
     public BsonDocument convert(final Schema schema, final Object value) {
         if (value == null) {
-            throw new DataException("JSON conversion failed due to record key and/or value was null");
+            throw new DebeziumDataException("JSON conversion failed due to record key and/or value was null");
         }
         return new Document((Map<String, Object>) value)
                 .toBsonDocument(Document.class, MongoClientSettings.getDefaultCodecRegistry());

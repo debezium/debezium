@@ -7,7 +7,6 @@ package io.debezium.connector.mongodb.sink;
 
 import static io.debezium.connector.mongodb.sink.MongoDbSinkConnectorConfig.ID_FIELD;
 
-import org.apache.kafka.connect.errors.DataException;
 import org.bson.BsonDocument;
 import org.bson.BsonValue;
 
@@ -15,6 +14,7 @@ import com.mongodb.client.model.ReplaceOneModel;
 import com.mongodb.client.model.ReplaceOptions;
 import com.mongodb.client.model.WriteModel;
 
+import io.debezium.DebeziumDataException;
 import io.debezium.connector.mongodb.sink.converters.SinkDocument;
 
 public class ReplaceDefaultStrategy implements WriteModelStrategy {
@@ -26,12 +26,12 @@ public class ReplaceDefaultStrategy implements WriteModelStrategy {
         BsonDocument vd = document
                 .getValueDoc()
                 .orElseThrow(
-                        () -> new DataException(
+                        () -> new DebeziumDataException(
                                 "Could not build the WriteModel,the value document was missing unexpectedly"));
 
         BsonValue idValue = vd.get(ID_FIELD);
         if (idValue == null) {
-            throw new DataException(
+            throw new DebeziumDataException(
                     "Could not build the WriteModel,the `_id` field was missing unexpectedly");
         }
 
