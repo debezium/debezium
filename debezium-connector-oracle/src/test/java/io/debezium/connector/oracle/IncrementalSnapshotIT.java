@@ -63,12 +63,7 @@ public class IncrementalSnapshotIT extends AbstractIncrementalSnapshotTest<Oracl
     @Override
     protected void waitForConnectorToStart() {
         super.waitForConnectorToStart();
-        try {
-            waitForStreamingRunning(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
-        }
-        catch (InterruptedException e) {
-            throw new RuntimeException(e);
-        }
+        waitForStreamingRunning();
     }
 
     @Override

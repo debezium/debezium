@@ -1478,10 +1478,14 @@ public abstract class AbstractConnectorTest implements Testing {
     }
 
     public static void waitForStreamingRunning(String connector, String server, String contextName, String task) {
+        waitForStreamingRunning(connector, server, contextName, task, Duration.ofSeconds(waitTimeForRecords() * 30L));
+    }
+
+    public static void waitForStreamingRunning(String connector, String server, String contextName, String task, Duration timeout) {
         Awaitility.await()
                 .alias("Streaming was not started on time")
                 .pollInterval(100, TimeUnit.MILLISECONDS)
-                .atMost(waitTimeForRecords() * 30L, TimeUnit.SECONDS)
+                .atMost(timeout)
                 .ignoreException(InstanceNotFoundException.class)
                 .until(() -> isStreamingRunning(connector, server, contextName, task));
     }

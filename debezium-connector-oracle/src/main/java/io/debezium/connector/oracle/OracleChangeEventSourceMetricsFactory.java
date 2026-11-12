@@ -18,9 +18,12 @@ import io.debezium.pipeline.source.spi.EventMetadataProvider;
 public class OracleChangeEventSourceMetricsFactory extends DefaultChangeEventSourceMetricsFactory<OraclePartition> {
 
     private final AbstractOracleStreamingChangeEventSourceMetrics streamingMetrics;
+    private final boolean connectionMetricHandledByCoordinator;
 
-    public OracleChangeEventSourceMetricsFactory(AbstractOracleStreamingChangeEventSourceMetrics streamingMetrics) {
+    public OracleChangeEventSourceMetricsFactory(AbstractOracleStreamingChangeEventSourceMetrics streamingMetrics,
+                                                 OracleConnectorConfig connectorConfig) {
         this.streamingMetrics = streamingMetrics;
+        this.connectionMetricHandledByCoordinator = connectorConfig.getAdapter().isConnectionMetricHandledByCoordinator();
     }
 
     @Override
@@ -29,5 +32,10 @@ public class OracleChangeEventSourceMetricsFactory extends DefaultChangeEventSou
                                                                                                                    EventMetadataProvider eventMetadataProvider,
                                                                                                                    CapturedTablesSupplier capturedTablesSupplier) {
         return streamingMetrics;
+    }
+
+    @Override
+    public boolean connectionMetricHandledByCoordinator() {
+        return connectionMetricHandledByCoordinator;
     }
 }
