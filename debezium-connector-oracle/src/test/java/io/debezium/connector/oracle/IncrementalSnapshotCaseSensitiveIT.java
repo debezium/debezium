@@ -70,12 +70,7 @@ public class IncrementalSnapshotCaseSensitiveIT extends AbstractIncrementalSnaps
     @Override
     protected void waitForConnectorToStart() {
         super.waitForConnectorToStart();
-        try {
-            waitForStreamingRunning(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
-        }
-        catch (InterruptedException e) {
-            throw new RuntimeException(e);
-        }
+        waitForStreamingRunning();
     }
 
     @Override

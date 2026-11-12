@@ -115,6 +115,8 @@ public class XstreamStreamingChangeEventSource implements StreamingChangeEventSo
                 LOGGER.info("Streaming stopped before the attach to outbound server {} completed.", xstreamOutboundServerName);
                 return;
             }
+            // Only report as connected once attached; attaching may be retried with back-off for some time
+            streamingMetrics.connected(true);
             try {
                 // 2. receive events while running
                 while (context.isRunning()) {
@@ -132,6 +134,7 @@ public class XstreamStreamingChangeEventSource implements StreamingChangeEventSo
             }
             finally {
                 // 3. disconnect
+                streamingMetrics.connected(false);
                 if (this.xsOut != null) {
                     try {
                         XStreamOut xsOut = this.xsOut;

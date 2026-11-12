@@ -354,7 +354,7 @@ public abstract class AbstractIncrementalSnapshotTest<T extends SourceConnector>
 
         final Configuration config = config().build();
         startAndConsumeTillEnd(connectorClass(), config);
-        waitForStreamingRunning(connector(), server(), getStreamingNamespace(), task());
+        waitForStreamingRunning();
 
         populateTable();
         consumeRecords(ROW_COUNT);
@@ -388,7 +388,7 @@ public abstract class AbstractIncrementalSnapshotTest<T extends SourceConnector>
 
                         start(connectorClass(), config);
                         waitForConnectorToStart();
-                        waitForStreamingRunning(connector(), server(), getStreamingNamespace(), task());
+                        waitForStreamingRunning();
                         restarted.set(true);
                     }
                 });
@@ -428,7 +428,7 @@ public abstract class AbstractIncrementalSnapshotTest<T extends SourceConnector>
                 .with(Heartbeat.HEARTBEAT_INTERVAL_PROPERTY_NAME, 5000)
                 .build();
         startAndConsumeTillEnd(connectorClass(), config);
-        waitForStreamingRunning(connector(), server(), getStreamingNamespace(), task());
+        waitForStreamingRunning();
 
         consumedLines.clear();
         sendAdHocSnapshotSignal();
@@ -443,7 +443,7 @@ public abstract class AbstractIncrementalSnapshotTest<T extends SourceConnector>
 
                         start(connectorClass(), config);
                         waitForConnectorToStart();
-                        waitForStreamingRunning(connector(), server(), getStreamingNamespace(), task());
+                        waitForStreamingRunning();
                         restarted.set(true);
                     }
                 });
@@ -461,7 +461,7 @@ public abstract class AbstractIncrementalSnapshotTest<T extends SourceConnector>
                 .with(CommonConnectorConfig.INCREMENTAL_SNAPSHOT_CHUNK_SIZE, 200)
                 .build();
         startAndConsumeTillEnd(connectorClass(), config);
-        waitForStreamingRunning(connector(), server(), getStreamingNamespace(), task());
+        waitForStreamingRunning();
 
         populateTables();
         consumeRecords(ROW_COUNT * 2);
@@ -490,7 +490,7 @@ public abstract class AbstractIncrementalSnapshotTest<T extends SourceConnector>
 
                             start(connectorClass(), config);
                             waitForConnectorToStart();
-                            waitForStreamingRunning(connector(), server(), getStreamingNamespace(), task());
+                            waitForStreamingRunning();
                             restarted.set(true);
                         }
                     }
@@ -616,7 +616,7 @@ public abstract class AbstractIncrementalSnapshotTest<T extends SourceConnector>
         // round trip to the database
         populateTable();
         startConnector(additionalConfiguration());
-        waitForStreamingRunning(connector(), server(), getStreamingNamespace(), task());
+        waitForStreamingRunning();
 
         // Send ad-hoc start incremental snapshot signal and wait for incremental snapshots to start
         sendAdHocSnapshotSignalAndWait();
@@ -899,7 +899,7 @@ public abstract class AbstractIncrementalSnapshotTest<T extends SourceConnector>
     @Test
     void testPauseDuringSnapshot() throws Exception {
         startConnector(x -> x.with(CommonConnectorConfig.INCREMENTAL_SNAPSHOT_CHUNK_SIZE, 50));
-        waitForStreamingRunning(connector(), server(), getStreamingNamespace(), task());
+        waitForStreamingRunning();
 
         populateTable();
         consumeRecords(ROW_COUNT);
@@ -941,7 +941,7 @@ public abstract class AbstractIncrementalSnapshotTest<T extends SourceConnector>
 
         final Configuration config = config().build();
         startAndConsumeTillEnd(connectorClass(), config);
-        waitForStreamingRunning(connector(), server(), getStreamingNamespace(), task());
+        waitForStreamingRunning();
 
         int expectedCount = 10, expectedValue = 12345678;
         populateTable();
@@ -966,7 +966,7 @@ public abstract class AbstractIncrementalSnapshotTest<T extends SourceConnector>
 
         final Configuration config = config().build();
         startAndConsumeTillEnd(connectorClass(), config);
-        waitForStreamingRunning(connector(), server(), getStreamingNamespace(), task());
+        waitForStreamingRunning();
 
         int expectedCount = 10, expectedValue = 12345678;
         populateTable();
@@ -1007,7 +1007,7 @@ public abstract class AbstractIncrementalSnapshotTest<T extends SourceConnector>
 
         final Configuration config = config().build();
         startAndConsumeTillEnd(connectorClass(), config);
-        waitForStreamingRunning(connector(), server(), getStreamingNamespace(), task());
+        waitForStreamingRunning();
 
         int expectedCount = 10, expectedValue = 12345678;
         populateTable();
@@ -1029,7 +1029,7 @@ public abstract class AbstractIncrementalSnapshotTest<T extends SourceConnector>
 
                         start(connectorClass(), config);
                         waitForConnectorToStart();
-                        waitForStreamingRunning(connector(), server(), getStreamingNamespace(), task());
+                        waitForStreamingRunning();
                         restarted.set(true);
                     }
                 });
@@ -1059,7 +1059,7 @@ public abstract class AbstractIncrementalSnapshotTest<T extends SourceConnector>
 
         final Configuration config = config().build();
         startAndConsumeTillEnd(connectorClass(), config);
-        waitForStreamingRunning(connector(), server(), getStreamingNamespace(), task());
+        waitForStreamingRunning();
 
         int expectedCount = 10, expectedValue = 12345678;
         populateTable();
@@ -1102,7 +1102,7 @@ public abstract class AbstractIncrementalSnapshotTest<T extends SourceConnector>
 
         final Configuration config = config().build();
         startAndConsumeTillEnd(connectorClass(), config);
-        waitForStreamingRunning(connector(), server(), getStreamingNamespace(), task());
+        waitForStreamingRunning();
 
         int expectedCount = 10, expectedValue = 12345678;
         populateTable();
@@ -1135,7 +1135,7 @@ public abstract class AbstractIncrementalSnapshotTest<T extends SourceConnector>
 
         waitForAvailableRecords(waitTimeForRecords(), TimeUnit.SECONDS);
 
-        waitForStreamingRunning(connector(), server(), getStreamingNamespace(), task());
+        waitForStreamingRunning();
 
         sendAdHocSnapshotSignal();
 
@@ -1398,5 +1398,13 @@ public abstract class AbstractIncrementalSnapshotTest<T extends SourceConnector>
 
     protected Duration getWaitDurationInSeconds() {
         return Duration.ofSeconds(60);
+    }
+
+    protected void waitForStreamingRunning() {
+        // Never wait less than the default streaming wait, but allow connectors to extend it
+        final Duration defaultTimeout = Duration.ofSeconds(waitTimeForRecords() * 30L);
+        final Duration waitDuration = getWaitDurationInSeconds();
+        final Duration timeout = waitDuration.compareTo(defaultTimeout) > 0 ? waitDuration : defaultTimeout;
+        waitForStreamingRunning(connector(), server(), getStreamingNamespace(), task(), timeout);
     }
 }
