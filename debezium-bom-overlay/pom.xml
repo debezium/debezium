@@ -1,0 +1,41 @@
+<?xml version="1.0"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <parent>
+        <groupId>io.debezium</groupId>
+        <artifactId>debezium-build-parent</artifactId>
+        <version>3.8.0-SNAPSHOT</version>
+        <relativePath>../pom.xml</relativePath>
+    </parent>
+    <modelVersion>4.0.0</modelVersion>
+    <artifactId>debezium-bom-overlay</artifactId>
+    <name>Debezium BOM Overlay</name>
+    <description>
+        Optional BOM that forces Debezium's dependency versions onto projects that import it.
+        It is intended mostly for Debezium Server and Platform, which inherit some dependency versions
+        from Quarkus and need a generic way to override them, e.g. to fix a CVE.
+        Extensions must not import this BOM so that their users are not forced into the override.
+        Import it in the dependencyManagement section BEFORE any other BOM (e.g. the Quarkus BOM) so
+        that its versions take precedence.
+    </description>
+    <packaging>pom</packaging>
+
+    <dependencyManagement>
+        <dependencies>
+            <!-- MongoDB Java driver (all artifacts) -->
+            <dependency>
+                <groupId>org.mongodb</groupId>
+                <artifactId>mongodb-driver-bom</artifactId>
+                <version>${version.mongo.driver}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+
+            <!-- MySQL JDBC driver -->
+            <dependency>
+                <groupId>com.mysql</groupId>
+                <artifactId>mysql-connector-j</artifactId>
+                <version>${version.mysql.driver}</version>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
+</project>
