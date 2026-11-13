@@ -1,0 +1,199 @@
+// Category: debezium-using
+// Type: assembly
+// ModuleID: transforming-events-with-a-script-expression
+// Title: Transforming Events with a Script Expression
+[id="script-expression"]
+= Script Expression
+ifdef::community[]
+:toc:
+:toc-placement: macro
+:linkattrs:
+:icons: font
+:source-highlighter: highlight.js
+
+toc::[]
+endif::community[]
+By default, {prodname} delivers every data change event to the Kafka broker, keeping true to the source format.
+However, in some cases, you might want to tweak the source message, before they are emitted by the producer.
+To enable you quickly modify the output format, {prodname} provides the _column expression_ link:https://cwiki.apache.org/confluence/display/KAFKA/KIP-66%3A+Single+Message+Transforms+for+Kafka+Connect[single message transform] (SMT).
+
+While it is possible to use Java to create a custom SMT to encode transformation logic, using a custom-coded SMT has its drawbacks.
+For example:
+
+* It is necessary to compile the transformation up front and deploy it to Kafka Connect.
+* Every change needs code recompilation and redeployment, leading to inflexible operations.
+
+The column expression SMT supports scripting languages that integrate with https://jcp.org/en/jsr/detail?id=223[JSR 223] (Scripting for the Java(TM) Platform).
+
+== JSR 223
+
+{prodname} does not come with any implementations of the JSR 223 API.
+To use an expression language with {prodname}, you must download the JSR 223 script engine implementation for the language.
+ifdef::community[]
+For example, for Groovy 3, you can download its JSR 223 implementation from https://groovy-lang.org/.
+The JSR223 implementation for GraalVM JavaScript is available at https://github.com/graalvm/graaljs.
+After you obtain the script engine files, you add them to your {prodname} connector plug-in directories, along any other JAR files used by the language implementation.
+endif::community[]
+ifdef::product[]
+Depending on the method that you use to deploy {prodname}, you can automatically download the required artifacts from Maven Central,
+or you can manually download the artifacts, and then add them to your {prodname} connector plug-in directories, along any other JAR files used by the language implementation.
+endif::product[]
+
+== Set up
+
+For security reasons, the column expression SMT is not included with the {prodname} connector archives.
+Instead, it is provided in a separate artifact, `debezium-scripting-{debezium-version}.tar.gz`.
+
+ifdef::product[]
+If you deploy the {prodname} connector by building a custom Kafka Connect container image from a Dockerfile, to use the column expression SMT, you must explicitly download the SMT archive and deploy the files alongside the connector plug-in.
+When you use {StreamsName} to deploy the connector, it can download the required artifacts automatically based on configuration parameters that you specify in the Kafka Connect custom resource.
+endif::product[]
+ifdef::community[]
+To use the content-based routing SMT with a {prodname} connector plug-in, you must explicitly add the SMT artifact to your Kafka Connect environment.
+endif::community[]
+IMPORTANT: After the column expression SMT is present in a Kafka Connect instance, any user who is allowed to add a connector to the instance can run scripting expressions.
+To ensure that scripting expressions can be run only by authorized users, be sure to secure the Kafka Connect instance and its configuration interface before you add the column expression SMT.
+
+ifdef::community[]
+With http://kafka.apache.org/[Kafka], {link-kafka-docs}.html#connect[Kafka Connect] and one or more {prodname} connectors installed, the remaining tasks to install the column expression SMT are:
+
+. Download the link:https://repo1.maven.org/maven2/io/debezium/debezium-scripting/{debezium-version}/debezium-scripting-{debezium-version}.tar.gz[scripting SMT archive]
+. Extract the contents of the archive into the {prodname} plug-in directories of your Kafka Connect environment.
+. Either:
+    .. obtain a JSR-223 script engine implementation and add its contents to the {prodname} plug-in directories of your Kafka Connect environment.
+    .. make available on disk the compiled `.wasm` file
+. Restart your Kafka Connect process to pick up the new configuration.
+endif::community[]
+
+ifdef::product[]
+The following procedure applies if you build your Kafka Connect container image from a Dockerfile.
+If you use {StreamsName} to create the Kafka Connect image, follow the instructions in the deployment topic for your connector.
+
+.Procedure
+. From a browser, open the link:{LinkDebeziumDownloads}[{NameDebeziumDownloads}], and download the {prodname} scripting SMT archive (`debezium-scripting-{debezium-version}.tar.gz`).
+. Extract the contents of the archive into the {prodname} plug-in directories of your Kafka Connect environment.
+. Obtain a JSR-223 script engine implementation and add its contents to the {prodname} plug-in directories of your Kafka Connect environment.
+. Restart the Kafka Connect process to pick up the new JAR files.
+endif::product[]
+
+The Groovy language needs the following libraries on the classpath:
+
+* `groovy`
+* `groovy-json` (optional)
+* `groovy-jsr223`
+
+The JavaScript language needs the following libraries on the classpath:
+
+* `graalvm.js`
+* `graalvm.js.scriptengine`
+
+// Type: concept
+// Title: Example: {prodname} basic script expression SMT configuration
+// ModuleID: example-basic-debezium-script-expression-smt-configuration
+[[example-basic-script-expression-configuration-example]]
+== Example: Basic configuration
+
+You configure the script expression transformation in the {prodname} connector's Kafka Connect configuration.
+In the configuration, you specify transformation required based on downstream consumer requirements.
+As the script expression SMT processes the event stream, it transforms each event through the configured expression.
+The transformed event is passed to the broker.
+
+To configure a {prodname} connector to transform change event records, configure the `ColumnExpression` SMT in the Kafka Connect configuration for the {prodname} connector.
+Configuration of the script expression SMT requires you to specify a script expression that defines the transformation.
+
+For example, you might add the following configuration in your connector configuration.
+
+[source]
+----
+...
+transforms=script
+transforms.script.type=io.debezium.transforms.ColumnExpression
+transforms.script.language=jsr223.groovy
+transforms.script.condition=return [name: row.name+"-transformed"]
+...
+----
+
+The preceding example specifies the use of the `Groovy` expression language.
+The groovy expression `return [name: row.name+"-transformed"]` appends `-transformed` to the column `name`.
+
+.Customizing the configuration
+The preceding example shows a simple SMT configuration that is designed to process only DML events, which contain an `op` field.
+Other types of messages that a connector might emit (heartbeat messages, tombstone messages, or metadata messages about schema changes and transactions) do not contain this field.
+To avoid processing failures, you can define xref:options-for-applying-the-transformation-selectively[an SMT predicate statement that selectively applies the transformation] to specific events only.
+
+// Type: concept
+// ModuleID: variables-for-use-in-column-expressions
+== Variables for use in column expressions
+
+{prodname} binds certain variables into the evaluation context for the column SMT.
+When you create expressions to specify transformation, you can use the variables that {prodname} binds into the evaluation context.
+By binding variables, {prodname} enables the SMT to look up and interpret their values as it evaluates the conditions in an expression.
+
+The following table lists the variables that {prodname} binds into the evaluation context for the column expresssion SMT:
+
+.Column expression variables
+[cols="25%a,35%a,40%a",subs="+attributes",options="header"]
+|===
+|Name |Description |Type
+|`row`   |A before or after image of the message. |`org.apache.kafka.connect{zwsp}.data{zwsp}.Struct`
+|`record`|The complete soruce record of the message. |`org.apache.kafka.connect{zwsp}.connector.ConnectRecord`
+|===
+
+An expression can invoke arbitrary methods on its variables.
+Expressions should resolve to a Map value that determines which fields are overridden.
+The new values must conform with the existing record schema.
+
+Expressions should not result in any side-effects. That is, they should not modify any variables that they pass.
+
+// Type: concept
+// Title: Options for applying the transformation selectively
+// ModuleID: options-for-applying-the-transformation-selectively
+[id="options-for-applying-the-transformation-selectively"]
+== Options for applying the transformation selectively
+
+In addition to the change event messages that a {prodname} connector emits when a database change occurs, the connector also emits other types of messages, including heartbeat messages, and metadata messages about schema changes and transactions.
+Because the structure of these other messages differs from the structure of the change event messages that the SMT is designed to process, it's best to configure the connector to selectively apply the SMT, so that it processes only the intended data change messages.
+You can use one of the following methods to configure the connector to apply the SMT selectively:
+
+* {link-prefix}:{link-smt-predicates}#applying-transformations-selectively[Configure an SMT predicate for the transformation].
+* Use the xref:expression-topic-regex[topic.regex] configuration option for the SMT.
+
+// Type: reference
+// ModuleID: options-for-configuring-expression-transformation
+// Title: Options for configuring column expression transformation
+[[expression-configuration-options]]
+== Configuration options
+
+The following table lists the configuration options that you can use with the column expression SMT.
+
+.column expression SMT configuration options
+[cols="30%a,25%a,45%a"]
+|===
+|Property
+|Default
+|Description
+
+|[[expression-topic-regex]]<<expression-topic-regex, `topic.regex`>>
+|
+|An optional regular expression that evaluates the name of the destination topic for an event to determine whether to apply transformation logic.
+If the name of the destination topic matches the value in `topic.regex`, the transformation applies before it passes the event to the topic.
+If the name of the topic does not match the value in `topic.regex`, the SMT passes the event to the topic unmodified.
+
+|[[expression-language]]<<expression-language, `language`>>
+|
+|The language in which the expression is written. For JSR223 must begin with `jsr223.`, for example, `jsr223.groovy`, or `jsr223.graal.js`.
+{prodname} supports bootstrapping through the https://jcp.org/en/jsr/detail?id=223[JSR 223 API ("Scripting for the Java (TM) Platform")].
+
+|[[expression-condition]]<<expression-condition, `expression`>>
+|
+|The expression to be evaluated for every message. Must evaluate to a Map value with all colums to rewrite.
+
+|[[expression-null-handling-mode]]<<expression-null-handling-mode, `null.handling.mode`>>
+|`keep`
+a|Specifies how the transformation handles `null` (tombstone) messages. You can specify one of the following options:
+
+`keep`:: (Default) Pass the messages through.
+`drop`:: Remove the messages completely.
+`evaluate`:: Apply the transformation on the messages.
+
+|===
