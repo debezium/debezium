@@ -3029,7 +3029,9 @@ end::cfg-binlog-streaming-timeouts[]
 
 tag::validate-binlog-row-options[]
 Verify the setting of the `binlog_row_value_options` variable in the database.
-To enable the connector to consume *UPDATE* events, this variable must be set to a value other than `PARTIAL_JSON`.
+When this variable is set to `PARTIAL_JSON`, the database logs updates that modify only part of a JSON document as JSON diffs.
+Because the connector cannot reconstruct the full document from a JSON diff, the change event contains the placeholder value `__debezium_unavailable_value` for that column.
+To emit the full JSON document, set this variable to an empty value, or use the xref:post-processors/reselect-columns.adoc[reselect columns post processor] to query the current value from the database.
 
 .Prerequisites
 
@@ -3058,7 +3060,7 @@ To enable the connector to consume *UPDATE* events, this variable must be set to
 +--------------------------+-------+
 ----
 
-. If the value of the variable is set to `PARTIAL_JSON`, run the following command to unset it:
+. If the value of the variable is set to `PARTIAL_JSON` and you want the change events to contain the full JSON document, run the following command to unset it:
 +
 [source,SQL,subs="+attributes,+quotes"]
 ----
