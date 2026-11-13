@@ -72,6 +72,13 @@ public abstract class AbstractChangeEventSink implements ChangeEventSink {
     }
 
     @Override
+    public void execute(final Collection<SinkRecord> records) {
+        for (Batch batch : put(records)) {
+            writeBatch(batch);
+        }
+    }
+
+    @Override
     public List<Batch> put(Collection<SinkRecord> records) {
         for (SinkRecord kafkaSinkRecord : records) {
             LOGGER.trace("Processing {}", kafkaSinkRecord);
@@ -130,7 +137,7 @@ public abstract class AbstractChangeEventSink implements ChangeEventSink {
         return List.of();
     }
 
-    protected void forceFlush() {
+    public void forceFlush() {
         for (Batch batch : forcePoll()) {
             writeBatch(batch);
         }
@@ -149,10 +156,10 @@ public abstract class AbstractChangeEventSink implements ChangeEventSink {
     }
 
     protected void writeBatch(Batch batch) {
-        batchCount++;
-        totalRecordsWritten += batch.size();
         try {
             doWriteBatch(batch);
+            ++batchCount;
+            totalRecordsWritten += batch.size();
         }
         catch (RuntimeException e) {
             if (!ErrorReporters.isEnabled(errorReporter) || isRetriableWriteException(e)) {
@@ -177,6 +184,8 @@ public abstract class AbstractChangeEventSink implements ChangeEventSink {
         for (BatchRecord batchRecord : batch) {
             try {
                 doWriteBatch(new Batch(List.of(batchRecord)));
+                ++totalRecordsWritten;
+                ++batchCount;
             }
             catch (RuntimeException e) {
                 if (isRetriableWriteException(e)) {
@@ -191,8 +200,7 @@ public abstract class AbstractChangeEventSink implements ChangeEventSink {
         DebeziumSinkRecord record = batchRecord.record();
         LOGGER.warn("Reporting failed record from topic '{}' partition '{}' offset '{}' to the errant record reporter",
                 record.topicName(), record.partition(), record.offset(), cause);
-        totalRecordsWritten--;
-        totalRecordsReported++;
+        ++totalRecordsReported;
         errorReporter.report(record, cause);
         recordReported(record, cause);
     }
