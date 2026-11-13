@@ -62,7 +62,9 @@ public class DefaultValueParserListener extends MariaDBParserBaseListener {
                         sign + parser.parseStringLiteral(ctx.constant().stringLiteral()), parser.systemVariables()));
             }
             else if (ctx.constant().decimalLiteral() != null) {
-                columnEditor.defaultValueExpression(sign + ctx.constant().decimalLiteral().getText());
+                // A number is a TIMESTAMP literal too, such as 20260928123456
+                columnEditor.defaultValueExpression(BinlogTimeZones.toDefaultValueExpression(columnEditor,
+                        sign + ctx.constant().decimalLiteral().getText(), parser.systemVariables()));
             }
             else if (ctx.constant().hexadecimalLiteral() != null) {
                 final var literal = ctx.constant().hexadecimalLiteral();
@@ -80,7 +82,8 @@ public class DefaultValueParserListener extends MariaDBParserBaseListener {
                 columnEditor.defaultValueExpression(ctx.constant().booleanLiteral().getText());
             }
             else if (ctx.constant().REAL_LITERAL() != null) {
-                columnEditor.defaultValueExpression(ctx.constant().REAL_LITERAL().getText());
+                columnEditor.defaultValueExpression(BinlogTimeZones.toDefaultValueExpression(columnEditor,
+                        ctx.constant().REAL_LITERAL().getText(), parser.systemVariables()));
             }
         }
         else if (ctx.currentTimestamp() != null && !ctx.currentTimestamp().isEmpty()) {

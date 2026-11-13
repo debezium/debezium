@@ -451,7 +451,9 @@ public class AlterTableParserListener extends TableCommonParserListener {
 
         // Handle signed number
         if (signed.ulong_number() != null) {
-            return sign + signed.ulong_number().getText();
+            // A number is a TIMESTAMP literal too, such as 20260928123456
+            return BinlogTimeZones.toDefaultValueExpression(defaultValueColumnEditor, sign + signed.ulong_number().getText(),
+                    parser.systemVariables());
         }
 
         // Handle literal (text, numeric, temporal, etc.)

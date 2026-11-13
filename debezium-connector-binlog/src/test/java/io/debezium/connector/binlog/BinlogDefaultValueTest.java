@@ -1065,6 +1065,23 @@ public abstract class BinlogDefaultValueTest<V extends BinlogValueConverters, P 
 
     @Test
     @FixFor("debezium/dbz#2866")
+    void shouldInterpretTimestampDefaultsWithoutDelimitersInSessionTimeZone() {
+        parser.parse("SET time_zone='+09:00'", tables);
+        parser.parse("CREATE TABLE ts_defaults (id INT, n TIMESTAMP NOT NULL DEFAULT 20260928123456, "
+                + "s TIMESTAMP NOT NULL DEFAULT '20260928123456', f TIMESTAMP(3) NOT NULL DEFAULT 20260928123456.123, "
+                + "d TIMESTAMP NOT NULL DEFAULT 20260928)", tables);
+        assertThat(timestampDefault("ts_defaults", "n")).isEqualTo("2026-09-28T03:34:56Z");
+        assertThat(timestampDefault("ts_defaults", "s")).isEqualTo("2026-09-28T03:34:56Z");
+        assertThat(timestampDefault("ts_defaults", "f")).isEqualTo("2026-09-28T03:34:56.123Z");
+        assertThat(timestampDefault("ts_defaults", "d")).isEqualTo("2026-09-27T15:00:00Z");
+
+        parser.parse("SET time_zone='America/New_York'", tables);
+        parser.parse("ALTER TABLE ts_defaults ALTER COLUMN n SET DEFAULT 20260115080000", tables);
+        assertThat(timestampDefault("ts_defaults", "n")).isEqualTo("2026-01-15T13:00:00Z");
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2866")
     void shouldInterpretTimestampDefaultsOfSystemTimeZoneInServerTimeZone() {
         parser.systemVariables().setVariable(BinlogScope.GLOBAL, "system_time_zone", "Pacific/Samoa");
         parser.parse("SET time_zone='SYSTEM'", tables);

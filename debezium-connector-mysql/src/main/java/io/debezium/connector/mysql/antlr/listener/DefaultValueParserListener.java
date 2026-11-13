@@ -110,7 +110,9 @@ public class DefaultValueParserListener extends MySqlParserBaseListener {
 
                     // Handle signed number
                     if (signed.ulong_number() != null) {
-                        getColumnEditor().defaultValueExpression(sign + signed.ulong_number().getText());
+                        // A number is a TIMESTAMP literal too, such as 20260928123456
+                        getColumnEditor().defaultValueExpression(BinlogTimeZones.toDefaultValueExpression(getColumnEditor(),
+                                sign + signed.ulong_number().getText(), parser.systemVariables()));
                         exitDefaultValue(true);
                         return;
                     }
@@ -139,7 +141,8 @@ public class DefaultValueParserListener extends MySqlParserBaseListener {
 
         // Numeric literal
         if (literalCtx.numLiteral() != null) {
-            getColumnEditor().defaultValueExpression(sign + literalCtx.numLiteral().getText());
+            getColumnEditor().defaultValueExpression(BinlogTimeZones.toDefaultValueExpression(getColumnEditor(),
+                    sign + literalCtx.numLiteral().getText(), parser.systemVariables()));
             return;
         }
 

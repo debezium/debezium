@@ -103,12 +103,19 @@ public abstract class BinlogTimestampDefaultTimeZoneIT<C extends SourceConnector
         assertDefaultMatchesValue(assertions, added, "v", "streamed ADD COLUMN");
         assertDefaultMatchesValue(assertions, added, "w", "streamed ADD COLUMN");
 
+        // A literal without delimiters
+        executeStatements(database.getDatabaseName(),
+                "SET time_zone='-05:00'",
+                "ALTER TABLE " + TABLE + " ALTER COLUMN v SET DEFAULT 20261002000000",
+                "INSERT INTO " + TABLE + " (id) VALUES (5)");
+        assertDefaultMatchesValue(assertions, consumeRecord(5), "v", "streamed SET DEFAULT without delimiters");
+
         // The schema history is recovered with the time zones of the statements
         stopConnector();
         start(getConnectorClass(), config);
         waitForStreamingRunning(getConnectorName(), database.getServerName());
-        executeStatements(database.getDatabaseName(), "INSERT INTO " + TABLE + " (id) VALUES (5)");
-        final SourceRecord afterRestart = consumeRecord(5);
+        executeStatements(database.getDatabaseName(), "INSERT INTO " + TABLE + " (id) VALUES (6)");
+        final SourceRecord afterRestart = consumeRecord(6);
         assertDefaultMatchesValue(assertions, afterRestart, "v", "after restart");
         assertDefaultMatchesValue(assertions, afterRestart, "w", "after restart");
         assertions.assertAll();

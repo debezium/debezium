@@ -343,7 +343,14 @@ public abstract class BinlogDefaultValueConverter implements DefaultValueConvert
      * @return the value in the {@code yyyy-MM-dd HH:mm:ss} format, or the given value if it is not a number of 6, 8, 12
      *         or 14 digits
      */
-    private static String normalizeCompactTimestamp(String value) {
+    /**
+     * Rewrites a date and time literal without delimiters, such as {@code 20260928123456} or {@code 260928}, with
+     * delimiters, as MySQL and MariaDB read it. A literal in another form is returned unchanged.
+     *
+     * @param value the literal; never null
+     * @return the literal with delimiters, such as {@code 2026-09-28 12:34:56}
+     */
+    public static String normalizeCompactTimestamp(String value) {
         final Matcher matcher = COMPACT_TIMESTAMP_PATTERN.matcher(value);
         if (!matcher.matches()) {
             return value;

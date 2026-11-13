@@ -17,6 +17,7 @@ import java.time.temporal.ChronoField;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import io.debezium.connector.binlog.jdbc.BinlogDefaultValueConverter;
 import io.debezium.relational.ColumnEditor;
 import io.debezium.relational.SystemVariables;
 
@@ -123,7 +124,8 @@ public final class BinlogTimeZones {
             return literal;
         }
         final ZoneId timeZone = sessionTimeZone(variables);
-        final Matcher matcher = LOCAL_TIMESTAMP.matcher(literal.trim());
+        // A literal without delimiters, such as 20260928123456, is in the time zone of the session as well
+        final Matcher matcher = LOCAL_TIMESTAMP.matcher(BinlogDefaultValueConverter.normalizeCompactTimestamp(literal.trim()));
         if (timeZone == null || !matcher.matches()) {
             return literal;
         }
