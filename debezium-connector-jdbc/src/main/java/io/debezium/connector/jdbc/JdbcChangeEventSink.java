@@ -48,7 +48,7 @@ import io.debezium.util.Stopwatch;
 public class JdbcChangeEventSink extends AbstractChangeEventSink implements ChangeEventSink {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(JdbcChangeEventSink.class);
-    private static final Logger SCHEMA_CHANGE_LOGGER = LoggerFactory.getLogger(JdbcChangeEventSink.class.getName() + ".SchemaChange");
+    private static final Logger SCHEMA_CHANGE_LOGGER = LoggerFactory.getLogger(LOGGER.getName() + ".SchemaChange");
     public static final String FOUND_SCHEMA_CHANGE_RECORD_MSG = "Schema change records are not supported by JDBC connector. Adjust `topics` or `topics.regex` to exclude schema change topic.";
 
     private final JdbcSinkConnectorConfig config;
