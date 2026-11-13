@@ -755,8 +755,9 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
             }
             catch (Exception e) {
                 // dbz#2430: neither an invalidated slot nor a permanent error can succeed on retry, so fail fast
-                if (PostgresErrorHandler.isSlotInvalidated(e)) {
-                    throw new DebeziumException(String.format("Replication slot '%s' has been invalidated and cannot be used for streaming.", slotName), e);
+                if (PostgresErrorHandler.isPrerequisiteStateError(e)) {
+                    throw new DebeziumException(String.format("Cannot start streaming from replication slot '%s' because prerequisite state is not met: %s",
+                            slotName, e.getMessage()), e);
                 }
                 if (PostgresErrorHandler.isPermanentError(e)) {
                     throw new DebeziumException("Failed to start replication stream due to a non-retriable error", e);

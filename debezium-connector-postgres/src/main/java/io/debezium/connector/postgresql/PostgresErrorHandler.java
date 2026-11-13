@@ -51,7 +51,7 @@ public class PostgresErrorHandler extends ErrorHandler {
     @Override
     protected boolean isRetriable(Throwable throwable) {
         // Check for permanent errors first so the task fails immediately instead of retrying forever.
-        if (isPermanentError(throwable) || isSlotInvalidated(throwable)) {
+        if (isPermanentError(throwable) || isPrerequisiteStateError(throwable)) {
             return false;
         }
         return super.isRetriable(throwable);
@@ -61,7 +61,7 @@ public class PostgresErrorHandler extends ErrorHandler {
      * Checks if the exception (or any cause in its chain) is the error PostgreSQL raises when a
      * replication slot has been invalidated (SQLSTATE 55000), so retrying cannot succeed.
      */
-    public static boolean isSlotInvalidated(Throwable t) {
+    public static boolean isPrerequisiteStateError(Throwable t) {
         for (Throwable cause = t; cause != null; cause = cause.getCause()) {
             if (cause instanceof SQLException sqlException
                     && PSQLState.OBJECT_NOT_IN_STATE.getState().equals(sqlException.getSQLState())) {

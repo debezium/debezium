@@ -561,7 +561,8 @@ public class ReplicationConnectionIT {
             final var interceptor = new LogInterceptor(PostgresReplicationConnection.class);
             try (ReplicationConnection connection = TestHelper.createForReplication(slotName, false)) {
                 final var e = assertThrows(DebeziumException.class, () -> connection.startStreaming(new WalPositionLocator()));
-                assertThat(e.getMessage()).contains("invalidated");
+                assertThat(e.getMessage())
+                        .contains("invalidated");
                 // default max retries applies, so this proves the retry was skipped
                 assertFalse(interceptor.containsWarnMessage("and retrying, attempt number"));
             }
