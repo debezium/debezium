@@ -10,7 +10,9 @@ import org.apache.kafka.connect.data.SchemaBuilder;
 
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.connector.postgresql.data.Ltree;
+import io.debezium.connector.postgresql.pipeline.txmetadata.PostgresTransactionStructMaker;
 import io.debezium.data.Envelope;
+import io.debezium.data.SchemaUtil;
 import io.debezium.schema.SchemaFactory;
 import io.debezium.schema.SchemaNameAdjuster;
 
@@ -24,6 +26,22 @@ public class PostgresSchemaFactory extends SchemaFactory {
 
     public static PostgresSchemaFactory get() {
         return postgresSchemaFactoryObject;
+    }
+
+    /**
+     * Postgres augments the transaction (BEGIN/END) value schema with an optional {@code commit_lsn}
+     * field (the pgoutput {@code Begin.final_lsn}). The field is added here, in the connector's schema
+     * factory, so the shared/core transaction schema used by other connectors is unaffected.
+     */
+    @Override
+    public Schema transactionValueSchema(SchemaNameAdjuster adjuster) {
+        return withCommitLsn(super.transactionValueSchema(adjuster));
+    }
+
+    private static Schema withCommitLsn(Schema base) {
+        return SchemaUtil.copySchema(base)
+                .field(PostgresTransactionStructMaker.DEBEZIUM_TRANSACTION_COMMIT_LSN_KEY, Schema.OPTIONAL_INT64_SCHEMA)
+                .build();
     }
 
     /*
