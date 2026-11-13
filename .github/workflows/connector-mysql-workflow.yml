@@ -18,15 +18,11 @@ jobs:
       fail-fast: false
       matrix:
         profile: [ "mysql-ci", "mysql-ci-gtids-ssl", "mysql-ci-percona", "mysql-ci,mysql-feature-binlog-metadata" ]
-        version-mysql-server: [ "8.0", "8.4", "9.7" ]
+        version-mysql-server: [ "8.4", "9.7" ]
         # Always exclude the mysql-ci-gtids-ssl and binlog-metadata builds for all versions except most recent
         exclude:
           - profile: "mysql-ci-gtids-ssl"
-            version-mysql-server: "8.0"
-          - profile: "mysql-ci-gtids-ssl"
             version-mysql-server: "8.4"
-          - profile: "mysql-ci,mysql-feature-binlog-metadata"
-            version-mysql-server: "8.0"
           - profile: "mysql-ci,mysql-feature-binlog-metadata"
             version-mysql-server: "8.4"
     name: MySQL ${{ matrix.version-mysql-server }} - ${{ matrix.profile }}
