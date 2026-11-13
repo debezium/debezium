@@ -79,34 +79,34 @@
         <jdk.min.version>${debezium.java.source}</jdk.min.version>
 
         <!-- Maven Plugins -->
-        <version.compiler.plugin>3.13.0</version.compiler.plugin>
+        <version.compiler.plugin>3.16.0</version.compiler.plugin>
         <version.resources.plugin>3.1.0</version.resources.plugin>
-        <version.dependency.plugin>3.1.1</version.dependency.plugin>
-        <version.enforcer.plugin>3.6.1</version.enforcer.plugin>
+        <version.dependency.plugin>3.11.0</version.dependency.plugin>
+        <version.enforcer.plugin>3.7.0</version.enforcer.plugin>
 
         <version.maven>3.9.8</version.maven>
-        <version.jar.plugin>3.5.0</version.jar.plugin>
+        <version.jar.plugin>3.5.1</version.jar.plugin>
         <version.source.plugin>3.4.0</version.source.plugin>
         <version.assembly.plugin>3.8.0</version.assembly.plugin>
         <version.war.plugin>2.5</version.war.plugin>
         <version.google.formatter.plugin>0.4</version.google.formatter.plugin>
-        <version.docker.maven.plugin>0.48.1</version.docker.maven.plugin>
-        <version.central.publishing.plugin>0.11.0</version.central.publishing.plugin>
-        <version.protoc.maven.plugin>3.8.0</version.protoc.maven.plugin>
+        <version.docker.maven.plugin>0.49.0</version.docker.maven.plugin>
+        <version.central.publishing.plugin>0.12.0</version.central.publishing.plugin>
+        <version.protoc.maven.plugin>3.11.4</version.protoc.maven.plugin>
         <version.javadoc.plugin>3.12.0</version.javadoc.plugin>
-        <version.code.formatter>2.26.0</version.code.formatter>
-        <version.surefire.plugin>3.5.5</version.surefire.plugin>
+        <version.code.formatter>2.29.0</version.code.formatter>
+        <version.surefire.plugin>3.6.1</version.surefire.plugin>
         <version.checkstyle.plugin>3.6.0</version.checkstyle.plugin>
         <version.release.plugin>2.5.3</version.release.plugin>
-        <version.impsort>1.12.0</version.impsort>
-        <version.exec.plugin>3.6.3</version.exec.plugin>
+        <version.impsort>1.13.0</version.impsort>
+        <version.exec.plugin>3.7.0</version.exec.plugin>
         <version.failsafe.plugin>${version.surefire.plugin}</version.failsafe.plugin>
         <version.checkstyle>13.2.0</version.checkstyle>
         <version.revapi.plugin>0.15.1</version.revapi.plugin>
         <!-- Should be aligned with the jandex version used in quarkus version quarkus.version.runtime -->
         <version.jandex>3.4.0</version.jandex>
         <version.revapi-java.plugin>0.28.4</version.revapi-java.plugin>
-        <version.build-helper.plugin>3.6.1</version.build-helper.plugin>
+        <version.build-helper.plugin>3.8.0</version.build-helper.plugin>
 
         <!-- Kafka and it's dependencies MUST reflect what the Kafka version uses -->
         <version.kafka>4.3.1</version.kafka>
@@ -129,7 +129,7 @@
         <!-- ANTLR -->
         <!-- Align with Antlr runtime version pulled in via Quarkus -->
         <version.antlr>4.10.1</version.antlr>
-        <version.antlr4test.plugin>1.18</version.antlr4test.plugin>
+        <version.antlr4test.plugin>1.22</version.antlr4test.plugin>
 
         <!-- Version used in Debezium Server, Operator, etc., usually a LTS version -->
         <!-- Must be aligned with Apicurio version below -->
@@ -194,9 +194,9 @@
         <version.datadog.sketches>0.8.2</version.datadog.sketches>
 
         <!-- Static code analysis -->
-        <version.sonar.plugin>5.5.0.6356</version.sonar.plugin>
-        <version.jacoco.plugin>0.8.12</version.jacoco.plugin>
-        <version.properties.plugin>1.2.1</version.properties.plugin>
+        <version.sonar.plugin>5.8.0.7211</version.sonar.plugin>
+        <version.jacoco.plugin>0.8.16</version.jacoco.plugin>
+        <version.properties.plugin>1.4.0</version.properties.plugin>
 
         <!-- Testing -->
         <opentelemetry.agent.for.testing.artifact.relative.path>io/opentelemetry/javaagent/opentelemetry-agent-for-testing/${version.opentelemetry.testing}/opentelemetry-agent-for-testing-${version.opentelemetry.testing}.jar</opentelemetry.agent.for.testing.artifact.relative.path>
