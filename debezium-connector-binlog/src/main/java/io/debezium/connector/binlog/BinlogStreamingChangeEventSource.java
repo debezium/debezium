@@ -80,8 +80,6 @@ import io.debezium.config.CommonConnectorConfig.EventProcessingFailureHandlingMo
 import io.debezium.config.Configuration;
 import io.debezium.connector.binlog.BinlogConnectorConfig.SecureConnectionMode;
 import io.debezium.connector.binlog.event.EventDataDeserializationExceptionData;
-import io.debezium.connector.binlog.event.QueryEventDataWithTimeZone;
-import io.debezium.connector.binlog.event.QueryEventDataWithTimeZoneDeserializer;
 import io.debezium.connector.binlog.event.RowDeserializers;
 import io.debezium.connector.binlog.event.StopEventDataDeserializer;
 import io.debezium.connector.binlog.event.TransactionPayloadDeserializer;
@@ -586,7 +584,6 @@ public abstract class BinlogStreamingChangeEventSource<P extends BinlogPartition
         };
 
         eventDeserializer.setEventDataDeserializer(EventType.STOP, new StopEventDataDeserializer());
-        eventDeserializer.setEventDataDeserializer(EventType.QUERY, new QueryEventDataWithTimeZoneDeserializer());
         eventDeserializer.setEventDataDeserializer(EventType.GTID, new GtidEventDataDeserializer());
         final boolean preserveInvalidTemporalValues = connectorConfig.getTemporalPrecisionMode() == TemporalPrecisionMode.STRUCTURED;
         eventDeserializer.setEventDataDeserializer(EventType.WRITE_ROWS,
@@ -901,12 +898,13 @@ public abstract class BinlogStreamingChangeEventSource<P extends BinlogPartition
      * the statement is interpreted the same way when the history is recovered, but it is not a schema change to emit.
      */
     private void applySessionTimeZone(P partition, O offsetContext, QueryEventData command, Instant eventTime) {
-        if (!(command instanceof QueryEventDataWithTimeZone withTimeZone) || withTimeZone.getTimeZone() == null
-                || withTimeZone.getTimeZone().equals(schema.sessionTimeZone())) {
+        // The binlog client reads it from the status variables of the query event
+        final String timeZone = command.getTimeZone();
+        if (timeZone == null || timeZone.equals(schema.sessionTimeZone())) {
             return;
         }
         final List<SchemaChangeEvent> timeZoneChanges = schema.parseStreamingDdl(partition,
-                "SET @@session.time_zone='" + withTimeZone.getTimeZone() + "'", "", offsetContext, eventTime);
+                "SET @@session.time_zone='" + timeZone + "'", "", offsetContext, eventTime);
         for (SchemaChangeEvent timeZoneChange : timeZoneChanges) {
             schema.applySchemaChange(timeZoneChange);
         }
