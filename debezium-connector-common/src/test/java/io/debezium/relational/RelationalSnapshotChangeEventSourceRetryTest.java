@@ -451,9 +451,8 @@ public class RelationalSnapshotChangeEventSourceRetryTest {
                 new ConcurrentLinkedQueue<>(List.of(offset)));
 
         assertThatThrownBy(callable::call)
-                .isInstanceOf(ConnectException.class)
-                .hasCauseInstanceOf(SQLException.class)
-                .hasRootCauseMessage("SET TRANSACTION SNAPSHOT failed");
+                .isInstanceOf(SQLException.class)
+                .hasMessage("SET TRANSACTION SNAPSHOT failed");
     }
 
     @Test
@@ -498,7 +497,7 @@ public class RelationalSnapshotChangeEventSourceRetryTest {
         assertThatThrownBy(callable::call)
                 .isInstanceOf(ConnectException.class)
                 .hasCauseInstanceOf(SQLException.class)
-                .hasRootCauseMessage("SET TRANSACTION SNAPSHOT failed");
+                .hasRootCauseMessage("SET TRANSACTION SNAPSHOT failed — export expired");
     }
 
     @Test
