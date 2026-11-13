@@ -175,7 +175,7 @@ The specified prefix must include a trailing dot (`.`).
 `enriched_properties`:: Optional. The connector reads the base enriched fields (`op`, `ts_ns`, `after`, and `before` when `diff` is set), so it does not require any enriched property to consume the feed. 
 The default value,  `source` ensures that intermediate topics include origin and commit-time metadata.
 `format='json'`:: Required. The connector consumes JSON-encoded changefeed messages.
-`diff`, `updated`, `resolved`:: Set these to match the connector configuration so that before-images, update markers, and resolved timestamps are available.
+`diff`, `updated`, `resolved`, `mvcc_timestamp`:: Set these to match the connector configuration so that before-images, update markers, resolved timestamps, and MVCC commit timestamps are available.
 
 If any of these conditions is not met, the connector does not recognize the existing changefeed and creates its own.
 A changefeed created with a different `topic_prefix` or without `full_table_name` is not recognized as a match, and the connector creates its own. 
@@ -536,8 +536,11 @@ The source metadata includes:
 * The schema name
 * The logical cluster name
 * The resolved timestamp (for consistency tracking)
-* The Hybrid Logical Clock (HLC) timestamp. 
+* The Hybrid Logical Clock (HLC) timestamp (`ts_hlc`).
 HLC is the internal timestamp format for CockroachDB.
+When the changefeed provides a commit timestamp for the row, {prodname} populates the `ts_hlc` field with that value.
+Events that an incremental snapshot produces do not include a `ts_hlc` value.
+To report the time at which each row was written, including for initial scan events, set xref:cockroachdb-property-include-mvcc-timestamp[`cockroachdb.changefeed.include.mvcc.timestamp`] to `true`.
 
 |4
 |`op`
@@ -1222,6 +1225,20 @@ Resolved timestamps are used for offset tracking.
 |`false`
 |Specifies whether to include before and after diff information in changefeed events.
 When enabled, UPDATE events include the previous row state in the `before` field.
+
+|[[cockroachdb-property-include-mvcc-timestamp]]<<cockroachdb-property-include-mvcc-timestamp, `+cockroachdb.changefeed.include.mvcc.timestamp+`>>
+|`false`
+|Specifies whether to create the changefeed with the CockroachDB `mvcc_timestamp` option.
+Set this property to `true` to populate the `source.ts_hlc` field with the Multi-Version Concurrency Control (MVCC) commit timestamp for each row in all change events, including initial scan events.
+The value of xref:cockroachdb-property-enriched-properties[`cockroachdb.changefeed.enriched.properties`] must include `source`, which is the default.
+Otherwise, change events do not include the timestamp, and the `source.ts_hlc` field is empty.
+If xref:cockroachdb-property-snapshot-mode[`snapshot.mode`] is set to `initial_only`, the connector ignores this property and logs a warning.
+CockroachDB does not allow the `mvcc_timestamp` option in a changefeed that uses `initial_scan='only'`.
+If you set this property to `false` and xref:cockroachdb-property-include-updated[`cockroachdb.changefeed.include.updated`] is enabled, the `source.ts_hlc` field reports the commit timestamp that the `updated` option provides.
+For initial scan events, that timestamp is the start time of the changefeed, which is the same for every row in the scan.
+
+If this property is set to `true` and the connector xref:cockroachdb-reusing-an-existing-changefeed[reuses an existing changefeed] that does not use the `mvcc_timestamp` option, the connector fails to start.
+To resolve the error, cancel that changefeed job and restart the connector so that it creates a changefeed with `mvcc_timestamp`, or set this property to `false`.
 
 |[[cockroachdb-property-enriched-properties]]<<cockroachdb-property-enriched-properties, `+cockroachdb.changefeed.enriched.properties+`>>
 |`source`
