@@ -73,7 +73,7 @@ public class OracleConnection extends JdbcConnection {
     /**
      * Logs each zero date read from the database; set this logger's level to {@code ERROR} to silence the warnings.
      */
-    private final static Logger ZERO_DATE_LOGGER = LoggerFactory.getLogger(OracleConnection.class.getName() + ".ZeroDates");
+    private final static Logger ZERO_DATE_LOGGER = LoggerFactory.getLogger(LOGGER.getName() + ".ZeroDates");
 
     /**
      * Returned by column metadata in Oracle if no scale is set;

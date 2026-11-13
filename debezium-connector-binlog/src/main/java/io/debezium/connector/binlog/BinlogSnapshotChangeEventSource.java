@@ -73,7 +73,7 @@ public abstract class BinlogSnapshotChangeEventSource<P extends BinlogPartition,
         extends RelationalSnapshotChangeEventSource<P, O> {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(BinlogSnapshotChangeEventSource.class);
-    private static final Logger ROW_ESTIMATE_LOGGER = LoggerFactory.getLogger(BinlogSnapshotChangeEventSource.class.getName() + ".RowEstimate");
+    private static final Logger ROW_ESTIMATE_LOGGER = LoggerFactory.getLogger(LOGGER.getName() + ".RowEstimate");
     private static final Duration LOCK_HEARTBEAT_INTERVAL = Duration.ofSeconds(30);
 
     private final BinlogConnectorConfig connectorConfig;

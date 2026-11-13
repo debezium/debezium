@@ -75,8 +75,8 @@ import io.debezium.util.Strings;
 public class BufferedLogMinerStreamingChangeEventSource extends AbstractLogMinerStreamingChangeEventSource {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(BufferedLogMinerStreamingChangeEventSource.class);
-    private static final Logger ABANDONED_DETAILS_LOGGER = LoggerFactory.getLogger(BufferedLogMinerStreamingChangeEventSource.class.getName() + ".AbandonedDetails");
-    private static final Logger WINDOW_ADVANCED = LoggerFactory.getLogger(BufferedLogMinerStreamingChangeEventSource.class.getName() + ".WindowAdvanced");
+    private static final Logger ABANDONED_DETAILS_LOGGER = LoggerFactory.getLogger(LOGGER.getName() + ".AbandonedDetails");
+    private static final Logger WINDOW_ADVANCED = LoggerFactory.getLogger(LOGGER.getName() + ".WindowAdvanced");
 
     private static final String NO_SEQUENCE_TRX_ID_SUFFIX = "ffffffff";
     private static final int ORACLE_TRANSACTION_ID_PREFIX_LENGTH = 8;

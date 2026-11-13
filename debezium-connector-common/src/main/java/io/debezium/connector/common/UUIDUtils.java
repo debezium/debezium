@@ -16,6 +16,8 @@ import java.util.UUID;
  **/
 public class UUIDUtils {
 
+    private static final SecureRandom RANDOM = new SecureRandom();
+
     /**
      * Generate new UUID. Each function call returns a new UUID value.
      *
@@ -48,9 +50,8 @@ public class UUIDUtils {
      */
     public static UUID generateNewUUID(Instant instant) {
         long time = instant.toEpochMilli();
-        SecureRandom random = new SecureRandom();
-        long msb = (time << 16) | (random.nextLong() & 0x0fffL) | 0x7000L;
-        long lsb = (random.nextLong() & 0x3fffffffffffffffL) | 0x8000000000000000L;
+        long msb = (time << 16) | (RANDOM.nextLong() & 0x0fffL) | 0x7000L;
+        long lsb = (RANDOM.nextLong() & 0x3fffffffffffffffL) | 0x8000000000000000L;
         return new UUID(msb, lsb);
     }
 }
