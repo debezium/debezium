@@ -285,9 +285,9 @@ public abstract class BinlogConnectorConnection extends JdbcConnection {
         final String systemTimeZone = querySystemVariables(SQL_SHOW_GLOBAL_VARIABLE_SYSTEM_TIME_ZONE).get(BinlogTimeZones.SYSTEM_TIME_ZONE);
         final ZoneId timeZone = BinlogTimeZones.serverTimeZone(connectionConfig.connectionTimeZone(), systemTimeZone);
         if (timeZone == null) {
-            LOGGER.warn("The system time zone '{}' of the server cannot be resolved, so TIMESTAMP defaults of DDL statements of sessions "
-                    + "with the SYSTEM time zone are interpreted in the time zone of the connector. Configure the time zone of the server "
-                    + "for the JDBC driver to resolve it.", systemTimeZone);
+            LOGGER.warn("The system time zone '{}' of the server does not identify a time zone, so TIMESTAMP defaults of DDL statements of "
+                    + "sessions with the SYSTEM time zone are interpreted in the time zone of the connector. Configure the time zone of the "
+                    + "server for the JDBC driver, or set the time_zone of the server to a named time zone or an offset.", systemTimeZone);
         }
         return timeZone;
     }

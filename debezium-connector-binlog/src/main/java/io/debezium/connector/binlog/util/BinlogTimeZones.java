@@ -70,9 +70,13 @@ public final class BinlogTimeZones {
     /**
      * Resolves the time zone of the server, which applies to sessions with the time zone {@code SYSTEM}. As for the
      * conversions of the JDBC driver, a time zone configured for the driver is assumed to be the time zone of the server
-     * and takes precedence over the system time zone that the server reports, which may be an abbreviation such as
-     * {@code KST} that cannot be resolved. A configured value such as {@code SERVER} or {@code auto}, with which the driver
-     * uses the time zone of the server, is not a time zone.
+     * and takes precedence over the system time zone that the server reports. A configured value such as {@code SERVER}
+     * or {@code auto}, with which the driver uses the time zone of the server, is not a time zone.
+     * <p>
+     * The servers report the abbreviation that the operating system uses for its time zone, such as {@code KST},
+     * {@code EST} or {@code GMT}. An abbreviation does not identify a time zone: {@code EST} and {@code GMT} resolve to
+     * fixed offsets, although the server may observe daylight saving time. The system time zone is therefore used only
+     * if it is {@code UTC} or the name of a region, such as {@code Asia/Seoul}.
      *
      * @param configuredTimeZone the time zone configured for the JDBC driver; may be null
      * @param systemTimeZone the {@code system_time_zone} of the server; may be null
@@ -80,7 +84,14 @@ public final class BinlogTimeZones {
      */
     public static ZoneId serverTimeZone(String configuredTimeZone, String systemTimeZone) {
         final ZoneId configured = parse(configuredTimeZone);
-        return configured != null ? configured : parse(systemTimeZone);
+        if (configured != null) {
+            return configured;
+        }
+        return isUtcOrRegion(systemTimeZone) ? parse(systemTimeZone) : null;
+    }
+
+    private static boolean isUtcOrRegion(String timeZone) {
+        return timeZone != null && ("UTC".equalsIgnoreCase(timeZone.trim()) || timeZone.contains("/"));
     }
 
     /**

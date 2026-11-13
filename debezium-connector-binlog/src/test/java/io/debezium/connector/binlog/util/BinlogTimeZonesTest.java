@@ -40,7 +40,7 @@ class BinlogTimeZonesTest {
     void shouldUseSystemTimeZoneOfServerWithoutConfiguredTimeZone() {
         // SERVER and auto, the defaults for MySQL and MariaDB, let the driver use the time zone of the server
         assertThat(BinlogTimeZones.serverTimeZone("SERVER", "Asia/Seoul")).isEqualTo(ZoneId.of("Asia/Seoul"));
-        assertThat(BinlogTimeZones.serverTimeZone("auto", "+09:00")).isEqualTo(ZoneOffset.ofHours(9));
+        assertThat(BinlogTimeZones.serverTimeZone("auto", "UTC")).isEqualTo(ZoneId.of("UTC"));
         assertThat(BinlogTimeZones.serverTimeZone(null, "UTC")).isEqualTo(ZoneId.of("UTC"));
     }
 
@@ -48,5 +48,12 @@ class BinlogTimeZonesTest {
     @FixFor("debezium/dbz#2866")
     void shouldNotResolveAbbreviatedSystemTimeZone() {
         assertThat(BinlogTimeZones.serverTimeZone("SERVER", "KST")).isNull();
+        // Abbreviations that Java resolves to a fixed offset, while the server may observe daylight saving time
+        assertThat(BinlogTimeZones.serverTimeZone("SERVER", "EST")).isNull();
+        assertThat(BinlogTimeZones.serverTimeZone("SERVER", "MST")).isNull();
+        assertThat(BinlogTimeZones.serverTimeZone("SERVER", "GMT")).isNull();
+        assertThat(BinlogTimeZones.serverTimeZone(null, "+01")).isNull();
+        // The time zone configured for the driver still applies
+        assertThat(BinlogTimeZones.serverTimeZone("America/New_York", "EST")).isEqualTo(ZoneId.of("America/New_York"));
     }
 }
