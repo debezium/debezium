@@ -3142,6 +3142,9 @@ include::{partialsdir}/modules/all-connectors/frag-common-mbean-name.adoc[levelo
 
 include::{partialsdir}/modules/all-connectors/ref-connector-monitoring-streaming-metrics.adoc[leveloffset=+1]
 
+// Type: reference
+// ModuleID: monitoring-debezium-informix-connector-schema-history
+// Title: Monitoring {prodname} Informix connector schema history
 [[informix-schema-history-metrics]]
 === Schema history metrics
 
