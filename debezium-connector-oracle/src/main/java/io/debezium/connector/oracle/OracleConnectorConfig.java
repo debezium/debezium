@@ -918,6 +918,7 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
                     LOG_MINING_MAX_SCN_DEVIATION_MS,
                     LOG_MINING_SCHEMA_CHANGES_USERNAME_EXCLUDE_LIST,
                     LOG_MINING_INCLUDE_REDO_SQL,
+                    LOG_MINING_INCLUDE_INTERNAL_EVENTS,
                     OLR_SOURCE,
                     OLR_HOST,
                     OLR_PORT,
