@@ -56,10 +56,12 @@ public final class JdbcSchemaHistory extends AbstractSchemaHistory {
     private final AtomicInteger recordInsertSeq = new AtomicInteger(0);
     private RetriableConnection conn;
     private JdbcSchemaHistoryConfig config;
+    private volatile SchemaHistoryDialect dialect;
 
     @Override
     public void configure(Configuration config, HistoryRecordComparator comparator, SchemaHistoryListener listener, boolean useCatalogBeforeSchema) {
         this.config = new JdbcSchemaHistoryConfig(config);
+        this.dialect = null;
         if (running.get()) {
             throw new IllegalStateException("Database history already initialized db: " + this.config.getJdbcUrl());
         }
@@ -72,6 +74,15 @@ public final class JdbcSchemaHistory extends AbstractSchemaHistory {
         catch (SQLException e) {
             throw new IllegalStateException("Failed to connect " + this.config.getJdbcUrl(), e);
         }
+    }
+
+    private SchemaHistoryDialect dialect(DatabaseMetaData dbMeta) throws SQLException {
+        SchemaHistoryDialect resolved = dialect;
+        if (resolved == null) {
+            resolved = SchemaHistoryDialect.resolve(dbMeta.getDatabaseProductName());
+            dialect = resolved;
+        }
+        return resolved;
     }
 
     @Override
@@ -215,10 +226,9 @@ public final class JdbcSchemaHistory extends AbstractSchemaHistory {
             return conn.executeWithRetry(conn -> {
                 boolean exists = false;
                 DatabaseMetaData dbMeta = conn.getMetaData();
+                String metadataTableName = config.getTableMetadataName(dialect(dbMeta));
 
-                String databaseName = config.getDatabaseName();
-                try (ResultSet tableExists = dbMeta.getTables(databaseName,
-                        null, config.getTableName(), null)) {
+                try (ResultSet tableExists = dbMeta.getTables(null, null, metadataTableName, null)) {
                     if (tableExists.next()) {
                         exists = true;
                     }
@@ -242,9 +252,11 @@ public final class JdbcSchemaHistory extends AbstractSchemaHistory {
         try {
             return conn.executeWithRetry(conn -> {
                 boolean isExists = false;
+                DatabaseMetaData dbMeta = conn.getMetaData();
+                String existsSelect = config.getTableDataExistsSelect(dialect(dbMeta));
                 try (
                         Statement stmt = conn.createStatement();
-                        ResultSet rs = stmt.executeQuery(config.getTableDataExistsSelect());) {
+                        ResultSet rs = stmt.executeQuery(existsSelect);) {
                     while (rs.next()) {
                         isExists = true;
                     }
@@ -263,6 +275,11 @@ public final class JdbcSchemaHistory extends AbstractSchemaHistory {
         return config;
     }
 
+    @VisibleForTesting
+    SchemaHistoryDialect getDialect() {
+        return dialect;
+    }
+
     @Override
     public String toString() {
         return "Jdbc database: " + (config != null ? config.getJdbcUrl() : "(unstarted)");
@@ -273,12 +290,21 @@ public final class JdbcSchemaHistory extends AbstractSchemaHistory {
         try {
             conn.executeWithRetry(conn -> {
                 DatabaseMetaData dbMeta = conn.getMetaData();
-                try (ResultSet tableExists = dbMeta.getTables(null, null, config.getTableName(), null)) {
+                String databaseProductName = dbMeta.getDatabaseProductName();
+                SchemaHistoryDialect historyDialect = dialect(dbMeta);
+                String metadataTableName = config.getTableMetadataName(historyDialect);
+                try (ResultSet tableExists = dbMeta.getTables(null, null, metadataTableName, null)) {
                     if (tableExists.next()) {
                         return;
                     }
+                    if (!config.isTableDdlOverridden() && !SchemaHistoryDialect.isKnown(databaseProductName)) {
+                        LOG.warn("No JDBC schema history dialect for database product '{}'; using the default CREATE TABLE statement. "
+                                + "Set schema.history.internal.jdbc.table.ddl and schema.history.internal.jdbc.table.exists to override the generated statements.",
+                                databaseProductName);
+                    }
+                    String tableDdl = config.getTableCreate(historyDialect);
                     LOG.info("Creating table {} to store database history", config.getTableName());
-                    try (var ps = conn.prepareStatement(config.getTableCreate())) {
+                    try (var ps = conn.prepareStatement(tableDdl)) {
                         ps.execute();
                         LOG.info("Created table in given database...");
                     }

@@ -39,7 +39,7 @@ public class JdbcSchemaHistoryConfig extends JdbcCommonConfig {
             "(" +
             "id VARCHAR(36) NOT NULL," +
             "history_data VARCHAR(65000)," +
-            "history_data_seq INTEGER," +
+            "history_data_seq INTEGER NOT NULL," +
             "record_insert_ts TIMESTAMP NOT NULL," +
             "record_insert_seq INTEGER NOT NULL," +
             "PRIMARY KEY (id, history_data_seq)" +
@@ -64,14 +64,12 @@ public class JdbcSchemaHistoryConfig extends JdbcCommonConfig {
             .withDefault(DEFAULT_TABLE_SELECT)
             .withDeprecatedAliases(CONFIGURATION_FIELD_PREFIX_STRING + "schema.history.table.select");
 
-    private static final String DEFAULT_TABLE_DATA_EXISTS_SELECT = "SELECT * FROM %s LIMIT 1";
-
     /**
      *  Field that will store the Schema history SELECT query to check existence of the table.
      */
     public static final Field PROP_TABLE_DATA_EXISTS_SELECT = Field.create(CONFIGURATION_FIELD_PREFIX_STRING + "table.exists")
             .withDescription("SELECT statement to check existence of the storage table")
-            .withDefault(DEFAULT_TABLE_DATA_EXISTS_SELECT)
+            .withDefault(SchemaHistoryDialect.DEFAULT_TABLE_EXISTS_SELECT)
             .withDeprecatedAliases(CONFIGURATION_FIELD_PREFIX_STRING + "schema.history.table.exists");
 
     private static final String DEFAULT_TABLE_DATA_INSERT = "INSERT INTO %s(id, history_data, history_data_seq, record_insert_ts, record_insert_seq) VALUES ( ?, ?, ?, ?, ? )";
@@ -83,8 +81,10 @@ public class JdbcSchemaHistoryConfig extends JdbcCommonConfig {
 
     private String tableName;
     private String tableCreate;
+    private boolean tableDdlOverridden;
     private String tableSelect;
     private String tableDataExistsSelect;
+    private boolean tableDataExistsSelectOverridden;
     private String tableInsert;
     private String databaseName;
 
@@ -96,6 +96,8 @@ public class JdbcSchemaHistoryConfig extends JdbcCommonConfig {
     protected void init(Configuration config) {
         super.init(config);
         splitDatabaseAndTableName(config.getString(PROP_TABLE_NAME));
+        this.tableDdlOverridden = isTableDdlOverridden(config);
+        this.tableDataExistsSelectOverridden = isTableDataExistsSelectOverridden(config);
         this.tableCreate = String.format(config.getString(PROP_TABLE_DDL), tableName);
         this.tableSelect = String.format(config.getString(PROP_TABLE_SELECT), tableName);
         this.tableDataExistsSelect = String.format(config.getString(PROP_TABLE_DATA_EXISTS_SELECT), tableName);
@@ -122,6 +124,36 @@ public class JdbcSchemaHistoryConfig extends JdbcCommonConfig {
         return tableCreate;
     }
 
+    /**
+     * Returns the create-table statement to use for the connected database.
+     * <p>
+     * An explicit {@code schema.history.internal.jdbc.table.ddl} value is used as-is.
+     * Otherwise the {@link SchemaHistoryDialect} builds the statement.
+     *
+     * @param dialect dialect of the connected database
+     * @return create-table statement, never {@code null}
+     */
+    String getTableCreate(SchemaHistoryDialect dialect) {
+        if (tableDdlOverridden) {
+            return tableCreate;
+        }
+        return dialect.createTable(tableName);
+    }
+
+    public boolean isTableDdlOverridden() {
+        return tableDdlOverridden;
+    }
+
+    private static boolean isTableDdlOverridden(Configuration config) {
+        // config is already subset by schema.history.internal., so keys are relative to that prefix.
+        // keys() is the raw set. hasKey() also sees field defaults, so it cannot detect an override.
+        return config.keys().contains("jdbc.table.ddl") || config.keys().contains("jdbc.schema.history.table.ddl");
+    }
+
+    private static boolean isTableDataExistsSelectOverridden(Configuration config) {
+        return config.keys().contains("jdbc.table.exists") || config.keys().contains("jdbc.schema.history.table.exists");
+    }
+
     public String getTableSelect() {
         return tableSelect;
     }
@@ -130,8 +162,38 @@ public class JdbcSchemaHistoryConfig extends JdbcCommonConfig {
         return tableDataExistsSelect;
     }
 
+    /**
+     * Returns the table-exists statement to use for the connected database.
+     * <p>
+     * An explicit {@code schema.history.internal.jdbc.table.exists} value is used as-is.
+     * Otherwise the {@link SchemaHistoryDialect} builds the statement.
+     *
+     * @param dialect dialect of the connected database
+     * @return table-exists statement, never {@code null}
+     */
+    String getTableDataExistsSelect(SchemaHistoryDialect dialect) {
+        if (tableDataExistsSelectOverridden) {
+            return tableDataExistsSelect;
+        }
+        return dialect.tableExistsSelect(tableName);
+    }
+
     public String getTableInsert() {
         return tableInsert;
+    }
+
+    /**
+     * Returns the table name to use for the JDBC metadata lookup.
+     * <p>
+     * The lookup is unqualified, so the table is looked up without a schema or catalog qualifier.
+     * Oracle and Db2 store an unquoted identifier in upper case, so the name is folded to upper case
+     * for them. Every other product keeps the configured name.
+     *
+     * @param dialect dialect of the connected database
+     * @return table name for the metadata lookup, never {@code null}
+     */
+    String getTableMetadataName(SchemaHistoryDialect dialect) {
+        return dialect.metadataTableName(tableName);
     }
 
     /**
