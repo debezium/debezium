@@ -238,6 +238,31 @@ documentation/
 - Follow existing documentation patterns and structure
 - Reference CLAUDE.md for technical details to document
 
+#### Downstream Red Hat Modular Documentation Generation (Nebel & bccutil)
+
+When testing, splitting, or compiling the downstream documentation build:
+
+1. **Downstream Link Fixing (`nebel update --fix-links`)**:
+   Always run the link-fixing update after fetching/splitting upstream files. This ensures that cross-references target the newly generated file names and IDs.
+   * Run command from: `{git-home}/integration/docs` directory
+   * Command:
+     ```bash
+     nebel update --fix-links -a upstream/debezium/attributes.adoc,attributes.adoc,attributes-links.adoc -c debezium-using
+     ```
+
+2. **Compiling Downstream Book (`bccutil compile`)**:
+   Always compile the user guide to verify that all cross-references resolve with zero warnings or `Unknown ID` errors.
+   * Run command from: `{git-home}/integration/docs/debezium-user-guide/rhaf` (the directory containing `master.adoc`).
+   * Command (invokes interactive container function):
+     ```bash
+     bash -ic "bccutil compile --lang=en-US --format html-single"
+     ```
+
+3. **Cross-References in Shared / Parameterized Files**:
+   To avoid `Unknown ID` compilation errors inside downstream builds:
+   * When an `xref` inside a shared file targets an ID (such as `xref:permissions-explained-{context}-connector[]`), the corresponding headings in the upstream source pages must **NOT** have an associated `// ModuleID` annotation.
+   * If a `// ModuleID` is present, Nebel renames the root ID of that generated file to the ModuleID, breaking any relative `xref` references. Removing the `// ModuleID` allows Nebel to split the module using the native ID/anchor, resolving the links cleanly on both MariaDB and MySQL.
+
 ---
 
 ## config-expert
