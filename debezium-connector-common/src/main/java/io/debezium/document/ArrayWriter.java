@@ -10,6 +10,9 @@ import java.io.IOException;
 import java.io.OutputStream;
 import java.io.Writer;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import io.debezium.annotation.ThreadSafe;
 
 /**
@@ -19,6 +22,8 @@ import io.debezium.annotation.ThreadSafe;
  */
 @ThreadSafe
 public interface ArrayWriter {
+
+    Logger LOGGER = LoggerFactory.getLogger(ArrayWriter.class);
 
     /**
      * Get the default ArrayWriter instance.
@@ -47,8 +52,7 @@ public interface ArrayWriter {
             return stream.toByteArray();
         }
         catch (IOException e) {
-            // This really should never happen ...
-            e.printStackTrace();
+            LOGGER.error("Failed to write array as bytes", e);
             return new byte[]{};
         }
     }

@@ -10,6 +10,9 @@ import java.io.IOException;
 import java.io.OutputStream;
 import java.io.Writer;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import io.debezium.annotation.ThreadSafe;
 
 /**
@@ -19,6 +22,8 @@ import io.debezium.annotation.ThreadSafe;
  */
 @ThreadSafe
 public interface DocumentWriter {
+
+    Logger LOGGER = LoggerFactory.getLogger(DocumentWriter.class);
 
     /**
      * Get the default DocumentWriter instance.
@@ -49,8 +54,7 @@ public interface DocumentWriter {
             return stream.toByteArray();
         }
         catch (IOException e) {
-            // This really should never happen ...
-            e.printStackTrace();
+            LOGGER.error("Failed to write document as bytes", e);
             return new byte[]{};
         }
     }

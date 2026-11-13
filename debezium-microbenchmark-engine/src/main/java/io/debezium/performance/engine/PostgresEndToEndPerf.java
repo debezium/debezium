@@ -191,7 +191,7 @@ public class PostgresEndToEndPerf {
             connection.execute("DROP TABLE IF EXISTS " + tableName);
         }
         catch (SQLException e) {
-            e.printStackTrace();
+            throw new RuntimeException("Failed to drop table", e);
         }
         try {
             connection.execute("CREATE TABLE " + tableName + " (id numeric(9,0) primary key, name varchar(50))");
