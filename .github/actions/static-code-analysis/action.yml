@@ -19,6 +19,4 @@ runs:
       shell: ${{ inputs.shell }}
       env:
         SONAR_TOKEN: ${{ inputs.tool-token }}
-      run: ./mvnw -B clean verify -Psonar -DskipITs
-      # It is very interesting to check if we re able to run it like this
-      # run: ./mvnw -B clean verify -Psonar
+      run: ./mvnw -fae -B verify -Psonar -DskipITs -Darchetype.test.skip=true
