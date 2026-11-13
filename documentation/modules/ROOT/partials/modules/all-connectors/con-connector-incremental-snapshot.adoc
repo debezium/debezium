@@ -75,6 +75,16 @@ After the snapshot window for the chunk closes, the buffer contains only `READ` 
 
 The connector repeats the process for each snapshot chunk.
 
+ifeval::['{context}' != 'mongodb']
+.Schema changes during an incremental snapshot
+If the schema of a {data-collection} changes while the connector is reading one of its chunks, or before the snapshot window for that chunk closes, the rows buffered for the chunk no longer match the schema that the connector uses to emit them.
+When that happens, the connector discards the buffered rows, closes the snapshot window so that the streaming process can deliver the pending schema change, and reads the chunk again in the next window.
+The retry is bounded: if the connector's view of the {data-collection} schema still disagrees with the database after three consecutive attempts, the connector logs a warning, emits a notification that reports the {data-collection} scan as completed with the status `SQL_EXCEPTION`, skips the {data-collection}, and continues the snapshot with the next {data-collection}.
+Recovery depends on the connector learning the new schema before the retries are exhausted.
+Connectors that read schema changes from the transaction log, such as the MySQL and MariaDB connectors, and connectors that re-read the schema from the database catalog, such as the PostgreSQL connector, resume the snapshot after the schema change.
+A connector that learns schema changes only through a separate mechanism, such as the SQL Server connector, which requires a new capture instance, skips the {data-collection} until that mechanism is in place.
+endif::[]
+
 [NOTE]
 ====
 To enable {prodname} to perform incremental snapshots, you must grant the connector permission to write to the signaling {data-collection}.

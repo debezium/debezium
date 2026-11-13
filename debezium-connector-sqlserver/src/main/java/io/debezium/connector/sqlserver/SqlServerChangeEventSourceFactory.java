@@ -90,7 +90,8 @@ public class SqlServerChangeEventSourceFactory implements ChangeEventSourceFacto
                 clock,
                 snapshotProgressListener,
                 dataChangeEventListener,
-                notificationService);
+                notificationService,
+                connectionFactory.mainConnection()::isUndefinedColumnError);
         return Optional.of(incrementalSnapshotChangeEventSource);
     }
 }
