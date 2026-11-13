@@ -651,4 +651,63 @@ public class DdlNormalizerTest {
         String hint = "SELECT id FROM t1 USE INDEX (idx1) WHERE id = DATABASE()";
         assertThat(DdlNormalizer.normalize(hint)).isEqualTo(hint);
     }
+
+    @DisplayName("Given CREATE INDEX with keyword key part When normalize Then backtick the key part column")
+    @Test
+    @FixFor("debezium/dbz#2812")
+    public void testCreateIndexKeywordKeyPart() {
+        assertThat(DdlNormalizer.normalize("CREATE INDEX idx_url ON v2x_trcl_file(url)"))
+                .isEqualTo("CREATE INDEX idx_url ON v2x_trcl_file(`url`)");
+        assertThat(DdlNormalizer.normalize("CREATE INDEX idx_url ON v2x_trcl_file (url)"))
+                .isEqualTo("CREATE INDEX idx_url ON v2x_trcl_file (`url`)");
+    }
+
+    @DisplayName("Given ADD INDEX with keyword and non-keyword key parts When normalize Then backtick only the keyword")
+    @Test
+    @FixFor("debezium/dbz#2812")
+    public void testAddIndexKeywordKeyPart() {
+        String input = "ALTER TABLE t ADD INDEX idx_t_url_language_id (url, language_id)";
+        String expected = "ALTER TABLE t ADD INDEX idx_t_url_language_id (`url`, language_id)";
+        assertThat(DdlNormalizer.normalize(input)).isEqualTo(expected);
+    }
+
+    @DisplayName("Given leading client comment before CREATE INDEX When normalize Then comment is preserved and key part backticked")
+    @Test
+    @FixFor("debezium/dbz#2812")
+    public void testCreateIndexKeyPartWithLeadingComment() {
+        String input = "/*app=ndb*/ create index idx_url on v2x_trcl_file(url)";
+        String expected = "/*app=ndb*/ create index idx_url on v2x_trcl_file(`url`)";
+        assertThat(DdlNormalizer.normalize(input)).isEqualTo(expected);
+    }
+
+    @DisplayName("Given keyword key parts in PRIMARY and FOREIGN KEY lists When normalize Then backtick each key part")
+    @Test
+    @FixFor("debezium/dbz#2812")
+    public void testKeywordKeyPartsInConstraints() {
+        assertThat(DdlNormalizer.normalize("CREATE TABLE t (id INT, PRIMARY KEY (url))"))
+                .isEqualTo("CREATE TABLE t (id INT, PRIMARY KEY (`url`))");
+        assertThat(DdlNormalizer.normalize("ALTER TABLE t ADD FOREIGN KEY (url) REFERENCES p (auto)"))
+                .isEqualTo("ALTER TABLE t ADD FOREIGN KEY (`url`) REFERENCES p (`auto`)");
+    }
+
+    @DisplayName("Given keyword key part with prefix length and direction When normalize Then backtick column only")
+    @Test
+    @FixFor("debezium/dbz#2812")
+    public void testKeywordKeyPartWithLengthAndDirection() {
+        assertThat(DdlNormalizer.normalize("CREATE INDEX i ON t (url(10))"))
+                .isEqualTo("CREATE INDEX i ON t (`url`(10))");
+        assertThat(DdlNormalizer.normalize("CREATE INDEX i ON t (url DESC)"))
+                .isEqualTo("CREATE INDEX i ON t (`url` DESC)");
+        assertThat(DdlNormalizer.normalize("CREATE INDEX i ON t (url(10) ASC, auto)"))
+                .isEqualTo("CREATE INDEX i ON t (`url`(10) ASC, `auto`)");
+    }
+
+    @DisplayName("Given column definition with keyword name When normalize Then key part rule leaves it to column definition rule")
+    @Test
+    @FixFor("debezium/dbz#2812")
+    public void testKeyPartRuleDoesNotTouchColumnDefinitions() {
+        String input = "CREATE TABLE t (url VARCHAR(700), PRIMARY KEY (url))";
+        String expected = "CREATE TABLE t (`url` VARCHAR(700), PRIMARY KEY (`url`))";
+        assertThat(DdlNormalizer.normalize(input)).isEqualTo(expected);
+    }
 }
