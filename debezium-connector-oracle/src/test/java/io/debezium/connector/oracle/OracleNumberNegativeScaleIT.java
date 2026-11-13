@@ -51,16 +51,6 @@ public class OracleNumberNegativeScaleIT extends AbstractAsyncEngineConnectorTes
             "  primary key (id)" +
             ")";
 
-    private static SchemaAndValueField[] expectedRecords = {
-            new SchemaAndValueField("VAL_NUMBER_2_NEGATIVE_SCALE", Schema.OPTIONAL_INT8_SCHEMA, (byte) 90),
-            new SchemaAndValueField("VAL_NUMBER_4_NEGATIVE_SCALE", Schema.OPTIONAL_INT16_SCHEMA, (short) 9900),
-            new SchemaAndValueField("VAL_NUMBER_9_NEGATIVE_SCALE", Schema.OPTIONAL_INT32_SCHEMA, 9999_99990),
-            new SchemaAndValueField("VAL_NUMBER_18_NEGATIVE_SCALE", Schema.OPTIONAL_INT64_SCHEMA, 999_99999_99999_99900L),
-            new SchemaAndValueField("VAL_NUMBER_36_NEGATIVE_SCALE", Decimal.builder(0).optional()
-                    .parameter(PRECISION_PARAMETER_KEY, "36").build(),
-                    new BigDecimal(
-                            new BigInteger("99999999999999999999999999999999999900"), 0)) };
-
     private OracleConnection connection;
 
     @BeforeEach
@@ -88,19 +78,34 @@ public class OracleNumberNegativeScaleIT extends AbstractAsyncEngineConnectorTes
     @Test
     @FixFor("DBZ-5880")
     public void testNegativeScaleWithPrecisionHandling() throws Exception {
+        final SchemaAndValueField[] expectedRecords = {
+                new SchemaAndValueField("VAL_NUMBER_2_NEGATIVE_SCALE", Schema.OPTIONAL_INT8_SCHEMA, (byte) 90),
+                new SchemaAndValueField("VAL_NUMBER_4_NEGATIVE_SCALE", Schema.OPTIONAL_INT16_SCHEMA, (short) 9900),
+                new SchemaAndValueField("VAL_NUMBER_9_NEGATIVE_SCALE", Schema.OPTIONAL_INT32_SCHEMA, 9999_99990),
+                new SchemaAndValueField("VAL_NUMBER_18_NEGATIVE_SCALE", Schema.OPTIONAL_INT64_SCHEMA, 999_99999_99999_99900L),
+                new SchemaAndValueField("VAL_NUMBER_36_NEGATIVE_SCALE", Decimal.builder(0).optional()
+                        .parameter(PRECISION_PARAMETER_KEY, "36").build(),
+                        new BigDecimal(
+                                new BigInteger("99999999999999999999999999999999999900"), 0)) };
+
         final Configuration config = TestHelper.defaultConfig()
                 .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "debezium.number_negative_scale")
                 .with(OracleConnectorConfig.CUSTOM_CONVERTERS, "zero_scale")
                 .with("zero_scale.type", "io.debezium.connector.oracle.converters.NumberToZeroScaleConverter")
                 .build();
 
-        insertAndStreamNegativeScaleNumbers(config);
+        insertAndStreamNegativeScaleNumbers(config, expectedRecords);
     }
 
     @Test
     @FixFor("DBZ-5880")
     public void testNegativeScaleWithStringHandling() throws Exception {
-        expectedRecords[4] = new SchemaAndValueField("VAL_NUMBER_36_NEGATIVE_SCALE", SchemaBuilder.string().optional().build(), "99999999999999999999999999999999999900");
+        final SchemaAndValueField[] expectedRecords = {
+                new SchemaAndValueField("VAL_NUMBER_2_NEGATIVE_SCALE", Schema.OPTIONAL_INT8_SCHEMA, (byte) 90),
+                new SchemaAndValueField("VAL_NUMBER_4_NEGATIVE_SCALE", Schema.OPTIONAL_INT16_SCHEMA, (short) 9900),
+                new SchemaAndValueField("VAL_NUMBER_9_NEGATIVE_SCALE", Schema.OPTIONAL_INT32_SCHEMA, 9999_99990),
+                new SchemaAndValueField("VAL_NUMBER_18_NEGATIVE_SCALE", Schema.OPTIONAL_INT64_SCHEMA, 999_99999_99999_99900L),
+                new SchemaAndValueField("VAL_NUMBER_36_NEGATIVE_SCALE", SchemaBuilder.string().optional().build(), "99999999999999999999999999999999999900") };
 
         final Configuration config = TestHelper.defaultConfig()
                 .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "debezium.number_negative_scale")
@@ -109,14 +114,19 @@ public class OracleNumberNegativeScaleIT extends AbstractAsyncEngineConnectorTes
                 .with("zero_scale.decimal.mode", "string")
                 .build();
 
-        insertAndStreamNegativeScaleNumbers(config);
+        insertAndStreamNegativeScaleNumbers(config, expectedRecords);
     }
 
     @Test
     @FixFor("DBZ-5880")
     public void testNegativeScaleWithDoubleHandling() throws Exception {
-        expectedRecords[4] = new SchemaAndValueField("VAL_NUMBER_36_NEGATIVE_SCALE", SchemaBuilder.float64().optional().build(),
-                99999999999999999999999999999999999900.0);
+        final SchemaAndValueField[] expectedRecords = {
+                new SchemaAndValueField("VAL_NUMBER_2_NEGATIVE_SCALE", Schema.OPTIONAL_INT8_SCHEMA, (byte) 90),
+                new SchemaAndValueField("VAL_NUMBER_4_NEGATIVE_SCALE", Schema.OPTIONAL_INT16_SCHEMA, (short) 9900),
+                new SchemaAndValueField("VAL_NUMBER_9_NEGATIVE_SCALE", Schema.OPTIONAL_INT32_SCHEMA, 9999_99990),
+                new SchemaAndValueField("VAL_NUMBER_18_NEGATIVE_SCALE", Schema.OPTIONAL_INT64_SCHEMA, 999_99999_99999_99900L),
+                new SchemaAndValueField("VAL_NUMBER_36_NEGATIVE_SCALE", SchemaBuilder.float64().optional().build(),
+                        99999999999999999999999999999999999900.0) };
 
         final Configuration config = TestHelper.defaultConfig()
                 .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "debezium.number_negative_scale")
@@ -125,10 +135,10 @@ public class OracleNumberNegativeScaleIT extends AbstractAsyncEngineConnectorTes
                 .with("zero_scale.decimal.mode", "double")
                 .build();
 
-        insertAndStreamNegativeScaleNumbers(config);
+        insertAndStreamNegativeScaleNumbers(config, expectedRecords);
     }
 
-    protected void insertAndStreamNegativeScaleNumbers(Configuration config) throws Exception {
+    protected void insertAndStreamNegativeScaleNumbers(Configuration config, SchemaAndValueField[] expectedRecords) throws Exception {
         insertIntTypes();
 
         initializeConnectorTestFramework();
