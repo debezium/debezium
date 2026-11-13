@@ -326,11 +326,12 @@ public class DefaultRecordWriter implements RecordWriter {
 
     /**
      * Executes a schema resolution step, retrying it when the database aborted it because of a lock conflict,
-     * such as a deadlock between a metadata read and a concurrent {@code ALTER TABLE} from another task.
+     * such as a deadlock between a metadata read and a concurrent {@code ALTER TABLE} from another task,
+     * or because of any other failure the dialect considers retriable.
      * <p>
      * The number of retries and the delay between them are controlled by {@code flush.max.retries} and
-     * {@code flush.retry.delay.ms}. Any failure that is not a lock conflict is rethrown immediately, and
-     * the last lock conflict is rethrown unchanged once the retries are exhausted.
+     * {@code flush.retry.delay.ms}. Any failure that is neither a lock conflict nor retriable is rethrown
+     * immediately, and the last failure is rethrown unchanged once the retries are exhausted.
      *
      * @param description a description of the step, used in log messages
      * @param work the schema resolution step to execute
@@ -345,11 +346,11 @@ public class DefaultRecordWriter implements RecordWriter {
                 return work.execute();
             }
             catch (SQLException | RuntimeException e) {
-                if (!isLockConflict(e) || retries >= flushMaxRetries) {
+                if (!(isLockConflict(e) || isRetriable(e)) || retries >= flushMaxRetries) {
                     throw e;
                 }
                 retries++;
-                LOGGER.warn("Failed to {} because of a lock conflict, likely with a concurrent task. Retry {}/{} with delay {} ms",
+                LOGGER.warn("Failed to {} because of a lock conflict or retriable error. Retry {}/{} with delay {} ms",
                         description, retries, flushMaxRetries, flushRetryDelay.toMillis());
                 try {
                     Metronome.parker(flushRetryDelay, Clock.SYSTEM).pause();

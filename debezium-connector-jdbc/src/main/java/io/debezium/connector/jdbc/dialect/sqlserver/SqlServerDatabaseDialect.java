@@ -5,12 +5,15 @@
  */
 package io.debezium.connector.jdbc.dialect.sqlserver;
 
+import java.util.Collections;
 import java.util.Optional;
+import java.util.Set;
 
 import org.apache.kafka.connect.data.Schema;
 import org.hibernate.SessionFactory;
 import org.hibernate.dialect.Dialect;
 import org.hibernate.dialect.SQLServerDialect;
+import org.hibernate.exception.LockAcquisitionException;
 
 import io.debezium.connector.jdbc.JdbcSinkConnectorConfig;
 import io.debezium.connector.jdbc.JdbcSinkRecord;
@@ -181,6 +184,15 @@ public class SqlServerDatabaseDialect extends GeneralDatabaseDialect {
     @Override
     public String getByteArrayFormat() {
         return "CONVERT(VARBINARY, '0x%s')";
+    }
+
+    @Override
+    public Set<Class<? extends Exception>> getCommunicationExceptions() {
+        // SQL Server reports a deadlock victim (error 1205) as a LockAcquisitionException; the transaction
+        // was rolled back and can safely be retried within the configured flush retries.
+        final Set<Class<? extends Exception>> exceptions = super.getCommunicationExceptions();
+        exceptions.add(LockAcquisitionException.class);
+        return Collections.unmodifiableSet(exceptions);
     }
 
 }
