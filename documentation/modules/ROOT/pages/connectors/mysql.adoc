@@ -24,7 +24,15 @@ ifdef::community[]
 toc::[]
 endif::community[]
 
-include::{partialsdir}/modules/all-connectors/shared-mariadb-mysql.adoc[leveloffset=+1,tags=mariadb-mysql-intro]
+include::{partialsdir}/modules/all-connectors/shared-mariadb-mysql.adoc[leveloffset=+1,tags=mariadb-mysql-intro-abstract]
+
+// Type: concept
+// Title: Overview of {prodname} MySQL connector
+// ModuleID: overview-of-debezium-mysql-connector
+[[mysql-overview]]
+== Overview
+
+include::{partialsdir}/modules/all-connectors/shared-mariadb-mysql.adoc[leveloffset=+1,tags=mariadb-mysql-overview]
 
 // Type: assembly
 // ModuleID: how-debezium-mysql-connectors-work
@@ -57,7 +65,7 @@ include::{partialsdir}/modules/all-connectors/shared-mariadb-mysql.adoc[leveloff
 include::{partialsdir}/modules/all-connectors/shared-mariadb-mysql.adoc[leveloffset=+1,tags=schema-change]
 
 
-// Type: concept
+// Type: assembly
 // Title: How {prodname} MySQL connectors perform database snapshots
 [[mysql-snapshots]]
 === Snapshots
@@ -70,11 +78,32 @@ include::{partialsdir}/modules/all-connectors/shared-mariadb-mysql.adoc[leveloff
 
 include::{partialsdir}/modules/all-connectors/shared-mariadb-mysql.adoc[leveloffset=+1,tags=initial-snap-global]
 
+// Type: reference
+// Title: Default workflow for initial snapshots that use a global read lock
+[id="mysql-default-workflow-for-initial-snapshots-with-a-global-read-lock"]
+==== Default workflow that the {prodname} {connector-name} connector uses to perform an initial snapshot with a global read lock
+
+include::{partialsdir}/modules/all-connectors/shared-mariadb-mysql.adoc[leveloffset=+1,tags=initial-snap-global-workflow]
+
 // Type: concept
 [id="mysql-initial-snapshot-workflow-with-table-level-locks"]
 ==== Initial snapshots that use table-level locks
 
 include::{partialsdir}/modules/all-connectors/shared-mariadb-mysql.adoc[leveloffset=+1,tags=initial-snap-table-lock]
+
+// Type: reference
+// Title: Default workflow for initial snapshots that use table-level locks
+[id="mysql-default-workflow-for-initial-snapshots-with-table-level-locks"]
+==== Default workflow that the {prodname} {connector-name} connector uses to perform an initial snapshot with table-level locks
+
+include::{partialsdir}/modules/all-connectors/shared-mariadb-mysql.adoc[leveloffset=+1,tags=initial-snap-table-lock-workflow]
+
+// Type: reference
+// Title: Settings for the snapshot.mode connector configuration property
+[id="mysql-connector-snapshot-mode-options"]
+==== Settings for `snapshot.mode` connector configuration property
+
+include::{partialsdir}/modules/all-connectors/shared-mariadb-mysql.adoc[leveloffset=+1,tags=snapshot-mode-options]
 
 
 // ModuleID: mysql-description-of-why-initial-snapshots-capture-the-schema-history-for-all-tables
@@ -229,6 +258,14 @@ include::{partialsdir}/modules/all-connectors/con-connector-blocking-snapshot.ad
 include::{partialsdir}/modules/all-connectors/shared-mariadb-mysql.adoc[leveloffset=+1,tags=set-binlog-position-intro]
 
 // Type: concept
+// ModuleID: debezium-mysql-connector-considerations-for-resetting-the-binlog-position
+// Title: Considerations for resetting the binlog position
+[id="mysql-considerations-for-resetting-the-binlog-position"]
+==== Considerations for resetting the binlog position
+
+include::{partialsdir}/modules/all-connectors/shared-mariadb-mysql.adoc[leveloffset=+1,tags=set-binlog-position-considerations]
+
+// Type: concept
 // ModuleID: debezium-mysql-connector-format-of-a-set-binlog-position-signal
 // Title: Format of a set-binlog-position signal
 ==== Format of a `set-binlog-position` signal
@@ -252,6 +289,8 @@ include::{partialsdir}/modules/all-connectors/shared-mariadb-mysql.adoc[leveloff
 
 include::{partialsdir}/modules/all-connectors/shared-mariadb-mysql.adoc[leveloffset=+1,tags=topic-names]
 
+// Type: concept
+// Title: {prodname} MySQL connector-generated events that represent transaction boundaries
 [[mysql-transaction-metadata]]
 === Transaction metadata
 
@@ -265,6 +304,22 @@ include::{partialsdir}/modules/all-connectors/shared-mariadb-mysql.adoc[leveloff
 
 include::{partialsdir}/modules/all-connectors/shared-mariadb-mysql.adoc[leveloffset=+1,tags=data-chg-events]
 
+// Type: reference
+// ModuleID: debezium-mysql-change-event-structure
+// Title: Change event structure in {prodname} MySQL
+[id="mysql-change-event-structure"]
+=== Change event structure
+
+include::{partialsdir}/modules/all-connectors/shared-mariadb-mysql.adoc[leveloffset=+1,tags=change-event-structure]
+
+// Type: concept
+// ModuleID: debezium-mysql-change-event-schema-name-requirements
+// Title: Schema name requirements for {prodname} MySQL change events
+[id="mysql-change-event-schema-name-requirements"]
+=== Schema name requirements
+
+include::{partialsdir}/modules/all-connectors/shared-mariadb-mysql.adoc[leveloffset=+1,tags=change-event-schema-names]
+
 // Type: concept
 // ModuleID: about-keys-in-debezium-mysql-change-events
 // Title: About keys in {prodname} MySQL change events
@@ -273,7 +328,7 @@ include::{partialsdir}/modules/all-connectors/shared-mariadb-mysql.adoc[leveloff
 
 include::{partialsdir}/modules/all-connectors/shared-mariadb-mysql.adoc[leveloffset=+1,tags=event-keys]
 
-// Type: concept
+// Type: assembly
 // ModuleID: about-values-in-debezium-mysql-change-events
 // Title: About values in {prodname} MySQL change events
 [[mysql-change-event-values]]
@@ -281,45 +336,59 @@ include::{partialsdir}/modules/all-connectors/shared-mariadb-mysql.adoc[leveloff
 
 include::{partialsdir}/modules/all-connectors/shared-mariadb-mysql.adoc[leveloffset=+1,tags=event-values]
 
+// Type: concept
+// ModuleID: debezium-mysql-change-event-value-schema-and-payload
+// Title: Schema and payload of a {prodname} MySQL change event value
+[id="mysql-change-event-value-schema-and-payload"]
+==== Schema and payload of a change event value
 
-// Type: continue
+include::{partialsdir}/modules/all-connectors/shared-mariadb-mysql.adoc[leveloffset=+1,tags=event-value-schema-and-payload]
+
+
+// Type: reference
+// Title: {prodname} MySQL connector _create_ change events
 [id="mysql-create-events"]
-=== _create_ events
+==== _create_ events
 
 include::{partialsdir}/modules/all-connectors/shared-mariadb-mysql.adoc[leveloffset=+1,tags=create-events]
 
-// Type: continue
+// Type: reference
+// Title: {prodname} MySQL connector _update_ change events
 [id="mysql-update-events"]
-=== _update_ events
+==== _update_ events
 
 include::{partialsdir}/modules/all-connectors/shared-mariadb-mysql.adoc[leveloffset=+1,tags=update-events]
 
-// Type: continue
+// Type: reference
+// Title: {prodname} MySQL connector primary key updates
 [id="mysql-primary-key-updates"]
-=== Primary key updates
+==== Primary key updates
 
 include::{partialsdir}/modules/all-connectors/shared-mariadb-mysql.adoc[leveloffset=+1,tags=pkey-updates]
 
 
-// Type: continue
+// Type: reference
+// Title: {prodname} MySQL connector _delete_ change events
 [id="mysql-delete-events"]
-=== _delete_ events
+==== _delete_ events
 
 include::{partialsdir}/modules/all-connectors/shared-mariadb-mysql.adoc[leveloffset=+1,tags=del-events]
 
-// Type: continue
+// Type: reference
+// Title: {prodname} MySQL connector tombstone change events
 [id="mysql-tombstone-events"]
-=== Tombstone events
+==== Tombstone events
 
 include::{partialsdir}/modules/all-connectors/shared-mariadb-mysql.adoc[leveloffset=+1,tags=tombstone-events]
 
-// Type: continue
+// Type: reference
+// Title: {prodname} MySQL connector _truncate_ change events
 [id="mysql-truncate-events"]
-=== _truncate_ events
+==== _truncate_ events
 
 include::{partialsdir}/modules/all-connectors/shared-mariadb-mysql.adoc[leveloffset=+1,tags=truncate-events]
 
-// Type: reference
+// Type: assembly
 // ModuleID: how-debezium-mysql-connectors-map-data-types
 // Title: How {prodname} MySQL connectors map data types
 [[mysql-data-types]]
@@ -327,52 +396,81 @@ include::{partialsdir}/modules/all-connectors/shared-mariadb-mysql.adoc[leveloff
 
 include::{partialsdir}/modules/all-connectors/shared-mariadb-mysql.adoc[leveloffset=+1,tags=data-type-mappings]
 
+// Type: concept
+// ModuleID: debezium-mysql-data-types-in-change-events
+// Title: Data types in {prodname} MySQL change events
+[id="mysql-data-types-in-change-events"]
+=== Data types in change events
+
+include::{partialsdir}/modules/all-connectors/shared-mariadb-mysql.adoc[leveloffset=+1,tags=data-type-mapping-concepts]
+
+// Type: reference
+// Title: {prodname} MySQL connector basic type mappings
 [id="mysql-basic-types"]
 === Basic types
 
 include::{partialsdir}/modules/all-connectors/shared-mariadb-mysql.adoc[leveloffset=+1,tags=basic-data-types]
 
 .
+// Type: reference
+// Title: {prodname} MySQL connector temporal type mappings
 [id="mysql-temporal-types"]
 === Temporal types
 
 include::{partialsdir}/modules/all-connectors/shared-mariadb-mysql.adoc[leveloffset=+1,tags=temporal-data-types]
 
+// Type: reference
+// Title: {prodname} MySQL connector decimal type mappings
 [id="mysql-decimal-types"]
 === Decimal types
 
 include::{partialsdir}/modules/all-connectors/shared-mariadb-mysql.adoc[leveloffset=+1,tags=decimal-data-types]
 
+// Type: reference
+// Title: {prodname} MySQL connector Boolean value mappings
 [id="mysql-boolean-values"]
 === Boolean values
 
 include::{partialsdir}/modules/all-connectors/shared-mariadb-mysql.adoc[leveloffset=+1,tags=boolean-values]
 
+// Type: reference
+// Title: {prodname} MySQL connector spatial type mappings
 [id="mysql-spatial-types"]
 === Spatial types
 
 include::{partialsdir}/modules/all-connectors/shared-mariadb-mysql.adoc[leveloffset=+1,tags=spatial-data-types]
 
+// Type: reference
+// Title: {prodname} MySQL connector vector type mappings
 [id="mysql-vector-types"]
 === Vector types
 
 include::{partialsdir}/modules/all-connectors/shared-mariadb-mysql.adoc[leveloffset=+1,tags=vector-data-types]
 
-// Type: concept
+// Type: assembly
 // Title: Custom converters for mapping {connector-name} data to alternative data types
 [id="debezium-mysql-connector-converters"]
 == Custom converters
 
 include::{partialsdir}/modules/all-connectors/shared-mariadb-mysql.adoc[leveloffset=+1,tags=custom-converters]
 
+// Type: concept
+// ModuleID: debezium-mysql-connector-mapping-tinyint1-columns-to-boolean-values
+// Title: Mapping {connector-name} TINYINT(1) columns to Boolean values
 === `TINYINT(1)` to Boolean
 
 include::{partialsdir}/modules/all-connectors/shared-mariadb-mysql.adoc[leveloffset=+1,tags=tinyint-boolean-conv]
 
+// Type: concept
+// ModuleID: debezium-mysql-connector-using-the-jdbc-sink-data-types-converter
+// Title: Using the JDBC sink data types converter with the {prodname} MySQL connector
 === JDBC sink data types
 
 include::{partialsdir}/modules/all-connectors/shared-mariadb-mysql.adoc[leveloffset=+1,tags=jdbc-sink-data-types]
 
+// Type: concept
+// ModuleID: debezium-mysql-connector-handling-zero-date-values
+// Title: Handling zero-date values with the ZeroDateFallbackConverter
 === Zero-date fallback
 
 include::{partialsdir}/modules/all-connectors/shared-mariadb-mysql.adoc[leveloffset=+1,tags=zero-date-fallback]
@@ -394,8 +492,10 @@ include::{partialsdir}/modules/all-connectors/shared-mariadb-mysql.adoc[leveloff
 
 include::{partialsdir}/modules/all-connectors/shared-mariadb-mysql.adoc[leveloffset=+1,tags=creating-a-db-user]
 
+// Type: reference
+// Title: Descriptions of user permissions for the {prodname} MySQL connector
 [id="permissions-explained-mysql-connector"]
-==== Descriptions of user permissions
+=== Descriptions of user permissions
 
 include::{partialsdir}/modules/all-connectors/shared-mariadb-mysql.adoc[leveloffset=+1,tags=permissions-explained]
 
@@ -407,8 +507,11 @@ include::{partialsdir}/modules/all-connectors/shared-mariadb-mysql.adoc[leveloff
 
 include::{partialsdir}/modules/all-connectors/shared-mariadb-mysql.adoc[leveloffset=+1,tags=enabling-binlog]
 
+// Type: reference
+// ModuleID: debezium-mysql-connector-descriptions-of-binlog-configuration-properties
+// Title: Descriptions of MySQL binlog configuration properties
 [id="binlog-configuration-properties-mysql-connector"]
-==== Descriptions of MySQL binlog configuration properties
+=== Descriptions of MySQL binlog configuration properties
 
 include::{partialsdir}/modules/all-connectors/shared-mariadb-mysql.adoc[leveloffset=+1,tags=binlog-config-props]
 
