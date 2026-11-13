@@ -2478,6 +2478,7 @@ include::{partialsdir}/modules/all-connectors/con-connector-streams-deployment.a
 === Using {StreamsName} to deploy a {prodname} SQL Server connector
 include::{partialsdir}/modules/all-connectors/proc-using-streams-to-deploy-a-debezium-mysql-sqlserver-connector.adoc[leveloffset=+1]
 
+// Type: procedure
 [id="verifying-that-the-debezium-sqlserver-connector-is-running"]
 === Verifying that the {prodname} SQL Server connector is running
 
