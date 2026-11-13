@@ -85,11 +85,11 @@ The foreign-key column name follows `relationship.fk.naming` + `column.naming`, 
 
 [NOTE]
 ====
-Foreign-key mode emits a *partial update* of the owner row, with the same event primary key of the the owner node's event.
+Foreign-key mode emits a *partial update* of the owner row, using the same event primary key as the owner node's own change events.
 As a result the node's full-row change and the relationship's foreign-key update share a key when they reach the {prodname} JDBC sink.
 
-Configure the JDBC sink with `buffer.mode=passthrough`.
-With the default `buffer.mode=deduplication`, same-key records are reduced within a batch (last-write-wins), which can drop the foreign-key update so the column is never written.
+Configure the JDBC sink by setting xref:connectors/jdbc.adoc#jdbc-property-buffer-mode[`buffer.mode`] to `passthrough`.
+With the default `buffer.mode=deduplication`, same-key records are reduced within a batch (last-write-wins), so either the foreign-key update or the node's full-row change can be dropped, depending on which arrives last.
 `passthrough` keeps the two records as separate writes.
 ====
 
