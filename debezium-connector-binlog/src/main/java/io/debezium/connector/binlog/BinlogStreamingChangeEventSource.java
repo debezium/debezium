@@ -849,7 +849,7 @@ public abstract class BinlogStreamingChangeEventSource<P extends BinlogPartition
                     BinlogConnectorConfig.BUFFER_SIZE_FOR_BINLOG_READER.name());
         }
 
-        applySessionTimeZone(partition, offsetContext, command, eventTime);
+        applySessionTimeZone(command);
 
         List<SchemaChangeEvent> schemaChangeEvents = schema.parseStreamingDdl(partition, sql,
                 command.getDatabase(), offsetContext, eventTime);
@@ -894,19 +894,16 @@ public abstract class BinlogStreamingChangeEventSource<P extends BinlogPartition
 
     /**
      * Sets the time zone of the session that ran the statement, in which MySQL and MariaDB interpret its {@code TIMESTAMP}
-     * literals, if it differs from the current one. The {@code SET} statement is recorded in the schema history, so that
-     * the statement is interpreted the same way when the history is recovered, but it is not a schema change to emit.
+     * literals, if it differs from the current one. The schema history records it with the statement, if it records the
+     * statement.
+     *
+     * @see BinlogDatabaseSchema#setSessionTimeZone(String)
      */
-    private void applySessionTimeZone(P partition, O offsetContext, QueryEventData command, Instant eventTime) {
+    private void applySessionTimeZone(QueryEventData command) {
         // The binlog client reads it from the status variables of the query event
         final String timeZone = command.getTimeZone();
-        if (timeZone == null || timeZone.equals(schema.sessionTimeZone())) {
-            return;
-        }
-        final List<SchemaChangeEvent> timeZoneChanges = schema.parseStreamingDdl(partition,
-                "SET @@session.time_zone='" + timeZone + "'", "", offsetContext, eventTime);
-        for (SchemaChangeEvent timeZoneChange : timeZoneChanges) {
-            schema.applySchemaChange(timeZoneChange);
+        if (timeZone != null && !timeZone.equals(schema.sessionTimeZone())) {
+            schema.setSessionTimeZone(timeZone);
         }
     }
 

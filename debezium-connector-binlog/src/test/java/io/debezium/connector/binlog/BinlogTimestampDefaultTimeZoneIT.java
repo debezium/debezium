@@ -7,6 +7,7 @@ package io.debezium.connector.binlog;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import java.io.IOException;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.TimeZone;
@@ -17,6 +18,7 @@ import org.apache.kafka.connect.source.SourceRecord;
 import org.assertj.core.api.SoftAssertions;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 
@@ -127,6 +129,55 @@ public abstract class BinlogTimestampDefaultTimeZoneIT<C extends SourceConnector
         assertDefaultMatchesValue(assertions, afterRestart, "v", "after restart");
         assertDefaultMatchesValue(assertions, afterRestart, "w", "after restart");
         assertions.assertAll();
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2866")
+    void shouldRecordSessionTimeZoneOnlyWithRecordedStatements() throws Exception {
+        final Configuration config = database.defaultConfig()
+                .with(BinlogConnectorConfig.SNAPSHOT_MODE, BinlogConnectorConfig.SnapshotMode.INITIAL)
+                .with(BinlogConnectorConfig.TABLE_INCLUDE_LIST, database.qualifiedTableName(TABLE))
+                .with(BinlogConnectorConfig.INCLUDE_SCHEMA_CHANGES, false)
+                .with(SchemaHistory.STORE_ONLY_CAPTURED_TABLES_DDL, true)
+                .build();
+
+        executeStatements(database.getDatabaseName(),
+                "SET time_zone='+09:00'",
+                "CREATE TABLE " + TABLE + " (id INT PRIMARY KEY, v TIMESTAMP NOT NULL DEFAULT '2026-09-28 12:34:56')",
+                "INSERT INTO " + TABLE + " (id) VALUES (1)");
+
+        start(getConnectorClass(), config);
+        consumeRecord(1);
+        waitForStreamingRunning(getConnectorName(), database.getServerName());
+
+        // A statement of another session time zone for a table that is not captured adds nothing to the schema history
+        executeStatements(database.getDatabaseName(),
+                "SET time_zone='-05:00'",
+                "CREATE TABLE not_captured (id INT PRIMARY KEY, v TIMESTAMP NOT NULL DEFAULT '2026-10-01 00:00:00')",
+                "INSERT INTO " + TABLE + " (id) VALUES (2)");
+        consumeRecord(2);
+        assertThat(recordedStatements()).noneMatch(statement -> statement.contains("-05:00"));
+
+        // A statement for the captured table is recorded after its session time zone
+        executeStatements(database.getDatabaseName(),
+                "SET time_zone='-05:00'",
+                "ALTER TABLE " + TABLE + " ALTER COLUMN v SET DEFAULT '2026-10-01 00:00:00'",
+                "INSERT INTO " + TABLE + " (id) VALUES (3)");
+        final var assertions = new SoftAssertions();
+        assertDefaultMatchesValue(assertions, consumeRecord(3), "v", "streamed SET DEFAULT");
+        assertions.assertAll();
+
+        final List<String> statements = recordedStatements();
+        final List<String> timeZones = statements.stream().filter(statement -> statement.contains("time_zone='-05:00'")).toList();
+        assertThat(timeZones).hasSize(1);
+        final List<String> alters = statements.stream().filter(statement -> statement.contains("ALTER COLUMN v SET DEFAULT")).toList();
+        assertThat(alters).hasSize(1);
+        assertThat(statements.indexOf(timeZones.get(0))).isLessThan(statements.indexOf(alters.get(0)));
+    }
+
+    private static List<String> recordedStatements() throws IOException {
+        // One record of the schema history per line
+        return java.nio.file.Files.readAllLines(SCHEMA_HISTORY_PATH);
     }
 
     private SourceRecord consumeRecord(int id) throws InterruptedException {

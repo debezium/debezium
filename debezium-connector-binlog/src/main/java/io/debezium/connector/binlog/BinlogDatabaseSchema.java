@@ -47,6 +47,7 @@ import io.debezium.relational.ValueConverterProvider;
 import io.debezium.relational.ddl.DdlChanges;
 import io.debezium.relational.ddl.DdlParser;
 import io.debezium.relational.ddl.DdlParserListener;
+import io.debezium.relational.history.TableChanges;
 import io.debezium.schema.SchemaChangeEvent;
 import io.debezium.schema.SchemaNameAdjuster;
 import io.debezium.spi.topic.TopicNamingStrategy;
@@ -79,6 +80,9 @@ public abstract class BinlogDatabaseSchema<P extends BinlogPartition, O extends 
     private final V valueConverter;
     private final boolean tableIdCaseInsensitive;
     private final BinlogMetadataTableBuilder metadataTableBuilder;
+    // The session time zone that the schema history holds, while the DDL parser uses another one that is not recorded yet
+    private String recordedSessionTimeZone;
+    private boolean sessionTimeZoneToRecord;
     private final Map<TableId, TableMapMetadataSnapshot> tablesRegisteredFromBinlogMetadata = new ConcurrentHashMap<>();
 
     /**
@@ -183,7 +187,24 @@ public abstract class BinlogDatabaseSchema<P extends BinlogPartition, O extends 
         if (!storeOnlyCapturedTables() || isGlobalSetVariableStatement(schemaChange.getDdl(), schemaChange.getDatabase())
                 || schemaChange.getTables().stream().map(Table::id).anyMatch(filters.dataCollectionFilter()::isIncluded)) {
             LOGGER.debug("Recorded DDL statements for database '{}': {}", schemaChange.getDatabase(), schemaChange.getDdl());
+            recordSessionTimeZone(schemaChange);
             record(schemaChange, schemaChange.getTableChanges());
+        }
+    }
+
+    /**
+     * Records the session time zone of the DDL parser before a statement that is recorded, if it differs from the one
+     * that the schema history holds, so that the statement is interpreted the same way when the history is recovered.
+     */
+    private void recordSessionTimeZone(SchemaChangeEvent schemaChange) {
+        if (!sessionTimeZoneToRecord) {
+            return;
+        }
+        sessionTimeZoneToRecord = false;
+        final String timeZone = sessionTimeZone();
+        if (timeZone != null && !timeZone.equals(recordedSessionTimeZone)) {
+            schemaHistory.record(schemaChange.getPartition(), schemaChange.getOffset(), "", null,
+                    "SET @@session.time_zone='" + timeZone + "'", new TableChanges(), schemaChange.getTimestamp());
         }
     }
 
@@ -219,6 +240,21 @@ public abstract class BinlogDatabaseSchema<P extends BinlogPartition, O extends 
         if (timeZone != null) {
             parser.systemVariables().setVariable(BinlogSystemVariables.BinlogScope.GLOBAL, BinlogTimeZones.SYSTEM_TIME_ZONE, timeZone.getId());
         }
+    }
+
+    /**
+     * Sets the time zone of the session that runs the DDL statements that are parsed next. The schema history records
+     * it only with the next statement that it records. A statement that is not recorded, such as one for a table that
+     * is not captured, therefore adds nothing to the schema history.
+     *
+     * @param timeZone the time zone as MySQL and MariaDB name it, such as {@code SYSTEM} or {@code +09:00}; never null
+     */
+    public void setSessionTimeZone(String timeZone) {
+        if (!sessionTimeZoneToRecord) {
+            recordedSessionTimeZone = sessionTimeZone();
+            sessionTimeZoneToRecord = true;
+        }
+        ddlParser.systemVariables().setVariable(BinlogSystemVariables.BinlogScope.SESSION, BinlogTimeZones.TIME_ZONE, timeZone);
     }
 
     /**
