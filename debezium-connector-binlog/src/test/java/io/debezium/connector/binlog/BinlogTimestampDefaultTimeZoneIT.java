@@ -9,6 +9,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import java.nio.file.Path;
 import java.util.List;
+import java.util.TimeZone;
 
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceConnector;
@@ -38,9 +39,15 @@ public abstract class BinlogTimestampDefaultTimeZoneIT<C extends SourceConnector
     private static final String TABLE = "timestamp_defaults";
 
     private UniqueDatabase database;
+    private TimeZone jvmTimeZone;
 
     @BeforeEach
     void beforeEach() {
+        // A time zone that is neither that of a test database nor one of the session time zones below. A default
+        // that is interpreted in the time zone of the JVM then does not match the stored value, also where the JVM
+        // and the database are both in UTC.
+        jvmTimeZone = TimeZone.getDefault();
+        TimeZone.setDefault(TimeZone.getTimeZone("Asia/Kolkata"));
         stopConnector();
         Testing.Files.delete(OFFSET_STORE_PATH);
         Testing.Files.delete(SCHEMA_HISTORY_PATH);
@@ -58,6 +65,7 @@ public abstract class BinlogTimestampDefaultTimeZoneIT<C extends SourceConnector
         finally {
             Testing.Files.delete(OFFSET_STORE_PATH);
             Testing.Files.delete(SCHEMA_HISTORY_PATH);
+            TimeZone.setDefault(jvmTimeZone);
         }
     }
 
