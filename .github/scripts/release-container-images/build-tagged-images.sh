@@ -18,12 +18,12 @@ set -eo pipefail
 #   IMAGES_BRANCH: Branch name for fetching build scripts (e.g., "main")
 
 # Validate required environment variables
-if [ -z "$BUILD_LIST" ]; then
+if [[ -z "$BUILD_LIST" ]]; then
     echo "Error: BUILD_LIST environment variable is required" >&2
     exit 1
 fi
 
-if [ -z "$IMAGES_BRANCH" ]; then
+if [[ -z "$IMAGES_BRANCH" ]]; then
     echo "Error: IMAGES_BRANCH environment variable is required" >&2
     exit 1
 fi
@@ -137,7 +137,7 @@ echo "Total builds: $BUILD_COUNT"
 echo "Successful: $SUCCESS_COUNT"
 echo "Failed: $((BUILD_COUNT - SUCCESS_COUNT))"
 
-if [ ${#FAILED_TAGS[@]} -gt 0 ]; then
+if [[ ${#FAILED_TAGS[@]} -gt 0 ]]; then
     echo ""
     echo "Failed tags:"
     for tag in "${FAILED_TAGS[@]}"; do
