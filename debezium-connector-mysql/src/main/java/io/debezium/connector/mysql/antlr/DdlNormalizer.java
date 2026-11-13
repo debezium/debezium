@@ -145,6 +145,23 @@ public class DdlNormalizer {
             Pattern.CASE_INSENSITIVE);
 
     /**
+     * Matches the tail of a key part, i.e. everything after the column name: an optional prefix
+     * length ({@code (10)}) and {@code ASC}/{@code DESC} direction, followed by the {@code ,} or
+     * {@code )} that closes it. This is the tail of key parts such as {@code url}, {@code url(10)}
+     * and {@code url DESC}.
+     */
+    private static final String KEY_PART_END = "\\s*(?:\\(\\d+\\))?\\s*(?:ASC|DESC)?\\s*[,)]";
+
+    /**
+     * Matches key part positions: a restricted keyword used as a column name inside an index or
+     * constraint key list, e.g. {@code CREATE INDEX i ON t(url)}, {@code ADD INDEX i (url, x)},
+     * {@code PRIMARY KEY (url)} and {@code FOREIGN KEY (url) REFERENCES ...}.
+     */
+    private static final Pattern KEY_PART_CONTEXT_PATTERN = Pattern.compile(
+            "([(,]\\s*)(" + KEYWORDS_REQUIRING_BACKTICKS + ")\\b(?=" + KEY_PART_END + ")",
+            Pattern.CASE_INSENSITIVE);
+
+    /**
      * Labels in stored routines: {@code <keyword>:}.
      */
     private static final Pattern LABEL_CONTEXT_PATTERN = Pattern.compile(
@@ -239,8 +256,8 @@ public class DdlNormalizer {
      * Adds backticks around the {@code KEYWORDS_REQUIRING_BACKTICKS} entries when used as
      * identifiers (not as keywords).
      * Targets specific contexts: table names, column clauses, column definitions,
-     * index/constraint names, schema object names (database, view, trigger, routine,
-     * event, partition) and labels.
+     * index/constraint names, index/constraint key parts, schema object names (database,
+     * view, trigger, routine, event, partition) and labels.
      * Only ever invoked on the plain SQL segments between comments, string literals and
      * quoted identifiers, so their content is never rewritten.
      */
@@ -251,6 +268,7 @@ public class DdlNormalizer {
 
         String result = IDENTIFIER_CONTEXT_PATTERN.matcher(ddl).replaceAll("$1 `$2`");
         result = COLUMN_DEFINITION_CONTEXT_PATTERN.matcher(result).replaceAll("`$1` $2");
+        result = KEY_PART_CONTEXT_PATTERN.matcher(result).replaceAll("$1`$2`");
         result = LABEL_CONTEXT_PATTERN.matcher(result).replaceAll("`$1`:");
 
         return result;

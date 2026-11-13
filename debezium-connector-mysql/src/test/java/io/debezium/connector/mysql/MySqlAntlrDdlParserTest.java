@@ -483,6 +483,23 @@ public class MySqlAntlrDdlParserTest
     }
 
     @Test
+    @FixFor("debezium/dbz#2812")
+    public void shouldParseNonReservedKeywordsAsIndexKeyParts() {
+        parser.parse("CREATE TABLE v2x_trcl_file (id INT PRIMARY KEY, url VARCHAR(255), language_id INT)", tables);
+        parser.parse("/*app=ndb*/ CREATE INDEX idx_url ON v2x_trcl_file (url)", tables);
+        parser.parse("ALTER TABLE v2x_trcl_file ADD INDEX idx_t_url_language_id (url, language_id)", tables);
+        parser.parse("CREATE TABLE constrained (id INT, url VARCHAR(50), PRIMARY KEY (url(10) DESC))", tables);
+        assertThat(parser.getParsingExceptionsFromWalker()).isEmpty();
+
+        Table file = tables.forTable(null, null, "v2x_trcl_file");
+        assertThat(file.columnWithName("url")).isNotNull();
+        assertThat(file.columnWithName("language_id")).isNotNull();
+
+        Table constrained = tables.forTable(null, null, "constrained");
+        assertThat(constrained.primaryKeyColumnNames()).containsExactly("url");
+    }
+
+    @Test
     @FixFor("debezium/dbz#2997")
     public void shouldKeepEndOfTrailingVersionCommentInStatement() {
         final String createPartitioned = "CREATE TABLE `orders` (\n"
