@@ -40,6 +40,8 @@ public class InitialSnapshotNotificationService<P extends Partition, O extends O
     public static final String DATA_COLLECTIONS = "data_collections";
     public static final String CHUNK_INDEX = "chunk_index";
     public static final String TOTAL_CHUNKS = "total_chunks";
+    public static final String RETRY_ATTEMPT = "retry_attempt";
+    public static final String MAX_RETRIES = "max_retries";
 
     private final NotificationService<P, O> notificationService;
     private final CommonConnectorConfig connectorConfig;
@@ -85,6 +87,20 @@ public class InitialSnapshotNotificationService<P extends Partition, O extends O
                                 CHUNK_INDEX, String.valueOf(chunkIndex),
                                 TOTAL_CHUNKS, String.valueOf(totalChunks),
                                 TOTAL_ROWS_SCANNED, String.valueOf(totalRowsScanned))),
+                Offsets.of(partition, offsetContext));
+    }
+
+    public <T extends DataCollectionId> void notifyTableSnapshotRetry(P partition,
+                                                                      OffsetContext offsetContext,
+                                                                      String currentCollection,
+                                                                      int retryAttempt,
+                                                                      int maxRetries) {
+        notificationService.notify(
+                buildNotificationWith(
+                        SnapshotStatus.TABLE_SCAN_RETRY.name(),
+                        Map.of(CURRENT_COLLECTION_IN_PROGRESS, currentCollection,
+                                RETRY_ATTEMPT, String.valueOf(retryAttempt),
+                                MAX_RETRIES, String.valueOf(maxRetries))),
                 Offsets.of(partition, offsetContext));
     }
 
