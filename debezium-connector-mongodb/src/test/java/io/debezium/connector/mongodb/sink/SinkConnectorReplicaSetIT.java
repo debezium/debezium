@@ -5,23 +5,19 @@
  */
 package io.debezium.connector.mongodb.sink;
 
-import static io.debezium.connector.mongodb.TestHelper.cleanDatabase;
-
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
-import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ArgumentsSource;
 
-import io.debezium.connector.mongodb.AbstractMongoConnectorIT;
-import io.debezium.connector.mongodb.Module;
 import io.debezium.connector.mongodb.sink.junit.NetworkIsolatedMongoDbDatabaseProvider;
-import io.debezium.junit.RequiresAssemblyProfile;
+import io.debezium.connector.mongodb.sink.junit.SinkRecordFactory;
+import io.debezium.connector.mongodb.sink.junit.SinkRecordFactoryArgumentsProvider;
 import io.debezium.testing.testcontainers.MongoDbDeployment;
-import io.debezium.testing.testcontainers.testhelper.TestInfrastructureHelper;
 import io.debezium.testing.testcontainers.util.DockerUtils;
 
-@RequiresAssemblyProfile
-public class SinkConnectorReplicaSetIT extends AbstractMongoConnectorIT implements SinkConnectorIT {
+public class SinkConnectorReplicaSetIT implements SinkConnectorIT {
 
     protected static MongoDbDeployment mongo;
 
@@ -33,27 +29,140 @@ public class SinkConnectorReplicaSetIT extends AbstractMongoConnectorIT implemen
     @BeforeAll
     static void beforeAll() {
         DockerUtils.enableFakeDnsIfRequired();
-        SinkConnectorIT.sendSourceData();
-        TestInfrastructureHelper.setupDebeziumContainer(io.debezium.connector.mongodb.Module.version(), TestInfrastructureHelper.parseDebeziumVersion(Module.version()));
-        TestInfrastructureHelper.startContainers(TestInfrastructureHelper.DATABASE.DEBEZIUM_ONLY);
-        mongo = new NetworkIsolatedMongoDbDatabaseProvider(TestInfrastructureHelper.getNetwork()).dockerReplicaSet();
+        mongo = new NetworkIsolatedMongoDbDatabaseProvider().dockerReplicaSet();
         mongo.start();
     }
 
     @AfterEach
-    public void afterEach() {
-        cleanDatabase(mongo, DATABASE_NAME);
+    void afterEach() {
+        cleanDatabase(DATABASE_NAME);
     }
 
     @AfterAll
     static void afterAll() {
-        SinkConnectorIT.stopContainers(mongo);
+        if (mongo != null) {
+            mongo.stop();
+        }
         DockerUtils.disableFakeDns();
     }
 
-    @Test
-    void testSinkConnectorWritesRecordsToReplicaSet() {
-        checkSinkConnectorWritesRecords();
+    @ParameterizedTest
+    @ArgumentsSource(SinkRecordFactoryArgumentsProvider.class)
+    void testSinkConnectorWritesRecords(SinkRecordFactory factory) {
+        checkSinkConnectorWritesRecords(factory);
     }
 
+    @ParameterizedTest
+    @ArgumentsSource(SinkRecordFactoryArgumentsProvider.class)
+    void testMultiTopicRoutesToSeparateCollections(SinkRecordFactory factory) {
+        checkMultiTopicRoutesToSeparateCollections(factory);
+    }
+
+    @ParameterizedTest
+    @ArgumentsSource(SinkRecordFactoryArgumentsProvider.class)
+    void testFieldFiltering(SinkRecordFactory factory) {
+        checkFieldFiltering(factory);
+    }
+
+    @ParameterizedTest
+    @ArgumentsSource(SinkRecordFactoryArgumentsProvider.class)
+    void testPrimaryKeyModeDeduplication(SinkRecordFactory factory) {
+        checkPrimaryKeyModeDeduplication(factory);
+    }
+
+    @ParameterizedTest
+    @ArgumentsSource(SinkRecordFactoryArgumentsProvider.class)
+    void testDeleteRemovesDocument(SinkRecordFactory factory) {
+        checkDeleteRemovesDocument(factory);
+    }
+
+    @ParameterizedTest
+    @ArgumentsSource(SinkRecordFactoryArgumentsProvider.class)
+    void testTombstoneIsSkipped(SinkRecordFactory factory) {
+        checkTombstoneIsSkipped(factory);
+    }
+
+    @ParameterizedTest
+    @ArgumentsSource(SinkRecordFactoryArgumentsProvider.class)
+    void testTruncateIsSkippedWhenDisabled(SinkRecordFactory factory) {
+        checkTruncateIsSkippedWhenDisabled(factory);
+    }
+
+    @ParameterizedTest
+    @ArgumentsSource(SinkRecordFactoryArgumentsProvider.class)
+    void testTruncateDeletesAllDocumentsWhenEnabled(SinkRecordFactory factory) {
+        checkTruncateDeletesAllDocumentsWhenEnabled(factory);
+    }
+
+    @ParameterizedTest
+    @ArgumentsSource(SinkRecordFactoryArgumentsProvider.class)
+    void testKafkaPrimaryKeyMode(SinkRecordFactory factory) {
+        checkKafkaPrimaryKeyModeCreatesOneDocumentPerRecord(factory);
+    }
+
+    @ParameterizedTest
+    @ArgumentsSource(SinkRecordFactoryArgumentsProvider.class)
+    void testFieldIncludeList(SinkRecordFactory factory) {
+        checkFieldIncludeList(factory);
+    }
+
+    @ParameterizedTest
+    @ArgumentsSource(SinkRecordFactoryArgumentsProvider.class)
+    void testRecordValuePrimaryKeyMode(SinkRecordFactory factory) {
+        checkRecordValuePrimaryKeyMode(factory);
+    }
+
+    @ParameterizedTest
+    @ArgumentsSource(SinkRecordFactoryArgumentsProvider.class)
+    void testRecordHeaderPrimaryKeyMode(SinkRecordFactory factory) {
+        checkRecordHeaderPrimaryKeyMode(factory);
+    }
+
+    @ParameterizedTest
+    @ArgumentsSource(SinkRecordFactoryArgumentsProvider.class)
+    void testPrimaryKeyFieldsRestriction(SinkRecordFactory factory) {
+        checkPrimaryKeyFieldsRestriction(factory);
+    }
+
+    @ParameterizedTest
+    @ArgumentsSource(SinkRecordFactoryArgumentsProvider.class)
+    void testSameKeyUpsertProducesOneDocument(SinkRecordFactory factory) {
+        checkSameKeyUpsertProducesOneDocument(factory);
+    }
+
+    @ParameterizedTest
+    @ArgumentsSource(SinkRecordFactoryArgumentsProvider.class)
+    void testKeylessPassthroughPreservesAllRecords(SinkRecordFactory factory) {
+        checkKeylessPassthroughPreservesAllRecords(factory);
+    }
+
+    @ParameterizedTest
+    @ArgumentsSource(SinkRecordFactoryArgumentsProvider.class)
+    void testKeylessPassthroughPreservesIdenticalRecords(SinkRecordFactory factory) {
+        checkKeylessPassthroughPreservesIdenticalRecords(factory);
+    }
+
+    @ParameterizedTest
+    @ArgumentsSource(SinkRecordFactoryArgumentsProvider.class)
+    void testDeduplicatingBufferCollapsesSameKeyUpdates(SinkRecordFactory factory) {
+        checkDeduplicatingBufferCollapsesSameKeyUpdates(factory);
+    }
+
+    @ParameterizedTest
+    @ArgumentsSource(SinkRecordFactoryArgumentsProvider.class)
+    void testPassthroughBufferAppliesAllKeyedEvents(SinkRecordFactory factory) {
+        checkPassthroughBufferAppliesAllKeyedEvents(factory);
+    }
+
+    @ParameterizedTest
+    @ArgumentsSource(SinkRecordFactoryArgumentsProvider.class)
+    void testPassthroughBufferWithDistinctKeys(SinkRecordFactory factory) {
+        checkPassthroughBufferWithDistinctKeys(factory);
+    }
+
+    @ParameterizedTest
+    @ArgumentsSource(SinkRecordFactoryArgumentsProvider.class)
+    void testPassthroughBufferWithMixedKeys(SinkRecordFactory factory) {
+        checkPassthroughBufferWithMixedKeys(factory);
+    }
 }

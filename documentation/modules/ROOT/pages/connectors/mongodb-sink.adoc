@@ -123,6 +123,9 @@ The MongoDB sink connector can consume only change events that originate from th
 
 +
 The connector cannot process change event messages from any other {prodname} connectors, including the {prodname} MongoDB source connector.
+ifdef::community[]
+The connector supports both standard {prodname} envelope records and flattened records (for example, records processed by the `ExtractNewRecordState` single message transform).
+endif::community[]
 
 Schema evolution::
 Although the connector can process basic schema changes, advanced schema evolution scenarios might require manual intervention or specific configuration.
@@ -253,6 +256,69 @@ Specify a custom `CollectionNameStrategy` implementation.
 
 |===
 
+ifdef::community[]
+.Primary key configuration
+[cols="30%a,25%a,45%a",options="header"]
+|===
+|Property | Default | Description
+
+|[[mongodb-sink-property-primary-key-mode]]<<mongodb-sink-property-primary-key-mode, `+primary.key.mode+`>>
+|`none`
+|Specifies how the connector resolves the `_id` field of the target MongoDB document from the event.
+
+`none`:: No primary key is derived from the event. The connector generates a unique MongoDB `ObjectId` for each document's `_id` field.
+`kafka`:: The connector uses the Kafka coordinates as the document `_id`. The `_id` is composed of the following fields:
+* `+__connect_topic+`
+* `+__connect_partition+`
+* `+__connect_offset+`
+`record_key`:: The connector derives the `_id` from the event's record key. If the record key is a struct type, the xref:mongodb-sink-property-primary-key-fields[`primary.key.fields`] property is optional and can restrict the `_id` to a subset of key fields.
+`record_value`:: The connector derives the `_id` from the event's value. Set the xref:mongodb-sink-property-primary-key-fields[`primary.key.fields`] property to specify which value fields to use; otherwise all fields are used.
+`record_header`:: The connector derives the `_id` from the event's Kafka headers.
+
+[NOTE]
+====
+When using `primary.key.mode=none` writes are not idempotent, because a new `ObjectId` is generated each time a record is processed.
+If the connector retries a record (for example, after a transient network error or a task restart), the re-delivered record produces a new document instead of overwriting the original.
+This may result in duplicate documents in the target collection.
+If you need exactly-once semantics for keyless data, use `kafka` mode instead.
+====
+
+|[[mongodb-sink-property-primary-key-fields]]<<mongodb-sink-property-primary-key-fields, `+primary.key.fields+`>>
+|No default
+|A comma-separated list of field names to use as the primary key.
+The interpretation depends on the xref:mongodb-sink-property-primary-key-mode[`primary.key.mode`] setting:
+
+* When `primary.key.mode` is `record_key`, restricts the `_id` to the specified subset of key fields.
+* When `primary.key.mode` is `record_value`, specifies which value fields compose the `_id`.
+* When `primary.key.mode` is `record_header`, specifies which header fields compose the `_id`.
+
+|===
+
+.Event handling configuration
+[cols="30%a,25%a,45%a",options="header"]
+|===
+|Property | Default | Description
+
+|[[mongodb-sink-property-delete-enabled]]<<mongodb-sink-property-delete-enabled, `+delete.enabled+`>>
+|`false`
+|Specifies whether the connector processes `DELETE` events and removes the corresponding document from the target MongoDB collection.
+When a delete event is received and this property is set to `true`, the connector issues a `deleteOne` operation using the document's `_id` as the filter.
+When set to `false` (the default), delete events are silently ignored.
+
+|[[mongodb-sink-property-truncate-enabled]]<<mongodb-sink-property-truncate-enabled, `+truncate.enabled+`>>
+|`false`
+|Specifies whether the connector processes `TRUNCATE` events.
+When set to `true`, the connector clears the internal buffer for the affected collection and then issues a `deleteMany({})` command to remove all documents from the target MongoDB collection.
+
+[WARNING]
+====
+On large collections, `deleteMany({})` can generate significant oplog traffic and may impact MongoDB performance.
+Consider the implications before enabling this option in production environments with large collections.
+====
+
+|===
+endif::community[]
+
 .Common sink options
 [cols="30%a,25%a,45%a",options="header"]
 |===
@@ -272,11 +338,73 @@ Fully-qualified names for fields are of the form `_fieldName_` or `_topicName_:_
 
 If you include this property in the configuration, do not set the `field.include.list` property.
 
+ifdef::product[]
 |[[mongodb-sink-property-batch-size]]<<mongodb-sink-property-batch-size, `+batch.size+`>>
-| 2048
+| 500
 | Maximum number of records to write in a single batch.
+endif::product[]
+|===
+
+ifdef::community[]
+.Batching and buffering configuration
+[cols="30%a,25%a,45%a",options="header"]
+|===
+|Property | Default | Description
+
+|[[mongodb-sink-property-batch-size]]<<mongodb-sink-property-batch-size, `+batch.size+`>>
+| 500
+| Maximum number of records to buffer before writing them to MongoDB in a single bulk write operation.
+
+|[[mongodb-sink-property-buffer-mode]]<<mongodb-sink-property-buffer-mode, `+buffer.mode+`>>
+| `deduplication`
+| Controls how records are buffered before being written to MongoDB.
+
+`deduplication`:: Records with the same key overwrite previous entries in the buffer (last-write-wins). This is the default and ensures idempotent writes when xref:mongodb-sink-property-primary-key-mode[`primary.key.mode`] is set to a value other than `none`.
+`passthrough`:: All records are preserved in the buffer without deduplication. Batches are split at duplicate-key boundaries. +
++
+[NOTE]
+====
+When using `passthrough` mode with `primary.key.mode=none`, every record is written with a unique `ObjectId`.
+If a batch is retried after a transient failure, already-written records are re-inserted as new documents, resulting in duplicates.
+To avoid this, set `primary.key.mode` to `kafka` or `record_key` so that writes are idempotent.
+====
 
 |===
+
+[[mongodb-sink-error-handling]]
+=== Error handling and dead letter queues
+
+When the connector fails to write a record to the target MongoDB database for a reason that is not transient, for example, because the record has a malformed payload, by default the failure stops the connector task.
+
+The connector can route failing records to the ErrantRecordReporter that the Kafka Connect runtime provides (see link:https://cwiki.apache.org/confluence/display/KAFKA/KIP-610%3A+Error+Reporting+in+Sink+Connectors[KIP-610]).
+When a batch fails with a non-transient error, the connector retries the records in the batch one at a time to isolate the failing records, routes only those records to the reporter, and continues to process the remaining records.
+Transient failures, such as network errors (`MongoSocketException`), topology changes (`MongoNotPrimaryException`, `MongoNodeIsRecoveringException`), or errors labeled as `RetryableError` by the MongoDB server, are not routed to the reporter; they are propagated to the Kafka Connect framework for retry.
+
+Whether a failing record stops the task or is routed to a dead letter queue is controlled by the standard Kafka Connect error handling options:
+
+.Example dead letter queue configuration
+[source,json]
+----
+{
+  "errors.tolerance": "all",
+  "errors.deadletterqueue.topic.name": "dlq-topic",
+  "errors.deadletterqueue.context.headers.enable": "true"
+}
+----
+
+When `errors.tolerance` is set to `none` (the default), or when no dead letter queue topic is configured, failing records stop the connector task.
+
+Because a dead letter queue topic can never receive records while `errors.tolerance` is set to `none`, the connector rejects that combination and fails to start with a message that describes how to correct the configuration.
+
+[NOTE]
+====
+MongoDB bulk write operations are non-transactional by default.
+When writing an ordered batch, earlier writes in the batch may have already been committed when a later write fails.
+When `primary.key.mode` is set to `record_key`, `kafka`, `record_value`, or `record_header`, the connector uses upsert semantics (`ReplaceOneModel` with `upsert=true`), so replaying the same batch after a partial failure produces the same result — the already-committed writes are simply overwritten with the same values.
+When `primary.key.mode` is set to `none`, each write generates a new `ObjectId`, so replaying a batch after a partial failure creates duplicate documents for the already-committed writes.
+See xref:mongodb-sink-delivery-semantics[] for details.
+====
+endif::community[]
 
 
 // Type: reference
@@ -320,6 +448,7 @@ This release of the connector does not expose any metrics.
 [[mongodb-sink-key-field-mapping]]
 == Key field mapping
 
+ifdef::product[]
 When the connector processes events, it maps data to specific fields in the target MongoDB document.
 
 * Keys from {prodname} change events, such as Kafka message keys, are mapped to the MongoDB `_id` field by default.
@@ -327,6 +456,17 @@ When the connector processes events, it maps data to specific fields in the targ
 * Updates and deletes are resolved based on the key field mapping.
 
 The following example shows an event key in a Kafka topic:
+endif::product[]
+
+ifdef::community[]
+When the connector processes events, it resolves the MongoDB `_id` field based on the xref:mongodb-sink-property-primary-key-mode[`primary.key.mode`] configuration.
+
+When `primary.key.mode` is set to `none` (the default), the connector generates a unique MongoDB `ObjectId` for each document.
+
+When `primary.key.mode` is set to `record_key`, the connector maps the event's record key to the `_id` field.
+For example, the following composite key in a Kafka topic:
+endif::community[]
+
 [source,json,indent=0,subs="+attributes"]
 ----
 {
@@ -335,7 +475,8 @@ The following example shows an event key in a Kafka topic:
 }
 ----
 
-Based on the mapping logic, the preceding key is mapped to the `_id` field in a MongoDB document, as showin in the following example:
+is mapped to the `_id` field in a MongoDB document as follows:
+
 [source,json,indent=0,subs="+attributes"]
 ----
 {
@@ -345,6 +486,65 @@ Based on the mapping logic, the preceding key is mapped to the `_id` field in a 
     }
 }
 ----
+
+ifdef::community[]
+You can restrict which key fields compose the `_id` by setting the xref:mongodb-sink-property-primary-key-fields[`primary.key.fields`] property.
+For example, setting `primary.key.fields=userId` produces:
+
+[source,json,indent=0,subs="+attributes"]
+----
+{
+    "_id": {
+        "userId": 1
+    }
+}
+----
+
+When `primary.key.mode` is set to `kafka`, the `_id` is derived from the Kafka coordinates of the event:
+
+[source,json,indent=0,subs="+attributes"]
+----
+{
+    "_id": {
+        "__connect_topic": "dbserver1.inventory.customers",
+        "__connect_partition": 0,
+        "__connect_offset": 42
+    }
+}
+----
+
+Values from the event payload are mapped into the MongoDB document fields.
+Key fields that are part of the `_id` are excluded from the document body to avoid duplication.
+
+[TIP]
+====
+`kafka` mode is the recommended setting for sinking keyless data such as log streams, audit events, or transaction records.
+Because the `_id` is derived from the Kafka topic, partition, and offset, writes are idempotent: if a record is re-delivered after a transient error or task restart, it overwrites the existing document rather than creating a duplicate.
+====
+
+[[mongodb-sink-delivery-semantics]]
+== Delivery semantics
+
+Kafka Connect provides at-least-once delivery guarantees: after a transient failure (network error, primary failover) or task restart, records may be re-delivered from the last committed offset.
+Whether re-delivery produces duplicates in the target MongoDB collection depends on the xref:mongodb-sink-property-primary-key-mode[`primary.key.mode`] setting.
+
+Idempotent (keyed) modes::
+When `primary.key.mode` is set to `record_key`, `kafka`, `record_value`, or `record_header`, the connector derives a deterministic `_id` from the event.
+Because the connector writes documents using `ReplaceOneModel` with `upsert=true`, re-delivering the same record overwrites the existing document with the same `_id` — the write is idempotent and no duplicates are created.
+
+Non-idempotent (keyless) mode::
+When `primary.key.mode` is set to `none` (the default), the connector generates a random MongoDB `ObjectId` for each write.
+A re-delivered record receives a new `ObjectId` and is inserted as a new document, resulting in a duplicate.
++
+This applies to any scenario that triggers re-delivery:
++
+* A transient MongoDB error (network interruption, primary failover) during a bulk write causes the Kafka Connect framework to restart the task and re-deliver records from the last committed offset.
+* A consumer group rebalance when partitions are reassigned across tasks.
+* An ordered bulk write that partially succeeds — records written before the failure are re-delivered alongside the failed ones.
++
+If your use case requires all records to be preserved without duplicates (for example, sinking log streams, audit events, or financial transactions), set `primary.key.mode` to `kafka`.
+The `kafka` mode derives the `_id` from the Kafka topic, partition, and offset, providing a stable, unique identifier that makes writes idempotent while preserving every distinct record.
+endif::community[]
 
 // Type: concept
 // Title: Using CloudEvents with the {prodname} MongoDB sink connector

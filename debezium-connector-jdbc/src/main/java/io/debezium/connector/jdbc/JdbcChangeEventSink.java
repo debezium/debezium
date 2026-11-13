@@ -86,6 +86,7 @@ public class JdbcChangeEventSink extends AbstractChangeEventSink implements Chan
         return new JdbcKafkaSinkRecord(kafkaSinkRecord, config);
     }
 
+    @Override
     public void execute(Collection<SinkRecord> records) {
         if (config.isSharedChangeEventSinkEnabled()) {
             for (Batch batch : put(records)) {
