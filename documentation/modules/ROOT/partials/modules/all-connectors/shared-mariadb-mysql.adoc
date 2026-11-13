@@ -1,13 +1,15 @@
 = {prodname} connector for {connector-name}
 
-tag::mariadb-mysql-intro[]
+tag::mariadb-mysql-intro-abstract[]
 {connector-name} has a binary log (binlog) that records all operations in the order in which they are committed to the database.
 This includes changes to table schemas as well as changes to the data in tables.
 {connector-name} uses the binlog for replication and recovery.
 
 The {prodname} {connector-name} connector reads the binlog, produces change events for row-level `INSERT`, `UPDATE`, and `DELETE` operations, and emits the change events to Kafka topics.
 Client applications read those Kafka topics.
+end::mariadb-mysql-intro-abstract[]
 
+tag::mariadb-mysql-overview[]
 Because {connector-name} is typically set up to purge binlogs after a specified period of time, the {connector-name} connector performs an initial _consistent snapshot_ of each of your databases.
 The {connector-name} connector reads the binlog from the point at which the snapshot was made.
 
@@ -21,6 +23,7 @@ endif::product[]
 ifdef::product[]
 Information and procedures for using a {prodname} {connector-name} connector are organized as follows:
 
+* xref:overview-of-debezium-{context}-connector[]
 * xref:how-debezium-{context}-connectors-work[]
 * xref:descriptions-of-debezium-{context}-connector-data-change-events[]
 * xref:how-debezium-{context}-connectors-map-data-types[]
@@ -31,7 +34,7 @@ Information and procedures for using a {prodname} {connector-name} connector are
 * xref:{context}-when-things-go-wrong[]
 
 endif::product[]
-end::mariadb-mysql-intro[]
+end::mariadb-mysql-overview[]
 
 
 
