@@ -32,7 +32,6 @@ import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.slf4j.LoggerFactory;
 
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
@@ -50,7 +49,6 @@ import io.debezium.relational.RelationalDatabaseConnectorConfig;
 import io.strimzi.test.container.StrimziKafkaCluster;
 
 import ch.qos.logback.classic.Level;
-import ch.qos.logback.classic.Logger;
 import ch.qos.logback.classic.spi.ILoggingEvent;
 
 public abstract class BinlogReadOnlyIncrementalSnapshotIT<C extends SourceConnector> extends BinlogIncrementalSnapshotIT<C> {
@@ -177,9 +175,7 @@ public abstract class BinlogReadOnlyIncrementalSnapshotIT<C extends SourceConnec
         return records;
     }
 
-    private static class SnapshotStopSynchronization extends LogInterceptor implements AutoCloseable {
-        private final Logger snapshotLogger = (Logger) LoggerFactory.getLogger(AbstractIncrementalSnapshotChangeEventSource.class);
-        private final Level previousLevel;
+    private static class SnapshotStopSynchronization extends LogInterceptor {
         private final String firstChunkMessage;
         private final Duration timeout;
         private final CountDownLatch firstChunkStarted = new CountDownLatch(1);
@@ -193,8 +189,7 @@ public abstract class BinlogReadOnlyIncrementalSnapshotIT<C extends SourceConnec
             super(AbstractIncrementalSnapshotChangeEventSource.class);
             firstChunkMessage = "Incremental snapshot for table '" + firstCollection + "' will end at position ";
             this.timeout = timeout;
-            previousLevel = snapshotLogger.getLevel();
-            snapshotLogger.setLevel(Level.INFO);
+            setLoggerLevel(AbstractIncrementalSnapshotChangeEventSource.class, Level.INFO);
         }
 
         @Override
@@ -233,9 +228,7 @@ public abstract class BinlogReadOnlyIncrementalSnapshotIT<C extends SourceConnec
         @Override
         public void close() {
             stopCommitted.countDown();
-            snapshotLogger.detachAppender(this);
-            stop();
-            snapshotLogger.setLevel(previousLevel);
+            super.close();
         }
     }
 
