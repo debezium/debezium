@@ -6,6 +6,7 @@
 package io.debezium.relational;
 
 import java.sql.Types;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -172,13 +173,14 @@ public class TableSchemaBuilder {
             hasPrimaryKey.set(true);
         }
 
-        table.columns()
+        final List<Column> valueColumns = table.columns()
                 .stream()
                 .filter(column -> filter == null || filter.matches(tableId.catalog(), tableId.schema(), tableId.table(), column.name()))
-                .forEach(column -> {
-                    ColumnMapper mapper = mappers == null ? null : mappers.mapperFor(tableId, column);
-                    addField(valSchemaBuilder, table, column, mapper);
-                });
+                .collect(Collectors.toList());
+        valueColumns.forEach(column -> {
+            ColumnMapper mapper = mappers == null ? null : mappers.mapperFor(tableId, column);
+            addField(valSchemaBuilder, table, column, mapper);
+        });
 
         Schema valSchema = valSchemaBuilder.optional().build();
         Schema keySchema = hasPrimaryKey.get() ? keySchemaBuilder.build() : null;
@@ -200,7 +202,20 @@ public class TableSchemaBuilder {
         StructGenerator valueGenerator = createValueGenerator(valSchema, tableId, table.columns(), filter, mappers);
 
         // And the table schema ...
-        return new TableSchema(tableId, keySchema, keyGenerator, envelope, valSchema, valueGenerator);
+        return new TableSchema(tableId, keySchema, keyGenerator, envelope, valSchema, valueGenerator,
+                valueFieldNamesByPosition(valSchema, valueColumns));
+    }
+
+    private String[] valueFieldNamesByPosition(Schema valueSchema, List<Column> columns) {
+        final int[] recordIndexes = indexesForColumns(columns);
+        final Field[] fields = fieldsForColumns(valueSchema, columns);
+        final String[] fieldNames = new String[Arrays.stream(recordIndexes).max().orElse(-1) + 1];
+        for (int i = 0; i < recordIndexes.length; i++) {
+            if (fields[i] != null) {
+                fieldNames[recordIndexes[i]] = fields[i].name();
+            }
+        }
+        return fieldNames;
     }
 
     public boolean isMultiPartitionMode() {

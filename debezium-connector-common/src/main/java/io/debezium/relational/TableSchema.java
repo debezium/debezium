@@ -7,7 +7,10 @@ package io.debezium.relational;
 
 import static io.debezium.util.Loggings.maybeRedactSensitiveData;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Objects;
+import java.util.function.Predicate;
 
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.Struct;
@@ -60,6 +63,7 @@ public class TableSchema implements DataCollectionSchema {
     private final Schema valueSchema;
     private final StructGenerator keyGenerator;
     private final StructGenerator valueGenerator;
+    private final String[] valueFieldNamesByPosition;
 
     /**
      * Create an instance with the specified {@link Schema}s for the keys and values, and the functions that generate the
@@ -74,12 +78,22 @@ public class TableSchema implements DataCollectionSchema {
      *            may return nulls
      */
     public TableSchema(TableId id, Schema keySchema, StructGenerator keyGenerator, Envelope envelopeSchema, Schema valueSchema, StructGenerator valueGenerator) {
+        this(id, keySchema, keyGenerator, envelopeSchema, valueSchema, valueGenerator, new String[0]);
+    }
+
+    /**
+     * @param valueFieldNamesByPosition the value field name for each position of the column data; {@code null} where the
+     *            column is not part of the value; may be null
+     */
+    public TableSchema(TableId id, Schema keySchema, StructGenerator keyGenerator, Envelope envelopeSchema, Schema valueSchema, StructGenerator valueGenerator,
+                       String[] valueFieldNamesByPosition) {
         this.id = id;
         this.keySchema = keySchema;
         this.envelopeSchema = envelopeSchema;
         this.valueSchema = valueSchema;
         this.keyGenerator = keyGenerator != null ? keyGenerator : (row) -> null;
         this.valueGenerator = valueGenerator != null ? valueGenerator : (row) -> null;
+        this.valueFieldNamesByPosition = valueFieldNamesByPosition != null ? valueFieldNamesByPosition : new String[0];
     }
 
     @Override
@@ -140,6 +154,28 @@ public class TableSchema implements DataCollectionSchema {
      */
     public Struct valueFromColumnData(Object[] columnData) {
         return columnData == null ? null : valueGenerator.generateValue(columnData);
+    }
+
+    /**
+     * Returns the names of the value fields whose column data matches the given predicate, in column order.
+     *
+     * @param columnData the column values for the table; may be null
+     * @param predicate the test applied to each column value
+     * @return the matching field names; never null
+     */
+    public List<String> valueFieldNames(Object[] columnData, Predicate<Object> predicate) {
+        List<String> fieldNames = List.of();
+        if (columnData != null) {
+            for (int i = 0; i < Math.min(columnData.length, valueFieldNamesByPosition.length); i++) {
+                if (valueFieldNamesByPosition[i] != null && predicate.test(columnData[i])) {
+                    if (fieldNames.isEmpty()) {
+                        fieldNames = new ArrayList<>();
+                    }
+                    fieldNames.add(valueFieldNamesByPosition[i]);
+                }
+            }
+        }
+        return fieldNames;
     }
 
     @Override

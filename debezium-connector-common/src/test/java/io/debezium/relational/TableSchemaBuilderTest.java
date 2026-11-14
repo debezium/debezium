@@ -782,4 +782,35 @@ public class TableSchemaBuilderTest {
         assertThat(logInterceptor.containsWarnMessage(errorMessage)).isFalse();
         logInterceptor.clear();
     }
+
+    @Test
+    @FixFor("debezium/dbz#3052")
+    public void shouldReturnValueFieldNamesForMatchingColumnData() {
+        final var marker = new Object();
+        schema = new TableSchemaBuilder(new JdbcValueConverters(), null, adjuster, customConverterRegistry,
+                SchemaBuilder.struct().build(), avroFieldNamer, false, EventConvertingFailureHandlingMode.FAIL)
+                .create(topicNamingStrategy, table, (catalog, schemaName, tableName, columnName) -> !"C3".equals(columnName), null, null);
+
+        final Object[] row = { "c1value", marker, marker, null, null, null, marker, marker, null, null };
+
+        assertThat(schema.valueFieldNames(row, value -> value == marker)).containsExactly("C2", "_7C7", "C_8");
+        assertThat(schema.valueFieldNames(null, value -> value == marker)).isEmpty();
+    }
+
+    @Test
+    @FixFor("debezium/dbz#3052")
+    public void shouldNotReturnValueFieldNameForExcludedColumnWithSameAdjustedName() {
+        final var marker = new Object();
+        final var collidingTable = Table.editor()
+                .tableId(id)
+                .addColumns(
+                        Column.editor().name("a-b").type("VARCHAR").jdbcType(Types.VARCHAR).create(),
+                        Column.editor().name("a_b").type("VARCHAR").jdbcType(Types.VARCHAR).create())
+                .create();
+        schema = new TableSchemaBuilder(new JdbcValueConverters(), null, adjuster, customConverterRegistry,
+                SchemaBuilder.struct().build(), avroFieldNamer, false, EventConvertingFailureHandlingMode.FAIL)
+                .create(topicNamingStrategy, collidingTable, (catalog, schemaName, tableName, columnName) -> !"a-b".equals(columnName), null, null);
+
+        assertThat(schema.valueFieldNames(new Object[]{ marker, "x" }, value -> value == marker)).isEmpty();
+    }
 }

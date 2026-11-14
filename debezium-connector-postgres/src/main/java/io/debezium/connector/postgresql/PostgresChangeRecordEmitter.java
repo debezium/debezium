@@ -433,4 +433,9 @@ public class PostgresChangeRecordEmitter extends RelationalChangeRecordEmitter<P
         return true;
     }
 
+    @Override
+    protected boolean isUnavailableValue(Object value) {
+        return UnchangedToastedReplicationMessageColumn.isUnchangedToastedValue(value);
+    }
+
 }
