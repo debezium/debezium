@@ -1,7 +1,7 @@
 /*
  * Copyright Debezium Authors.
  *
- * Licensed under the Apache Software License version 2.0, available at http://www.apache.org/licenses/LICENSE-2.0
+ * Licensed under the Apache License version 2.0, available at http://www.apache.org/licenses/LICENSE-2.0
  */
 package io.debezium.util;
 
@@ -74,6 +74,9 @@ public class HexConverter {
      * @return the raw byte array.
      */
     public static byte[] convertFromHex(final char[] toConvert) {
+        if (toConvert == null) {
+            throw new NullPointerException("Parameter to be converted can not be null");
+        }
         if (toConvert.length % 2 != 0) {
             throw new IllegalArgumentException("The supplied character array must contain an even number of hex chars.");
         }
@@ -107,6 +110,9 @@ public class HexConverter {
      * @return the raw byte array.
      */
     public static byte[] convertFromHex(final String toConvert) {
+        if (toConvert == null) {
+            throw new NullPointerException("Parameter to be converted can not be null");
+        }
         return convertFromHex(toConvert.toCharArray());
     }
 }
