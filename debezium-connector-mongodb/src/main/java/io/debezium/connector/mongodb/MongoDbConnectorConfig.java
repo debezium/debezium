@@ -31,6 +31,7 @@ import com.mongodb.ConnectionString;
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.ConfigDefinition;
 import io.debezium.config.Configuration;
+import io.debezium.config.ConnectionUrlFilter;
 import io.debezium.config.ConnectorConfigValidationHelper;
 import io.debezium.config.EnumeratedValue;
 import io.debezium.config.Field;
@@ -1336,6 +1337,7 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig implements Sha
         this.heartbeatFrequencyMs = config.getInteger(MongoDbConnectorConfig.HEARTBEAT_FREQUENCY_MS);
         this.socketTimeoutMs = config.getInteger(MongoDbConnectorConfig.SOCKET_TIMEOUT_MS);
         this.serverSelectionTimeoutMs = config.getInteger(MongoDbConnectorConfig.SERVER_SELECTION_TIMEOUT_MS);
+        new ConnectionUrlFilter(Module.name()).validate(MongoDbConnectorConfig.CONNECTION_STRING.name(), config.getString(MongoDbConnectorConfig.CONNECTION_STRING));
         this.connectionString = resolveConnectionString(config);
         this.user = config.getString(MongoDbConnectorConfig.USER);
         this.password = config.getString(MongoDbConnectorConfig.PASSWORD);
