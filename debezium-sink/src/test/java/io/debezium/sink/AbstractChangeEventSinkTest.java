@@ -327,7 +327,7 @@ class AbstractChangeEventSinkTest {
     private static SinkRecord createTruncateSinkRecord() {
         Schema sourceSchema = SchemaBuilder.struct().field("ts_ms", Schema.INT64_SCHEMA).build();
         Schema envelopeSchema = SchemaBuilder.struct()
-                .name("server1.schema.table.Envelope")
+                .name("server1.schema.collectionId.Envelope")
                 .field(Envelope.FieldName.SOURCE, sourceSchema)
                 .field(Envelope.FieldName.OPERATION, Schema.STRING_SCHEMA)
                 .field(Envelope.FieldName.TIMESTAMP, Schema.OPTIONAL_INT64_SCHEMA)

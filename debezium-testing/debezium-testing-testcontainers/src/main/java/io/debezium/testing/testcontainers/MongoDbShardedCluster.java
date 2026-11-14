@@ -14,6 +14,7 @@ import static java.util.stream.Collectors.toList;
 import static java.util.stream.IntStream.rangeClosed;
 import static org.awaitility.Awaitility.await;
 
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
@@ -23,6 +24,8 @@ import java.util.stream.StreamSupport;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.testcontainers.containers.Network;
+import org.testcontainers.images.ImagePullPolicy;
+import org.testcontainers.images.PullPolicy;
 import org.testcontainers.lifecycle.Startable;
 import org.testcontainers.utility.DockerImageName;
 
@@ -43,6 +46,7 @@ public class MongoDbShardedCluster implements MongoDbDeployment {
     private final int routerCount;
     private final Network network;
     private final PortResolver portResolver;
+    private final ImagePullPolicy imagePullPolicy;
 
     private final MongoDbReplicaSet configServers;
     private final List<MongoDbReplicaSet> shards;
@@ -67,6 +71,7 @@ public class MongoDbShardedCluster implements MongoDbDeployment {
         private PortResolver portResolver = new RandomPortResolver();
         private boolean skipDockerDesktopLogWarning = false;
         private DockerImageName imageName;
+        private ImagePullPolicy imagePullPolicy;
 
         public Builder imageName(DockerImageName imageName) {
             this.imageName = imageName;
@@ -103,6 +108,11 @@ public class MongoDbShardedCluster implements MongoDbDeployment {
             return this;
         }
 
+        public Builder withImagePullPolicy(ImagePullPolicy imagePullPolicy) {
+            this.imagePullPolicy = imagePullPolicy;
+            return this;
+        }
+
         public MongoDbShardedCluster build() {
             return new MongoDbShardedCluster(this);
         }
@@ -115,6 +125,7 @@ public class MongoDbShardedCluster implements MongoDbDeployment {
         this.network = builder.network;
         this.portResolver = builder.portResolver;
         this.imageName = builder.imageName;
+        this.imagePullPolicy = builder.imagePullPolicy;
 
         this.shards = createShards();
         this.configServers = createConfigServers();
@@ -206,6 +217,7 @@ public class MongoDbShardedCluster implements MongoDbDeployment {
                 .portResolver(portResolver)
                 .skipDockerDesktopLogWarning(true)
                 .imageName(imageName)
+                .withImagePullPolicy(PullPolicy.ageBased(Duration.ofHours(8)))
                 .build();
 
         return shard;
@@ -222,6 +234,7 @@ public class MongoDbShardedCluster implements MongoDbDeployment {
                 .configServer(true)
                 .skipDockerDesktopLogWarning(true)
                 .imageName(imageName)
+                .withImagePullPolicy(PullPolicy.ageBased(Duration.ofHours(8)))
                 .build();
 
         return configServers;
@@ -241,6 +254,7 @@ public class MongoDbShardedCluster implements MongoDbDeployment {
                 .portResolver(portResolver)
                 .skipDockerDesktopLogWarning(true)
                 .imageName(imageName)
+                .withImagePullPolicy(PullPolicy.ageBased(Duration.ofHours(8)))
                 .build();
 
         router.getDependencies().addAll(shards);

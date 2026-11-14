@@ -5,180 +5,155 @@
  */
 package io.debezium.connector.mongodb.sink;
 
-import static io.debezium.connector.mongodb.sink.MongoDbSinkConnectorTask.LOGGER;
 import static io.debezium.openlineage.dataset.DatasetMetadata.TABLE_DATASET_TYPE;
 import static io.debezium.openlineage.dataset.DatasetMetadata.DataStore.DATABASE;
 import static io.debezium.openlineage.dataset.DatasetMetadata.DatasetKind.OUTPUT;
 
-import java.util.Collection;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
-import java.util.OptionalLong;
-import java.util.stream.Collectors;
+import java.util.Map;
+import java.util.Set;
 
-import org.apache.kafka.connect.connector.ConnectRecord;
-import org.apache.kafka.connect.errors.DataException;
 import org.apache.kafka.connect.sink.SinkRecord;
 import org.bson.BsonDocument;
 
-import com.mongodb.MongoBulkWriteException;
+import com.mongodb.MongoConnectionPoolClearedException;
+import com.mongodb.MongoException;
 import com.mongodb.MongoNamespace;
-import com.mongodb.bulk.BulkWriteResult;
-import com.mongodb.client.model.BulkWriteOptions;
+import com.mongodb.MongoNodeIsRecoveringException;
+import com.mongodb.MongoNotPrimaryException;
+import com.mongodb.MongoSocketException;
 import com.mongodb.client.model.WriteModel;
 
-import io.debezium.DebeziumException;
 import io.debezium.connector.common.DebeziumTaskState;
 import io.debezium.connector.mongodb.connection.client.MongoDbClient;
-import io.debezium.connector.mongodb.sink.converters.SinkDocument;
 import io.debezium.connector.mongodb.sink.eventhandler.relational.RelationalEventHandler;
 import io.debezium.dlq.ErrorReporter;
 import io.debezium.metadata.CollectionId;
 import io.debezium.openlineage.ConnectorContext;
 import io.debezium.openlineage.DebeziumOpenLineageEmitter;
 import io.debezium.openlineage.dataset.DatasetMetadata;
+import io.debezium.sink.AbstractChangeEventSink;
 import io.debezium.sink.DebeziumSinkRecord;
 import io.debezium.sink.batch.Batch;
 import io.debezium.sink.spi.ChangeEventSink;
 
-final class MongoDbChangeEventSink implements ChangeEventSink, AutoCloseable {
+final class MongoDbChangeEventSink extends AbstractChangeEventSink implements ChangeEventSink, AutoCloseable {
 
     private final MongoDbSinkConnectorConfig sinkConfig;
     private final MongoDbClient mongoClient;
     private final ErrorReporter errorReporter;
     private final ConnectorContext connectorContext;
 
+    private final MongoDbWriter mongoDbWriter;
+
     MongoDbChangeEventSink(
                            final MongoDbSinkConnectorConfig sinkConfig,
                            final MongoDbClient mongoClient,
                            final ErrorReporter errorReporter, ConnectorContext connectorContext) {
+        super(sinkConfig, errorReporter);
         this.sinkConfig = sinkConfig;
         this.mongoClient = mongoClient;
         this.errorReporter = errorReporter;
         this.connectorContext = connectorContext;
+        this.mongoDbWriter = new MongoDbWriter(mongoClient, errorReporter);
     }
 
     @Override
-    public void close() {
-        mongoClient.close();
+    protected DebeziumSinkRecord createSinkRecord(SinkRecord kafkaSinkRecord) {
+        return new MongoDbSinkRecord(kafkaSinkRecord, sinkConfig);
+    }
+
+    @Override
+    protected void doWriteBatch(Batch batch) {
+        if (batch.isEmpty()) {
+            return;
+        }
+
+        Map<String, List<WriteModel<BsonDocument>>> groupedByCollection = new LinkedHashMap<>();
+        Map<String, MongoDbSinkRecord> firstRecordByCollection = new LinkedHashMap<>();
+        Set<String> truncatedCollections = new LinkedHashSet<>();
+
+        for (var batchRecord : batch) {
+            MongoDbSinkRecord record = (MongoDbSinkRecord) batchRecord.record();
+
+            if (record.getConversionException() != null) {
+                errorReporter.report(record, record.getConversionException());
+                continue;
+            }
+
+            if (record.isTruncate()) {
+                truncatedCollections.add(batchRecord.collectionId().identifier());
+                continue;
+            }
+
+            WriteModel<BsonDocument> model = record.getWriteModel();
+            if (model != null) {
+                String collectionName = batchRecord.collectionId().identifier();
+                groupedByCollection.computeIfAbsent(collectionName, k -> new ArrayList<>()).add(model);
+                firstRecordByCollection.putIfAbsent(collectionName, record);
+            }
+        }
+
+        for (String collectionName : truncatedCollections) {
+            MongoNamespace namespace = new MongoNamespace(sinkConfig.getSinkDatabaseName(), collectionName);
+            mongoDbWriter.deleteAll(namespace);
+        }
+
+        for (var entry : groupedByCollection.entrySet()) {
+            MongoNamespace namespace = new MongoNamespace(sinkConfig.getSinkDatabaseName(), entry.getKey());
+            emitDatasetMetadata(firstRecordByCollection.get(entry.getKey()), namespace);
+            mongoDbWriter.bulkWriteBatch(namespace, entry.getValue());
+        }
     }
 
     public CollectionId getCollectionId(String collectionName) {
         return new CollectionId(collectionName);
     }
 
-    public void execute(final Collection<SinkRecord> records) {
-        try {
-            trackLatestRecordTimestampOffset(records);
-            if (records.isEmpty()) {
-                LOGGER.debug("No sink records to process for current poll operation");
-            }
-            else {
-                List<List<MongoProcessedSinkRecordData>> batches = MongoSinkRecordProcessor.orderedGroupByTopicAndNamespace(
-                        records, sinkConfig, errorReporter);
-                for (List<MongoProcessedSinkRecordData> batch : batches) {
-                    bulkWriteBatch(batch);
+    @Override
+    protected boolean isRetriableWriteException(RuntimeException exception) {
+        Throwable cause = exception;
+        while (cause != null) {
+            if (cause instanceof MongoException mongoEx) {
+                if (mongoEx.hasErrorLabel(MongoException.RETRYABLE_ERROR_LABEL)
+                        || mongoEx.hasErrorLabel(MongoException.TRANSIENT_TRANSACTION_ERROR_LABEL)) {
+                    return true;
                 }
             }
-        }
-        catch (Exception e) {
-
-            throw new DebeziumException(e);
-        }
-    }
-
-    private void trackLatestRecordTimestampOffset(final Collection<SinkRecord> records) {
-        OptionalLong latestRecord = records.stream()
-                .filter(v -> v.timestamp() != null)
-                .mapToLong(ConnectRecord::timestamp)
-                .max();
-    }
-
-    private void bulkWriteBatch(final List<MongoProcessedSinkRecordData> batch) {
-        if (batch.isEmpty()) {
-            return;
-        }
-
-        MongoNamespace namespace = batch.get(0).getNamespace();
-
-        DebeziumOpenLineageEmitter.emit(connectorContext, DebeziumTaskState.RUNNING,
-                List.of(extractDatasetMetadata(batch.get(0).getSinkDocument(), namespace.getFullName())));
-
-        List<WriteModel<BsonDocument>> writeModels = batch.stream()
-                .map(MongoProcessedSinkRecordData::getWriteModel)
-                .collect(Collectors.toList());
-        boolean bulkWriteOrdered = true;
-
-        try {
-            LOGGER.debug(
-                    "Bulk writing {} document(s) into collection [{}] via an {} bulk write",
-                    writeModels.size(),
-                    namespace.getFullName(),
-                    bulkWriteOrdered ? "ordered" : "unordered");
-            BulkWriteResult result = mongoClient.getClient()
-                    .getDatabase(namespace.getDatabaseName())
-                    .getCollection(namespace.getCollectionName(), BsonDocument.class)
-                    .bulkWrite(writeModels, new BulkWriteOptions().ordered(bulkWriteOrdered));
-            LOGGER.debug("Mongodb bulk write result: {}", result);
-        }
-        catch (RuntimeException e) {
-            handleTolerableWriteException(
-                    batch.stream()
-                            .map(MongoProcessedSinkRecordData::getSinkRecord)
-                            .collect(Collectors.toList()),
-                    bulkWriteOrdered,
-                    e,
-                    true,
-                    true);
-        }
-    }
-
-    private void handleTolerableWriteException(
-                                               final List<DebeziumSinkRecord> batch,
-                                               final boolean ordered,
-                                               final RuntimeException e,
-                                               final boolean logErrors,
-                                               final boolean tolerateErrors) {
-        if (e instanceof MongoBulkWriteException) {
-            throw new DataException(e);
-        }
-        else {
-            if (logErrors) {
-                log(batch, e);
+            if (cause instanceof MongoSocketException
+                    || cause instanceof MongoNotPrimaryException
+                    || cause instanceof MongoNodeIsRecoveringException
+                    || cause instanceof MongoConnectionPoolClearedException) {
+                return true;
             }
-            if (tolerateErrors) {
-                batch.forEach(record -> errorReporter.report(record, e));
-            }
-            else {
-                throw new DataException(e);
-            }
+            cause = cause.getCause();
+        }
+        return false;
+    }
+
+    @SuppressWarnings("try")
+    @Override
+    public void close() {
+        try (MongoDbClient autoCloseable = mongoClient) {
         }
     }
 
-    private static void log(final Collection<DebeziumSinkRecord> records, final RuntimeException e) {
-        LOGGER.error("Failed to put into the sink the following records: {}", records, e);
-    }
+    private void emitDatasetMetadata(MongoDbSinkRecord record, MongoNamespace namespace) {
+        BsonDocument keyDoc = record.getKeyDoc() != null ? record.getKeyDoc() : new BsonDocument();
+        BsonDocument afterDoc = record.getAfterDoc() != null ? record.getAfterDoc() : new BsonDocument();
 
-    private DatasetMetadata extractDatasetMetadata(SinkDocument sinkDocument, String collectionId) {
-
-        BsonDocument changeEvent = RelationalEventHandler.generateUpsertOrReplaceDoc(sinkDocument.getKeyDoc().get(), sinkDocument.getValueDoc().get(),
-                new BsonDocument(), sinkConfig.getColumnNamingStrategy());
+        BsonDocument changeEvent = RelationalEventHandler.generateUpsertOrReplaceDoc(
+                keyDoc, afterDoc, new BsonDocument(), sinkConfig.getColumnNamingStrategy());
 
         List<DatasetMetadata.FieldDefinition> fieldDefinitions = changeEvent.entrySet().stream()
                 .map((entry) -> new DatasetMetadata.FieldDefinition(entry.getKey(), entry.getValue().getBsonType().toString(), ""))
                 .toList();
-        return new DatasetMetadata(collectionId, OUTPUT, TABLE_DATASET_TYPE, DATABASE, fieldDefinitions);
-    }
 
-    @Override
-    public List<Batch> put(Collection<SinkRecord> records) {
-        // NOP for now
-        return List.of();
+        DebeziumOpenLineageEmitter.emit(connectorContext,
+                DebeziumTaskState.RUNNING,
+                List.of(new DatasetMetadata(namespace.getFullName(), OUTPUT, TABLE_DATASET_TYPE, DATABASE, fieldDefinitions)));
     }
-
-    @Override
-    public List<Batch> forcePoll() {
-        // NOP for now
-        return List.of();
-    }
-
 }
