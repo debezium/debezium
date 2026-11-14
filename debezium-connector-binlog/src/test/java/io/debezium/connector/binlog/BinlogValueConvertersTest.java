@@ -35,6 +35,7 @@ import io.debezium.jdbc.JdbcValueConverters;
 import io.debezium.jdbc.TemporalPrecisionMode;
 import io.debezium.junit.logging.LogInterceptor;
 import io.debezium.relational.Column;
+import io.debezium.relational.RelationalDatabaseConnectorConfig;
 import io.debezium.relational.Table;
 import io.debezium.relational.TableId;
 import io.debezium.relational.Tables;
@@ -87,6 +88,31 @@ public abstract class BinlogValueConvertersTest<C extends SourceConnector> imple
     void shouldNotAdjustLocalDateTimeWithThreeDigitYears() {
         assertThat(ADJUSTER.adjustInto(localDateTimeWithYear(-1))).isEqualTo(localDateTimeWithYear(-1));
         assertThat(ADJUSTER.adjustInto(localDateTimeWithYear(100))).isEqualTo(localDateTimeWithYear(100));
+    }
+
+    @Test
+    @FixFor("debezium/dbz#962")
+    void shouldConvertUnavailableJsonValueLikeText() {
+        // MariaDB stores JSON as LONGTEXT, so a NOBLOB row image omits an unchanged JSON column like a TEXT column
+        final BinlogValueConverters converters = getValueConverters(
+                JdbcValueConverters.DecimalMode.DOUBLE,
+                TemporalPrecisionMode.CONNECT,
+                JdbcValueConverters.BigIntUnsignedMode.LONG,
+                BinaryHandlingMode.BYTES,
+                x -> x,
+                EventConvertingFailureHandlingMode.WARN);
+        final Tables tables = new Tables();
+        getDdlParser().parse("CREATE TABLE unavailable_values (j JSON, t TEXT)", tables);
+        final Table table = tables.forTable(new TableId(null, null, "unavailable_values"));
+
+        final Column json = table.columnWithName("j");
+        final Column text = table.columnWithName("t");
+        final Object unavailableJson = converters.converter(json, new Field(json.name(), -1, converters.schemaBuilder(json).optional().build()))
+                .convert(BinlogValueConverters.UNAVAILABLE_VALUE);
+        final Object unavailableText = converters.converter(text, new Field(text.name(), -1, converters.schemaBuilder(text).optional().build()))
+                .convert(BinlogValueConverters.UNAVAILABLE_VALUE);
+        assertThat(unavailableJson).isEqualTo(RelationalDatabaseConnectorConfig.DEFAULT_UNAVAILABLE_VALUE_PLACEHOLDER);
+        assertThat(unavailableText).isEqualTo(RelationalDatabaseConnectorConfig.DEFAULT_UNAVAILABLE_VALUE_PLACEHOLDER);
     }
 
     @Test
