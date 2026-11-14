@@ -27,6 +27,7 @@ import org.apache.kafka.connect.errors.DataException;
 import org.hibernate.JDBCException;
 import org.hibernate.SharedSessionContract;
 import org.hibernate.Transaction;
+import org.hibernate.exception.LockAcquisitionException;
 import org.hibernate.jdbc.Work;
 import org.hibernate.query.NativeQuery;
 import org.slf4j.Logger;
@@ -161,7 +162,7 @@ public class DefaultRecordWriter implements RecordWriter {
         }
         progressListener().tableCreated();
 
-        return readTable(collectionId);
+        return readTableWithLockConflictRetries(collectionId);
     }
 
     private boolean hasTable(CollectionId collectionId) {
@@ -169,7 +170,18 @@ public class DefaultRecordWriter implements RecordWriter {
                 () -> session.doReturningWork((connection) -> dialect.tableExists(connection, collectionId)));
     }
 
+    private TableDescriptor readTableWithLockConflictRetries(CollectionId collectionId) throws SQLException {
+        return executeWithLockConflictRetries("read table '" + collectionId.toFullIdentiferString() + "'", () -> readTable(collectionId));
+    }
+
     private TableDescriptor alterTableIfNeeded(CollectionId collectionId, JdbcSinkRecord record) throws SQLException {
+        // A concurrent task altering the same table can make the database pick either the metadata read or the
+        // ALTER as a deadlock victim, so the whole check is repeated and re-evaluates the current table state.
+        return executeWithLockConflictRetries("alter table '" + collectionId.toFullIdentiferString() + "'",
+                () -> alterTableIfNeeded(collectionId, record, true));
+    }
+
+    private TableDescriptor alterTableIfNeeded(CollectionId collectionId, JdbcSinkRecord record, boolean retryOnFailure) throws SQLException {
         if (!hasTable(collectionId)) {
             LOGGER.error("Table '{}' does not exist and cannot be altered.", collectionId.toFullIdentiferString());
             throw new SQLException("Could not find table: " + collectionId.toFullIdentiferString());
@@ -208,16 +220,32 @@ public class DefaultRecordWriter implements RecordWriter {
             session.createNativeQuery(alterSql, Object.class).executeUpdate();
             transaction.commit();
         }
-        catch (Exception e) {
+        catch (Exception alterFailure) {
             transaction.rollback();
-
-            final TableDescriptor recheckedTable = readTable(collectionId);
+            if (!retryOnFailure) {
+                throw alterFailure;
+            }
+            final TableDescriptor recheckedTable;
+            try {
+                recheckedTable = readTable(collectionId);
+            }
+            catch (Exception readFailure) {
+                readFailure.addSuppressed(alterFailure);
+                throw readFailure;
+            }
+            LOGGER.warn("Alter of table '{}' failed, rechecking schema before failing", collectionId.toFullIdentiferString());
             if (dialect.resolveMissingFields(record, recheckedTable).isEmpty()) {
                 LOGGER.info("ALTER failed for '{}' but all required columns are now present, likely added by a concurrent task.",
                         collectionId.toFullIdentiferString());
                 return recheckedTable;
             }
-            throw e;
+            try {
+                return alterTableIfNeeded(collectionId, record, false);
+            }
+            catch (Exception retryFailure) {
+                retryFailure.addSuppressed(alterFailure);
+                throw retryFailure;
+            }
         }
         progressListener().tableAltered();
 
@@ -291,6 +319,50 @@ public class DefaultRecordWriter implements RecordWriter {
         throw new ConnectException("Exceeded max retries " + flushMaxRetries + " times, failed to " + description, lastException);
     }
 
+    @FunctionalInterface
+    private interface SchemaWork<T> {
+        T execute() throws SQLException;
+    }
+
+    /**
+     * Executes a schema resolution step, retrying it when the database aborted it because of a lock conflict,
+     * such as a deadlock between a metadata read and a concurrent {@code ALTER TABLE} from another task,
+     * or because of any other failure the dialect considers retriable.
+     * <p>
+     * The number of retries and the delay between them are controlled by {@code flush.max.retries} and
+     * {@code flush.retry.delay.ms}. Any failure that is neither a lock conflict nor retriable is rethrown
+     * immediately, and the last failure is rethrown unchanged once the retries are exhausted.
+     *
+     * @param description a description of the step, used in log messages
+     * @param work the schema resolution step to execute
+     * @param <T> the type of the step's result
+     * @return the result of the first successful execution of the step
+     * @throws SQLException if the step fails with a checked database error
+     */
+    private <T> T executeWithLockConflictRetries(String description, SchemaWork<T> work) throws SQLException {
+        int retries = 0;
+        while (true) {
+            try {
+                return work.execute();
+            }
+            catch (SQLException | RuntimeException e) {
+                if (!(isLockConflict(e) || isRetriable(e)) || retries >= flushMaxRetries) {
+                    throw e;
+                }
+                retries++;
+                LOGGER.warn("Failed to {} because of a lock conflict or retriable error. Retry {}/{} with delay {} ms",
+                        description, retries, flushMaxRetries, flushRetryDelay.toMillis());
+                try {
+                    Metronome.parker(flushRetryDelay, Clock.SYSTEM).pause();
+                }
+                catch (InterruptedException ie) {
+                    Thread.currentThread().interrupt();
+                    throw new ConnectException("Interrupted while waiting to retry " + description, ie);
+                }
+            }
+        }
+    }
+
     protected record ResolvedTableRecords(TableDescriptor table, List<JdbcSinkRecord> inserts, List<JdbcSinkRecord> deletes) {
         boolean isEmpty() {
             return inserts.isEmpty() && deletes.isEmpty();
@@ -308,7 +380,7 @@ public class DefaultRecordWriter implements RecordWriter {
                 }
                 else {
                     if (hasTable(collectionId)) {
-                        currentTable = readTable(collectionId);
+                        currentTable = readTableWithLockConflictRetries(collectionId);
                     }
                     else {
                         throw new ConnectException("Table '" + collectionId + "' does not exist and schema evolution is disabled");
@@ -335,7 +407,12 @@ public class DefaultRecordWriter implements RecordWriter {
                 }
             }
             else {
-                currentTable = readTable(collectionId);
+                try {
+                    currentTable = readTableWithLockConflictRetries(collectionId);
+                }
+                catch (SQLException | JDBCException e) {
+                    throw new ConnectException("Error while reading table for collection '" + collectionId + "'", e);
+                }
                 if (!dialect.resolveMissingFields(record, currentTable).isEmpty()) {
                     throw new ConnectException("Missing fields '" + missingFields + "' in table '" + collectionId + "'");
                 }
@@ -582,6 +659,15 @@ public class DefaultRecordWriter implements RecordWriter {
             return new SqlStatementInfo(dialect.getDeleteStatement(table, firstRecord), false, true);
         }
         throw new DataException(String.format("Unable to get SQL statement for %s", firstRecord));
+    }
+
+    private static boolean isLockConflict(Throwable throwable) {
+        for (Throwable current = throwable; current != null; current = current.getCause()) {
+            if (current instanceof LockAcquisitionException) {
+                return true;
+            }
+        }
+        return false;
     }
 
 }

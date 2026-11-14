@@ -258,7 +258,9 @@ public class JdbcSinkConnectorConfig implements SinkConnectorConfig {
             .withImportance(ConfigDef.Importance.LOW)
             .withDefault(5)
             .withDescription("Max retry count when fail to flush. In case of retriable exceptions, " +
-                    "the flush will be retried for the defined max retry count. Default is 5.");
+                    "the flush will be retried for the defined max retry count. The same limit applies when a lock conflict, " +
+                    "such as a deadlock with a concurrent task, aborts reading, creating, or altering a table during schema evolution. " +
+                    "Default is 5.");
 
     public static final Field FLUSH_RETRY_DELAY_MS_FIELD = Field.create(FLUSH_RETRY_DELAY_MS)
             .withDisplayName("Delay to retry flush")

@@ -8,6 +8,8 @@ package io.debezium.connector.jdbc.integration;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import java.io.PrintWriter;
+import java.io.StringWriter;
 import java.nio.charset.StandardCharsets;
 import java.sql.SQLException;
 import java.time.Instant;
@@ -572,7 +574,7 @@ public abstract class AbstractJdbcSinkSchemaEvolutionTest extends AbstractJdbcSi
     }
 
     @Test
-    @FixFor("debezium/dbz#2302")
+    @FixFor({ "debezium/dbz#2302", "debezium/dbz#3067" })
     public void testConcurrentAlterFromTwoTasksSucceeds() throws Exception {
         final DebeziumSinkRecordFactory factory = new DebeziumSinkRecordFactory();
         final Map<String, String> properties = getDefaultSinkConfig();
@@ -668,9 +670,12 @@ public abstract class AbstractJdbcSinkSchemaEvolutionTest extends AbstractJdbcSi
             thread1.join(30_000);
             thread2.join(30_000);
 
-            assertThat(task1Error.get()).as("task 1 failure").isNull();
-            assertThat(task2Error.get()).as("task 2 failure").isNull();
-            assertThat(task2.getLastProcessingException()).as("task 2 processing failure").isNull();
+            // Report full stack traces, the default assertion output truncates the root cause (e.g. a deadlock).
+            assertThat(task1Error.get()).withFailMessage(() -> "task 1 failure: " + stackTraceOf(task1Error.get())).isNull();
+            assertThat(task2Error.get()).withFailMessage(() -> "task 2 failure: " + stackTraceOf(task2Error.get())).isNull();
+            assertThat(task2.getLastProcessingException())
+                    .withFailMessage(() -> "task 2 processing failure: " + stackTraceOf(task2.getLastProcessingException()))
+                    .isNull();
 
             final String destinationTableName = destinationTableName(topicName, properties);
             final TableAssert tableAssert = TestHelper.assertTable(assertDbConnection(), destinationTableName);
@@ -714,6 +719,12 @@ public abstract class AbstractJdbcSinkSchemaEvolutionTest extends AbstractJdbcSi
         catch (SQLException e) {
             throw new IllegalStateException("Failed to resolve the sink database version", e);
         }
+    }
+
+    private static String stackTraceOf(Throwable throwable) {
+        final StringWriter writer = new StringWriter();
+        throwable.printStackTrace(new PrintWriter(writer));
+        return writer.toString();
     }
 
 }
