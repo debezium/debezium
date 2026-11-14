@@ -977,6 +977,11 @@ public class PostgresConnection extends JdbcConnection {
     }
 
     @Override
+    protected String[] getCapturableTableTypes() {
+        return new String[]{ "TABLE", "PARTITIONED TABLE" };
+    }
+
+    @Override
     public <T extends DataCollectionId> ChunkQueryBuilder<T> chunkQueryBuilder(RelationalDatabaseConnectorConfig connectorConfig) {
         // PostgreSQL definitely must use row value constructors in order to yield optimal results. See DBZ-5071.
         return new RowValueConstructorChunkQueryBuilder<>(connectorConfig, this);

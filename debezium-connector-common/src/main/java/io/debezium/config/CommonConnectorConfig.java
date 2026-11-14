@@ -989,8 +989,8 @@ public abstract class CommonConnectorConfig {
             .withWidth(Width.SHORT)
             .withImportance(Importance.LOW)
             .withDefault(false)
-            .withDescription("Enables validation of 'signal.data.collection': existence, accepted shape, "
-                    + "and (where applicable) column count and sizing.");
+            .withDescription("Enables validation of 'signal.data.collection' when the connector starts: existence, accepted shape, "
+                    + "column count, names and sizes, and connector settings that would prevent signals from being received.");
 
     public static final Field SIGNAL_POLL_INTERVAL_MS = Field.create("signal.poll.interval.ms")
             .withDisplayName("Signal processor poll interval")
@@ -2061,6 +2061,24 @@ public abstract class CommonConnectorConfig {
 
     public EnumSet<Envelope.Operation> getSkippedOperations() {
         return skippedOperations;
+    }
+
+    /**
+     * Returns the skipped operations that source signals rely on (inserts, and deletes under insert_delete
+     * watermarking) and that a connector {@link #supportsOperationFiltering() filtering at the source} drops
+     * before they reach the signal channel.
+     */
+    public EnumSet<Envelope.Operation> getSkippedSignalOperations() {
+        EnumSet<Envelope.Operation> skippedSignalOperations = EnumSet.noneOf(Envelope.Operation.class);
+        if (supportsOperationFiltering()) {
+            if (skippedOperations.contains(Operation.CREATE)) {
+                skippedSignalOperations.add(Operation.CREATE);
+            }
+            if (skippedOperations.contains(Operation.DELETE) && incrementalSnapshotWatermarkingStrategy == WatermarkStrategy.INSERT_DELETE) {
+                skippedSignalOperations.add(Operation.DELETE);
+            }
+        }
+        return skippedSignalOperations;
     }
 
     public List<String> getDataCollectionsToBeSnapshotted() {
