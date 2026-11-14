@@ -1739,6 +1739,10 @@ The following sections describe these mappings:
 * xref:postgresql-time-precision-mode-nanoseconds[`time.precision.mode=nanoseconds`]
 * xref:postgresql-time-precision-mode-structured[`time.precision.mode=structured`]
 
+The connector maps the elements of a temporal array column in the same way that it maps the corresponding scalar type, including its declared fractional second precision.
+For example, when `time.precision.mode` is `adaptive`, the connector emits a `TIME(3)[]` column as an `ARRAY` of `io.debezium.time.Time` values, and a `TIME[]` column as an `ARRAY` of `io.debezium.time.MicroTime` values.
+The element mapping is the same in snapshot and streaming events, with either logical decoding plug-in.
+
 [[postgresql-time-precision-mode-adaptive]]
 .`time.precision.mode=adaptive`
 When the `time.precision.mode` property is set to `adaptive`, the default, the connector determines the literal type and semantic type based on the column's data type definition.
