@@ -251,7 +251,8 @@ public class MariaDbConnectorTask extends BinlogSourceTask<MariaDbPartition, Mar
                 queue,
                 metadataProvider,
                 schema::dataCollectionIds,
-                binaryLogClient);
+                binaryLogClient,
+                getConnectedServerMeter());
 
         NotificationService<MariaDbPartition, MariaDbOffsetContext> notificationService = new NotificationService<>(
                 getNotificationChannels(),

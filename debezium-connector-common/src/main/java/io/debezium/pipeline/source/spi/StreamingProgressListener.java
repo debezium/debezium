@@ -5,10 +5,38 @@
  */
 package io.debezium.pipeline.source.spi;
 
+import java.util.Map;
+
 /**
  * Invoked whenever an important event or change of state happens during the streaming phase.
  */
 public interface StreamingProgressListener {
 
     void connected(boolean connected);
+
+    /**
+     * Invoked when the streaming connection is established, with the identity of the server that provides it, as read on
+     * that connection.
+     *
+     * @param server the connector-specific identity of the server; may be empty but not null
+     */
+    default void serverConnected(Map<String, String> server) {
+    }
+
+    /**
+     * Invoked when the streaming connection is lost.
+     */
+    default void serverDisconnected() {
+    }
+
+    /**
+     * Invoked when the role of the server that provides the streaming connection was observed. The role can change
+     * without the connection being established again, for example when the server is promoted.
+     *
+     * @param server the identity of the server that the role was observed for, as passed to
+     *            {@link #serverConnected(Map)}
+     * @param observation the observed role; never null
+     */
+    default void serverRoleObserved(Map<String, String> server, ServerRoleObservation observation) {
+    }
 }

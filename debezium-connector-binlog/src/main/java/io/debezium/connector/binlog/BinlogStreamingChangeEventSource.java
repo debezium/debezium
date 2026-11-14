@@ -466,6 +466,8 @@ public abstract class BinlogStreamingChangeEventSource<P extends BinlogPartition
                         false,
                         x -> clientThreads.put(x.getName(), x)));
         client.setServerId(connectorConfig.getServerId());
+        // Collect facts on this connection before streaming, including keep-alive reconnects.
+        client.setServerFactsEnabled(true);
 
         client.setSSLMode(sslModeFor(connectorConfig.getSslMode()));
         if (connectorConfig.isSslModeEnabled()) {
@@ -1508,6 +1510,7 @@ public abstract class BinlogStreamingChangeEventSource<P extends BinlogPartition
 
         @Override
         public void onDisconnect(BinaryLogClient client) {
+            metrics.serverDisconnected();
             if (LOGGER.isInfoEnabled()) {
                 taskContext.temporaryLoggingContext(connectorConfig, "binlog", () -> {
                     Map<String, ?> offset = lastOffset;
@@ -1525,9 +1528,15 @@ public abstract class BinlogStreamingChangeEventSource<P extends BinlogPartition
         public void onConnect(BinaryLogClient client) {
             // Set up the MDC logging context for this thread ...
             taskContext.configureLoggingContext("binlog");
+            // The client reads the server id on this connection before it requests the binlog stream, so it identifies
+            // the server that provides the stream, which may not be the one that wrote the events
+            final long serverId = client.getMasterServerId();
+            metrics.serverConnected(serverIdentity(serverId));
+            // Facts describe this connection at connect time. They cannot be refreshed while it streams.
+            metrics.serverRoleObserved(serverIdentity(serverId), BinlogServerRoleFacts.observe(client.getServerFacts()));
             // The event row number will be used when processing the first event ...
-            LOGGER.info("Connected to binlog at {}:{}, starting at {}",
-                    connectorConfig.getHostName(), connectorConfig.getPort(), offsetContext);
+            LOGGER.info("Connected to binlog at {}:{} on server {}, starting at {}",
+                    connectorConfig.getHostName(), connectorConfig.getPort(), serverId, offsetContext);
             totalRecordCounter.set(0);
         }
 
@@ -1574,6 +1583,16 @@ public abstract class BinlogStreamingChangeEventSource<P extends BinlogPartition
     }
 
     protected abstract SSLMode sslModeFor(SecureConnectionMode mode);
+
+    /**
+     * Returns the identity of a server for the streaming metrics.
+     *
+     * @param serverId the server id that the binlog client read on the binlog connection, negative if unknown
+     * @return the identity of the server, empty if it is unknown
+     */
+    static Map<String, String> serverIdentity(long serverId) {
+        return serverId >= 0 ? Map.of("server_id", Long.toString(serverId)) : Map.of();
+    }
 
     @VisibleForTesting
     SSLSocketFactory getBinlogSslSocketFactory(BinlogConnectorConfig connectorConfig, BinlogConnectorConnection connection) {
