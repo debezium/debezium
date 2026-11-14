@@ -196,15 +196,41 @@ public class PostgresType {
         if (typeInfo == null) {
             return TypeRegistry.UNKNOWN_LENGTH;
         }
+        final int temporalOid = temporalOid(oid);
+        if (temporalOid != Oid.UNSPECIFIED) {
+            return typeInfo.getPrecision(temporalOid, modifier);
+        }
+        return modifier;
+    }
+
+    /**
+     * Resolves the temporal type whose precision a decoder type modifier refers to. For temporal
+     * arrays, e.g. {@code time(3) without time zone[]}, the modifier applies to the element type.
+     *
+     * @param oid the OID of the type
+     * @return the OID of the scalar temporal type, or {@link Oid#UNSPECIFIED} if the type is not temporal
+     */
+    private static int temporalOid(int oid) {
         switch (oid) {
             case Oid.TIMESTAMP:
             case Oid.TIMESTAMPTZ:
             case Oid.TIME:
             case Oid.TIMETZ:
             case Oid.INTERVAL:
-                return typeInfo.getPrecision(oid, modifier);
+                return oid;
+            case Oid.TIMESTAMP_ARRAY:
+                return Oid.TIMESTAMP;
+            case Oid.TIMESTAMPTZ_ARRAY:
+                return Oid.TIMESTAMPTZ;
+            case Oid.TIME_ARRAY:
+                return Oid.TIME;
+            case Oid.TIMETZ_ARRAY:
+                return Oid.TIMETZ;
+            case Oid.INTERVAL_ARRAY:
+                return Oid.INTERVAL;
+            default:
+                return Oid.UNSPECIFIED;
         }
-        return modifier;
     }
 
     /**
@@ -223,13 +249,9 @@ public class PostgresType {
         if (typeInfo == null) {
             return TypeRegistry.UNKNOWN_LENGTH;
         }
-        switch (oid) {
-            case Oid.TIMESTAMP:
-            case Oid.TIMESTAMPTZ:
-            case Oid.TIME:
-            case Oid.TIMETZ:
-            case Oid.INTERVAL:
-                return typeInfo.getScale(oid, modifier);
+        final int temporalOid = temporalOid(oid);
+        if (temporalOid != Oid.UNSPECIFIED) {
+            return typeInfo.getScale(temporalOid, modifier);
         }
         return getDefaultScale();
     }

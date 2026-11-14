@@ -118,6 +118,8 @@ import io.debezium.time.Date;
 import io.debezium.time.IsoTime;
 import io.debezium.time.MicroTime;
 import io.debezium.time.MicroTimestamp;
+import io.debezium.time.Time;
+import io.debezium.time.Timestamp;
 import io.debezium.time.ZonedTime;
 import io.debezium.time.ZonedTimestamp;
 import io.debezium.util.HexConverter;
@@ -3757,6 +3759,43 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
         finally {
             TimeZone.setDefault(original);
         }
+    }
+
+    @Test
+    @FixFor("debezium/dbz#3097")
+    public void shouldKeepTemporalArrayPrecisionConsistentBetweenSnapshotAndStreaming() throws Exception {
+        TestHelper.execute("CREATE TABLE temporal_precision_array_table (pk SERIAL, "
+                + "timea time(3)[] NOT NULL, "
+                + "timestampa timestamp(3)[] NOT NULL, primary key(pk));");
+        final String insert = "INSERT INTO temporal_precision_array_table (timea, timestampa) "
+                + "VALUES ('{04:05:06.123456}', '{2020-04-01 04:05:06.123456}')";
+        TestHelper.execute(insert);
+
+        startConnector(config -> config
+                .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL)
+                .with(PostgresConnectorConfig.TIME_PRECISION_MODE, TemporalPrecisionMode.ADAPTIVE)
+                .with(PostgresConnectorConfig.TABLE_INCLUDE_LIST, "public.temporal_precision_array_table"), false);
+
+        final List<SchemaAndValueField> expected = Arrays.asList(
+                new SchemaAndValueField("timea",
+                        SchemaBuilder.array(Time.builder().optional().build()).build(),
+                        Arrays.asList((int) (LocalTime.parse("04:05:06.123").toNanoOfDay() / 1_000_000))),
+                new SchemaAndValueField("timestampa",
+                        SchemaBuilder.array(Timestamp.builder().optional().build()).build(),
+                        Arrays.asList(OffsetDateTime.of(2020, 4, 1, 4, 5, 6, 123_000_000, ZoneOffset.UTC).toInstant().toEpochMilli())));
+
+        consumer = testConsumer(1);
+        consumer.await(TestHelper.waitTimeForRecords(), TimeUnit.SECONDS);
+        final SourceRecord snapshot = consumer.remove();
+        assertRecordSchemaAndValues(expected, snapshot, Envelope.FieldName.AFTER);
+
+        waitForStreamingToStart();
+
+        consumer = testConsumer(1);
+        executeAndWait(insert);
+        final SourceRecord streamed = assertRecordInserted("public.temporal_precision_array_table", PK_FIELD, 2);
+        assertRecordSchemaAndValues(expected, streamed, Envelope.FieldName.AFTER);
+        assertThat(consumer.isEmpty()).isTrue();
     }
 
     private static SchemaAndValueField fractionalTimeArrayField(String... values) {
