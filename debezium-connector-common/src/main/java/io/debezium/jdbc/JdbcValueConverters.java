@@ -28,6 +28,7 @@ import java.time.OffsetDateTime;
 import java.time.OffsetTime;
 import java.time.ZoneOffset;
 import java.time.temporal.TemporalAdjuster;
+import java.util.Arrays;
 import java.util.Base64;
 import java.util.Base64.Encoder;
 import java.util.BitSet;
@@ -1544,7 +1545,8 @@ public class JdbcValueConverters implements ValueConverterProvider {
     private byte[] toByteArray(char[] chars) {
         CharBuffer charBuffer = CharBuffer.wrap(chars);
         ByteBuffer byteBuffer = Charset.forName("UTF-8").encode(charBuffer);
-        return byteBuffer.array();
+        // The encoder's backing array can be larger than the encoded content, so copy only [position, limit)
+        return Arrays.copyOfRange(byteBuffer.array(), byteBuffer.position(), byteBuffer.limit());
     }
 
     private ByteBuffer toByteBuffer(char[] chars) {
