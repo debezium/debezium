@@ -11,6 +11,7 @@ import java.util.concurrent.atomic.AtomicReference;
 
 import io.debezium.connector.binlog.util.BinaryLiteralDefaultValueUtils;
 import io.debezium.connector.binlog.util.BinaryLiteralDefaultValueUtils.BinaryLiteral;
+import io.debezium.connector.binlog.util.BinlogTimeZones;
 import io.debezium.connector.mysql.antlr.MySqlAntlrDdlParser;
 import io.debezium.ddl.parser.mysql.generated.MySqlParser;
 import io.debezium.ddl.parser.mysql.generated.MySqlParserBaseListener;
@@ -109,7 +110,9 @@ public class DefaultValueParserListener extends MySqlParserBaseListener {
 
                     // Handle signed number
                     if (signed.ulong_number() != null) {
-                        getColumnEditor().defaultValueExpression(sign + signed.ulong_number().getText());
+                        // A number is a TIMESTAMP literal too, such as 20260928123456
+                        getColumnEditor().defaultValueExpression(BinlogTimeZones.toDefaultValueExpression(getColumnEditor(),
+                                sign + signed.ulong_number().getText(), parser.systemVariables()));
                         exitDefaultValue(true);
                         return;
                     }
@@ -130,13 +133,16 @@ public class DefaultValueParserListener extends MySqlParserBaseListener {
     private void handleLiteral(MySqlParser.LiteralContext literalCtx, String sign) {
         // Text literal
         if (literalCtx.textLiteral() != null) {
-            getColumnEditor().defaultValueExpression(sign + parser.parseTextLiteral(literalCtx.textLiteral()));
+            // A TIMESTAMP literal is interpreted in the time zone of the session
+            getColumnEditor().defaultValueExpression(BinlogTimeZones.toDefaultValueExpression(getColumnEditor(),
+                    sign + parser.parseTextLiteral(literalCtx.textLiteral()), parser.systemVariables()));
             return;
         }
 
         // Numeric literal
         if (literalCtx.numLiteral() != null) {
-            getColumnEditor().defaultValueExpression(sign + literalCtx.numLiteral().getText());
+            getColumnEditor().defaultValueExpression(BinlogTimeZones.toDefaultValueExpression(getColumnEditor(),
+                    sign + literalCtx.numLiteral().getText(), parser.systemVariables()));
             return;
         }
 

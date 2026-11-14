@@ -11,6 +11,7 @@ import java.util.function.UnaryOperator;
 
 import io.debezium.connector.binlog.util.BinaryLiteralDefaultValueUtils;
 import io.debezium.connector.binlog.util.BinaryLiteralDefaultValueUtils.BinaryLiteral;
+import io.debezium.connector.binlog.util.BinlogTimeZones;
 import io.debezium.connector.mariadb.antlr.MariaDbAntlrDdlParser;
 import io.debezium.ddl.parser.mariadb.generated.MariaDBParser.CurrentTimestampContext;
 import io.debezium.ddl.parser.mariadb.generated.MariaDBParser.DefaultValueContext;
@@ -56,10 +57,14 @@ public class DefaultValueParserListener extends MariaDBParserBaseListener {
         }
         if (ctx.constant() != null) {
             if (ctx.constant().stringLiteral() != null) {
-                columnEditor.defaultValueExpression(sign + parser.parseStringLiteral(ctx.constant().stringLiteral()));
+                // A TIMESTAMP literal is interpreted in the time zone of the session
+                columnEditor.defaultValueExpression(BinlogTimeZones.toDefaultValueExpression(columnEditor,
+                        sign + parser.parseStringLiteral(ctx.constant().stringLiteral()), parser.systemVariables()));
             }
             else if (ctx.constant().decimalLiteral() != null) {
-                columnEditor.defaultValueExpression(sign + ctx.constant().decimalLiteral().getText());
+                // A number is a TIMESTAMP literal too, such as 20260928123456
+                columnEditor.defaultValueExpression(BinlogTimeZones.toDefaultValueExpression(columnEditor,
+                        sign + ctx.constant().decimalLiteral().getText(), parser.systemVariables()));
             }
             else if (ctx.constant().hexadecimalLiteral() != null) {
                 final var literal = ctx.constant().hexadecimalLiteral();
@@ -77,7 +82,8 @@ public class DefaultValueParserListener extends MariaDBParserBaseListener {
                 columnEditor.defaultValueExpression(ctx.constant().booleanLiteral().getText());
             }
             else if (ctx.constant().REAL_LITERAL() != null) {
-                columnEditor.defaultValueExpression(ctx.constant().REAL_LITERAL().getText());
+                columnEditor.defaultValueExpression(BinlogTimeZones.toDefaultValueExpression(columnEditor,
+                        ctx.constant().REAL_LITERAL().getText(), parser.systemVariables()));
             }
         }
         else if (ctx.currentTimestamp() != null && !ctx.currentTimestamp().isEmpty()) {
