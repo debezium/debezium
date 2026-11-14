@@ -48,6 +48,9 @@ public class TransactionContext {
     }
 
     public Map<String, Object> store(Map<String, Object> offset) {
+        offset.remove(OFFSET_TRANSACTION_ID);
+        offset.keySet().removeIf(key -> key.startsWith(OFFSET_TABLE_COUNT_PREFIX));
+
         if (!Objects.isNull(transactionId)) {
             offset.put(OFFSET_TRANSACTION_ID, transactionId);
         }
