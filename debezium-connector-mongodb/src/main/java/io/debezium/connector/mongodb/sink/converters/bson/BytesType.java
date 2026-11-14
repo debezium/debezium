@@ -8,9 +8,10 @@ package io.debezium.connector.mongodb.sink.converters.bson;
 import java.nio.ByteBuffer;
 
 import org.apache.kafka.connect.data.Schema;
-import org.apache.kafka.connect.errors.DataException;
 import org.bson.BsonBinary;
 import org.bson.BsonValue;
+
+import io.debezium.DebeziumDataException;
 
 public class BytesType extends AbstractBsonType {
 
@@ -27,6 +28,6 @@ public class BytesType extends AbstractBsonType {
             return new BsonBinary((byte[]) data);
         }
 
-        throw new DataException("Bytes field conversion failed due to unexpected object type " + data.getClass().getName());
+        throw new DebeziumDataException("Bytes field conversion failed due to unexpected object type " + data.getClass().getName());
     }
 }
