@@ -153,9 +153,6 @@ public class JdbcSinkConnectorConfig implements SinkConnectorConfig {
                     "'upsert' - uses upsert semantics for the database if its supported and requires setting primary.key.mode and primary.key.fields;" +
                     "'update' - uses update semantics for the database if its supported.");
 
-    public static final Field DELETE_ENABLED_FIELD = SinkConnectorConfig.DELETE_ENABLED_FIELD
-            .withValidation(JdbcSinkConnectorConfig::validateDeleteEnabled);
-
     public static final Field SCHEMA_EVOLUTION_FIELD = Field.create(SCHEMA_EVOLUTION)
             .withDisplayName("Controls how schema evolution is handled by the sink connector")
             .withEnum(SchemaEvolutionMode.class, SchemaEvolutionMode.NONE)
@@ -764,26 +761,6 @@ public class JdbcSinkConnectorConfig implements SinkConnectorConfig {
             problems.accept(field, catalogName, "A StarRocks catalog name may contain only letters, digits, and "
                     + "underscores, and must not start with a digit");
             return 1;
-        }
-        return 0;
-    }
-
-    private static int validateDeleteEnabled(Configuration config, Field field, ValidationOutput problems) {
-        if (config.getBoolean(field)) {
-            final PrimaryKeyMode primaryKeyMode = PrimaryKeyMode.parse(config.getString(PRIMARY_KEY_MODE));
-
-            // Allow RECORD_KEY, RECORD_VALUE, and RECORD_HEADER
-            if (!PrimaryKeyMode.RECORD_KEY.equals(primaryKeyMode)
-                    && !PrimaryKeyMode.RECORD_VALUE.equals(primaryKeyMode)
-                    && !PrimaryKeyMode.RECORD_HEADER.equals(primaryKeyMode)) {
-
-                LOGGER.error("When '{}' is set to 'true', the '{}' option must be set to '{}', '{}', or '{}'.",
-                        DELETE_ENABLED, PRIMARY_KEY_MODE,
-                        PrimaryKeyMode.RECORD_KEY.getValue(),
-                        PrimaryKeyMode.RECORD_VALUE.getValue(),
-                        PrimaryKeyMode.RECORD_HEADER.getValue());
-                return 1;
-            }
         }
         return 0;
     }

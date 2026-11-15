@@ -31,15 +31,12 @@ import io.debezium.dlq.ErrorReporter;
 import io.debezium.dlq.ErrorReporters;
 import io.debezium.openlineage.ConnectorContext;
 import io.debezium.openlineage.DebeziumOpenLineageEmitter;
-import io.debezium.openlineage.dataset.DatasetDataExtractor;
 import io.debezium.util.Stopwatch;
 
 public class MongoDbSinkConnectorTask extends SinkTask {
     static final Logger LOGGER = LoggerFactory.getLogger(MongoDbSinkConnectorTask.class);
 
     private static final String CONNECTOR_TYPE = "sink";
-    private static final DatasetDataExtractor DATA_EXTRACTOR = new DatasetDataExtractor();
-
     private MongoDbChangeEventSink mongoSink;
     private ConnectorContext connectorContext;
     private MongoDbConnectionContext connectionContext;

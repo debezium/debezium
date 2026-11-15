@@ -10,6 +10,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
@@ -18,9 +19,12 @@ import org.apache.kafka.connect.sink.SinkRecord;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
+import io.debezium.connector.common.UUIDUtils;
 import io.debezium.data.Envelope;
+import io.debezium.dlq.ErrorReporters;
 import io.debezium.doc.FixFor;
 import io.debezium.metadata.CollectionId;
+import io.debezium.openlineage.ConnectorContext;
 import io.debezium.sink.batch.Batch;
 
 class AbstractChangeEventSinkTest {
@@ -277,7 +281,8 @@ class AbstractChangeEventSinkTest {
         final List<Batch> writtenBatches = new ArrayList<>();
 
         TestChangeEventSink(SinkConnectorConfig config) {
-            super(config);
+            super(config, ErrorReporters.nop(),
+                    new ConnectorContext("Dummy", AbstractChangeEventSink.class.getName(), "-1", "1.0", UUIDUtils.generateNewUUID(), Map.of()));
         }
 
         @Override

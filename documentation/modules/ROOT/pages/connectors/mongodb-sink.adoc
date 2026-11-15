@@ -400,7 +400,7 @@ Because a dead letter queue topic can never receive records while `errors.tolera
 ====
 MongoDB bulk write operations are non-transactional by default.
 When writing an ordered batch, earlier writes in the batch may have already been committed when a later write fails.
-When `primary.key.mode` is set to `record_key`, `kafka`, `record_value`, or `record_header`, the connector uses upsert semantics (`ReplaceOneModel` with `upsert=true`), so replaying the same batch after a partial failure produces the same result — the already-committed writes are simply overwritten with the same values.
+When `primary.key.mode` is set to `record_key`, `kafka`, `record_value`, or `record_header`, the connector uses upsert semantics (`ReplaceOneModel` with `upsert=true`), so replaying the same batch after a partial failure produces the same result; the already-committed writes are simply overwritten with the same values.
 When `primary.key.mode` is set to `none`, each write generates a new `ObjectId`, so replaying a batch after a partial failure creates duplicate documents for the already-committed writes.
 See xref:mongodb-sink-delivery-semantics[] for details.
 ====
@@ -530,7 +530,7 @@ Whether re-delivery produces duplicates in the target MongoDB collection depends
 
 Idempotent (keyed) modes::
 When `primary.key.mode` is set to `record_key`, `kafka`, `record_value`, or `record_header`, the connector derives a deterministic `_id` from the event.
-Because the connector writes documents using `ReplaceOneModel` with `upsert=true`, re-delivering the same record overwrites the existing document with the same `_id` — the write is idempotent and no duplicates are created.
+Because the connector writes documents using `ReplaceOneModel` with `upsert=true`, re-delivering the same record overwrites the existing document with the same `_id`; the write is idempotent, and no duplicates are created.
 
 Non-idempotent (keyless) mode::
 When `primary.key.mode` is set to `none` (the default), the connector generates a random MongoDB `ObjectId` for each write.
@@ -540,7 +540,7 @@ This applies to any scenario that triggers re-delivery:
 +
 * A transient MongoDB error (network interruption, primary failover) during a bulk write causes the Kafka Connect framework to restart the task and re-deliver records from the last committed offset.
 * A consumer group rebalance when partitions are reassigned across tasks.
-* An ordered bulk write that partially succeeds — records written before the failure are re-delivered alongside the failed ones.
+* An ordered bulk write that partially succeeds: records written before the failure are re-delivered alongside the failed ones.
 +
 If your use case requires all records to be preserved without duplicates (for example, sinking log streams, audit events, or financial transactions), set `primary.key.mode` to `kafka`.
 The `kafka` mode derives the `_id` from the Kafka topic, partition, and offset, providing a stable, unique identifier that makes writes idempotent while preserving every distinct record.

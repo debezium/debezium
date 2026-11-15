@@ -10,14 +10,17 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.function.Predicate;
 
 import org.junit.jupiter.api.Test;
 
 import io.debezium.bindings.kafka.KafkaDebeziumSinkRecord;
+import io.debezium.connector.common.UUIDUtils;
 import io.debezium.dlq.ErrorReporter;
 import io.debezium.doc.FixFor;
 import io.debezium.metadata.CollectionId;
+import io.debezium.openlineage.ConnectorContext;
 import io.debezium.sink.batch.Batch;
 import io.debezium.sink.batch.BatchRecord;
 
@@ -142,7 +145,8 @@ class AbstractChangeEventSinkDlqTest {
         private boolean failed;
 
         FailingChangeEventSink(ErrorReporter errorReporter, Predicate<DebeziumSinkRecord> failOn, boolean retriable) {
-            super(new TestSinkConnectorConfig(), errorReporter);
+            super(new TestSinkConnectorConfig(), errorReporter,
+                    new ConnectorContext("Dummy", AbstractChangeEventSink.class.getName(), "-1", "1.0", UUIDUtils.generateNewUUID(), Map.of()));
             this.failOn = failOn;
             this.retriable = retriable;
         }

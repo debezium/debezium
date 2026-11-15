@@ -17,7 +17,6 @@ import io.debezium.sink.batch.Batch;
 /**
  * A change event sink that consumes events from one or more Kafka topics.
  *
- * @author Chris Cranford
  */
 @Incubating
 public interface ChangeEventSink extends AutoCloseable {

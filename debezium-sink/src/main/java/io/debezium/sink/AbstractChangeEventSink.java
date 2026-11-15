@@ -5,6 +5,10 @@
  */
 package io.debezium.sink;
 
+import static io.debezium.openlineage.dataset.DatasetMetadata.STREAM_DATASET_TYPE;
+import static io.debezium.openlineage.dataset.DatasetMetadata.DataStore.KAFKA;
+import static io.debezium.openlineage.dataset.DatasetMetadata.DatasetKind.INPUT;
+
 import java.util.Collection;
 import java.util.List;
 
@@ -13,9 +17,14 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import io.debezium.bindings.kafka.KafkaDebeziumSinkRecord;
+import io.debezium.connector.common.DebeziumTaskState;
 import io.debezium.dlq.ErrorReporter;
 import io.debezium.dlq.ErrorReporters;
 import io.debezium.metadata.CollectionId;
+import io.debezium.openlineage.ConnectorContext;
+import io.debezium.openlineage.DebeziumOpenLineageEmitter;
+import io.debezium.openlineage.dataset.DatasetDataExtractor;
+import io.debezium.openlineage.dataset.DatasetMetadata;
 import io.debezium.sink.batch.Batch;
 import io.debezium.sink.batch.BatchRecord;
 import io.debezium.sink.batch.Buffer;
@@ -35,21 +44,20 @@ public abstract class AbstractChangeEventSink implements ChangeEventSink {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(AbstractChangeEventSink.class);
     private static final String DETECT_SCHEMA_CHANGE_RECORD_MSG = "Schema change records are not supported by Debezium sink connectors. Please adjust `topics` or `topics.regex` to exclude schema change topic.";
+    private static final DatasetDataExtractor DATA_EXTRACTOR = new DatasetDataExtractor();
 
     protected final SinkConnectorConfig config;
     private final ErrorReporter errorReporter;
+    private final ConnectorContext connectorContext;
     private final Buffer buffer;
     private int batchCount;
     private int totalRecordsWritten;
     private int totalRecordsReported;
 
-    protected AbstractChangeEventSink(SinkConnectorConfig config) {
-        this(config, ErrorReporters.nop());
-    }
-
-    protected AbstractChangeEventSink(SinkConnectorConfig config, ErrorReporter errorReporter) {
+    protected AbstractChangeEventSink(SinkConnectorConfig config, ErrorReporter errorReporter, ConnectorContext connectorContext) {
         this.config = config;
         this.errorReporter = errorReporter != null ? errorReporter : ErrorReporters.nop();
+        this.connectorContext = connectorContext;
         boolean keyed = !SinkConnectorConfig.PrimaryKeyMode.NONE.equals(config.getPrimaryKeyMode());
         if (SinkConnectorConfig.BufferMode.PASSTHROUGH.equals(config.getBufferMode())) {
             buffer = new PassthroughBuffer(config, keyed);
@@ -82,6 +90,9 @@ public abstract class AbstractChangeEventSink implements ChangeEventSink {
     public List<Batch> put(Collection<SinkRecord> records) {
         for (SinkRecord kafkaSinkRecord : records) {
             LOGGER.trace("Processing {}", kafkaSinkRecord);
+
+            DebeziumOpenLineageEmitter.emit(connectorContext(), DebeziumTaskState.RUNNING,
+                    List.of(new DatasetMetadata(kafkaSinkRecord.topic(), INPUT, STREAM_DATASET_TYPE, KAFKA, DATA_EXTRACTOR.extract(kafkaSinkRecord))));
 
             DebeziumSinkRecord record = createSinkRecord(kafkaSinkRecord);
 
@@ -203,6 +214,10 @@ public abstract class AbstractChangeEventSink implements ChangeEventSink {
         ++totalRecordsReported;
         errorReporter.report(record, cause);
         recordReported(record, cause);
+    }
+
+    protected ConnectorContext connectorContext() {
+        return connectorContext;
     }
 
     /**

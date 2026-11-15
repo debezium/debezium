@@ -16,6 +16,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import org.apache.kafka.connect.errors.DataException;
 import org.apache.kafka.connect.sink.SinkRecord;
 import org.bson.BsonDocument;
 
@@ -31,6 +32,7 @@ import io.debezium.connector.common.DebeziumTaskState;
 import io.debezium.connector.mongodb.connection.client.MongoDbClient;
 import io.debezium.connector.mongodb.sink.eventhandler.relational.RelationalEventHandler;
 import io.debezium.dlq.ErrorReporter;
+import io.debezium.dlq.ErrorReporters;
 import io.debezium.metadata.CollectionId;
 import io.debezium.openlineage.ConnectorContext;
 import io.debezium.openlineage.DebeziumOpenLineageEmitter;
@@ -45,7 +47,6 @@ final class MongoDbChangeEventSink extends AbstractChangeEventSink implements Ch
     private final MongoDbSinkConnectorConfig sinkConfig;
     private final MongoDbClient mongoClient;
     private final ErrorReporter errorReporter;
-    private final ConnectorContext connectorContext;
 
     private final MongoDbWriter mongoDbWriter;
 
@@ -53,11 +54,10 @@ final class MongoDbChangeEventSink extends AbstractChangeEventSink implements Ch
                            final MongoDbSinkConnectorConfig sinkConfig,
                            final MongoDbClient mongoClient,
                            final ErrorReporter errorReporter, ConnectorContext connectorContext) {
-        super(sinkConfig, errorReporter);
+        super(sinkConfig, errorReporter, connectorContext);
         this.sinkConfig = sinkConfig;
         this.mongoClient = mongoClient;
         this.errorReporter = errorReporter;
-        this.connectorContext = connectorContext;
         this.mongoDbWriter = new MongoDbWriter(mongoClient, errorReporter);
     }
 
@@ -80,6 +80,11 @@ final class MongoDbChangeEventSink extends AbstractChangeEventSink implements Ch
             MongoDbSinkRecord record = (MongoDbSinkRecord) batchRecord.record();
 
             if (record.getConversionException() != null) {
+                if (!ErrorReporters.isEnabled(errorReporter)) {
+                    throw new DataException(
+                            "Failed to convert record from topic '" + record.topicName() + "'",
+                            record.getConversionException());
+                }
                 errorReporter.report(record, record.getConversionException());
                 continue;
             }
@@ -104,8 +109,8 @@ final class MongoDbChangeEventSink extends AbstractChangeEventSink implements Ch
 
         for (var entry : groupedByCollection.entrySet()) {
             MongoNamespace namespace = new MongoNamespace(sinkConfig.getSinkDatabaseName(), entry.getKey());
-            emitDatasetMetadata(firstRecordByCollection.get(entry.getKey()), namespace);
             mongoDbWriter.bulkWriteBatch(namespace, entry.getValue());
+            emitDatasetMetadata(firstRecordByCollection.get(entry.getKey()), namespace);
         }
     }
 
@@ -137,7 +142,8 @@ final class MongoDbChangeEventSink extends AbstractChangeEventSink implements Ch
     @SuppressWarnings("try")
     @Override
     public void close() {
-        try (MongoDbClient autoCloseable = mongoClient) {
+        if (null != mongoClient) {
+            mongoClient.close();
         }
     }
 
@@ -152,7 +158,7 @@ final class MongoDbChangeEventSink extends AbstractChangeEventSink implements Ch
                 .map((entry) -> new DatasetMetadata.FieldDefinition(entry.getKey(), entry.getValue().getBsonType().toString(), ""))
                 .toList();
 
-        DebeziumOpenLineageEmitter.emit(connectorContext,
+        DebeziumOpenLineageEmitter.emit(connectorContext(),
                 DebeziumTaskState.RUNNING,
                 List.of(new DatasetMetadata(namespace.getFullName(), OUTPUT, TABLE_DATASET_TYPE, DATABASE, fieldDefinitions)));
     }
