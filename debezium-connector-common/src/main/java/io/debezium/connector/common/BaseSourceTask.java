@@ -519,7 +519,6 @@ public abstract class BaseSourceTask<P extends Partition, O extends OffsetContex
                         restartRetries++;
                         if (maxRestartRetries != ErrorHandler.RETRIES_UNLIMITED && restartRetries > maxRestartRetries) {
                             LOGGER.error("The maximum number of {} restart retries has been reached. Failing the connector.", maxRestartRetries);
-                            stop(false);
                             throw new ConnectException("The maximum number of restart retries has been reached", e);
                         }
                         LOGGER.warn("Failed to restart connector (attempt {} of {}), will re-attempt during next polling.",

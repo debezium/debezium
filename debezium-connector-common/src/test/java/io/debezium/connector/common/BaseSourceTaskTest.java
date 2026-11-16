@@ -214,10 +214,10 @@ class BaseSourceTaskTest {
         baseSourceTask.poll(); // restart attempt 1
         assertEquals(DebeziumTaskState.RESTARTING, baseSourceTask.getTaskState());
         sleep(1);
-        baseSourceTask.poll(); // restart attempt 2
+        baseSourceTask.poll(); // restart attempt 1
         assertEquals(DebeziumTaskState.RESTARTING, baseSourceTask.getTaskState());
         sleep(1);
-        assertThrows(ConnectException.class, () -> baseSourceTask.poll()); // restart attempt 2, max reached
+        assertThrows(ConnectException.class, () -> baseSourceTask.poll()); // restart attempt 3, max reached and it fails
     }
 
     @Test
