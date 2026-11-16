@@ -1030,7 +1030,7 @@ image::debezium-platform-monitoring-snapshot-panels.png[{prodname} platform snap
 |===
 
 [id="debezium-platform-monitoring-prerequisites"]
-=== Prerequisites
+=== Monitoring prerequisites
 
 Before you enable monitoring in the {prodname} Platform, install the following operators in your Kubernetes cluster.
 
@@ -1231,7 +1231,7 @@ panels:
 <2> Display title shown in the dashboard.
 <3> Description shown as a tooltip.
 <4> Category grouping: `streaming` or `snapshot`.
-<5> PromQL query. Use `{{pipeline_id}}` as a placeholder for the pipeline identifier.
+<5> PromQL query. Use `+{{pipeline_id}}+` as a placeholder for the pipeline identifier.
 <6> Unit label displayed on the chart axis.
 <7> Visualization configuration: `type` can be `line`, `area`, or `donut-utilization`. For more information about chart types, see the link:https://www.patternfly.org/charts/about-charts[PatternFly charts documentation].
 
@@ -1347,5 +1347,333 @@ scrape_configs:
 Replace `<namespace>` with the namespace where the {prodname} Platform is deployed.
 
 
+[id="debezium-platform-alerting"]
+== Alerting
 
+The {prodname} Management Platform provides built-in alerting capabilities that evaluate threshold-based rules against existing monitoring panels and notify you when pipeline performance or health degrades.
+Alerting rules evaluate globally across all pipelines, including pipelines created after the rule is defined, without requiring custom PromQL queries.
 
+Alerts are managed natively by the Conductor backend, visualized in the platform UI, and dispatched through configurable external notification channels.
+
+[id="debezium-platform-alerting-prerequisites"]
+=== Alerting prerequisites
+
+Alerting evaluates the same metrics that the monitoring dashboard displays, and it queries the same Prometheus instance.
+Before you create alert rules, complete the following prerequisites.
+
+* Enable monitoring by setting `monitoring.otel.enabled` to `true`.
++
+For more information, see xref:debezium-platform-monitoring-enabling[Enabling monitoring].
+* Set `monitoring.prometheus.url` to the URL of the Prometheus instance that stores your pipeline metrics.
+* To use email notification channels, configure an SMTP server by setting the `alerting.email.*` properties.
++
+For more information, see xref:debezium-platform-alerting-configuration[Alerting configuration reference].
+
+If monitoring is not enabled, the alert evaluation engine has no metrics to query, and rules that you create never transition out of the OK state.
+
+[id="debezium-platform-alerting-architecture"]
+=== Alerting architecture and lifecycle
+
+The alerting engine is embedded in the Conductor service and reuses the monitoring infrastructure, querying the same Prometheus instance.
+It consists of the following components:
+
+Alert REST API:: Manages alert rules and notification channels, and serves alert events and status summaries.
+Alert Evaluation Engine:: Evaluates all enabled rules against Prometheus metric series across all active pipelines, on a periodic loop (every 60 seconds by default).
+Alert State Manager:: Maintains the state machine and incident records in the platform database for each rule and pipeline pair.
+Notification Dispatcher:: Delivers notifications to the email and webhook channels that are attached to a rule, when alerts fire or resolve.
+
+The dispatcher sends to external channels only.
+In-app alerting uses no channel: the Alert State Manager persists states and incidents to the platform database, and the platform UI reads them from the Alert REST API.
+Alerts are therefore always visible in the platform UI, even for rules that have no channels attached.
+
+==== Alert lifecycle
+
+For each rule and pipeline pair, the evaluation engine tracks one of the following states, which together suppress noise from transient metric spikes:
+
+OK:: The metric value is within the threshold.
+Pending:: The metric has breached the threshold, but has not held the condition for the configured duration.
++
+No notification is sent while an alert is pending.
+If the metric recovers before the duration expires, the alert resets silently to OK.
+Firing:: The condition has held for the full duration, or the rule specifies a duration of zero.
++
+The platform creates an incident record and dispatches notifications to all attached channels.
+
+When a firing alert recovers, the state returns to OK and the platform closes the incident with a resolution timestamp.
+Incidents in the platform UI therefore show a status of either `Firing` or `Resolved`.
+
+[NOTE]
+====
+An alert dispatches one notification when it fires, and one when it resolves.
+Notifications are not repeated while the alert remains firing.
+====
+
+==== Metric staleness and no-data handling
+
+If a pipeline pod stops or crashes, Prometheus marks its time series as stale and the engine stops receiving data for that pipeline.
+The engine then keeps the last known state: firing alerts stay firing, and pending alerts stay pending.
+
+Critical alerts therefore remain visible during an outage, instead of clearing silently when metrics stop arriving.
+When the pipeline recovers and metrics resume, the engine transitions the alert based on the new values.
+
+[id="debezium-platform-managing-alert-rules"]
+=== Managing alert rules
+
+From the platform UI, open the **Alerts** menu and click **Rules** to view, create, edit, enable, disable, and delete alert rules.
+
+image::debezium-platform-alert-rules.png[{prodname} platform alert rules list]
+
+==== Anatomy of an alert rule
+
+An alert rule specifies the condition under which an alert should be triggered:
+
+Name:: A unique identifier for the rule.
+The name must be a lowercase RFC 1123 subdomain, that is, it can contain lowercase alphanumeric characters, hyphens, and dots.
+Description:: An optional explanation of the purpose or context of the rule.
+Metric panel:: The monitoring panel to evaluate, selected from the built-in streaming and snapshot panels or custom panels.
+Reduce function:: The aggregation method used to collapse the panel's time-series data into a single scalar value:
++
+--
+* `last` (default): Evaluates the most recent metric value.
+Recommended for gauge metrics such as source lag, queue utilization, and connection status.
+* `avg`: Calculates the average value across the evaluation window.
+Recommended for rate metrics, to smooth out transient spikes.
+* `min`: Calculates the minimum value across the evaluation window.
+* `max`: Calculates the maximum value across the evaluation window.
+* `sum`: Calculates the sum of metric values across the evaluation window.
+--
+Evaluation window:: The historical time window used by the reduce function (between 1 minute and 1 hour; default is 5 minutes).
+This field is hidden when the reduce function is set to `last`.
+Operator and threshold:: The comparison operator (greater than, greater than or equal to, less than, less than or equal to, equal to, or not equal to) and numeric threshold.
+The unit of measurement matches the selected monitoring panel.
++
+[NOTE]
+====
+If a metric value is not a number, every comparison operator evaluates to `false`.
+Gaps in a metric series therefore do not trigger an alert.
+====
+Duration:: The noise suppression period during which the condition must continuously hold before firing (options include Immediately, 1 minute, 2 minutes, 5 minutes, 10 minutes, 15 minutes, and 30 minutes).
+Severity:: The urgency level of the alert:
++
+--
+* `Critical` (danger visual indicator): Counted in the global alert badge.
+* `Warning` (warning visual indicator): Counted in the global alert badge.
+* `Info` (informational visual indicator): Displayed in the incident history, but excluded from the global alert badge.
+--
+Notification channels:: One or more external notification channels to notify in addition to in-app visibility.
+
+==== Creating an alert rule
+
+.Procedure
+
+. From the platform UI, open the **Alerts** menu, and then click **Rules**.
+. Click **Create Rule**.
+. In the rule creation form, enter a unique **Name** and an optional **Description**.
+. Select the target **Metric** panel from the dropdown.
+. Choose the **Reduce** function and specify the **Evaluation window** if applicable.
+. Select the comparison operator and enter the **Threshold** value.
+. Set the **Duration** for noise suppression.
+. Select the **Severity** level.
+. (Optional) Select one or more **Notification channels** to receive alerts.
+. Click **Create Rule**.
+
+image::debezium-platform-create-alert-rule.png[{prodname} platform create alert rule]
+
+==== Enabling, disabling, and deleting rules
+
+* To pause an alert rule without deleting its definition (for example, during scheduled maintenance), toggle the **Status** switch in the rules table.
+* To edit a rule, click the action menu next to the rule and select **Edit**.
+* To delete a rule, click the action menu next to the rule and select **Delete**.
+
+[id="debezium-platform-notification-channels"]
+=== Notification channels
+
+Alerts always appear within the platform UI and update the global header badge.
+To receive external alerts, from the platform UI, open the **Alerts** menu, click **Channels**, and then configure a notification channel.
+
+image::debezium-platform-notification-channels.png[{prodname} platform notification channels]
+
+Notification channels are reusable resources: multiple alert rules can share the same channel, and a single rule can dispatch to multiple channels.
+
+The platform supports two external channel types:
+
+Email:: Sends alert notifications over SMTP to a list of email recipients.
+You can customize the email subject line by using templates with placeholders such as `+{{rule_name}}+` and `+{{severity}}+`.
+If you do not specify a subject template, the platform uses `+Debezium Alert: {{rule_name}} - {{severity}}+`.
++
+Email channels require an SMTP server.
+If you do not set the `alerting.email.host` and `alerting.email.from` chart properties, the platform does not configure a mail sender, and email notifications cannot be delivered.
+For more information, see xref:debezium-platform-alerting-configuration[Alerting configuration reference].
+Webhook:: Sends HTTP POST requests with a JSON payload to external systems, enabling integrations with tools such as Slack, PagerDuty, OpsGenie, and Microsoft Teams.
+
+==== Webhook payload structure
+
+When an alert fires or resolves, the webhook notifier sends an HTTP POST request containing a structured JSON payload:
+
+[source,json,options="nowrap"]
+----
+{
+  "version": "1",
+  "status": "firing",
+  "alert": {
+    "ruleName": "high-source-lag",
+    "severity": "CRITICAL",
+    "pipelineId": "inventory-pipeline",
+    "pipelineName": "inventory-pipeline",
+    "value": 15.2,
+    "threshold": 10.0,
+    "operator": "GREATER_THAN",
+    "message": "Source lag (15.2s) exceeded threshold (10.0s)",
+    "firedAt": "2026-11-02T14:30:00Z",
+    "resolvedAt": null
+  }
+}
+----
+
+The `resolvedAt` field is always present.
+Its value is `null` while the alert is firing.
+When the alert clears, a corresponding payload is sent in which `status` is set to `resolved` and `resolvedAt` contains the resolution timestamp.
+
+==== Webhook delivery and retries
+
+If a webhook delivery fails, the platform retries it up to the number of attempts set by the `alerting.webhook.maxAttempts` property (3 by default).
+Design your webhook receiver to be idempotent, because a single alert transition can result in more than one delivery attempt.
+You can also tune the connection and read timeouts.
+For more information, see xref:debezium-platform-alerting-configuration[Alerting configuration reference].
+
+==== Webhook security and SSRF protection
+
+To prevent Server-Side Request Forgery (SSRF) within the Kubernetes cluster, the webhook notifier validates target URLs when sending notifications.
+By default, requests to private, loopback, and link-local IP address ranges are blocked.
+
+If you want to send notifications to a receiver that runs inside the cluster, for example during development or testing, set the `alerting.webhook.allowPrivateNetworks` property to `true`.
+
+[WARNING]
+====
+Setting `alerting.webhook.allowPrivateNetworks` to `true` disables SSRF protection, which enables alert rules to reach internal cluster endpoints.
+Do not enable this property in production environments.
+====
+
+==== Creating and testing notification channels
+
+.Procedure
+
+. From the platform UI, open the **Alerts** menu, and then click **Channels**.
+. Click **Create Channel**.
+. Enter a **Name** and select the channel **Type** (Email or Webhook).
+. Configure the channel settings:
++
+* For **Email**, add one or more recipient email addresses and an optional subject template.
+* For **Webhook**, provide the endpoint URL, HTTP method, and optional HTTP headers (for authentication tokens).
+. Click **Create Channel**.
+. To verify connectivity, open the action menu for the channel in the table and click **Test**.
+
+image::debezium-platform-create-notification-channel.png[{prodname} platform create notification channel]
+
+[id="debezium-platform-alert-events"]
+=== Alert events and history
+
+The platform tracks every alert occurrence as an incident from initial firing to resolution.
+To review active and past alerts, from the platform UI, open the **Alerts** menu, and then click **Events**.
+
+image::alert-history.gif[{prodname} platform alert events]
+
+==== Global alert badge
+
+The application header displays a persistent alert badge visible across all platform pages.
+The badge reflects the total count of active `Critical` and `Warning` alerts across all pipelines, colored according to the highest active severity:
+
+* Red indicator: One or more `Critical` alerts are currently firing.
+* Amber indicator: One or more `Warning` alerts are currently firing, with no `Critical` alerts.
+
+Clicking the badge opens the **Events** page pre-filtered to currently firing incidents.
+
+==== Reviewing incidents
+
+The incidents table lists alert events in reverse chronological order:
+
+* Each row shows the alert severity, rule name, affected pipeline, status (Firing or Resolved), start time, and total duration.
+* Active firing incidents are pinned to the top of the table.
+* Expanding an incident row displays detailed information, including the observed metric value, threshold, error message, and exact timestamps.
+* Clicking the pipeline name in an incident navigates directly to the pipeline's monitoring dashboard.
+* You can filter incidents by severity, status, pipeline, rule, and date ranges.
+
+==== Incident retention and cleanup
+
+The platform includes a scheduled background cleanup task that purges resolved incidents that are older than the retention period (30 days by default).
+By default, the task runs every 24 hours.
+Actively firing incidents are retained indefinitely until they are resolved.
+
+To change the retention period or how often the cleanup task runs, set the `alerting.history.retention` and `alerting.history.cleanup.interval` properties.
+For more information, see xref:debezium-platform-alerting-configuration[Alerting configuration reference].
+
+[id="debezium-platform-alerting-configuration"]
+=== Alerting configuration reference
+
+The following table lists the Helm chart properties for configuring alerting.
+
+[cols="2,3,1", options="header"]
+|===
+|Name |Description |Default
+
+3+h|Evaluation
+
+|alerting.evaluation.interval
+|How often the alert evaluation engine runs.
+Accepts duration strings, such as `30s`, `60s`, or `5m`.
+|60s
+
+3+h|History
+
+|alerting.history.retention
+|How long resolved alert events are kept before cleanup.
+|30d
+
+|alerting.history.cleanup.interval
+|How often the history cleanup job runs.
+|24h
+
+3+h|Webhook notifications
+
+|alerting.webhook.allowPrivateNetworks
+|Allows webhook URLs to resolve to private, loopback, or link-local IP addresses.
+When the value is `false`, SSRF protection blocks requests to non-public addresses.
+|false
+
+|alerting.webhook.maxAttempts
+|Maximum number of delivery attempts for webhook notifications.
+|3
+
+|alerting.webhook.connectTimeout
+|Connection timeout for webhook HTTP calls, specified as an ISO 8601 duration.
+|5S
+
+|alerting.webhook.readTimeout
+|Read timeout for webhook HTTP calls, specified as an ISO 8601 duration.
+|10S
+
+3+h|Email notifications
+
+|alerting.email.host
+|SMTP server hostname.
+Email notifications are disabled unless you specify a value.
+|""
+
+|alerting.email.port
+|SMTP server port.
+|587
+
+|alerting.email.from
+|Sender email address for alert notifications.
+|""
+
+|alerting.email.startTls
+|STARTTLS mode.
+Valid values are `DISABLED`, `OPTIONAL`, and `REQUIRED`.
+|REQUIRED
+
+|alerting.email.auth.existingSecret
+|Name of an existing Kubernetes secret that contains the `username` and `password` keys that the platform uses to authenticate with the SMTP server.
+If you do not specify a value, the platform connects to the SMTP server without authentication.
+|""
+|===
