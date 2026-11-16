@@ -161,7 +161,7 @@ public interface Column extends Comparable<Column> {
         if (this == that) {
             return 0;
         }
-        return this.position() - that.position();
+        return Integer.compare(this.position(), that.position());
     }
 
     /**

@@ -78,7 +78,7 @@ final class BasicArray implements Array {
         }
         int size = this.size();
         if (size != that.size()) {
-            return size - that.size();
+            return Integer.compare(size, that.size());
         }
         Array thatArray = that;
         for (int i = 0; i != size; ++i) {

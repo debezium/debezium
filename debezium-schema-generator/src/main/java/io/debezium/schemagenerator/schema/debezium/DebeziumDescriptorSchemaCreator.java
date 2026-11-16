@@ -151,7 +151,7 @@ public class DebeziumDescriptorSchemaCreator {
             }
         }
 
-        if (field.validator() != null && field.validator().getClass().getSimpleName().equals("RangeValidator")) {
+        if (field.validator() instanceof Field.RangeValidator) {
             extractRangeValidator(field.validator(), validations)
                     .ifPresent(validations::add);
         }
