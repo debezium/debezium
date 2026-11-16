@@ -223,6 +223,18 @@ public class MySqlPtAntlrDdlParserTest
         assertThat(table.columnWithName("status_state")).isNotNull();
     }
 
+    @Test
+    @FixFor("debezium/dbz#3080")
+    void shouldParseEmptyHexadecimalLiteral() {
+        final String ddl = "CREATE TABLE t_default (v VARBINARY(1) DEFAULT X'');"
+                + "ALTER TABLE t_default ADD COLUMN normalized_ref VARBINARY(16) GENERATED ALWAYS AS (IF(v = 'default', X'', v)) VIRTUAL;"
+                + "CREATE TABLE t_control (v VARBINARY(1) DEFAULT X'00');";
+        parser.parse(ddl, tables);
+        assertThat(parser.getParsingExceptionsFromWalker()).isEmpty();
+        assertThat(tables.forTable(null, null, "t_default").columnWithName("normalized_ref")).isNotNull();
+        assertThat(tables.forTable(null, null, "t_control").columnWithName("v")).isNotNull();
+    }
+
     public static class MySqlPtDdlParserWithSimpleTestListener extends MySqlPtAntlrDdlParser {
         MySqlPtDdlParserWithSimpleTestListener(DdlChanges changesListener) {
             this(changesListener, false);

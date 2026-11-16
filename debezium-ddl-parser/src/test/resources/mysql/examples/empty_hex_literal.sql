@@ -1,0 +1,3 @@
+CREATE TABLE t_default (v VARBINARY(1) DEFAULT x'');
+ALTER TABLE t_default ADD COLUMN normalized_ref VARBINARY(16) GENERATED ALWAYS AS (IF(v = 'default', x'', v)) VIRTUAL;
+CREATE TABLE t_control (v VARBINARY(1) DEFAULT x'00');
