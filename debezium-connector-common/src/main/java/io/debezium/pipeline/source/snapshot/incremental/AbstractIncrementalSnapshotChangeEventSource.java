@@ -124,12 +124,15 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<P extends Par
     }
 
     @Override
-    public void pauseSnapshot(P partition, OffsetContext offsetContext) {
+    public void pauseSnapshot(P partition, OffsetContext offsetContext) throws InterruptedException {
         context = (IncrementalSnapshotContext<T>) offsetContext.getIncrementalSnapshotContext();
         if (context.snapshotRunning() && !context.isSnapshotPaused()) {
             context.pauseSnapshot();
             progressListener.snapshotPaused(partition);
             notificationService.incrementalSnapshotNotificationService().notifyPaused(context, partition, offsetContext);
+            // Force the paused state into a committed offset now, so a stop/restart shortly after pausing
+            // does not race against the next incidental event to carry it into the persisted offset.
+            dispatcher.alwaysDispatchHeartbeatEvent(partition, offsetContext);
         }
     }
 
@@ -140,6 +143,9 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<P extends Par
             context.resumeSnapshot();
             progressListener.snapshotResumed(partition);
             notificationService.incrementalSnapshotNotificationService().notifyResumed(context, partition, offsetContext);
+            // Same as pauseSnapshot(): make sure the cleared paused flag is captured in a committed
+            // offset even if readChunk() below finds nothing to read and dispatches no event itself.
+            dispatcher.alwaysDispatchHeartbeatEvent(partition, offsetContext);
             readChunk(partition, offsetContext);
         }
     }
