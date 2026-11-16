@@ -324,7 +324,7 @@ fragment HEXDIGIT
 // Only lower case 'x' and 'b' count for hex + bin numbers. Otherwise it's an identifier.
 HEX_NUMBER
     : ('0x' HEXDIGIT+)
-    | ('x\'' HEXDIGIT+ '\'')
+    | ('x\'' HEXDIGIT* '\'')
     ;
 
 BIN_NUMBER
