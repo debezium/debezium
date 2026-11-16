@@ -214,7 +214,7 @@ public class AbstractIncrementalSnapshotContext<T> implements IncrementalSnapsho
     }
 
     public Map<String, Object> store(Map<String, Object> offset) {
-        if (!snapshotRunning() && !paused.get()) {
+        if (!snapshotRunning()) {
             return offset;
         }
         offset.put(EVENT_PRIMARY_KEY, arrayToSerializedString(lastEventKeySent));
@@ -326,9 +326,9 @@ public class AbstractIncrementalSnapshotContext<T> implements IncrementalSnapsho
             context.addTablesIdsToSnapshot(context.snapshotDataCollection.stringToDataCollections(dataCollectionsStr));
         }
         context.correlationId = (String) offsets.get(CORRELATION_ID);
-        final Boolean pausedValue = (Boolean) offsets.get(INCREMENTAL_SNAPSHOT_PAUSED);
+        final Object pausedValue = offsets.get(INCREMENTAL_SNAPSHOT_PAUSED);
         if (pausedValue != null) {
-            context.paused.set(pausedValue);
+            context.paused.set(Boolean.parseBoolean(pausedValue.toString()));
         }
         if (context.paused.get()) {
             LOGGER.info("Incremental snapshot is currently paused and awaiting resume signal.");
