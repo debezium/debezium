@@ -20,7 +20,10 @@ import org.junit.jupiter.api.extension.TestInstancePreConstructCallback;
  * <p>
  * Interceptors created when the test class is initialized, such as those held in static fields, or in
  * {@code @BeforeAll} methods are shared by the test methods, so they are only cleaned up after all tests
- * of the class have run.
+ * of the class have run. Those held in static fields of a superclass of the test class are shared with its other
+ * subclasses, so they are never cleaned up, unless the superclass is run as a test class itself before its
+ * subclasses: it is then initialized in its own scope, and its interceptors are closed after its own tests,
+ * leaving the subclasses with closed interceptors.
  * <p>
  * It is registered globally through extension autodetection, so every test that uses the
  * {@code debezium-connector-common} test-jar is covered.
@@ -34,7 +37,7 @@ public class LogInterceptorCleanupExtension
 
     // The marker taken just before a test instance is constructed, so that interceptors held in instance
     // fields belong to the test that the instance is created for (or to the class with a per-class lifecycle).
-    private static Long pendingMark;
+    private static volatile Long pendingMark;
 
     @Override
     public void preConstructTestInstance(TestInstanceFactoryContext factoryContext, ExtensionContext context) {

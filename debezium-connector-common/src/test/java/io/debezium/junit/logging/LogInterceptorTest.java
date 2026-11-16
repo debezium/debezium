@@ -9,6 +9,7 @@ import static io.debezium.junit.logging.LogInterceptorTestUtils.attachedIntercep
 import static org.assertj.core.api.Assertions.assertThat;
 
 import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.Test;
 import org.slf4j.LoggerFactory;
 
@@ -30,6 +31,19 @@ public class LogInterceptorTest {
     }
 
     private static final class ExplicitTarget {
+    }
+
+    private static final class BaseTarget {
+    }
+
+    // Not initialized until the test that uses them forces it, so that their static interceptor is
+    // registered while the class scope of the subclass is active. A class is only initialized once per JVM,
+    // so when that test runs again in the same JVM it is skipped.
+    private static class Base {
+        static final LogInterceptor INTERCEPTOR = LogInterceptor.forClass(BaseTarget.class);
+    }
+
+    private static final class Sub extends Base {
     }
 
     private final Logger inheritedLogger = (Logger) LoggerFactory.getLogger(InheritedTarget.class);
@@ -162,5 +176,53 @@ public class LogInterceptorTest {
             assertThat(interceptor.containsWarnMessage("inside block")).isTrue();
         }
         assertThat(attachedInterceptors(inheritedLogger)).isEmpty();
+    }
+
+    @Test
+    @FixFor("debezium/dbz#3062")
+    public void shouldKeepStaticInterceptorOfSuperclassAfterClassCleanup() throws Exception {
+        final var baseLogger = (Logger) LoggerFactory.getLogger(BaseTarget.class);
+        final var mark = LogInterceptorRegistry.mark();
+        LogInterceptorRegistry.enterClassScope(Sub.class);
+        try {
+            Class.forName(Sub.class.getName(), true, Sub.class.getClassLoader());
+            Assumptions.assumeTrue(attachedInterceptors(baseLogger).contains(Base.INTERCEPTOR),
+                    "The superclass was already initialized and its interceptor closed by an earlier run in this JVM");
+            assertThat(attachedInterceptors(baseLogger)).containsExactly(Base.INTERCEPTOR);
+
+            // Cleaning up the class scope of the subclass leaves the interceptor of the superclass in place,
+            // as it is shared with every other subclass.
+            LogInterceptorRegistry.cleanup(mark);
+            assertThat(attachedInterceptors(baseLogger)).containsExactly(Base.INTERCEPTOR);
+        }
+        finally {
+            LogInterceptorRegistry.exitClassScope(Sub.class);
+            // It is never cleaned up otherwise.
+            Base.INTERCEPTOR.close();
+        }
+    }
+
+    @Test
+    @FixFor("debezium/dbz#3062")
+    public void shouldRestoreOuterClassScopeWhenNestedClassScopeEnds() {
+        final var outer = LogInterceptorRegistry.currentTestClass();
+
+        LogInterceptorRegistry.enterClassScope(InheritedTarget.class);
+        LogInterceptorRegistry.enterClassScope(ExplicitTarget.class);
+        try {
+            assertThat(LogInterceptorRegistry.currentTestClass()).isEqualTo(ExplicitTarget.class);
+
+            LogInterceptorRegistry.exitClassScope(ExplicitTarget.class);
+            assertThat(LogInterceptorRegistry.currentTestClass()).isEqualTo(InheritedTarget.class);
+
+            LogInterceptorRegistry.exitClassScope(InheritedTarget.class);
+            assertThat(LogInterceptorRegistry.currentTestClass()).isEqualTo(outer);
+        }
+        finally {
+            // Ends whichever of the two scopes is still active if an assertion failed; a scope that has
+            // already ended is no longer the innermost one, so ending it again has no effect.
+            LogInterceptorRegistry.exitClassScope(ExplicitTarget.class);
+            LogInterceptorRegistry.exitClassScope(InheritedTarget.class);
+        }
     }
 }
