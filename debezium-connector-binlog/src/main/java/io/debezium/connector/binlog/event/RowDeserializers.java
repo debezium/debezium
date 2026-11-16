@@ -35,6 +35,7 @@ import com.github.shyiko.mysql.binlog.event.UpdateRowsEventData;
 import com.github.shyiko.mysql.binlog.event.deserialization.AbstractRowsEventDataDeserializer;
 import com.github.shyiko.mysql.binlog.event.deserialization.ColumnType;
 import com.github.shyiko.mysql.binlog.event.deserialization.DeleteRowsEventDataDeserializer;
+import com.github.shyiko.mysql.binlog.event.deserialization.MissingTableMapEventException;
 import com.github.shyiko.mysql.binlog.event.deserialization.UpdateRowsEventDataDeserializer;
 import com.github.shyiko.mysql.binlog.event.deserialization.WriteRowsEventDataDeserializer;
 import com.github.shyiko.mysql.binlog.io.ByteArrayInputStream;
@@ -325,7 +326,11 @@ public class RowDeserializers {
             eventData.setIncludedColumnsBeforeUpdate(includedColumnsBeforeUpdate);
             eventData.setIncludedColumns(includedColumns);
 
-            byte[] columnTypes = tableMapEventByTableId.get(tableId).getColumnTypes();
+            TableMapEventData tableMap = tableMapEventByTableId.get(tableId);
+            if (tableMap == null) {
+                throw new MissingTableMapEventException("No TableMapEventData has been found for table id:" + tableId + ".");
+            }
+            byte[] columnTypes = tableMap.getColumnTypes();
             int jsonColumnCount = jsonColumnCount(columnTypes);
             List<Map.Entry<Serializable[], Serializable[]>> rows = new ArrayList<>();
             while (inputStream.available() > 0) {

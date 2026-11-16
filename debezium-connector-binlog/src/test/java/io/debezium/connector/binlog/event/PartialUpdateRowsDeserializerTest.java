@@ -6,6 +6,7 @@
 package io.debezium.connector.binlog.event;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.io.IOException;
 import java.io.Serializable;
@@ -19,6 +20,7 @@ import org.junit.jupiter.api.Test;
 import com.github.shyiko.mysql.binlog.event.TableMapEventData;
 import com.github.shyiko.mysql.binlog.event.UpdateRowsEventData;
 import com.github.shyiko.mysql.binlog.event.deserialization.ColumnType;
+import com.github.shyiko.mysql.binlog.event.deserialization.MissingTableMapEventException;
 import com.github.shyiko.mysql.binlog.io.ByteArrayInputStream;
 
 import io.debezium.config.CommonConnectorConfig.EventProcessingFailureHandlingMode;
@@ -119,6 +121,19 @@ class PartialUpdateRowsDeserializerTest {
         assertThat(data.getRows()).hasSize(2);
         assertThat(data.getRows().get(0).getValue()).containsExactly(1L, 12, BinlogValueConverters.UNAVAILABLE_VALUE);
         assertThat(data.getRows().get(1).getValue()).containsExactly(2L, 21, BinlogValueConverters.UNAVAILABLE_VALUE);
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2958")
+    void shouldFailWhenTableMapEventIsMissing() {
+        RowDeserializers.PartialUpdateRowsDeserializer deserializer = new RowDeserializers.PartialUpdateRowsDeserializer(Map.of(),
+                EventProcessingFailureHandlingMode.FAIL, false);
+        // UPDATE t_plain SET name = 'a1x' WHERE id = 1, without the table map event of t_plain
+        ByteArrayInputStream input = new ByteArrayInputStream(hex("73 00 00 00 00 00 01 00 02 00 02 ff ff 00 01 00 00 00 02 61 31 00 00 01 00 00 00 03 61 31 78"));
+
+        assertThatThrownBy(() -> deserializer.deserialize(input))
+                .isInstanceOf(MissingTableMapEventException.class)
+                .hasMessageContaining("table id:" + PLAIN_TABLE_ID + ".");
     }
 
     private static UpdateRowsEventData deserialize(long tableId, String header, String rows) throws IOException {
