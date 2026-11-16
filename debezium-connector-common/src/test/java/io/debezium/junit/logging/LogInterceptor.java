@@ -30,7 +30,10 @@ import ch.qos.logback.core.AppenderBase;
  * {@link #changeLoggerLevel(String, Level)} during that test and detaches every interceptor created for it,
  * including those held in instance fields. Interceptors and level changes created in static fields or
  * {@code @BeforeAll} methods are shared by the test methods, so they are only cleaned up after all tests of
- * the class have run. To clean up a single interceptor earlier, call {@link #close()}, e.g. with
+ * the class have run, except those in static fields of a superclass of the test class, which are shared with
+ * its other subclasses and never cleaned up. A superclass that is run as a test class itself before its subclasses
+ * is the exception: its static interceptors are closed after its own tests, so avoid static interceptors in test
+ * classes that other test classes extend. To clean up a single interceptor earlier, call {@link #close()}, e.g. with
  * try-with-resources.
  *
  * @author Chris Cranford, Jiri Pechanec
@@ -109,6 +112,9 @@ public class LogInterceptor extends AppenderBase<ILoggingEvent> implements AutoC
     /**
      * Detaches this interceptor from every logger it was attached to, stops it and discards the captured events.
      * Calling this more than once, or after detaching the interceptor manually, has no effect.
+     * <p>
+     * Logger levels changed through {@link #setLoggerLevel(Class, Level)} or {@link #changeLoggerLevel(String, Level)}
+     * are not restored here, but only when the test ends.
      * <p>
      * This is separate from {@link #stop()}, which logback calls itself when its context is reset.
      */

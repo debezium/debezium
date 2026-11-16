@@ -46,47 +46,71 @@ final class LogInterceptorRegistry {
 
     private static final StackWalker STACK_WALKER = StackWalker.getInstance(StackWalker.Option.RETAIN_CLASS_REFERENCE);
 
-    // The test class that is running, and the sequence number given to what its static initializer registers.
-    private static volatile Class<?> testClass;
-    private static volatile long classSequence;
+    // A test class that is running, the sequence number given to what its static initializer registers,
+    // and the scope of the class it is nested in, if any.
+    private record ClassScope(Class<?> testClass, long sequence, ClassScope outer) {
+    }
+
+    // The scope of the innermost test class that is running.
+    private static volatile ClassScope classScope;
 
     private LogInterceptorRegistry() {
     }
 
     /**
-     * Starts the scope of a test class, so that interceptors and level changes registered while the class,
-     * or one of its superclasses, is initialized belong to the class, whenever that initialization happens.
+     * Starts the scope of a test class, so that interceptors and level changes registered while the class
+     * is initialized belong to the class, whenever that initialization happens. Those registered while one of
+     * its superclasses is initialized are never cleaned up, as they are shared with the other subclasses.
+     * That only holds for a superclass that is not run as a test class itself: one that runs before its
+     * subclasses is initialized in its own scope, so what it registers is cleaned up after its tests.
      * Must be called after the marker of the class is taken, and before that of any of its test methods.
+     * The scope of a class it is nested in, such as with {@code @Nested}, is restored when it ends.
      *
      * @param testClass the test class
      */
     static void enterClassScope(Class<?> testClass) {
-        classSequence = SEQUENCE.incrementAndGet();
-        LogInterceptorRegistry.testClass = testClass;
+        classScope = new ClassScope(testClass, SEQUENCE.incrementAndGet(), classScope);
     }
 
     /**
-     * Ends the scope of the given test class.
+     * Ends the scope of the given test class, restoring that of the class it is nested in, if any.
      *
      * @param testClass the test class
      */
     static void exitClassScope(Class<?> testClass) {
-        if (LogInterceptorRegistry.testClass == testClass) {
-            LogInterceptorRegistry.testClass = null;
+        final var current = classScope;
+        if (current != null && current.testClass() == testClass) {
+            classScope = current.outer();
         }
     }
 
+    /**
+     * Returns the innermost test class whose scope is active, or {@code null} if there is none.
+     */
+    static Class<?> currentTestClass() {
+        final var current = classScope;
+        return current != null ? current.testClass() : null;
+    }
+
     private static long nextSequence() {
-        final var current = testClass;
-        if (current != null && isInitializing(current)) {
-            return classSequence;
+        final var current = classScope;
+        if (current != null) {
+            final var initializing = initializingClass(current.testClass());
+            if (initializing != null) {
+                // A superclass is initialized only once, yet its static fields are shared by every subclass,
+                // so what it registers is never cleaned up rather than closed after the first subclass.
+                return initializing == current.testClass() ? current.sequence() : 0L;
+            }
         }
         return SEQUENCE.incrementAndGet();
     }
 
-    private static boolean isInitializing(Class<?> testClass) {
-        return STACK_WALKER.walk(frames -> frames.anyMatch(
-                frame -> "<clinit>".equals(frame.getMethodName()) && frame.getDeclaringClass().isAssignableFrom(testClass)));
+    private static Class<?> initializingClass(Class<?> testClass) {
+        return STACK_WALKER.walk(frames -> frames
+                .filter(frame -> "<clinit>".equals(frame.getMethodName()) && frame.getDeclaringClass().isAssignableFrom(testClass))
+                .<Class<?>> map(StackWalker.StackFrame::getDeclaringClass)
+                .findFirst()
+                .orElse(null));
     }
 
     /**
@@ -128,7 +152,8 @@ final class LogInterceptorRegistry {
 
     /**
      * Restores the original level of every logger changed through an interceptor, then detaches and
-     * stops every interceptor that is still attached.
+     * stops every interceptor that is still attached, except those registered while a superclass of the
+     * test class was initialized.
      */
     static void cleanup() {
         cleanup(0L);
@@ -141,7 +166,8 @@ final class LogInterceptorRegistry {
      * When nothing was registered this returns before touching any logback type, so the cleanup extension
      * also works in modules that use the test-jar without having logback on their test classpath.
      *
-     * @param since a value returned by {@link #mark()}, or {@code 0} to clean up everything
+     * @param since a value returned by {@link #mark()}, or {@code 0} to clean up everything except those
+     *            registered while a superclass of the test class was initialized
      */
     static void cleanup(long since) {
         final Map<Logger, Level> levels = new LinkedHashMap<>();
