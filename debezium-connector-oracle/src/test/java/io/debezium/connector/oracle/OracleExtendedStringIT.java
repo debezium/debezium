@@ -16,6 +16,7 @@ import org.apache.commons.lang3.RandomStringUtils;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceRecord;
 import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -363,6 +364,59 @@ public class OracleExtendedStringIT extends AbstractAsyncEngineConnectorTest {
         finally {
             TestHelper.dropTable(connection, "dbz8034");
         }
+    }
+
+    @Test
+    @FixFor("debezium/dbz#3107")
+    public void shouldStreamExtendedStringColumnsWithSingleQuotes() throws Exception {
+        TestHelper.dropTable(connection, "dbz3107");
+        try {
+            connection.execute("CREATE TABLE dbz3107 (id numeric(9,0) primary key, txt varchar2(8000), ntxt nvarchar2(2001))");
+            TestHelper.streamTable(connection, "dbz3107");
+            assumeExtendedByteLength("DBZ3107", "NTXT");
+
+            connection.execute("INSERT INTO dbz3107 (id,txt,ntxt) values (1,'x',N'x')");
+
+            start(OracleConnector.class, defaultConfig().with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "DEBEZIUM\\.DBZ3107").build());
+            assertConnectorIsRunning();
+
+            waitForStreamingRunning(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
+
+            // Single quotes at the start, inside, doubled and at the end of the value
+            final String data = "'it's a''b;c-" + RandomStringUtils.randomAlphanumeric(4990) + "'";
+            connection.prepareUpdate("UPDATE dbz3107 SET txt=? WHERE id=1", ps -> ps.setString(1, data));
+            connection.commit();
+
+            final String nationalData = "'it's a''b;c-" + RandomStringUtils.randomAlphanumeric(1987) + "'";
+            connection.prepareUpdate("UPDATE dbz3107 SET ntxt=? WHERE id=1", ps -> ps.setNString(1, nationalData));
+            connection.commit();
+
+            final List<SourceRecord> records = consumeRecordsByTopic(3).recordsForTopic(topicName("DBZ3107"));
+            assertThat(records).hasSize(3);
+
+            VerifyRecord.isValidRead(records.get(0), "ID", 1);
+
+            VerifyRecord.isValidUpdate(records.get(1), "ID", 1);
+            assertThat(getAfter(records.get(1)).get("TXT")).isEqualTo(data);
+
+            VerifyRecord.isValidUpdate(records.get(2), "ID", 1);
+            assertThat(getAfter(records.get(2)).get("NTXT")).isEqualTo(nationalData);
+        }
+        finally {
+            TestHelper.dropTable(connection, "dbz3107");
+        }
+    }
+
+    private void assumeExtendedByteLength(String tableName, String columnName) throws Exception {
+        // The character sets decide the byte length, so skip on databases where the column is not extended
+        final int dataLength = connection.prepareQueryAndMap(
+                "SELECT DATA_LENGTH FROM USER_TAB_COLUMNS WHERE TABLE_NAME = ? AND COLUMN_NAME = ?",
+                ps -> {
+                    ps.setString(1, tableName);
+                    ps.setString(2, columnName);
+                },
+                rs -> rs.next() ? rs.getInt(1) : 0);
+        Assumptions.assumeTrue(dataLength > 4000, "Column byte length " + dataLength + " is not an extended string");
     }
 
     private static Configuration.Builder defaultConfig() {
