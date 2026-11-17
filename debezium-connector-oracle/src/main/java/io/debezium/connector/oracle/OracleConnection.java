@@ -873,6 +873,25 @@ public class OracleConnection extends JdbcConnection {
         return reselectColumns(query, table.id(), columns, keyValues, resultConsumer);
     }
 
+    /**
+     * Reads columns of the row with the given {@code ROWID}, as the table was at the given system change number.
+     *
+     * @param table the table, should not be {@code null}
+     * @param columns the names of the columns to read, should not be {@code null}
+     * @param rowId the row's {@code ROWID}, should not be {@code null}
+     * @param scn the system change number to read the row at, should not be {@code null}
+     * @param resultConsumer receives the result set positioned on the row, should not be {@code null}
+     * @return {@code true} if the row was found
+     * @throws SQLException if a database exception occurred
+     */
+    public boolean reselectColumnsByRowId(Table table, List<String> columns, String rowId, Scn scn, ResultSetConsumer resultConsumer)
+            throws SQLException {
+        final String query = String.format("SELECT %s FROM %s AS OF SCN ? WHERE ROWID = ?",
+                columns.stream().map(this::quoteIdentifier).collect(Collectors.joining(",")),
+                quotedTableIdString(table.id()));
+        return reselectColumns(query, table.id(), columns, List.of(scn.toString(), rowId), resultConsumer);
+    }
+
     private static final Set<Integer> ORACLE_RESELECT_ERROR_CODE_FALLBACK = Set.of(
             1555, // About flashback area error with an aged SCN
             1466); // About table structure has changed since flashback SCN

@@ -1571,6 +1571,44 @@ When `lob.enabled` is `true`, the connector mines additional redo log operation 
 During streaming, Oracle includes LOB column values in redo data only when a SQL DML statement explicitly sets or changes an LOB column value.
 If a DML statement does not modify an LOB column, the change event contains the configured unavailable value placeholder rather than the column's current value.
 
+[id="oracle-logminer-large-object-change-events"]
+==== Change events for large object data with LogMiner
+
+When `lob.enabled` is `true`, the LogMiner adapters emit one change event for each SQL statement that changes a row, in the order in which the transaction made the changes.
+This applies to `CLOB`, `NCLOB`, `BLOB`, `XMLTYPE`, `JSON`, and extended string columns in the same way as it does to tables that have none of these columns.
+For example, a transaction that inserts a row and then updates a LOB column of that row results in a create event followed by an update event.
+
+[NOTE]
+====
+Earlier versions of the connector combined all changes that a transaction made to a row of such a table into the first change event for that row.
+As a result, events could be emitted in a different order than the changes were made, for example, ahead of an earlier change to another table.
+The final state of every row is the same as before, but a transaction can now result in more change events.
+====
+
+An application can also change a `CLOB`, `NCLOB`, or `BLOB` value through a LOB locator, for example by calling `DBMS_LOB.WRITE` or `DBMS_LOB.WRITEAPPEND`.
+For such a write, the redo log contains only the part of the value that was written.
+The connector emits these writes as update events and determines the complete column value in one of the following ways:
+
+* If the transaction itself established the value of the column, for example, because it inserted the row directly before the write, the connector assembles the value from the redo log.
+* In all other cases, the connector reads the column from the database, as it was when the transaction committed, by using a flashback query for the row.
+
+Be aware of the following consequences of reading a value from the database:
+
+* The value is the state of the column at the commit of the transaction.
+If a transaction writes to the same column several times, each of these events contains the same final value.
+* The connector runs one query for each such event.
+A transaction that alternates many locator writes between rows or tables results in one event and one query for each write.
+* If the flashback query cannot return the row, the event contains the xref:oracle-property-unavailable-value-placeholder[`unavailable.value.placeholder`] for the column.
+This happens when the undo data that the query requires is no longer available, or when the same transaction deletes the row afterward.
+
+To obtain a value for events that contain the placeholder, you can configure the {link-prefix}:{link-reselect-columns}#reselect-columns-post-processor[Reselect columns post processor] with `reselect.unavailable.values` set to `true`.
+
+[TIP]
+====
+To keep the number of change events and queries low, supply the LOB value in the `INSERT` or `UPDATE` statement where possible.
+When you write a value through a LOB locator, fill the row directly after you insert it, before the transaction changes other rows.
+====
+
 // Type: concept
 // Title: How Oracle processes INTERNAL events and savepoint rollbacks
 // ModuleID: how-oracle-processes-internal-events-and-savepoint-rollbacks

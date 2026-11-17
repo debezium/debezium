@@ -9,6 +9,7 @@ import java.math.BigInteger;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.sql.Types;
 import java.text.DecimalFormat;
 import java.time.Duration;
 import java.time.Instant;
@@ -35,6 +36,7 @@ import io.debezium.connector.oracle.OracleDatabaseSchema;
 import io.debezium.connector.oracle.OracleOffsetContext;
 import io.debezium.connector.oracle.OraclePartition;
 import io.debezium.connector.oracle.OracleSchemaChangeEventEmitter;
+import io.debezium.connector.oracle.OracleValueConverters;
 import io.debezium.connector.oracle.RedoThreadState;
 import io.debezium.connector.oracle.RedoThreadState.RedoThread;
 import io.debezium.connector.oracle.Scn;
@@ -53,6 +55,7 @@ import io.debezium.connector.oracle.logminer.events.LogMinerEvent;
 import io.debezium.connector.oracle.logminer.events.LogMinerEventRow;
 import io.debezium.connector.oracle.logminer.events.RedoSqlDmlEvent;
 import io.debezium.connector.oracle.logminer.events.RollbackToSavepointEvent;
+import io.debezium.connector.oracle.logminer.events.RowIdCodec;
 import io.debezium.connector.oracle.logminer.events.SelectLobLocatorEvent;
 import io.debezium.connector.oracle.logminer.events.XmlBeginEvent;
 import io.debezium.connector.oracle.logminer.events.XmlEndEvent;
@@ -113,6 +116,7 @@ public abstract class AbstractLogMinerStreamingChangeEventSource
     private final OracleConnectorConfig connectorConfig;
     private final OracleConnectionFactory connectionFactory;
     private final OracleConnection streamingConnection;
+    private OracleConnection lobReselectConnection;
     // private final OracleConnection jdbcConnection;
     private final EventDispatcher<OraclePartition, TableId> dispatcher;
     private final ErrorHandler errorHandler;
@@ -237,8 +241,67 @@ public abstract class AbstractLogMinerStreamingChangeEventSource
             errorHandler.setProducerThrowable(throwable);
         }
         finally {
+            closeLobReselectConnection();
             LOGGER.info("Streaming metrics at shutdown: {}", metrics);
             LOGGER.info("Offsets as shutdown: {}", offsetContext);
+        }
+    }
+
+    /**
+     * Reads the value a LOB column had when the transaction committed, for a row that was written through
+     * a LOB locator and for which the events of the transaction do not supply the whole value.
+     *
+     * @param table the table, should not be {@code null}
+     * @param column the LOB column, should not be {@code null}
+     * @param event the locator event of the write, should not be {@code null}
+     * @param commitScn the transaction's commit system change number, may be {@code null}
+     * @return the value, or {@link OracleValueConverters#UNAVAILABLE_VALUE} if it cannot be read
+     */
+    protected Object reselectLobValue(Table table, Column column, DmlEvent event, Scn commitScn) {
+        if (commitScn == null || commitScn.isNull()) {
+            return OracleValueConverters.UNAVAILABLE_VALUE;
+        }
+
+        final String rowId = RowIdCodec.decode(event.getRowId());
+        final Object[] value = { OracleValueConverters.UNAVAILABLE_VALUE };
+        try {
+            final boolean found = getLobReselectConnection().reselectColumnsByRowId(table, List.of(column.name()), rowId, commitScn,
+                    rs -> value[0] = column.jdbcType() == Types.BLOB ? rs.getBytes(1) : rs.getString(1));
+            if (!found) {
+                LOGGER.warn("Cannot reselect column '{}' of table '{}', the row {} does not exist at SCN {}; emitting unavailable value.",
+                        column.name(), table.id(), rowId, commitScn);
+            }
+        }
+        catch (SQLException e) {
+            LOGGER.warn("Cannot reselect column '{}' of table '{}' for row {} at SCN {}; emitting unavailable value.",
+                    column.name(), table.id(), rowId, commitScn, e);
+        }
+        return value[0];
+    }
+
+    private OracleConnection getLobReselectConnection() throws SQLException {
+        // The streaming connection is busy with the mining session, and is not in the pluggable database
+        if (lobReselectConnection == null) {
+            lobReselectConnection = new OracleConnection(getConfig(), false);
+        }
+        if (!lobReselectConnection.isConnected()) {
+            lobReselectConnection.connection();
+            if (isUsingPluggableDatabase()) {
+                lobReselectConnection.setSessionToPdb(getConfig().getPdbName());
+            }
+        }
+        return lobReselectConnection;
+    }
+
+    private void closeLobReselectConnection() {
+        if (lobReselectConnection != null) {
+            try {
+                lobReselectConnection.close();
+            }
+            catch (SQLException e) {
+                LOGGER.warn("Failed to close the connection used to reselect LOB values.", e);
+            }
+            lobReselectConnection = null;
         }
     }
 

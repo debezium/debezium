@@ -202,6 +202,56 @@ public class OracleJsonDataTypeIT extends AbstractAsyncEngineConnectorTest {
         assertThat(after(update).get("EXTRA_DATA")).isEqualTo(jsonUpdateData);
     }
 
+    @Test
+    @FixFor("debezium/dbz#3100")
+    public void shouldStreamEachJsonStatementOfSameTransactionAsSeparateEvent() throws Exception {
+        connection.execute("CREATE TABLE dbz1884 (id number(9,0) primary key, val varchar2(50), extra_data json)");
+        TestHelper.streamTable(connection, "dbz1884");
+
+        Configuration config = TestHelper.defaultConfig()
+                .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "DEBEZIUM.DBZ1884")
+                .with(OracleConnectorConfig.LOB_ENABLED, Boolean.TRUE)
+                .build();
+
+        start(OracleConnector.class, config);
+        assertConnectorIsRunning();
+
+        waitForStreamingRunning(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
+
+        // An update to a document that is not stored in the row has no UPDATE row in the redo
+        connection.executeWithoutCommitting("INSERT INTO dbz1884 (id,val,extra_data) values (1,'v0'," + largeJsonSql("a") + ")");
+        connection.executeWithoutCommitting("UPDATE dbz1884 SET extra_data = " + largeJsonSql("b") + " WHERE id = 1");
+        connection.executeWithoutCommitting("UPDATE dbz1884 SET extra_data = json('{\"c\":1}') WHERE id = 1");
+        connection.executeWithoutCommitting("UPDATE dbz1884 SET val = 'v1', extra_data = " + largeJsonSql("d") + " WHERE id = 1");
+        connection.executeWithoutCommitting("UPDATE dbz1884 SET extra_data = " + largeJsonSql("e") + " WHERE id = 1");
+        connection.commit();
+
+        List<SourceRecord> records = consumeRecordsByTopic(5).recordsForTopic(topicName("DBZ1884"));
+        assertThat(records).hasSize(5);
+
+        VerifyRecord.isValidInsert(records.get(0), "ID", 1);
+        assertThat(after(records.get(0)).get("VAL")).isEqualTo("v0");
+        assertThat(after(records.get(0)).get("EXTRA_DATA")).isEqualTo(largeJsonDocument("a"));
+
+        VerifyRecord.isValidUpdate(records.get(1), "ID", 1);
+        assertThat(after(records.get(1)).get("EXTRA_DATA")).isEqualTo(largeJsonDocument("b"));
+
+        VerifyRecord.isValidUpdate(records.get(2), "ID", 1);
+        assertThat(after(records.get(2)).get("EXTRA_DATA")).isEqualTo("{\"c\":1}");
+
+        VerifyRecord.isValidUpdate(records.get(3), "ID", 1);
+        assertThat(after(records.get(3)).get("VAL")).isEqualTo("v1");
+        assertThat(after(records.get(3)).get("EXTRA_DATA")).isEqualTo(largeJsonDocument("d"));
+
+        VerifyRecord.isValidUpdate(records.get(4), "ID", 1);
+        assertThat(after(records.get(4)).get("VAL")).isEqualTo("v1");
+        assertThat(after(records.get(4)).get("EXTRA_DATA")).isEqualTo(largeJsonDocument("e"));
+    }
+
+    private static String largeJsonSql(String character) {
+        return "JSON_OBJECT('k' VALUE RPAD('%1$s', 4000, '%1$s'), 'm' VALUE RPAD('%1$s', 4000, '%1$s') RETURNING JSON)".formatted(character);
+    }
+
     private static String largeJsonDocument(String character) {
         return "{\"k\":\"" + character.repeat(4000) + "\",\"m\":\"" + character.repeat(4000) + "\"}";
     }

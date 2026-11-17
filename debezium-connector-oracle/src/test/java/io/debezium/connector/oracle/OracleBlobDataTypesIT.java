@@ -1779,7 +1779,7 @@ public class OracleBlobDataTypesIT extends AbstractAsyncEngineConnectorTest {
     }
 
     @Test
-    @FixFor("DBZ-4366")
+    @FixFor({ "DBZ-4366", "debeziumm/dbz#3100" })
     @SkipWhenAdapterNameIsNot(value = SkipWhenAdapterNameIsNot.AdapterName.ANY_LOGMINER, reason = "Xstream marks chunks as end of rows")
     public void shouldStreamBlobsWrittenInChunkedMode() throws Exception {
         TestHelper.dropTable(connection, "dbz4366");
@@ -1812,14 +1812,41 @@ public class OracleBlobDataTypesIT extends AbstractAsyncEngineConnectorTest {
             connection.prepareQuery(fillQuery, ps -> ps.setBytes(1, part(BIN_DATA, 0, 1024)), null);
             connection.execute("COMMIT");
 
-            SourceRecords records = consumeRecordsByTopic(1);
-            assertThat(records.recordsForTopic(topicName("DBZ4366"))).hasSize(1);
+            // The first 3 events write to the LOB column in-line, so they're treated as independent events.
+            // Because there are no interwoven events, the fourth event is seen as a sequential write operation,
+            // and because the LOB write is now out-of-line, the 1021 additional writes get merged into one event.
+            final SourceRecords records = consumeRecordsByTopic(4);
+            final List<SourceRecord> topicRecords = records.recordsForTopic(topicName("DBZ4366"));
+            assertThat(topicRecords).hasSize(4);
 
-            SourceRecord record = records.recordsForTopic(topicName("DBZ4366")).get(0);
-            Struct after = ((Struct) record.value()).getStruct(Envelope.FieldName.AFTER);
-            assertThat(after.get("ID")).isEqualTo(1);
-            ByteBuffer data = (ByteBuffer) after.get("DATA");
-            assertThat(data.array().length).isEqualTo(1024 * 1024);
+            final byte[] chunk = part(BIN_DATA, 0, 1024);
+            final ByteBuffer placeholder = getUnavailableValuePlaceholder(config);
+
+            for (int eventIndex = 0; eventIndex < 4; eventIndex++) {
+                final SourceRecord record = topicRecords.get(eventIndex);
+
+                final Struct value = ((Struct) record.value());
+                assertThat(value.getString(Envelope.FieldName.OPERATION)).isEqualTo(eventIndex == 0 ? "c" : "u");
+
+                final Struct before = value.getStruct(Envelope.FieldName.BEFORE);
+                if (eventIndex == 0) {
+                    assertThat(before).isNull();
+                }
+                else {
+                    assertThat(before).isNotNull();
+                    assertThat(before.get("DATA")).isEqualTo(placeholder);
+                }
+
+                final Struct after = value.getStruct(Envelope.FieldName.AFTER);
+                assertThat(after.get("ID")).isEqualTo(1);
+
+                final ByteBuffer data = (ByteBuffer) after.get("DATA");
+                assertThat(data).isNotNull();
+
+                final int counts = eventIndex < 3 ? eventIndex + 1 : 1024;
+                assertThat(data.array().length).isEqualTo(1024 * counts);
+                assertThat(data.array()).isEqualTo(repeatBytes(chunk, counts));
+            }
 
             // As a sanity check, there should be no more records.
             assertNoRecordsToConsume();
@@ -1830,7 +1857,7 @@ public class OracleBlobDataTypesIT extends AbstractAsyncEngineConnectorTest {
     }
 
     @Test
-    @FixFor("DBZ-4366")
+    @FixFor({ "DBZ-4366", "debezium/dbz#3100" })
     @SkipWhenAdapterNameIsNot(value = SkipWhenAdapterNameIsNot.AdapterName.ANY_LOGMINER, reason = "Xstream marks chunks as end of rows")
     public void shouldStreamBlobsWrittenInInterleavedChunkedMode() throws Exception {
         TestHelper.dropTable(connection, "dbz4366");
@@ -1872,16 +1899,10 @@ public class OracleBlobDataTypesIT extends AbstractAsyncEngineConnectorTest {
             }, null);
             connection.execute("COMMIT");
 
-            SourceRecords records = consumeRecordsByTopic(1);
-            assertThat(records.recordsForTopic(topicName("DBZ4366"))).hasSize(1);
-
-            SourceRecord record = records.recordsForTopic(topicName("DBZ4366")).get(0);
-            Struct after = ((Struct) record.value()).getStruct(Envelope.FieldName.AFTER);
-            assertThat(after.get("ID")).isEqualTo(1);
-            ByteBuffer data = (ByteBuffer) after.get("DATA");
-            assertThat(data.array().length).isEqualTo(1024 * 1024);
-            ByteBuffer data2 = (ByteBuffer) after.get("DATA2");
-            assertThat(data2.array().length).isEqualTo(1024 * 1024);
+            // The first 3 writes to each LOB column are in-line, and since the writes alternate between the two columns,
+            // they're treated as 6 independent events. Because there are no interwoven events for other rows, the seventh
+            // event is seen as a sequential write operation, where the 1021 out-of-line writes per column get merged.
+            assertInterleavedChunkedWritesToTwoColumns(config);
 
             // As a sanity check, there should be no more records.
             assertNoRecordsToConsume();
@@ -1892,7 +1913,7 @@ public class OracleBlobDataTypesIT extends AbstractAsyncEngineConnectorTest {
     }
 
     @Test
-    @FixFor("DBZ-4366")
+    @FixFor({ "DBZ-4366", "debezium/dbz#3100" })
     @SkipWhenAdapterNameIsNot(value = SkipWhenAdapterNameIsNot.AdapterName.ANY_LOGMINER, reason = "Xstream marks chunks as end of rows")
     public void shouldStreamBlobsWrittenInInterleavedChunkedMode2() throws Exception {
         TestHelper.dropTable(connection, "dbz4366");
@@ -1933,16 +1954,10 @@ public class OracleBlobDataTypesIT extends AbstractAsyncEngineConnectorTest {
             }, null);
             connection.execute("COMMIT");
 
-            SourceRecords records = consumeRecordsByTopic(1);
-            assertThat(records.recordsForTopic(topicName("DBZ4366"))).hasSize(1);
-
-            SourceRecord record = records.recordsForTopic(topicName("DBZ4366")).get(0);
-            Struct after = ((Struct) record.value()).getStruct(Envelope.FieldName.AFTER);
-            assertThat(after.get("ID")).isEqualTo(1);
-            ByteBuffer data = (ByteBuffer) after.get("DATA");
-            assertThat(data.array().length).isEqualTo(1024 * 1024);
-            ByteBuffer data2 = (ByteBuffer) after.get("DATA2");
-            assertThat(data2.array().length).isEqualTo(1024 * 1024);
+            // Both locators stay open across the loop, but the redo is the same as when they are reopened on each pass.
+            // The first 3 writes to each LOB column are in-line and alternate between the columns, giving 6 independent
+            // events, and the 1021 out-of-line writes per column get merged into the seventh.
+            assertInterleavedChunkedWritesToTwoColumns(config);
 
             // As a sanity check, there should be no more records.
             assertNoRecordsToConsume();
@@ -1995,20 +2010,43 @@ public class OracleBlobDataTypesIT extends AbstractAsyncEngineConnectorTest {
             }, null);
             connection.execute("COMMIT");
 
-            SourceRecords records = consumeRecordsByTopic(2);
-            assertThat(records.recordsForTopic(topicName("DBZ4366"))).hasSize(2);
+            // The writes alternate between two rows, so no write directly follows another one for the same row.
+            // The 3 in-line writes per row carry the whole value so far. Each of the remaining 1021 writes per row is
+            // made through a locator after the other row changed, so its value is reselected as the transaction left it.
+            final SourceRecords records = consumeRecordsByTopic(2050);
+            final List<SourceRecord> topicRecords = records.recordsForTopic(topicName("DBZ4366"));
+            assertThat(topicRecords).hasSize(2050);
 
-            SourceRecord record = records.recordsForTopic(topicName("DBZ4366")).get(0);
-            Struct after = ((Struct) record.value()).getStruct(Envelope.FieldName.AFTER);
-            assertThat(after.get("ID")).isEqualTo(1);
-            ByteBuffer data = (ByteBuffer) after.get("DATA");
-            assertThat(data.array().length).isEqualTo(1024 * 1024);
+            final byte[] chunk = part(BIN_DATA, 0, 1024);
+            final ByteBuffer placeholder = getUnavailableValuePlaceholder(config);
 
-            record = records.recordsForTopic(topicName("DBZ4366")).get(1);
-            after = ((Struct) record.value()).getStruct(Envelope.FieldName.AFTER);
-            assertThat(after.get("ID")).isEqualTo(2);
-            data = (ByteBuffer) after.get("DATA");
-            assertThat(data.array().length).isEqualTo(1024 * 1024);
+            final ByteBuffer full = ByteBuffer.wrap(repeatBytes(chunk, 1024));
+
+            for (int eventIndex = 0; eventIndex < 2050; eventIndex++) {
+                final Struct value = (Struct) topicRecords.get(eventIndex).value();
+                assertThat(value.getString(Envelope.FieldName.OPERATION)).isEqualTo(eventIndex < 2 ? "c" : "u");
+
+                final Struct before = value.getStruct(Envelope.FieldName.BEFORE);
+                if (eventIndex < 2) {
+                    assertThat(before).isNull();
+                }
+                else {
+                    assertThat(before).isNotNull();
+                    assertThat(before.get("DATA")).isEqualTo(placeholder);
+                }
+
+                final Struct after = value.getStruct(Envelope.FieldName.AFTER);
+                assertThat(after.get("ID")).isEqualTo(eventIndex % 2 + 1);
+
+                // Number of writes seen for the row, 0 for the insert
+                final int writes = eventIndex / 2;
+                if (writes <= 3) {
+                    assertThat(after.get("DATA")).isEqualTo(ByteBuffer.wrap(repeatBytes(chunk, writes)));
+                }
+                else {
+                    assertThat(after.get("DATA")).isEqualTo(full);
+                }
+            }
 
             // As a sanity check, there should be no more records.
             assertNoRecordsToConsume();
@@ -2499,7 +2537,7 @@ public class OracleBlobDataTypesIT extends AbstractAsyncEngineConnectorTest {
     }
 
     @Test
-    @FixFor("debezium/dbz#1917")
+    @FixFor({ "debezium/dbz#1917", "debezium/dbz#3100" })
     @SkipWhenAdapterNameIsNot(value = SkipWhenAdapterNameIsNot.AdapterName.LOGMINER_BUFFERED)
     public void shouldRollbackExactlyOneOperation() throws Exception {
         TestHelper.dropTable(connection, "DBZ1917");
@@ -2537,12 +2575,23 @@ public class OracleBlobDataTypesIT extends AbstractAsyncEngineConnectorTest {
             connection.prepareQuery("INSERT INTO DBZ1917 (id,data) VALUES (2,?)", ps -> ps.setBlob(1, insert2Blob), null);
             connection.commit();
 
-            List<SourceRecord> tableRecords = consumeRecordsByTopic(2).recordsForTopic(topicName("DBZ1917"));
-            assertThat(tableRecords).hasSize(2);
+            List<SourceRecord> tableRecords = consumeRecordsByTopic(3).recordsForTopic(topicName("DBZ1917"));
+            assertThat(tableRecords).hasSize(3);
+
             SourceRecord insert1 = tableRecords.get(0);
             assertThat(getAfterField(insert1, "ID")).isEqualTo(1);
-            assertThat(getAfterField(insert1, "DATA")).isEqualTo(getByteBufferFromBlob(update2Blob));
+            assertThat(getAfterField(insert1, "DATA")).isEqualTo(getByteBufferFromBlob(insert1Blob));
             assertThat(getAfterField(insert1, "DATA2")).isNull();
+
+            SourceRecord update1 = tableRecords.get(1);
+            assertThat(getAfterField(update1, "ID")).isEqualTo(1);
+            assertThat(getAfterField(update1, "DATA")).isEqualTo(getByteBufferFromBlob(update2Blob));
+            assertThat(getAfterField(update1, "DATA2")).isEqualTo(getUnavailableValuePlaceholder(config));
+
+            SourceRecord insert2 = tableRecords.get(2);
+            assertThat(getAfterField(insert2, "ID")).isEqualTo(2);
+            assertThat(getAfterField(insert2, "DATA")).isEqualTo(getByteBufferFromBlob(insert2Blob));
+            assertThat(getAfterField(insert2, "DATA2")).isNull();
 
             stopConnector();
         }
@@ -2597,5 +2646,58 @@ public class OracleBlobDataTypesIT extends AbstractAsyncEngineConnectorTest {
 
     private static Object getAfterField(SourceRecord record, String fieldName) {
         return after(record).get(fieldName);
+    }
+
+    private static byte[] repeatBytes(byte[] chunk, int times) {
+        final byte[] result = new byte[chunk.length * times];
+        for (int i = 0; i < times; i++) {
+            System.arraycopy(chunk, 0, result, i * chunk.length, chunk.length);
+        }
+        return result;
+    }
+
+    private void assertInterleavedChunkedWritesToTwoColumns(Configuration config) throws InterruptedException {
+        final SourceRecords records = consumeRecordsByTopic(7);
+        final List<SourceRecord> topicRecords = records.recordsForTopic(topicName("DBZ4366"));
+        assertThat(topicRecords).hasSize(7);
+
+        final byte[] chunk = part(BIN_DATA, 0, 1024);
+        final ByteBuffer placeholder = getUnavailableValuePlaceholder(config);
+
+        for (int eventIndex = 0; eventIndex < 7; eventIndex++) {
+            final Struct value = (Struct) topicRecords.get(eventIndex).value();
+            assertThat(value.getString(Envelope.FieldName.OPERATION)).isEqualTo(eventIndex == 0 ? "c" : "u");
+
+            final Struct before = value.getStruct(Envelope.FieldName.BEFORE);
+            if (eventIndex == 0) {
+                assertThat(before).isNull();
+            }
+            else {
+                assertThat(before).isNotNull();
+                assertThat(before.get("DATA")).isEqualTo(placeholder);
+                assertThat(before.get("DATA2")).isEqualTo(placeholder);
+            }
+
+            final Struct after = value.getStruct(Envelope.FieldName.AFTER);
+            assertThat(after.get("ID")).isEqualTo(1);
+
+            if (eventIndex == 6) {
+                // Out-of-line writes of both columns are merged into the last event
+                final ByteBuffer full = ByteBuffer.wrap(repeatBytes(chunk, 1024));
+                assertThat(after.get("DATA")).isEqualTo(full);
+                assertThat(after.get("DATA2")).isEqualTo(full);
+            }
+            else {
+                final ByteBuffer written = ByteBuffer.wrap(repeatBytes(chunk, eventIndex / 2 + 1));
+                if (eventIndex % 2 == 0) {
+                    assertThat(after.get("DATA")).isEqualTo(written);
+                    assertThat(after.get("DATA2")).isEqualTo(eventIndex == 0 ? ByteBuffer.wrap(new byte[0]) : placeholder);
+                }
+                else {
+                    assertThat(after.get("DATA")).isEqualTo(placeholder);
+                    assertThat(after.get("DATA2")).isEqualTo(written);
+                }
+            }
+        }
     }
 }

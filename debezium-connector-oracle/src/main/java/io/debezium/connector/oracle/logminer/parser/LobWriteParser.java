@@ -59,7 +59,7 @@ public class LobWriteParser {
 
         // Double check whether Oracle may have escaped single-quotes in the SQL data.
         // This avoids unintended truncation during the LOB merge phase during the commit
-        // logic handled by TransactionCommitConsumer.
+        // logic handled by StatementGroupCommitConsumer.
         if (data.contains("''")) {
             data = data.replaceAll("''", "'");
         }
