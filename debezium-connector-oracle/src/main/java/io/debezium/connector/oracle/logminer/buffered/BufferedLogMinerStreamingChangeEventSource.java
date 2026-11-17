@@ -39,7 +39,7 @@ import io.debezium.connector.oracle.logminer.LogFile;
 import io.debezium.connector.oracle.logminer.LogMinerChangeRecordEmitter;
 import io.debezium.connector.oracle.logminer.LogMinerStreamingChangeEventSourceMetrics;
 import io.debezium.connector.oracle.logminer.SqlUtils;
-import io.debezium.connector.oracle.logminer.TransactionCommitConsumer;
+import io.debezium.connector.oracle.logminer.StatementGroupCommitConsumer;
 import io.debezium.connector.oracle.logminer.buffered.ehcache.EhcacheCacheProvider;
 import io.debezium.connector.oracle.logminer.buffered.ehcache.EhcacheTransactionFactory;
 import io.debezium.connector.oracle.logminer.buffered.infinispan.EmbeddedInfinispanCacheProvider;
@@ -543,7 +543,7 @@ public class BufferedLogMinerStreamingChangeEventSource extends AbstractLogMiner
             final boolean skipEvents = isTransactionSkippedAtCommit(transaction);
             dispatchTransactionCommittedEvent = !skipEvents;
             final ZoneOffset databaseOffset = getMetrics().getDatabaseOffset();
-            TransactionCommitConsumer.Handler<LogMinerEvent> delegate = (event, eventIndex, eventTrxId, eventTrxSeq, eventsProcessed) -> {
+            StatementGroupCommitConsumer.Handler<LogMinerEvent> delegate = (event, eventIndex, eventTrxId, eventTrxSeq, eventsProcessed) -> {
                 // Update SCN in offset context only if processed SCN less than SCN of other transactions
                 if (smallestScn.isNull() || commitScn.compareTo(smallestScn) < 0) {
                     getMetrics().setOldestScnDetails(event.getScn(), event.getChangeTime());
@@ -622,7 +622,8 @@ public class BufferedLogMinerStreamingChangeEventSource extends AbstractLogMiner
                 // Clear redo SQL
                 getOffsetContext().setRedoSql(null);
             };
-            try (TransactionCommitConsumer commitConsumer = new TransactionCommitConsumer(delegate, getConfig(), getSchema())) {
+            try (StatementGroupCommitConsumer commitConsumer = new StatementGroupCommitConsumer(delegate, getConfig(), getSchema(),
+                    (table, column, event) -> reselectLobValue(table, column, event, commitScn))) {
                 getTransactionCache().forEachEvent(transaction, event -> {
                     if (!getContext().isRunning()) {
                         return false;

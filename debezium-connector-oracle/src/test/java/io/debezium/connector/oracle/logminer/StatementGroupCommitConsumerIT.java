@@ -39,7 +39,7 @@ import io.debezium.junit.logging.LogInterceptor;
  */
 @SkipWhenAdapterNameIsNot(SkipWhenAdapterNameIsNot.AdapterName.ANY_LOGMINER)
 @SkipWhenLogMiningStrategyIs(value = SkipWhenLogMiningStrategyIs.Strategy.HYBRID, reason = "Cannot use lob.enabled with Hybrid")
-public class TransactionCommitConsumerIT extends AbstractAsyncEngineConnectorTest {
+public class StatementGroupCommitConsumerIT extends AbstractAsyncEngineConnectorTest {
 
     private static final String BINARY_XML_STORAGE = "XMLTYPE COLUMN xmlrecord STORE AS SECUREFILE BINARY XML";
     private static final String DEFAULT_XML_STORAGE = "";
@@ -89,7 +89,7 @@ public class TransactionCommitConsumerIT extends AbstractAsyncEngineConnectorTes
             waitForStreamingRunning(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
 
             // Perform several iterations to create a large transaction with specific sequences of changes against
-            // tables that will be viewed by the TransactionCommitConsumer as eligible for merging since LOB is
+            // tables that will be viewed by the StatementGroupCommitConsumer as eligible for merging since LOB is
             // enabled but that shouldn't be because the tables have no LOB columns.
             connection.setAutoCommit(false);
             final int ITERATIONS = 25;
@@ -147,7 +147,7 @@ public class TransactionCommitConsumerIT extends AbstractAsyncEngineConnectorTes
     }
 
     @Test
-    @FixFor("DBZ-9521")
+    @FixFor({ "DBZ-9521", "debezium/dbz#3100" })
     public void shouldFlushQueuedLobChangesWhenChangeForTableWithoutLobColumnsAppearsInStream() throws Exception {
         TestHelper.dropTable(connection, "dbz9521a");
         TestHelper.dropTable(connection, "dbz9521b");
@@ -181,15 +181,15 @@ public class TransactionCommitConsumerIT extends AbstractAsyncEngineConnectorTes
 
             connection.commit();
 
-            // This makes sure that when the second instance of DBZ9521B is seen and its immediately dispatched,
-            // the connector automatically flushes any pending events from prior LOB-enabled tables, should any
-            // exist before immediately dispatching the non-LOB table.
+            // This makes sure that when the second instance of DBZ9521B is seen, the connector flushes any pending
+            // events from prior LOB-enabled tables before dispatching the non-LOB table, so that the events are
+            // emitted in the order the changes were made.
             final SourceRecords sourceRecords = consumeRecordsByTopic(3);
             assertThat(sourceRecords.recordsForTopic("server1.DEBEZIUM.DBZ9521A")).hasSize(1);
             assertThat(sourceRecords.recordsForTopic("server1.DEBEZIUM.DBZ9521B")).hasSize(2);
 
             assertThat(sourceRecords.allRecordsInOrder().stream().map(SourceRecord::topic).toList()).containsExactly(
-                    "server1.DEBEZIUM.DBZ9521B", "server1.DEBEZIUM.DBZ9521B", "server1.DEBEZIUM.DBZ9521A");
+                    "server1.DEBEZIUM.DBZ9521B", "server1.DEBEZIUM.DBZ9521A", "server1.DEBEZIUM.DBZ9521B");
         }
         finally {
             TestHelper.dropTable(connection, "dbz9521a");
@@ -259,7 +259,7 @@ public class TransactionCommitConsumerIT extends AbstractAsyncEngineConnectorTes
     }
 
     @Test
-    @FixFor("debezium/dbz#2368")
+    @FixFor({ "debezium/dbz#2368", "debezium/dbz#3100" })
     @SkipOnDatabaseParameter(parameterName = "max_string_size", value = "EXTENDED", matches = false, reason = "Requires max_string_size set to EXTENDED")
     public void shouldNotMergeExtendedStringAndXmlValues() throws Exception {
         TestHelper.dropTable(connection, "dbz2368");
@@ -281,13 +281,23 @@ public class TransactionCommitConsumerIT extends AbstractAsyncEngineConnectorTes
                     "insert into dbz2368(id, ext0, xml0) values (1, RPAD('ext0-1-', 4000, '0'), xmltype('<xml0><id>1</id><v>0</v></xml0>'))",
                     "update dbz2368 set ext0 = RPAD('ext0-1-', 4000, '1'), xml0 = xmltype('<xml0><id>1</id><v>1</v></xml0>') where id = 1");
 
-            List<SourceRecord> tableRecords = consumeRecordsByTopic(1).recordsForTopic("server1.DEBEZIUM.DBZ2368");
-            assertThat(tableRecords).hasSize(1);
+            // The insert and the update are separate statements, each with its own extended string and XML values
+            List<SourceRecord> tableRecords = consumeRecordsByTopic(2).recordsForTopic("server1.DEBEZIUM.DBZ2368");
+            assertThat(tableRecords).hasSize(2);
 
+            VerifyRecord.isValidInsert(tableRecords.get(0), true);
             Struct after = ((Struct) tableRecords.get(0).value()).getStruct(Envelope.FieldName.AFTER);
+            assertThat(after.get("ID")).isEqualTo(1);
+            assertThat(after.get("EXT0")).isEqualTo("ext0-1-" + "0".repeat(3993));
+            assertThat(after.get("XML0")).isEqualTo("<xml0><id>1</id><v>0</v></xml0>");
+
+            VerifyRecord.isValidUpdate(tableRecords.get(1), true);
+            after = ((Struct) tableRecords.get(1).value()).getStruct(Envelope.FieldName.AFTER);
             assertThat(after.get("ID")).isEqualTo(1);
             assertThat(after.get("EXT0")).isEqualTo("ext0-1-" + "1".repeat(3993));
             assertThat(after.get("XML0")).isEqualTo("<xml0><id>1</id><v>1</v></xml0>");
+
+            assertNoRecordsToConsume();
         }
         finally {
             TestHelper.dropTable(connection, "dbz2368");
@@ -295,47 +305,70 @@ public class TransactionCommitConsumerIT extends AbstractAsyncEngineConnectorTes
     }
 
     // The concatenation reported in debezium/dbz#2159 was fixed by debezium/dbz#2368. The following tests guard
-    // that the last XML document wins when a row is inserted and updated in the same transaction, across the
-    // supported XMLTYPE storage models.
+    // that each update of the XML column in the same transaction as the insert is emitted as an event of its own
+    // with only its own document, across the supported XMLTYPE storage models.
     @Test
-    @FixFor("debezium/dbz#2159")
+    @FixFor({ "debezium/dbz#2159", "debezium/dbz#3100" })
     public void shouldEmitLastXmlValueWhenRowInsertedAndXmlUpdatedInSameTransaction() throws Exception {
-        final String update = createXmlRow("update1");
-        assertThat(getXmlValueForSameTransactionChanges(BINARY_XML_STORAGE, update)).isEqualTo(update);
+        assertXmlValuesForSameTransactionChanges(BINARY_XML_STORAGE, createXmlRow("update1"));
     }
 
     @Test
-    @FixFor("debezium/dbz#2159")
+    @FixFor({ "debezium/dbz#2159", "debezium/dbz#3100" })
     public void shouldEmitLastXmlValueWhenRowInsertedAndXmlUpdatedTwiceInSameTransaction() throws Exception {
-        final String update = createXmlRow("update2");
-        assertThat(getXmlValueForSameTransactionChanges(BINARY_XML_STORAGE, createXmlRow("update1"), update)).isEqualTo(update);
+        assertXmlValuesForSameTransactionChanges(BINARY_XML_STORAGE, createXmlRow("update1"), createXmlRow("update2"));
     }
 
     @Test
-    @FixFor("debezium/dbz#2159")
+    @FixFor({ "debezium/dbz#2159", "debezium/dbz#3100" })
     public void shouldEmitLastXmlValueWhenRowInsertedAndXmlUpdatedInSameTransactionWithDefaultStorage() throws Exception {
-        final String update = createXmlRow("update1");
-        assertThat(getXmlValueForSameTransactionChanges(DEFAULT_XML_STORAGE, update)).isEqualTo(update);
+        assertXmlValuesForSameTransactionChanges(DEFAULT_XML_STORAGE, createXmlRow("update1"));
     }
 
     @Test
-    @FixFor("debezium/dbz#2159")
+    @FixFor({ "debezium/dbz#2159", "debezium/dbz#3100" })
     public void shouldEmitLastXmlValueWhenRowInsertedAndXmlUpdatedInSameTransactionWithClobStorage() throws Exception {
-        // With CLOB storage the value is emitted wrapped as XMLType('...'), which is a separate issue, so
-        // only check that the last document replaced the inserted one rather than being appended to it.
+        // With CLOB storage the value is emitted wrapped as XMLType('...'), which is a separate issue, so only
+        // check that the last document replaced the inserted one rather than being appended to it.
+        final String insert = createXmlRow("value1");
         final String update = createXmlRow("update1");
-        final String value = (String) getXmlValueForSameTransactionChanges(CLOB_XML_STORAGE, update);
-        assertThat(value).containsOnlyOnce(update).doesNotContain(createXmlRow("value1"));
+        final List<SourceRecord> records = getRecordsForSameTransactionChanges(CLOB_XML_STORAGE, 2, update);
+
+        VerifyRecord.isValidInsert(records.get(0), true);
+        final Struct insertAfter = ((Struct) records.get(0).value()).getStruct(Envelope.FieldName.AFTER);
+        assertThat(insertAfter.get("RECID")).isEqualTo("test3");
+        assertThat((String) insertAfter.get("XMLRECORD")).containsOnlyOnce(insert).doesNotContain(update);
+
+        VerifyRecord.isValidUpdate(records.get(1), true);
+        final Struct updateAfter = ((Struct) records.get(1).value()).getStruct(Envelope.FieldName.AFTER);
+        assertThat(updateAfter.get("RECID")).isEqualTo("test3");
+        assertThat((String) updateAfter.get("XMLRECORD")).containsOnlyOnce(update).doesNotContain(insert);
     }
 
     @Test
-    @FixFor("debezium/dbz#2159")
+    @FixFor({ "debezium/dbz#2159", "debezium/dbz#3100" })
     public void shouldEmitNullXmlValueWhenRowInsertedAndXmlSetToNullInSameTransaction() throws Exception {
-        // Setting the column to NULL is merged as a plain column value rather than as a new XML document
-        assertThat(getXmlValueForSameTransactionChanges(BINARY_XML_STORAGE, (String) null)).isNull();
+        assertXmlValuesForSameTransactionChanges(BINARY_XML_STORAGE, (String) null);
     }
 
-    private Object getXmlValueForSameTransactionChanges(String storageClause, String... updateValues) throws Exception {
+    // Expects the insert followed by one update per value, each with exactly its own document
+    private void assertXmlValuesForSameTransactionChanges(String storageClause, String... updateValues) throws Exception {
+        final List<SourceRecord> records = getRecordsForSameTransactionChanges(storageClause, updateValues.length + 1, updateValues);
+
+        VerifyRecord.isValidInsert(records.get(0), true);
+        final Struct insertAfter = ((Struct) records.get(0).value()).getStruct(Envelope.FieldName.AFTER);
+        assertThat(insertAfter.get("RECID")).isEqualTo("test3");
+        assertThat(insertAfter.get("XMLRECORD")).isEqualTo(createXmlRow("value1"));
+
+        for (int i = 0; i < updateValues.length; i++) {
+            VerifyRecord.isValidUpdate(records.get(i + 1), true);
+            final Struct updateAfter = ((Struct) records.get(i + 1).value()).getStruct(Envelope.FieldName.AFTER);
+            assertThat(updateAfter.get("RECID")).isEqualTo("test3");
+            assertThat(updateAfter.get("XMLRECORD")).isEqualTo(updateValues[i]);
+        }
+    }
+
+    private List<SourceRecord> getRecordsForSameTransactionChanges(String storageClause, int expectedRecords, String... updateValues) throws Exception {
         TestHelper.dropTable(connection, "dbz2159");
         try {
             connection.execute("CREATE TABLE dbz2159 (recid varchar2(255) primary key, xmlrecord xmltype) " + storageClause);
@@ -359,15 +392,11 @@ public class TransactionCommitConsumerIT extends AbstractAsyncEngineConnectorTes
             }
             connection.execute(statements);
 
-            List<SourceRecord> tableRecords = consumeRecordsByTopic(1).recordsForTopic("server1.DEBEZIUM.DBZ2159");
-            assertThat(tableRecords).hasSize(1);
-            VerifyRecord.isValidInsert(tableRecords.get(0), true);
-
-            Struct after = ((Struct) tableRecords.get(0).value()).getStruct(Envelope.FieldName.AFTER);
-            assertThat(after.get("RECID")).isEqualTo("test3");
+            final List<SourceRecord> tableRecords = consumeRecordsByTopic(expectedRecords).recordsForTopic("server1.DEBEZIUM.DBZ2159");
+            assertThat(tableRecords).hasSize(expectedRecords);
 
             assertNoRecordsToConsume();
-            return after.get("XMLRECORD");
+            return tableRecords;
         }
         finally {
             TestHelper.dropTable(connection, "dbz2159");

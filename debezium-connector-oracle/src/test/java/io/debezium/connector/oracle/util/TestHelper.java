@@ -33,7 +33,7 @@ import io.debezium.connector.oracle.OracleConnectorConfig.LogMiningBufferType;
 import io.debezium.connector.oracle.OracleConnectorConfig.LogMiningStrategy;
 import io.debezium.connector.oracle.Scn;
 import io.debezium.connector.oracle.logminer.AbstractLogMinerStreamingChangeEventSource;
-import io.debezium.connector.oracle.logminer.TransactionCommitConsumer;
+import io.debezium.connector.oracle.logminer.StatementGroupCommitConsumer;
 import io.debezium.connector.oracle.logminer.buffered.BufferedLogMinerStreamingChangeEventSource;
 import io.debezium.connector.oracle.logminer.buffered.CacheProvider;
 import io.debezium.connector.oracle.logminer.unbuffered.UnbufferedLogMinerStreamingChangeEventSource;
@@ -902,7 +902,7 @@ public class TestHelper {
 
     public static LogInterceptor getEventCommitHandler() {
         return switch (adapter()) {
-            case LOG_MINER, LOG_MINER_UNBUFFERED -> new LogInterceptor(TransactionCommitConsumer.class);
+            case LOG_MINER, LOG_MINER_UNBUFFERED -> new LogInterceptor(StatementGroupCommitConsumer.class);
             case XSTREAM -> new LogInterceptor("io.debezium.connector.oracle.xstream.LcrEventHandler");
             case OLR -> new LogInterceptor(OpenLogReplicatorStreamingChangeEventSource.class);
         };

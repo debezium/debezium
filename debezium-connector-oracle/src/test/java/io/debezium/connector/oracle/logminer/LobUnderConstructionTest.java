@@ -5,8 +5,8 @@
  */
 package io.debezium.connector.oracle.logminer;
 
-import static io.debezium.connector.oracle.logminer.TransactionCommitConsumer.LobFragment;
-import static io.debezium.connector.oracle.logminer.TransactionCommitConsumer.LobUnderConstruction;
+import static io.debezium.connector.oracle.logminer.StatementGroupCommitConsumer.LobFragment;
+import static io.debezium.connector.oracle.logminer.StatementGroupCommitConsumer.LobUnderConstruction;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.sql.SQLException;

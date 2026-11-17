@@ -876,14 +876,18 @@ public abstract class AbstractBufferedLogMinerStreamingChangeEventSourceIT exten
                 "UPDATE DBZ1960_21 SET LOB0 = RPAD('LOB0-1-', 1985, '2'), LOB1 = 'LOB1-1-2' WHERE ID = 1",
                 "ROLLBACK TO SAVEPOINT s1",
                 "INSERT INTO DBZ1960_21 (ID) VALUES (2)", };
-        List<SourceRecord> tableRecords = execute(tableName, tableSpec, false, 2, statements);
-        assertThat(tableRecords).hasSize(2);
+        List<SourceRecord> tableRecords = execute(tableName, tableSpec, false, 3, statements);
+        assertThat(tableRecords).hasSize(3);
 
         Struct after = ((Struct) tableRecords.get(0).value()).getStruct(Envelope.FieldName.AFTER);
         assertThat(after.get("ID")).isEqualTo(1);
         assertThat(after.get("LOB0")).isEqualTo(null);
         assertThat(after.get("LOB1")).isEqualTo(null);
-        assertThat(((Struct) tableRecords.get(1).value()).getStruct(Envelope.FieldName.AFTER).get("ID")).isEqualTo(2);
+        after = ((Struct) tableRecords.get(1).value()).getStruct(Envelope.FieldName.AFTER);
+        assertThat(after.get("ID")).isEqualTo(1);
+        assertThat(after.get("LOB0")).isEqualTo(null);
+        assertThat(after.get("LOB1")).isEqualTo(null);
+        assertThat(((Struct) tableRecords.get(2).value()).getStruct(Envelope.FieldName.AFTER).get("ID")).isEqualTo(2);
     }
 
     @Test
@@ -910,14 +914,18 @@ public abstract class AbstractBufferedLogMinerStreamingChangeEventSourceIT exten
                 "UPDATE DBZ1960_22 SET LOB0 = 'LOB0-1-2', EXT0 = RPAD('EXT0-1-', 4000, '2') WHERE ID = 1",
                 "ROLLBACK TO SAVEPOINT s1",
                 "INSERT INTO DBZ1960_22 (ID) VALUES (2)", };
-        List<SourceRecord> tableRecords = execute(tableName, tableSpec, false, 2, statements);
-        assertThat(tableRecords).hasSize(2);
+        List<SourceRecord> tableRecords = execute(tableName, tableSpec, false, 3, statements);
+        assertThat(tableRecords).hasSize(3);
 
         Struct after = ((Struct) tableRecords.get(0).value()).getStruct(Envelope.FieldName.AFTER);
         assertThat(after.get("ID")).isEqualTo(1);
-        assertThat(after.get("LOB0")).isEqualTo("LOB0-1-" + "1".repeat(1978));
+        assertThat(after.get("LOB0")).isEqualTo("LOB0-1-0");
         assertThat(after.get("EXT0")).isEqualTo("EXT0-1-0");
-        assertThat(((Struct) tableRecords.get(1).value()).getStruct(Envelope.FieldName.AFTER).get("ID")).isEqualTo(2);
+        after = ((Struct) tableRecords.get(1).value()).getStruct(Envelope.FieldName.AFTER);
+        assertThat(after.get("ID")).isEqualTo(1);
+        assertThat(after.get("LOB0")).isEqualTo("LOB0-1-" + "1".repeat(1978));
+        assertThat(after.get("EXT0")).isEqualTo(OracleConnectorConfig.UNAVAILABLE_VALUE_PLACEHOLDER.defaultValueAsString());
+        assertThat(((Struct) tableRecords.get(2).value()).getStruct(Envelope.FieldName.AFTER).get("ID")).isEqualTo(2);
     }
 
     @Test
@@ -965,15 +973,20 @@ public abstract class AbstractBufferedLogMinerStreamingChangeEventSourceIT exten
                 "UPDATE DBZ1960_24 SET EXT0 = 'EXT0-1-2', LOB0 = RPAD('LOB0-1-', 1985, '2') WHERE ID = 1",
                 "ROLLBACK TO SAVEPOINT s1",
                 "INSERT INTO DBZ1960_24 (ID) VALUES (2)", };
-        List<SourceRecord> tableRecords = execute(tableName, tableSpec, false, 2, statements);
-        assertThat(tableRecords).hasSize(2);
+        List<SourceRecord> tableRecords = execute(tableName, tableSpec, false, 3, statements);
+        assertThat(tableRecords).hasSize(3);
 
         Struct after = ((Struct) tableRecords.get(0).value()).getStruct(Envelope.FieldName.AFTER);
         assertThat(after.get("ID")).isEqualTo(1);
-        assertThat(after.get("XML0")).isEqualTo("<XML0><ID>1</ID><V>1</V></XML0>");
+        assertThat(after.get("XML0")).isEqualTo("<XML0><ID>1</ID><V>0</V></XML0>");
         assertThat(after.get("EXT0")).isEqualTo("EXT0-1-0");
         assertThat(after.get("LOB0")).isEqualTo("LOB0-1-0");
-        assertThat(((Struct) tableRecords.get(1).value()).getStruct(Envelope.FieldName.AFTER).get("ID")).isEqualTo(2);
+        after = ((Struct) tableRecords.get(1).value()).getStruct(Envelope.FieldName.AFTER);
+        assertThat(after.get("ID")).isEqualTo(1);
+        assertThat(after.get("XML0")).isEqualTo("<XML0><ID>1</ID><V>1</V></XML0>");
+        assertThat(after.get("EXT0")).isEqualTo(OracleConnectorConfig.UNAVAILABLE_VALUE_PLACEHOLDER.defaultValueAsString());
+        assertThat(after.get("LOB0")).isEqualTo(OracleConnectorConfig.UNAVAILABLE_VALUE_PLACEHOLDER.defaultValueAsString());
+        assertThat(((Struct) tableRecords.get(2).value()).getStruct(Envelope.FieldName.AFTER).get("ID")).isEqualTo(2);
     }
 
     @Test
@@ -1000,14 +1013,18 @@ public abstract class AbstractBufferedLogMinerStreamingChangeEventSourceIT exten
                 "UPDATE DBZ1960_25 SET EXT0 = 'EXT0-1-2', XML0 = XMLTYPE('<XML0><ID>1</ID><V>2</V></XML0>') WHERE ID = 1",
                 "ROLLBACK TO SAVEPOINT s1",
                 "INSERT INTO DBZ1960_25 (ID) VALUES (2)", };
-        List<SourceRecord> tableRecords = execute(tableName, tableSpec, false, 2, statements);
-        assertThat(tableRecords).hasSize(2);
+        List<SourceRecord> tableRecords = execute(tableName, tableSpec, false, 3, statements);
+        assertThat(tableRecords).hasSize(3);
 
         Struct after = ((Struct) tableRecords.get(0).value()).getStruct(Envelope.FieldName.AFTER);
         assertThat(after.get("ID")).isEqualTo(1);
+        assertThat(after.get("EXT0")).isEqualTo("EXT0-1-0");
+        assertThat(after.get("XML0")).isEqualTo("<XML0><ID>1</ID><V>0</V></XML0>");
+        after = ((Struct) tableRecords.get(1).value()).getStruct(Envelope.FieldName.AFTER);
+        assertThat(after.get("ID")).isEqualTo(1);
         assertThat(after.get("EXT0")).isEqualTo("EXT0-1-" + "1".repeat(3993));
         assertThat(after.get("XML0")).isEqualTo("<XML0><ID>1</ID><V>1</V></XML0>");
-        assertThat(((Struct) tableRecords.get(1).value()).getStruct(Envelope.FieldName.AFTER).get("ID")).isEqualTo(2);
+        assertThat(((Struct) tableRecords.get(2).value()).getStruct(Envelope.FieldName.AFTER).get("ID")).isEqualTo(2);
     }
 
     @Test

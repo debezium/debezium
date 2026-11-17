@@ -30,7 +30,7 @@ import io.debezium.connector.oracle.jdbc.OracleConnectionFactory;
 import io.debezium.connector.oracle.logminer.AbstractLogMinerStreamingChangeEventSource;
 import io.debezium.connector.oracle.logminer.LogMinerChangeRecordEmitter;
 import io.debezium.connector.oracle.logminer.LogMinerStreamingChangeEventSourceMetrics;
-import io.debezium.connector.oracle.logminer.TransactionCommitConsumer;
+import io.debezium.connector.oracle.logminer.StatementGroupCommitConsumer;
 import io.debezium.connector.oracle.logminer.events.DmlEvent;
 import io.debezium.connector.oracle.logminer.events.EventType;
 import io.debezium.connector.oracle.logminer.events.LogMinerEvent;
@@ -61,13 +61,15 @@ public class UnbufferedLogMinerStreamingChangeEventSource extends AbstractLogMin
 
     private final String miningQuery;
     private final boolean includeSql;
-    private final TransactionCommitConsumer accumulator;
+    private final StatementGroupCommitConsumer accumulator;
     private final List<LogMinerEventRow> ddlQueue = new ArrayList<>();
     private final ResumePositionProvider resumePositionProvider;
 
     private boolean skipCurrentTransaction = false;
     private ZoneOffset databaseOffset;
     private Scn lastCommitScn = Scn.NULL;
+
+    private Scn eventCommitScn = Scn.NULL;
 
     public UnbufferedLogMinerStreamingChangeEventSource(OracleConnectorConfig connectorConfig,
                                                         OracleConnectionFactory connectionFactory,
@@ -80,7 +82,8 @@ public class UnbufferedLogMinerStreamingChangeEventSource extends AbstractLogMin
         super(connectorConfig, connectionFactory, dispatcher, errorHandler, clock, schema, jdbcConfig, metrics);
         this.miningQuery = new UnbufferedLogMinerQueryBuilder(connectorConfig).getQuery();
         this.includeSql = connectorConfig.isLogMiningIncludeRedoSql();
-        this.accumulator = new TransactionCommitConsumer(this::dispatchEvent, connectorConfig, schema);
+        this.accumulator = new StatementGroupCommitConsumer(this::dispatchEvent, connectorConfig, schema,
+                (table, column, event) -> reselectLobValue(table, column, event, eventCommitScn));
         this.resumePositionProvider = new ResumePositionProvider(connectorConfig, getJdbcConfiguration());
     }
 
@@ -221,6 +224,8 @@ public class UnbufferedLogMinerStreamingChangeEventSource extends AbstractLogMin
     @Override
     protected void enqueueEvent(LogMinerEventRow event, LogMinerEvent dispatchedEvent) throws InterruptedException {
         getMetrics().calculateLagFromSource(event.getChangeTime());
+        // Every event of the transaction carries its commit SCN, kept for LOB values that must be reselected
+        eventCommitScn = event.getCommitScn();
         accumulator.accept(dispatchedEvent, event.getTransactionId(), event.getTransactionSequence());
     }
 

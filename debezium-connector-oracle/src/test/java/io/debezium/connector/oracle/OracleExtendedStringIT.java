@@ -304,7 +304,7 @@ public class OracleExtendedStringIT extends AbstractAsyncEngineConnectorTest {
     }
 
     @Test
-    @FixFor({ "DBZ-8034", "DBZ-8200" })
+    @FixFor({ "DBZ-8034", "DBZ-8200", "debezium/dbz#3100" })
     public void testRelaxedQuoteDetectionForExtendedStrings() throws Exception {
         TestHelper.dropTable(connection, "dbz8034");
         try {
@@ -336,8 +336,8 @@ public class OracleExtendedStringIT extends AbstractAsyncEngineConnectorTest {
 
             connection.execute("DELETE FROM dbz8034 WHERE id=1");
 
-            List<SourceRecord> records = consumeRecordsByTopic(5).recordsForTopic(topicName("DBZ8034"));
-            assertThat(records).hasSize(5);
+            List<SourceRecord> records = consumeRecordsByTopic(4).recordsForTopic(topicName("DBZ8034"));
+            assertThat(records).hasSize(4);
 
             SourceRecord record = records.get(0);
             VerifyRecord.isValidRead(record, "ID", 0);
@@ -347,18 +347,13 @@ public class OracleExtendedStringIT extends AbstractAsyncEngineConnectorTest {
             VerifyRecord.isValidInsert(record, "ID", 1);
             assertThat(getAfter(record).get("DATA1")).isEqualTo(insertData);
 
-            // note: this exists because in this use case, the transaction commit consumer cannot
-            // merge the two UPDATE redo entries due to insufficient content in the entries to
-            // know it's safe to merge them.
+            // The two UPDATE redo entries of the statement are emitted as one event
             record = records.get(2);
             VerifyRecord.isValidUpdate(record, "ID", 1);
-            assertThat(getAfter(record).get("DATA1")).isEqualTo("__debezium_unavailable_value");
+            assertThat(getAfter(record).get("DATA1")).isEqualTo(updateData);
+            assertThat(getAfter(record).get("DATA2")).isEqualTo(20);
 
             record = records.get(3);
-            VerifyRecord.isValidUpdate(record, "ID", 1);
-            assertThat(getAfter(record).get("DATA1")).isEqualTo(updateData);
-
-            record = records.get(4);
             VerifyRecord.isValidDelete(record, "ID", 1);
         }
         finally {
