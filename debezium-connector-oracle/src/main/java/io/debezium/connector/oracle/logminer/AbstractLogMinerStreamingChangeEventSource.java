@@ -63,6 +63,7 @@ import io.debezium.connector.oracle.logminer.logwriter.RacCommitLogWriterFlushSt
 import io.debezium.connector.oracle.logminer.logwriter.ReadOnlyLogWriterFlushStrategy;
 import io.debezium.connector.oracle.logminer.parser.DmlParserException;
 import io.debezium.connector.oracle.logminer.parser.ExtendedStringParser;
+import io.debezium.connector.oracle.logminer.parser.ExtendedStringWriteParser;
 import io.debezium.connector.oracle.logminer.parser.LobWriteParser;
 import io.debezium.connector.oracle.logminer.parser.LobWriteParser.LobWrite;
 import io.debezium.connector.oracle.logminer.parser.LogMinerColumnResolverDmlParser;
@@ -810,18 +811,7 @@ public abstract class AbstractLogMinerStreamingChangeEventSource
 
             final String data;
             try {
-                final String sql = event.getRedoSql();
-                int endIndex = sql.lastIndexOf(";");
-                if (endIndex == -1) {
-                    throw new DebeziumException("Failed to find end index on 32K_WRITE operation");
-                }
-
-                endIndex = sql.lastIndexOf(";", endIndex - 1);
-                if (endIndex == -1) {
-                    throw new DebeziumException("Failed to find end index on 32K_WRITE operation");
-                }
-
-                data = sql.substring(12, endIndex - 1);
+                data = ExtendedStringWriteParser.parse(event.getRedoSql());
             }
             catch (Exception e) {
                 throw new ParsingException(null, "Failed to parse 32K_WRITE event", e);
