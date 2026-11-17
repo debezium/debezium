@@ -54,7 +54,7 @@ public interface DocumentWriter {
             return stream.toByteArray();
         }
         catch (IOException e) {
-            LOGGER.error("Failed to write document as bytes", e);
+            LOGGER.warn("Failed to write document as bytes", e);
             return new byte[]{};
         }
     }

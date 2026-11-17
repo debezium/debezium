@@ -612,7 +612,7 @@ public class TokenStream {
             throw new ParsingException(tokens.get(tokens.size() - 1).position(), "No more content but was expecting token " + expected);
         }
         // Get the value from the current token ...
-        if (!ANY_VALUE.equals(expected) && !currentToken().matches(expected)) {
+        if (expected != ANY_VALUE && !currentToken().matches(expected)) {
             String found = currentToken().value();
             Position pos = currentToken().position();
             String fragment = generateFragment();
@@ -784,7 +784,7 @@ public class TokenStream {
                     "No more content but was expecting one token of " + String.join("|", options));
         }
         for (String option : options) {
-            if (ANY_VALUE.equals(option) || matches(option)) {
+            if (option == ANY_VALUE || matches(option)) {
                 return consume();
             }
         }
@@ -862,7 +862,7 @@ public class TokenStream {
      * @throws IllegalStateException if this method was called before the stream was {@link #start() started}
      */
     public TokenStream consumeThrough(String expected, String skipMatchingTokens) throws ParsingException, IllegalStateException {
-        if (ANY_VALUE.equals(expected)) {
+        if (ANY_VALUE == expected) {
             consume();
             return this;
         }
@@ -936,7 +936,7 @@ public class TokenStream {
      * @throws IllegalStateException if this method was called before the stream was {@link #start() started}
      */
     public TokenStream consumeUntil(String expected, String... skipMatchingTokens) throws ParsingException, IllegalStateException {
-        if (ANY_VALUE.equals(expected)) {
+        if (ANY_VALUE == expected) {
             consume();
             return this;
         }
@@ -1224,7 +1224,7 @@ public class TokenStream {
             return false;
         }
         Token token = iter.next();
-        if (!ANY_VALUE.equals(currentExpected) && !token.matches(type, currentExpected)) {
+        if (currentExpected != ANY_VALUE && !token.matches(type, currentExpected)) {
             return false;
         }
         for (String nextExpected : expectedForNextTokens) {
@@ -1232,7 +1232,7 @@ public class TokenStream {
                 return false;
             }
             token = iter.next();
-            if (ANY_VALUE.equals(nextExpected)) {
+            if (nextExpected == ANY_VALUE) {
                 continue;
             }
             if (!token.matches(type, nextExpected)) {
@@ -1299,7 +1299,7 @@ public class TokenStream {
                 return false;
             }
             token = iter.next();
-            if (ANY_VALUE.equals(nextExpected)) {
+            if (nextExpected == ANY_VALUE) {
                 continue;
             }
             if (!token.matches(nextExpected)) {
@@ -1351,7 +1351,7 @@ public class TokenStream {
                 return false;
             }
             token = iter.next();
-            if (ANY_VALUE.equals(nextExpected)) {
+            if (nextExpected == ANY_VALUE) {
                 continue;
             }
             if (!token.matches(nextExpected)) {
@@ -1497,7 +1497,7 @@ public class TokenStream {
      * @throws IllegalStateException if this method was called before the stream was {@link #start() started}
      */
     public boolean matches(int type, String expected) throws IllegalStateException {
-        return !completed && (ANY_VALUE.equals(expected) || currentToken().matches(expected)) && currentToken().matches(type);
+        return !completed && (expected == ANY_VALUE || currentToken().matches(expected)) && currentToken().matches(type);
     }
 
     /**
@@ -1558,7 +1558,7 @@ public class TokenStream {
             return false;
         }
         Token token = iter.next();
-        if (!ANY_VALUE.equals(currentExpected) && !token.matches(currentExpected)) {
+        if (currentExpected != ANY_VALUE && !token.matches(currentExpected)) {
             return false;
         }
         for (String nextExpected : expectedForNextTokens) {
@@ -1566,7 +1566,7 @@ public class TokenStream {
                 return false;
             }
             token = iter.next();
-            if (ANY_VALUE.equals(nextExpected)) {
+            if (nextExpected == ANY_VALUE) {
                 continue;
             }
             if (!token.matches(nextExpected)) {
@@ -1597,7 +1597,7 @@ public class TokenStream {
                 return false;
             }
             token = iter.next();
-            if (ANY_VALUE.equals(nextExpected)) {
+            if (nextExpected == ANY_VALUE) {
                 continue;
             }
             if (!token.matches(nextExpected)) {
@@ -1628,7 +1628,7 @@ public class TokenStream {
                 return false;
             }
             token = iter.next();
-            if (ANY_VALUE.equals(nextExpected)) {
+            if (nextExpected == ANY_VALUE) {
                 continue;
             }
             if (!token.matches(nextExpected)) {

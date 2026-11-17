@@ -60,6 +60,8 @@ import io.debezium.engine.format.Json;
 import io.debezium.engine.format.KeyValueChangeEventFormat;
 import io.debezium.jdbc.JdbcConfiguration;
 import io.debezium.util.IoUtil;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Basic end-to-end comparison between {@link io.debezium.embedded.EmbeddedEngine} and {@link io.debezium.embedded.async.AsyncEmbeddedEngine}.
@@ -69,6 +71,7 @@ import io.debezium.util.IoUtil;
  */
 public class PostgresEndToEndPerf {
 
+    private static final Logger LOGGER = LoggerFactory.getLogger(PostgresEndToEndPerf.class.getName());
     private static final String HOST = "localhost";
     private static final int PORT = 5432;
     private static final String USER = "postgres";
@@ -191,7 +194,7 @@ public class PostgresEndToEndPerf {
             connection.execute("DROP TABLE IF EXISTS " + tableName);
         }
         catch (SQLException e) {
-            throw new RuntimeException("Failed to drop table", e);
+            LOGGER.warn("Failed to drop table", e);
         }
         try {
             connection.execute("CREATE TABLE " + tableName + " (id numeric(9,0) primary key, name varchar(50))");

@@ -63,7 +63,7 @@ final class BasicEntry implements Array.Entry, Comparable<Array.Entry> {
             return 0;
         }
         if (this.getIndex() != that.getIndex()) {
-            return Integer.compare(this.getIndex(), that.getIndex());
+            return this.getIndex() - that.getIndex();
         }
         return Value.compareTo(this.getValue(), that.getValue());
     }
