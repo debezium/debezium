@@ -1728,16 +1728,17 @@ public class JdbcConnection implements AutoCloseable {
     }
 
     public static <T> T querySingleValue(Connection connection, String queryString, StatementPreparer preparer, ResultSetExtractor<T> extractor) throws SQLException {
-        final PreparedStatement preparedStatement = connection.prepareStatement(queryString);
-        preparer.accept(preparedStatement);
-        try (ResultSet resultSet = preparedStatement.executeQuery()) {
-            if (resultSet.next()) {
-                final T result = extractor.apply(resultSet);
-                if (!resultSet.next()) {
-                    return result;
+        try (PreparedStatement preparedStatement = connection.prepareStatement(queryString)) {
+            preparer.accept(preparedStatement);
+            try (ResultSet resultSet = preparedStatement.executeQuery()) {
+                if (resultSet.next()) {
+                    final T result = extractor.apply(resultSet);
+                    if (!resultSet.next()) {
+                        return result;
+                    }
                 }
+                throw new IllegalStateException("Exactly one result expected.");
             }
-            throw new IllegalStateException("Exactly one result expected.");
         }
     }
 
