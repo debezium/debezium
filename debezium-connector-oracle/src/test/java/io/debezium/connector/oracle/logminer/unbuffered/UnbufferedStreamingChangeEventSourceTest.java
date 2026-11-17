@@ -55,7 +55,7 @@ import io.debezium.connector.oracle.jdbc.StandardOracleConnectionFactory;
 import io.debezium.connector.oracle.junit.SkipWhenAdapterNameIsNot;
 import io.debezium.connector.oracle.logminer.AbstractLogMinerStreamingChangeEventSource;
 import io.debezium.connector.oracle.logminer.LogMinerStreamingChangeEventSourceMetrics;
-import io.debezium.connector.oracle.logminer.TransactionCommitConsumer;
+import io.debezium.connector.oracle.logminer.StatementGroupCommitConsumer;
 import io.debezium.connector.oracle.logminer.events.EventType;
 import io.debezium.connector.oracle.logminer.events.LogMinerEventRow;
 import io.debezium.connector.oracle.relational.OracleRelationalMetadataFactory;
@@ -239,10 +239,10 @@ public class UnbufferedStreamingChangeEventSourceTest extends AbstractAsyncEngin
                 .build();
     }
 
-    private TransactionCommitConsumer getAccumulator(UnbufferedLogMinerStreamingChangeEventSource source) throws Exception {
+    private StatementGroupCommitConsumer getAccumulator(UnbufferedLogMinerStreamingChangeEventSource source) throws Exception {
         final var field = UnbufferedLogMinerStreamingChangeEventSource.class.getDeclaredField("accumulator");
         field.setAccessible(true);
-        return (TransactionCommitConsumer) field.get(source);
+        return (StatementGroupCommitConsumer) field.get(source);
     }
 
     private void setDatabaseOffset(UnbufferedLogMinerStreamingChangeEventSource source, ZoneOffset offset) throws Exception {

@@ -2180,7 +2180,7 @@ public class OracleClobDataTypeIT extends AbstractAsyncEngineConnectorTest {
     }
 
     @Test
-    @FixFor("DBZ-4366")
+    @FixFor({ "DBZ-4366", "debezium/dbz#3100" })
     @SkipWhenAdapterNameIsNot(value = SkipWhenAdapterNameIsNot.AdapterName.ANY_LOGMINER, reason = "Xstream marks chunks as end of rows")
     public void shouldStreamClobsWrittenInChunkedMode() throws Exception {
         TestHelper.dropTable(connection, "dbz4366");
@@ -2221,16 +2221,51 @@ public class OracleClobDataTypeIT extends AbstractAsyncEngineConnectorTest {
             connection.prepareQuery(fillQuery, ps -> ps.setString(1, part(JSON_DATA, 0, 1024)), null);
             connection.execute("COMMIT");
 
-            SourceRecords records = consumeRecordsByTopic(1);
-            assertThat(records.recordsForTopic(topicName("DBZ4366"))).hasSize(1);
+            // Only the first write to each LOB column is in-line, and since the writes alternate between the two columns,
+            // they're treated as 2 independent events. Because there are no interwoven events for other rows, the third
+            // event is seen as a sequential write operation, where the 1023 out-of-line writes per column get merged.
+            final SourceRecords records = consumeRecordsByTopic(3);
+            final List<SourceRecord> topicRecords = records.recordsForTopic(topicName("DBZ4366"));
+            assertThat(topicRecords).hasSize(3);
 
-            SourceRecord record = records.recordsForTopic(topicName("DBZ4366")).get(0);
-            Struct after = ((Struct) record.value()).getStruct(Envelope.FieldName.AFTER);
-            assertThat(after.get("ID")).isEqualTo(1);
-            String clobval = (String) after.get("VAL_CLOB");
-            assertThat(clobval.length()).isEqualTo(1024 * 1024);
-            String nclobval = (String) after.get("VAL_NCLOB");
-            assertThat(nclobval.length()).isEqualTo(1024 * 1024);
+            final String chunk = part(JSON_DATA, 0, 1024);
+            final String full = chunk.repeat(1024);
+            final String placeholder = getUnavailableValuePlaceholder(config);
+
+            for (int eventIndex = 0; eventIndex < 3; eventIndex++) {
+                final Struct value = (Struct) topicRecords.get(eventIndex).value();
+                assertThat(value.getString(Envelope.FieldName.OPERATION)).isEqualTo(eventIndex == 0 ? "c" : "u");
+
+                final Struct before = value.getStruct(Envelope.FieldName.BEFORE);
+                if (eventIndex == 0) {
+                    assertThat(before).isNull();
+                }
+                else {
+                    assertThat(before).isNotNull();
+                    assertThat(before.get("VAL_CLOB")).isEqualTo(placeholder);
+                    assertThat(before.get("VAL_NCLOB")).isEqualTo(placeholder);
+                }
+
+                final Struct after = value.getStruct(Envelope.FieldName.AFTER);
+                assertThat(after.get("ID")).isEqualTo(1);
+
+                switch (eventIndex) {
+                    case 0 -> {
+                        // The first write to VAL_CLOB is part of the insert
+                        assertThat(after.get("VAL_CLOB")).isEqualTo(chunk);
+                        assertThat(after.get("VAL_NCLOB")).isEqualTo("");
+                    }
+                    case 1 -> {
+                        assertThat(after.get("VAL_CLOB")).isEqualTo(placeholder);
+                        assertThat(after.get("VAL_NCLOB")).isEqualTo(chunk);
+                    }
+                    default -> {
+                        // Out-of-line writes of both columns are merged into the last event
+                        assertThat(after.get("VAL_CLOB")).isEqualTo(full);
+                        assertThat(after.get("VAL_NCLOB")).isEqualTo(full);
+                    }
+                }
+            }
 
             // As a sanity check, there should be no more records.
             assertNoRecordsToConsume();
@@ -2975,7 +3010,7 @@ public class OracleClobDataTypeIT extends AbstractAsyncEngineConnectorTest {
     }
 
     @Test
-    @FixFor("debezium/dbz#1917")
+    @FixFor({ "debezium/dbz#1917", "debezium/dbz#3100" })
     @SkipWhenAdapterNameIsNot(value = SkipWhenAdapterNameIsNot.AdapterName.LOGMINER_BUFFERED)
     public void shouldRollbackExactlyOneOperation() throws Exception {
         TestHelper.dropTable(connection, "DBZ1917");
@@ -3007,18 +3042,123 @@ public class OracleClobDataTypeIT extends AbstractAsyncEngineConnectorTest {
                     "ROLLBACK TO SAVEPOINT s3",
                     "INSERT INTO DBZ1917 (id,data) VALUES (2,'insert 2')");
 
-            List<SourceRecord> tableRecords = consumeRecordsByTopic(2).recordsForTopic(topicName("DBZ1917"));
-            assertThat(tableRecords).hasSize(2);
+            List<SourceRecord> tableRecords = consumeRecordsByTopic(3).recordsForTopic(topicName("DBZ1917"));
+            assertThat(tableRecords).hasSize(3);
+
             SourceRecord insert1 = tableRecords.get(0);
             assertThat(getAfterField(insert1, "ID")).isEqualTo(1);
-            assertThat(getAfterField(insert1, "DATA")).isEqualTo("update 2");
+            assertThat(getAfterField(insert1, "DATA")).isEqualTo("insert 1");
             assertThat(getAfterField(insert1, "DATA2")).isNull();
+
+            SourceRecord update1 = tableRecords.get(1);
+            assertThat(getAfterField(update1, "ID")).isEqualTo(1);
+            assertThat(getAfterField(update1, "DATA")).isEqualTo("update 2");
+            assertThat(getAfterField(update1, "DATA2")).isEqualTo(getUnavailableValuePlaceholder(config));
+
+            SourceRecord insert2 = tableRecords.get(2);
+            assertThat(getAfterField(insert2, "ID")).isEqualTo(2);
+            assertThat(getAfterField(insert2, "DATA")).isEqualTo("insert 2");
+            assertThat(getAfterField(insert2, "DATA2")).isNull();
 
             stopConnector();
         }
         finally {
             TestHelper.dropTable(connection, "DBZ1917");
         }
+    }
+
+    @Test
+    @FixFor("debezium/dbz#3100")
+    @SkipWhenAdapterNameIsNot(value = SkipWhenAdapterNameIsNot.AdapterName.ANY_LOGMINER, reason = "Only LogMiner merges LOB events at commit")
+    public void shouldStreamTableWithoutLobAfterTableWithLobInChangeOrder() throws Exception {
+        TestHelper.dropTable(connection, "DBZ3100");
+        try {
+            connection.execute("CREATE TABLE CLOB_TEST (id numeric(9,0) primary key, name varchar2(50), data clob)");
+            connection.execute("CREATE TABLE DBZ3100 (id numeric(9,0) primary key, name varchar2(50))");
+            TestHelper.streamTable(connection, "CLOB_TEST");
+            TestHelper.streamTable(connection, "DBZ3100");
+
+            Configuration config = TestHelper.defaultConfig()
+                    .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "DEBEZIUM\\.CLOB_TEST,DEBEZIUM\\.DBZ3100")
+                    .with(OracleConnectorConfig.LOB_ENABLED, true)
+                    .build();
+            start(OracleConnector.class, config);
+            assertConnectorIsRunning();
+            waitForStreamingRunning(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
+
+            connection.execute(
+                    "INSERT INTO CLOB_TEST (id,name,data) VALUES (1,'parent','insert 1')",
+                    "INSERT INTO DBZ3100 (id,name) VALUES (1,'child')");
+
+            final List<SourceRecord> records = consumeRecordsByTopic(2).allRecordsInOrder();
+            assertThat(records).hasSize(2);
+            assertThat(records).extracting(SourceRecord::topic).containsExactly(topicName("CLOB_TEST"), topicName("DBZ3100"));
+
+            stopConnector();
+        }
+        finally {
+            TestHelper.dropTable(connection, "DBZ3100");
+        }
+    }
+
+    @Test
+    @FixFor("debezium/dbz#3100")
+    @SkipWhenAdapterNameIsNot(value = SkipWhenAdapterNameIsNot.AdapterName.ANY_LOGMINER, reason = "Only LogMiner merges LOB events at commit")
+    public void shouldStreamRowsWithLobInChangeOrderWhenLaterRowIsDeleted() throws Exception {
+        connection.execute("CREATE TABLE CLOB_TEST (id numeric(9,0) primary key, name varchar2(50), data clob)");
+        TestHelper.streamTable(connection, "CLOB_TEST");
+
+        Configuration config = TestHelper.defaultConfig()
+                .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "DEBEZIUM\\.CLOB_TEST")
+                .with(OracleConnectorConfig.LOB_ENABLED, true)
+                .with(OracleConnectorConfig.TOMBSTONES_ON_DELETE, false)
+                .build();
+        start(OracleConnector.class, config);
+        assertConnectorIsRunning();
+        waitForStreamingRunning(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
+
+        connection.execute(
+                "INSERT INTO CLOB_TEST (id,name,data) VALUES (1,'first','insert 1')",
+                "INSERT INTO CLOB_TEST (id,name,data) VALUES (2,'second','insert 2')",
+                "DELETE FROM CLOB_TEST WHERE id = 2");
+
+        final List<SourceRecord> records = consumeRecordsByTopic(3).recordsForTopic(topicName("CLOB_TEST"));
+        assertThat(records).hasSize(3);
+        VerifyRecord.isValidInsert(records.get(0), "ID", 1);
+        VerifyRecord.isValidInsert(records.get(1), "ID", 2);
+        VerifyRecord.isValidDelete(records.get(2), "ID", 2);
+    }
+
+    @Test
+    @FixFor("debezium/dbz#3100")
+    @SkipWhenAdapterNameIsNot(value = SkipWhenAdapterNameIsNot.AdapterName.ANY_LOGMINER, reason = "Only LogMiner merges LOB events at commit")
+    public void shouldStreamLaterUpdateOfRowAsSeparateEventWhenAnotherRowChangedInBetween() throws Exception {
+        connection.execute("CREATE TABLE CLOB_TEST (id numeric(9,0) primary key, name varchar2(50), data clob)");
+        TestHelper.streamTable(connection, "CLOB_TEST");
+
+        Configuration config = TestHelper.defaultConfig()
+                .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "DEBEZIUM\\.CLOB_TEST")
+                .with(OracleConnectorConfig.LOB_ENABLED, true)
+                .build();
+        start(OracleConnector.class, config);
+        assertConnectorIsRunning();
+        waitForStreamingRunning(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
+
+        connection.execute(
+                "INSERT INTO CLOB_TEST (id,name,data) VALUES (1,'first','insert 1')",
+                "INSERT INTO CLOB_TEST (id,name,data) VALUES (2,'second','insert 2')",
+                "UPDATE CLOB_TEST SET name = 'updated' WHERE id = 1");
+
+        final List<SourceRecord> records = consumeRecordsByTopic(3).recordsForTopic(topicName("CLOB_TEST"));
+        assertThat(records).hasSize(3);
+        VerifyRecord.isValidInsert(records.get(0), "ID", 1);
+        VerifyRecord.isValidInsert(records.get(1), "ID", 2);
+        VerifyRecord.isValidUpdate(records.get(2), "ID", 1);
+        assertThat(getAfterField(records.get(0), "NAME")).isEqualTo("first");
+        assertThat(getAfterField(records.get(0), "DATA")).isEqualTo("insert 1");
+        assertThat(getAfterField(records.get(2), "NAME")).isEqualTo("updated");
+
+        assertThat(records).extracting(r -> ((Struct) r.value()).getStruct("source").getInt64("txSeq")).isSorted();
     }
 
     private String createRandomStringWithAlphaNumeric(int length) {
