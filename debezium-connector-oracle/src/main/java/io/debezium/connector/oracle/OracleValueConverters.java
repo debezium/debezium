@@ -443,6 +443,10 @@ public class OracleValueConverters extends JdbcValueConverters {
 
                 data = stringData;
             }
+            else if (data instanceof byte[] jsonData) {
+                // An out-of-line value, written through a LOB locator in its binary form
+                return jsonFactory.createJsonBinaryValue(ByteBuffer.wrap(jsonData)).asJsonObject().toString();
+            }
         }
         catch (SQLException e) {
             throw new DebeziumException("Couldn't convert value for json column " + column.name(), e);

@@ -14,6 +14,8 @@ import java.util.Random;
 
 import org.junit.jupiter.api.Test;
 
+import io.debezium.doc.FixFor;
+
 import oracle.sql.RAW;
 
 public class LobUnderConstructionTest {
@@ -48,6 +50,25 @@ public class LobUnderConstructionTest {
         assertThat(lob.end).isEqualTo(5);
         LobUnderConstruction lob2 = LobUnderConstruction.fromInitialValue(lob);
         assertThat(lob2 == lob).isTrue();
+    }
+
+    @Test
+    @FixFor("debezium/dbz#3109")
+    void shouldStartEmptyWhenInitialValueOfBinaryLocatorIsNotBinary() {
+        // The insert of a JSON column, the document follows in the writes
+        LobUnderConstruction lob = LobUnderConstruction.fromInitialValue("/* JSON */ EMPTY_BLOB()", true);
+        assertThat(lob.isNull).isFalse();
+        assertThat(lob.binary).isTrue();
+        assertThat(lob.fragments).isEmpty();
+
+        lob = LobUnderConstruction.fromInitialValue("HEXTORAW('0123456789')", true);
+        assertThat(lob.binary).isTrue();
+        assertThat(lob.end).isEqualTo(5);
+
+        // Unchanged for a locator that is not binary
+        lob = LobUnderConstruction.fromInitialValue("0123456789", false);
+        assertThat(lob.binary).isFalse();
+        assertThat(lob.end).isEqualTo(10);
     }
 
     @Test

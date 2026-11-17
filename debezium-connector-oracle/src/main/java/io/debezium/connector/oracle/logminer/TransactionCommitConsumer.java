@@ -181,8 +181,9 @@ public class TransactionCommitConsumer implements AutoCloseable {
         }
 
         if (EventType.SELECT_LOB_LOCATOR == event.getEventType()) {
-            final String columnName = ((SelectLobLocatorEvent) event).getColumnName();
-            initConstructable(currentLobDetails, rowId, columnName, table, accumulatorEvent, LobUnderConstruction::fromInitialValue);
+            final SelectLobLocatorEvent locator = (SelectLobLocatorEvent) event;
+            initConstructable(currentLobDetails, rowId, locator.getColumnName(), table, accumulatorEvent,
+                    value -> LobUnderConstruction.fromInitialValue(value, locator.isBinary()));
         }
         else if (EventType.EXTENDED_STRING_BEGIN == event.getEventType()) {
             final String columnName = ((ExtendedStringBeginEvent) event).getColumnName();
@@ -881,6 +882,11 @@ public class TransactionCommitConsumer implements AutoCloseable {
         // Creates a LobUnderConstruction instance from the initial value stored in the
         // parent event's column.
         static LobUnderConstruction fromInitialValue(Object value) {
+            return fromInitialValue(value, false);
+        }
+
+        // The binary flag states whether the locator that writes to the column is a binary one.
+        static LobUnderConstruction fromInitialValue(Object value, boolean binary) {
             if (null == value) {
                 return new LobUnderConstruction();
             }
@@ -898,6 +904,11 @@ public class TransactionCommitConsumer implements AutoCloseable {
                     lob.binary = false;
                     lob.isNull = false; // lob must be emitted
                 }
+                else if (binary && !isHexToRaw(strval)) {
+                    // Text cannot be the content of a binary LOB, the writes supply the value
+                    lob.binary = true;
+                    lob.isNull = false; // lob must be emitted
+                }
                 else {
                     lob.add(new LobFragment(strval));
                 }
@@ -906,6 +917,10 @@ public class TransactionCommitConsumer implements AutoCloseable {
 
             LOGGER.trace("Don't know how to construct an initial LOB value from {}.", value);
             return new LobUnderConstruction();
+        }
+
+        private static boolean isHexToRaw(String value) {
+            return value.startsWith(OracleValueConverters.HEXTORAW_FUNCTION_START) && value.endsWith(OracleValueConverters.HEXTORAW_FUNCTION_END);
         }
     }
 
