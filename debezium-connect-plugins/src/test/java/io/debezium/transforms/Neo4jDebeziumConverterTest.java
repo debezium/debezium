@@ -26,6 +26,7 @@ import io.debezium.transforms.neo4j.Neo4jPropertyTypesFixture;
  * Unit tests for {@link Neo4jDebeziumConverter} (graph-to-relational). Input Neo4j CDC event Structs are built by
  * hand with {@link CdcBuilder}; the emitted Debezium envelope, primary-key Struct and output topic are asserted.
  */
+@SuppressWarnings("java:S2187")
 class Neo4jDebeziumConverterTest {
 
     private Neo4jDebeziumConverter<SourceRecord> newTransform(Map<String, String> props) {

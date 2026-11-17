@@ -70,6 +70,7 @@ public class DebeziumContainerIT {
     }
 
     @Test
+    @SuppressWarnings("java:S2699")
     public void canRegisterConnector() throws Exception {
         debeziumContainer.registerConnector("my-connector-1", getConfiguration(1));
 

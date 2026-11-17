@@ -31,6 +31,7 @@ import io.debezium.time.Date;
 import io.debezium.time.MicroTimestamp;
 import io.debezium.time.Timestamp;
 
+@SuppressWarnings("java:S2187")
 class Neo4jCudConverterTest {
 
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();

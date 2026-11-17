@@ -22,6 +22,7 @@ import io.debezium.transforms.neo4j.Neo4jCudConverterConfig.FieldMissingBehavior
 import io.debezium.transforms.neo4j.Neo4jCudConverterConfig.NodeMode;
 import io.debezium.transforms.neo4j.Neo4jCudConverterConfig.OutputMode;
 
+@SuppressWarnings("java:S2187")
 class Neo4jCudConfigParserTest {
 
     private static Neo4jCudConverterConfig parse(Map<String, String> props) {

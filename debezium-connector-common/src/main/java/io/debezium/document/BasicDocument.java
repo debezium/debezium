@@ -240,6 +240,7 @@ final class BasicDocument implements Document {
     }
 
     @Override
+    @SuppressWarnings("java:S2975")
     public Document clone() {
         return new BasicDocument().putAll(this);
     }

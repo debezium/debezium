@@ -187,6 +187,7 @@ final class NullValue implements Value {
     }
 
     @Override
+    @SuppressWarnings("java:S2975")
     public Value clone() {
         return this;
     }
