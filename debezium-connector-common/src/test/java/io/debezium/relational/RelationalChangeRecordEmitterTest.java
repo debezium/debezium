@@ -97,8 +97,17 @@ public class RelationalChangeRecordEmitterTest {
 
     @Test
     @FixFor("debezium/dbz#3052")
-    public void shouldListUnavailableColumnsInPrimaryKeyChangeHeaders() throws InterruptedException {
-        emit(Operation.UPDATE, new Object[]{ 1, UNAVAILABLE }, new Object[]{ 2, UNAVAILABLE });
+    public void shouldBuildPrimaryKeyChangeHeadersBeforeSubclassFillsInValues() throws InterruptedException {
+        final Object[] newValues = { 2, UNAVAILABLE };
+        new TestEmitter(Operation.UPDATE, new Object[]{ 1, UNAVAILABLE }, newValues) {
+            @Override
+            protected void emitUpdateAsPrimaryKeyChangeRecord(Receiver<Partition> receiver, TableSchema tableSchema, Struct oldKey,
+                                                              Struct newKey, Struct oldValue, Struct newValue)
+                    throws InterruptedException {
+                newValues[1] = "reselected";
+                super.emitUpdateAsPrimaryKeyChangeRecord(receiver, tableSchema, oldKey, newKey, oldValue, newValue);
+            }
+        }.emitChangeRecords(tableSchema, receiver);
 
         assertThat(operations).containsExactly(Operation.DELETE, Operation.CREATE);
         assertThat(headers.get(0).lastWithName(PK_UPDATE_NEWKEY_FIELD)).isNotNull();
