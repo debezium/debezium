@@ -17,6 +17,7 @@ public class SelectLobParser extends AbstractSelectSingleColumnSqlRedoPreamblePa
 
     private static final String BLOB_LOCATOR = "loc_b";
     private static final String BLOB_BUFFER = "buf_b";
+    private static final String JSON_HINT = "/* JSON */ ";
 
     private boolean binary;
 
@@ -39,7 +40,12 @@ public class SelectLobParser extends AbstractSelectSingleColumnSqlRedoPreamblePa
         if (sql.indexOf(BLOB_LOCATOR, index) == index || sql.indexOf(BLOB_BUFFER, index) == index) {
             binary = true;
         }
-        return sql.indexOf(" ", index) + 1;
+        index = sql.indexOf(" ", index) + 1;
+        if (sql.startsWith(JSON_HINT, index)) {
+            // LogMiner marks the locator of a JSON column with a hint
+            index += JSON_HINT.length();
+        }
+        return index;
     }
 
     @Override

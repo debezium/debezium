@@ -160,6 +160,52 @@ public class OracleJsonDataTypeIT extends AbstractAsyncEngineConnectorTest {
         assertThat(after(records.get(2))).isNull();
     }
 
+    @Test
+    @FixFor("debezium/dbz#3109")
+    public void shouldStreamJsonDataTypeValuesStoredOutOfLine() throws Exception {
+        connection.execute("CREATE TABLE dbz1884 (id number(9,0) primary key, extra_data json)");
+        TestHelper.streamTable(connection, "dbz1884");
+
+        Configuration config = TestHelper.defaultConfig()
+                .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "DEBEZIUM.DBZ1884")
+                .with(OracleConnectorConfig.LOB_ENABLED, Boolean.TRUE)
+                .build();
+
+        start(OracleConnector.class, config);
+        assertConnectorIsRunning();
+
+        waitForStreamingRunning(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
+
+        // Documents of this size are not stored in the row, and LogMiner supplies them through a LOB locator
+        final String jsonInsertData = largeJsonDocument("a");
+        final String jsonUpdateData = largeJsonDocument("b");
+
+        connection.prepareQuery("INSERT INTO dbz1884 (id,extra_data) values (1,?)",
+                ps -> ps.setObject(1, jsonInsertData, OracleType.JSON), null);
+        connection.commit();
+
+        connection.prepareQuery("UPDATE dbz1884 SET extra_data = ? WHERE id = 1",
+                ps -> ps.setObject(1, jsonUpdateData, OracleType.JSON), null);
+        connection.commit();
+
+        List<SourceRecord> records = consumeRecordsByTopic(2).recordsForTopic(topicName("DBZ1884"));
+        assertThat(records).hasSize(2);
+
+        final SourceRecord insert = records.get(0);
+        VerifyRecord.isValidInsert(insert, "ID", 1);
+        assertThat(after(insert).get("ID")).isEqualTo(1);
+        assertThat(after(insert).get("EXTRA_DATA")).isEqualTo(jsonInsertData);
+
+        final SourceRecord update = records.get(1);
+        VerifyRecord.isValidUpdate(update, "ID", 1);
+        assertThat(after(update).get("ID")).isEqualTo(1);
+        assertThat(after(update).get("EXTRA_DATA")).isEqualTo(jsonUpdateData);
+    }
+
+    private static String largeJsonDocument(String character) {
+        return "{\"k\":\"" + character.repeat(4000) + "\",\"m\":\"" + character.repeat(4000) + "\"}";
+    }
+
     private static Struct before(SourceRecord record) {
         return ((Struct) record.value()).getStruct(Envelope.FieldName.BEFORE);
     }
