@@ -21,7 +21,7 @@ import io.debezium.util.Strings;
 public class LobWriteParser {
 
     private static Pattern SQL_PATTERN = Pattern.compile(
-            "(?s).* := ((?:HEXTORAW\\()?'.*'(?:\\))?);\\s*dbms_lob.write\\([^,]+,\\s*(\\d+)\\s*,\\s*(\\d+)\\s*,[^,]+\\);.*");
+            "(?s).* := (?:/\\* JSON \\*/ )?((?:HEXTORAW\\()?'.*'(?:\\))?);\\s*dbms_lob.write\\([^,]+,\\s*(\\d+)\\s*,\\s*(\\d+)\\s*,[^,]+\\);.*");
 
     /**
      * An immutable object representing the parsed data of a {@code LOB_WRITE} operation.

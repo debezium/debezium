@@ -101,6 +101,43 @@ public class SelectLobParserTest {
     }
 
     @Test
+    @FixFor("debezium/dbz#3109")
+    public void shouldParseJsonBasedLobSelect() throws Exception {
+        final Table table = Table.editor()
+                .tableId(TableId.parse("DEBEZIUM.JSON_TEST"))
+                .addColumn(Column.editor().name("ID").create())
+                .addColumn(Column.editor().name("VAL_DATA").create())
+                .addColumn(Column.editor().name("VAL_JSON").create())
+                .create();
+
+        // LogMiner marks the locator of a JSON column with a hint
+        String redoSql = "DECLARE \n" +
+                " loc_c CLOB; \n" +
+                " buf_c VARCHAR2(6156); \n" +
+                " loc_b BLOB; \n" +
+                " buf_b RAW(6156); \n" +
+                " loc_nc NCLOB; \n" +
+                " buf_nc NVARCHAR2(6156); \n" +
+                "BEGIN\n" +
+                " select \"VAL_JSON\" into loc_b /* JSON */ from \"DEBEZIUM\".\"JSON_TEST\" where \"ID\" = '2' and \"VAL_DATA\" = 'Test2' for update;";
+
+        LogMinerDmlEntry entry = parser.parse(redoSql, table);
+
+        assertThat(parser.isBinary()).isTrue();
+        assertThat(parser.getColumnName()).isEqualTo("VAL_JSON");
+
+        assertThat(entry.getObjectOwner()).isEqualTo("DEBEZIUM");
+        assertThat(entry.getObjectName()).isEqualTo("JSON_TEST");
+        assertThat(entry.getEventType()).isEqualTo(EventType.SELECT_LOB_LOCATOR);
+        assertThat(entry.getOldValues()).hasSize(3);
+        assertThat(entry.getOldValues()[0]).isEqualTo("2");
+        assertThat(entry.getOldValues()[1]).isEqualTo("Test2");
+        assertThat(entry.getNewValues()).hasSize(3);
+        assertThat(entry.getNewValues()[0]).isEqualTo("2");
+        assertThat(entry.getNewValues()[1]).isEqualTo("Test2");
+    }
+
+    @Test
     @FixFor("DBZ-2948")
     public void shouldParseComplexClobBasedLobSelect() throws Exception {
         final Table table = Table.editor()
