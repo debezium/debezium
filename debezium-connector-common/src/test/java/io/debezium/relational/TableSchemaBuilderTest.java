@@ -12,6 +12,7 @@ import static org.junit.jupiter.api.Assertions.fail;
 import java.math.BigDecimal;
 import java.nio.ByteBuffer;
 import java.sql.Types;
+import java.util.BitSet;
 import java.util.Collections;
 import java.util.Properties;
 
@@ -785,22 +786,19 @@ public class TableSchemaBuilderTest {
 
     @Test
     @FixFor("debezium/dbz#3052")
-    public void shouldReturnValueFieldNamesForMatchingColumnData() {
-        final var marker = new Object();
+    public void shouldReturnValueFieldNamesForColumnDataPositions() {
         schema = new TableSchemaBuilder(new JdbcValueConverters(), null, adjuster, customConverterRegistry,
                 SchemaBuilder.struct().build(), avroFieldNamer, false, EventConvertingFailureHandlingMode.FAIL)
                 .create(topicNamingStrategy, table, (catalog, schemaName, tableName, columnName) -> !"C3".equals(columnName), null, null);
 
-        final Object[] row = { "c1value", marker, marker, null, null, null, marker, marker, null, null };
-
-        assertThat(schema.valueFieldNames(row, value -> value == marker)).containsExactly("C2", "_7C7", "C_8");
-        assertThat(schema.valueFieldNames(null, value -> value == marker)).isEmpty();
+        // C2, the excluded C3, 7C7, C-8 and a position beyond the table's columns
+        assertThat(schema.valueFieldNames(BitSet.valueOf(new long[]{ 0b10000000000011000110 }))).containsExactly("C2", "_7C7", "C_8");
+        assertThat(schema.valueFieldNames(null)).isEmpty();
     }
 
     @Test
     @FixFor("debezium/dbz#3052")
     public void shouldNotReturnValueFieldNameForExcludedColumnWithSameAdjustedName() {
-        final var marker = new Object();
         final var collidingTable = Table.editor()
                 .tableId(id)
                 .addColumns(
@@ -811,6 +809,6 @@ public class TableSchemaBuilderTest {
                 SchemaBuilder.struct().build(), avroFieldNamer, false, EventConvertingFailureHandlingMode.FAIL)
                 .create(topicNamingStrategy, collidingTable, (catalog, schemaName, tableName, columnName) -> !"a-b".equals(columnName), null, null);
 
-        assertThat(schema.valueFieldNames(new Object[]{ marker, "x" }, value -> value == marker)).isEmpty();
+        assertThat(schema.valueFieldNames(BitSet.valueOf(new long[]{ 0b01 }))).isEmpty();
     }
 }

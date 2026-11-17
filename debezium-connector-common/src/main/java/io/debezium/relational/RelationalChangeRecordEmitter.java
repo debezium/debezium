@@ -5,6 +5,7 @@
  */
 package io.debezium.relational;
 
+import java.util.BitSet;
 import java.util.List;
 import java.util.Objects;
 
@@ -39,9 +40,6 @@ public abstract class RelationalChangeRecordEmitter<P extends Partition>
     public static final String UNAVAILABLE_AFTER_HEADER = "__debezium.unavailable.after";
 
     private static final Schema UNAVAILABLE_HEADER_SCHEMA = SchemaBuilder.array(Schema.STRING_SCHEMA).build();
-
-    private Object[] updateOldColumnValues;
-    private Object[] updateNewColumnValues;
 
     public RelationalChangeRecordEmitter(P partition, OffsetContext offsetContext, Clock clock, RelationalDatabaseConnectorConfig connectorConfig) {
         super(partition, offsetContext, clock, connectorConfig);
@@ -87,7 +85,7 @@ public abstract class RelationalChangeRecordEmitter<P extends Partition>
             return;
         }
         receiver.changeRecord(getPartition(), tableSchema, Operation.CREATE, newKey, envelope, getOffset(),
-                addUnavailableHeader(null, UNAVAILABLE_AFTER_HEADER, tableSchema, newColumnValues));
+                addUnavailableHeader(null, UNAVAILABLE_AFTER_HEADER, tableSchema, getUnavailableNewColumnPositions()));
     }
 
     @Override
@@ -133,15 +131,12 @@ public abstract class RelationalChangeRecordEmitter<P extends Partition>
         // in this case we handle all updates as regular ones
         if (oldKey == null || Objects.equals(oldKey, newKey)) {
             Struct envelope = tableSchema.getEnvelopeSchema().update(oldValue, newValue, getOffset().getSourceInfo(), getClock().currentTimeAsInstant());
-            ConnectHeaders headers = addUnavailableHeader(null, UNAVAILABLE_BEFORE_HEADER, tableSchema, oldColumnValues);
-            headers = addUnavailableHeader(headers, UNAVAILABLE_AFTER_HEADER, tableSchema, newColumnValues);
+            ConnectHeaders headers = addUnavailableHeader(null, UNAVAILABLE_BEFORE_HEADER, tableSchema, getUnavailableOldColumnPositions());
+            headers = addUnavailableHeader(headers, UNAVAILABLE_AFTER_HEADER, tableSchema, getUnavailableNewColumnPositions());
             receiver.changeRecord(getPartition(), tableSchema, Operation.UPDATE, newKey, envelope, getOffset(), headers);
         }
         // PK update -> emit as delete and re-insert with new key
         else {
-            // subclasses may still fill in values (e.g. Oracle LOB reselection), so the headers are built on emit
-            updateOldColumnValues = oldColumnValues;
-            updateNewColumnValues = newColumnValues;
             emitUpdateAsPrimaryKeyChangeRecord(receiver, tableSchema, oldKey, newKey, oldValue, newValue);
         }
     }
@@ -159,7 +154,7 @@ public abstract class RelationalChangeRecordEmitter<P extends Partition>
 
         Struct envelope = tableSchema.getEnvelopeSchema().delete(oldValue, getOffset().getSourceInfo(), getClock().currentTimeAsInstant());
         receiver.changeRecord(getPartition(), tableSchema, Operation.DELETE, oldKey, envelope, getOffset(),
-                addUnavailableHeader(null, UNAVAILABLE_BEFORE_HEADER, tableSchema, oldColumnValues));
+                addUnavailableHeader(null, UNAVAILABLE_BEFORE_HEADER, tableSchema, getUnavailableOldColumnPositions()));
     }
 
     protected void emitTruncateRecord(Receiver<P> receiver, TableSchema schema) throws InterruptedException {
@@ -177,15 +172,23 @@ public abstract class RelationalChangeRecordEmitter<P extends Partition>
     protected abstract Object[] getNewColumnValues();
 
     /**
-     * Whether the given column value is the connector's marker for a value that is not available in the change event,
-     * e.g. an unchanged TOAST column.
+     * Returns the positions within {@link #getOldColumnValues()} of the values that are not available in the change
+     * event, e.g. an unchanged TOAST column; {@code null} if there are none.
      */
-    protected boolean isUnavailableValue(Object value) {
-        return false;
+    protected BitSet getUnavailableOldColumnPositions() {
+        return null;
     }
 
-    private ConnectHeaders addUnavailableHeader(ConnectHeaders headers, String name, TableSchema tableSchema, Object[] columnValues) {
-        final List<String> fieldNames = tableSchema.valueFieldNames(columnValues, this::isUnavailableValue);
+    /**
+     * Returns the positions within {@link #getNewColumnValues()} of the values that are not available in the change
+     * event; {@code null} if there are none.
+     */
+    protected BitSet getUnavailableNewColumnPositions() {
+        return null;
+    }
+
+    private ConnectHeaders addUnavailableHeader(ConnectHeaders headers, String name, TableSchema tableSchema, BitSet positions) {
+        final List<String> fieldNames = tableSchema.valueFieldNames(positions);
         if (fieldNames.isEmpty()) {
             return headers;
         }
@@ -214,14 +217,14 @@ public abstract class RelationalChangeRecordEmitter<P extends Partition>
 
         ConnectHeaders headers = new ConnectHeaders();
         headers.add(PK_UPDATE_NEWKEY_FIELD, newKey, tableSchema.keySchema());
-        addUnavailableHeader(headers, UNAVAILABLE_BEFORE_HEADER, tableSchema, updateOldColumnValues);
+        addUnavailableHeader(headers, UNAVAILABLE_BEFORE_HEADER, tableSchema, getUnavailableOldColumnPositions());
 
         Struct envelope = tableSchema.getEnvelopeSchema().delete(oldValue, sourceInfo, getClock().currentTimeAsInstant());
         receiver.changeRecord(getPartition(), tableSchema, Operation.DELETE, oldKey, envelope, offset, headers);
 
         headers = new ConnectHeaders();
         headers.add(PK_UPDATE_OLDKEY_FIELD, oldKey, tableSchema.keySchema());
-        addUnavailableHeader(headers, UNAVAILABLE_AFTER_HEADER, tableSchema, updateNewColumnValues);
+        addUnavailableHeader(headers, UNAVAILABLE_AFTER_HEADER, tableSchema, getUnavailableNewColumnPositions());
 
         envelope = tableSchema.getEnvelopeSchema().create(newValue, sourceInfo, getClock().currentTimeAsInstant());
         receiver.changeRecord(getPartition(), tableSchema, Operation.CREATE, newKey, envelope, offset, headers);

@@ -13,6 +13,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import java.sql.Types;
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.BitSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
@@ -96,22 +97,13 @@ public class RelationalChangeRecordEmitterTest {
 
     @Test
     @FixFor("debezium/dbz#3052")
-    public void shouldBuildPrimaryKeyChangeHeadersFromValuesFilledInBySubclass() throws InterruptedException {
-        final Object[] newValues = { 2, UNAVAILABLE };
-        new TestEmitter(Operation.UPDATE, new Object[]{ 1, UNAVAILABLE }, newValues) {
-            @Override
-            protected void emitUpdateAsPrimaryKeyChangeRecord(Receiver<Partition> receiver, TableSchema tableSchema, Struct oldKey,
-                                                              Struct newKey, Struct oldValue, Struct newValue)
-                    throws InterruptedException {
-                newValues[1] = "reselected";
-                super.emitUpdateAsPrimaryKeyChangeRecord(receiver, tableSchema, oldKey, newKey, oldValue, newValue);
-            }
-        }.emitChangeRecords(tableSchema, receiver);
+    public void shouldListUnavailableColumnsInPrimaryKeyChangeHeaders() throws InterruptedException {
+        emit(Operation.UPDATE, new Object[]{ 1, UNAVAILABLE }, new Object[]{ 2, UNAVAILABLE });
 
         assertThat(operations).containsExactly(Operation.DELETE, Operation.CREATE);
         assertThat(headers.get(0).lastWithName(PK_UPDATE_NEWKEY_FIELD)).isNotNull();
         assertHeaders(headers.get(0), List.of("lob"), null);
-        assertHeaders(headers.get(1), null, null);
+        assertHeaders(headers.get(1), null, List.of("lob"));
     }
 
     private void emit(Operation operation, Object[] oldValues, Object[] newValues) throws InterruptedException {
@@ -161,8 +153,21 @@ public class RelationalChangeRecordEmitterTest {
         }
 
         @Override
-        protected boolean isUnavailableValue(Object value) {
-            return value == UNAVAILABLE;
+        protected BitSet getUnavailableOldColumnPositions() {
+            return unavailablePositions(oldValues);
+        }
+
+        @Override
+        protected BitSet getUnavailableNewColumnPositions() {
+            return unavailablePositions(newValues);
+        }
+
+        private BitSet unavailablePositions(Object[] values) {
+            final BitSet positions = new BitSet();
+            for (int i = 0; values != null && i < values.length; i++) {
+                positions.set(i, values[i] == UNAVAILABLE);
+            }
+            return positions;
         }
     }
 

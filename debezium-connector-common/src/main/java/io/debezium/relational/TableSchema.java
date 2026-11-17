@@ -8,9 +8,9 @@ package io.debezium.relational;
 import static io.debezium.util.Loggings.maybeRedactSensitiveData;
 
 import java.util.ArrayList;
+import java.util.BitSet;
 import java.util.List;
 import java.util.Objects;
-import java.util.function.Predicate;
 
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.Struct;
@@ -57,6 +57,8 @@ public class TableSchema implements DataCollectionSchema {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(TableSchema.class);
 
+    private static final String[] NO_FIELD_NAMES = new String[0];
+
     private final TableId id;
     private final Schema keySchema;
     private final Envelope envelopeSchema;
@@ -78,7 +80,7 @@ public class TableSchema implements DataCollectionSchema {
      *            may return nulls
      */
     public TableSchema(TableId id, Schema keySchema, StructGenerator keyGenerator, Envelope envelopeSchema, Schema valueSchema, StructGenerator valueGenerator) {
-        this(id, keySchema, keyGenerator, envelopeSchema, valueSchema, valueGenerator, new String[0]);
+        this(id, keySchema, keyGenerator, envelopeSchema, valueSchema, valueGenerator, NO_FIELD_NAMES);
     }
 
     /**
@@ -93,7 +95,7 @@ public class TableSchema implements DataCollectionSchema {
         this.valueSchema = valueSchema;
         this.keyGenerator = keyGenerator != null ? keyGenerator : (row) -> null;
         this.valueGenerator = valueGenerator != null ? valueGenerator : (row) -> null;
-        this.valueFieldNamesByPosition = valueFieldNamesByPosition != null ? valueFieldNamesByPosition : new String[0];
+        this.valueFieldNamesByPosition = valueFieldNamesByPosition != null ? valueFieldNamesByPosition : NO_FIELD_NAMES;
     }
 
     @Override
@@ -157,22 +159,19 @@ public class TableSchema implements DataCollectionSchema {
     }
 
     /**
-     * Returns the names of the value fields whose column data matches the given predicate, in column order.
+     * Returns the names of the value fields at the given positions of the column data, in column order.
      *
-     * @param columnData the column values for the table; may be null
-     * @param predicate the test applied to each column value
-     * @return the matching field names; never null
+     * @param positions the positions within the column data; may be null
+     * @return the field names; never null
      */
-    public List<String> valueFieldNames(Object[] columnData, Predicate<Object> predicate) {
-        List<String> fieldNames = List.of();
-        if (columnData != null) {
-            for (int i = 0; i < Math.min(columnData.length, valueFieldNamesByPosition.length); i++) {
-                if (valueFieldNamesByPosition[i] != null && predicate.test(columnData[i])) {
-                    if (fieldNames.isEmpty()) {
-                        fieldNames = new ArrayList<>();
-                    }
-                    fieldNames.add(valueFieldNamesByPosition[i]);
-                }
+    public List<String> valueFieldNames(BitSet positions) {
+        if (positions == null || positions.isEmpty()) {
+            return List.of();
+        }
+        final List<String> fieldNames = new ArrayList<>(positions.cardinality());
+        for (int i = positions.nextSetBit(0); i >= 0 && i < valueFieldNamesByPosition.length; i = positions.nextSetBit(i + 1)) {
+            if (valueFieldNamesByPosition[i] != null) {
+                fieldNames.add(valueFieldNamesByPosition[i]);
             }
         }
         return fieldNames;
