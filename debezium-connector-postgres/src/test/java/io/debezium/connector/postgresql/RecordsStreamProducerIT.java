@@ -1922,7 +1922,9 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
         // the old tuple of a REPLICA IDENTITY FULL table supplies the values
         consumer.expects(1);
         executeAndWait("ALTER TABLE test_toast_table REPLICA IDENTITY FULL; UPDATE test_toast_table SET not_toast = 3;");
-        assertThat(consumer.remove().headers().lastWithName(RelationalChangeRecordEmitter.UNAVAILABLE_AFTER_HEADER)).isNull();
+        final var fullIdentityUpdate = consumer.remove();
+        assertThat(fullIdentityUpdate.headers().lastWithName(RelationalChangeRecordEmitter.UNAVAILABLE_AFTER_HEADER)).isNull();
+        assertThat(((Struct) fullIdentityUpdate.value()).getStruct(Envelope.FieldName.AFTER).getString("text")).isEqualTo(toastedValue);
     }
 
     @Test
