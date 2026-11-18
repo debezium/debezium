@@ -6,6 +6,7 @@
 package io.debezium.relational;
 
 import java.sql.Types;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
@@ -173,14 +174,20 @@ public class TableSchemaBuilder {
             hasPrimaryKey.set(true);
         }
 
-        final List<Column> valueColumns = table.columns()
+        final List<Column> valueColumns = new ArrayList<>();
+        table.columns()
                 .stream()
                 .filter(column -> filter == null || filter.matches(tableId.catalog(), tableId.schema(), tableId.table(), column.name()))
-                .collect(Collectors.toList());
-        valueColumns.forEach(column -> {
-            ColumnMapper mapper = mappers == null ? null : mappers.mapperFor(tableId, column);
-            addField(valSchemaBuilder, table, column, mapper);
-        });
+                .forEach(column -> {
+                    ColumnMapper mapper = mappers == null ? null : mappers.mapperFor(tableId, column);
+                    final String fieldName = fieldNamer.fieldNameFor(column);
+                    final boolean taken = valSchemaBuilder.field(fieldName) != null;
+                    addField(valSchemaBuilder, table, column, mapper);
+                    // a column of an unsupported type gets no field
+                    if (!taken && valSchemaBuilder.field(fieldName) != null) {
+                        valueColumns.add(column);
+                    }
+                });
 
         Schema valSchema = valSchemaBuilder.optional().build();
         Schema keySchema = hasPrimaryKey.get() ? keySchemaBuilder.build() : null;
