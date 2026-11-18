@@ -2393,7 +2393,6 @@ As {prodname} cannot safely provide the column value in this case, the connector
 
 For an `UPDATE` event, the connector also lists the names of the fields that contain the placeholder in the `__debezium.unavailable.after` header, so consumers do not need to compare field values with the placeholder.
 The header value is an array of strings, and the connector adds the header only when at least one field contains the placeholder.
-The `__debezium.unavailable.before` header lists the fields of the `before` field in the same way, and a tombstone that follows a `DELETE` event carries the same headers as that event.
 For example, the {link-prefix}:{link-event-flattening}#new-record-state-extraction[`ExtractNewRecordState` SMT] with `drop.fields.header.name` set to `__debezium.unavailable.after` removes these fields from the flattened record.
 With the default `drop.fields.keep.schema.compatible=true`, the SMT removes only optional fields.
 An `UPDATE` that changes the primary key is emitted as a `DELETE` event and a `CREATE` event, and the header is added to the `CREATE` event.
