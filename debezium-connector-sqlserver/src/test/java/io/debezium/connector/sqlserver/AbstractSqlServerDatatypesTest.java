@@ -18,6 +18,7 @@ import java.util.List;
 
 import org.apache.kafka.connect.data.Decimal;
 import org.apache.kafka.connect.data.Schema;
+import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceRecord;
 import org.junit.jupiter.api.AfterAll;
@@ -37,6 +38,7 @@ import io.debezium.time.MicroTime;
 import io.debezium.time.NanoTime;
 import io.debezium.time.NanoTimestamp;
 import io.debezium.time.StructuredDate;
+import io.debezium.time.StructuredTemporal;
 import io.debezium.time.StructuredTime;
 import io.debezium.time.StructuredTimestamp;
 import io.debezium.time.StructuredZonedTimestamp;
@@ -184,44 +186,40 @@ public abstract class AbstractSqlServerDatatypesTest extends AbstractAsyncEngine
                             .atOffset(ZoneOffset.UTC)
                             .toInstant())));
 
-    private static final Schema STRUCTURED_DATE_SCHEMA = StructuredDate.builder().optional().build();
-    private static final Schema STRUCTURED_TIME_2_SCHEMA = StructuredTime.builder(2).optional().build();
-    private static final Schema STRUCTURED_TIME_4_SCHEMA = StructuredTime.builder(4).optional().build();
-    private static final Schema STRUCTURED_TIME_7_SCHEMA = StructuredTime.builder(7).optional().build();
-    private static final Schema STRUCTURED_TIMESTAMP_0_SCHEMA = StructuredTimestamp.builder(0).optional().build();
-    private static final Schema STRUCTURED_TIMESTAMP_3_SCHEMA = StructuredTimestamp.builder(3).optional().build();
-    private static final Schema STRUCTURED_TIMESTAMP_7_SCHEMA = StructuredTimestamp.builder(7).optional().build();
-    private static final Schema STRUCTURED_ZONED_TIMESTAMP_7_SCHEMA = StructuredZonedTimestamp.builder(7).optional().build();
-
     private static final List<SchemaAndValueField> EXPECTED_DATE_TIME_AS_STRUCTURED = Arrays.asList(
-            new SchemaAndValueField("val_date", STRUCTURED_DATE_SCHEMA,
-                    StructuredDate.from(STRUCTURED_DATE_SCHEMA, LocalDate.of(2018, 7, 13))),
-            new SchemaAndValueField("val_time_p2", STRUCTURED_TIME_2_SCHEMA,
-                    StructuredTime.from(STRUCTURED_TIME_2_SCHEMA, LocalTime.of(10, 23, 45, 680_000_000), 2)),
-            new SchemaAndValueField("val_time", STRUCTURED_TIME_4_SCHEMA,
-                    StructuredTime.from(STRUCTURED_TIME_4_SCHEMA, LocalTime.of(10, 23, 45, 678_900_000), 4)),
-            new SchemaAndValueField("val_time_p7", STRUCTURED_TIME_7_SCHEMA,
-                    StructuredTime.from(STRUCTURED_TIME_7_SCHEMA, LocalTime.of(10, 23, 45, 678_901_200), 7)),
-            new SchemaAndValueField("val_datetime2", STRUCTURED_TIMESTAMP_7_SCHEMA,
-                    StructuredTimestamp.from(STRUCTURED_TIMESTAMP_7_SCHEMA, LocalDateTime.of(2018, 7, 13, 11, 23, 45, 340_000_000), 7)),
-            new SchemaAndValueField("val_datetimeoffset", STRUCTURED_ZONED_TIMESTAMP_7_SCHEMA,
-                    StructuredZonedTimestamp.from(STRUCTURED_ZONED_TIMESTAMP_7_SCHEMA, 2018, 7, 13, 12, 23, 45, 456_000_000, 39_600, null, 7)),
-            new SchemaAndValueField("val_datetime", STRUCTURED_TIMESTAMP_3_SCHEMA,
-                    StructuredTimestamp.from(STRUCTURED_TIMESTAMP_3_SCHEMA, LocalDateTime.of(2018, 7, 13, 13, 23, 45, 780_000_000), 3)),
-            new SchemaAndValueField("val_smalldatetime", STRUCTURED_TIMESTAMP_0_SCHEMA,
-                    StructuredTimestamp.from(STRUCTURED_TIMESTAMP_0_SCHEMA, LocalDateTime.of(2018, 7, 13, 14, 24, 0), 0)));
+            new SchemaAndValueField("val_date", structuredSchema(StructuredDate.builder(), "val_date"),
+                    StructuredDate.from(structuredSchema(StructuredDate.builder(), "val_date"), LocalDate.of(2018, 7, 13))),
+            new SchemaAndValueField("val_time_p2", structuredSchema(StructuredTime.builder(2), "val_time_p2"),
+                    StructuredTime.from(structuredSchema(StructuredTime.builder(2), "val_time_p2"), LocalTime.of(10, 23, 45, 680_000_000), 2)),
+            new SchemaAndValueField("val_time", structuredSchema(StructuredTime.builder(4), "val_time"),
+                    StructuredTime.from(structuredSchema(StructuredTime.builder(4), "val_time"), LocalTime.of(10, 23, 45, 678_900_000), 4)),
+            new SchemaAndValueField("val_time_p7", structuredSchema(StructuredTime.builder(7), "val_time_p7"),
+                    StructuredTime.from(structuredSchema(StructuredTime.builder(7), "val_time_p7"), LocalTime.of(10, 23, 45, 678_901_200), 7)),
+            new SchemaAndValueField("val_datetime2", structuredSchema(StructuredTimestamp.builder(7), "val_datetime2"),
+                    StructuredTimestamp.from(structuredSchema(StructuredTimestamp.builder(7), "val_datetime2"), LocalDateTime.of(2018, 7, 13, 11, 23, 45, 340_000_000),
+                            7)),
+            new SchemaAndValueField("val_datetimeoffset", structuredSchema(StructuredZonedTimestamp.builder(7), "val_datetimeoffset"),
+                    StructuredZonedTimestamp.from(structuredSchema(StructuredZonedTimestamp.builder(7), "val_datetimeoffset"), 2018, 7, 13, 12, 23, 45, 456_000_000,
+                            39_600, null, 7)),
+            new SchemaAndValueField("val_datetime", structuredSchema(StructuredTimestamp.builder(3), "val_datetime"),
+                    StructuredTimestamp.from(structuredSchema(StructuredTimestamp.builder(3), "val_datetime"), LocalDateTime.of(2018, 7, 13, 13, 23, 45, 780_000_000),
+                            3)),
+            new SchemaAndValueField("val_smalldatetime", structuredSchema(StructuredTimestamp.builder(0), "val_smalldatetime"),
+                    StructuredTimestamp.from(structuredSchema(StructuredTimestamp.builder(0), "val_smalldatetime"), LocalDateTime.of(2018, 7, 13, 14, 24, 0), 0)));
 
     private static final List<SchemaAndValueField> EXPECTED_DATE_TIME_EDGE_AS_STRUCTURED = Arrays.asList(
-            new SchemaAndValueField("val_date_min", STRUCTURED_DATE_SCHEMA,
-                    StructuredDate.from(STRUCTURED_DATE_SCHEMA, LocalDate.of(1, 1, 1))),
-            new SchemaAndValueField("val_date_max", STRUCTURED_DATE_SCHEMA,
-                    StructuredDate.from(STRUCTURED_DATE_SCHEMA, LocalDate.of(9999, 12, 31))),
-            new SchemaAndValueField("val_time_p7_edge", STRUCTURED_TIME_7_SCHEMA,
-                    StructuredTime.from(STRUCTURED_TIME_7_SCHEMA, LocalTime.of(23, 59, 59, 999_999_900), 7)),
-            new SchemaAndValueField("val_datetime2_edge", STRUCTURED_TIMESTAMP_7_SCHEMA,
-                    StructuredTimestamp.from(STRUCTURED_TIMESTAMP_7_SCHEMA, LocalDateTime.of(9999, 12, 31, 23, 59, 59, 999_999_900), 7)),
-            new SchemaAndValueField("val_datetimeoffset_edge", STRUCTURED_ZONED_TIMESTAMP_7_SCHEMA,
-                    StructuredZonedTimestamp.from(STRUCTURED_ZONED_TIMESTAMP_7_SCHEMA, 9999, 12, 31, 23, 59, 59, 999_999_900, 50_400, null, 7)));
+            new SchemaAndValueField("val_date_min", structuredSchema(StructuredDate.builder(), "val_date_min"),
+                    StructuredDate.from(structuredSchema(StructuredDate.builder(), "val_date_min"), LocalDate.of(1, 1, 1))),
+            new SchemaAndValueField("val_date_max", structuredSchema(StructuredDate.builder(), "val_date_max"),
+                    StructuredDate.from(structuredSchema(StructuredDate.builder(), "val_date_max"), LocalDate.of(9999, 12, 31))),
+            new SchemaAndValueField("val_time_p7_edge", structuredSchema(StructuredTime.builder(7), "val_time_p7_edge"),
+                    StructuredTime.from(structuredSchema(StructuredTime.builder(7), "val_time_p7_edge"), LocalTime.of(23, 59, 59, 999_999_900), 7)),
+            new SchemaAndValueField("val_datetime2_edge", structuredSchema(StructuredTimestamp.builder(7), "val_datetime2_edge"),
+                    StructuredTimestamp.from(structuredSchema(StructuredTimestamp.builder(7), "val_datetime2_edge"),
+                            LocalDateTime.of(9999, 12, 31, 23, 59, 59, 999_999_900), 7)),
+            new SchemaAndValueField("val_datetimeoffset_edge", structuredSchema(StructuredZonedTimestamp.builder(7), "val_datetimeoffset_edge"),
+                    StructuredZonedTimestamp.from(structuredSchema(StructuredZonedTimestamp.builder(7), "val_datetimeoffset_edge"), 9999, 12, 31, 23, 59, 59, 999_999_900,
+                            50_400, null, 7)));
 
     private static final List<SchemaAndValueField> EXPECTED_XML = Arrays.asList(
             new SchemaAndValueField("val_xml", Schema.OPTIONAL_STRING_SCHEMA, "<a>b</a>"));
@@ -482,6 +480,10 @@ public abstract class AbstractSqlServerDatatypesTest extends AbstractAsyncEngine
         start(SqlServerConnector.class, config);
         assertConnectorIsRunning();
         TestHelper.waitForSnapshotToBeCompleted();
+    }
+
+    private static Schema structuredSchema(SchemaBuilder builder, String columnName) {
+        return StructuredTemporal.qualifySchemaBuilderWithSourceColumn(builder.optional(), columnName).build();
     }
 
     protected static void createTables() throws SQLException {

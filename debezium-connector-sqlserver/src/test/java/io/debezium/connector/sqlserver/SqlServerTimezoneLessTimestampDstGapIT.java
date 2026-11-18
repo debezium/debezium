@@ -35,6 +35,7 @@ import io.debezium.relational.RelationalDatabaseConnectorConfig;
 import io.debezium.time.IsoTimestamp;
 import io.debezium.time.MicroTimestamp;
 import io.debezium.time.NanoTimestamp;
+import io.debezium.time.StructuredTemporal;
 import io.debezium.time.StructuredTimestamp;
 import io.debezium.time.Timestamp;
 import io.debezium.util.Testing;
@@ -171,7 +172,9 @@ class SqlServerTimezoneLessTimestampDstGapIT extends AbstractAsyncEngineConnecto
                         .isEqualTo(IsoTimestamp.toIsoString(expected, null));
                 break;
             case STRUCTURED:
-                Schema structuredSchema = StructuredTimestamp.builder(scale).optional().build();
+                Schema structuredSchema = StructuredTemporal
+                        .qualifySchemaBuilderWithSourceColumn(StructuredTimestamp.builder(scale).optional(), fieldName)
+                        .build();
                 new SchemaAndValueField(fieldName, structuredSchema,
                         StructuredTimestamp.from(structuredSchema, expected, scale))
                         .assertFor(record);
