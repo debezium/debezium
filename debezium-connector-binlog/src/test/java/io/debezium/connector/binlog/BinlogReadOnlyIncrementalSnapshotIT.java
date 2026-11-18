@@ -32,12 +32,14 @@ import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.condition.DisabledIfSystemProperty;
 import org.slf4j.LoggerFactory;
 
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
 import io.debezium.data.Envelope;
 import io.debezium.doc.FixFor;
+import io.debezium.heartbeat.Heartbeat;
 import io.debezium.jdbc.JdbcConnection;
 import io.debezium.junit.Flaky;
 import io.debezium.junit.logging.LogInterceptor;
@@ -56,6 +58,8 @@ import ch.qos.logback.classic.spi.ILoggingEvent;
 public abstract class BinlogReadOnlyIncrementalSnapshotIT<C extends SourceConnector> extends BinlogIncrementalSnapshotIT<C> {
 
     public static final String EXCLUDED_TABLE = "b";
+
+    private static final String MISSING_CONTEXT_MESSAGE = "Context is null, skipping message processing";
 
     private static final int PARTITION_NO = 0;
 
@@ -284,6 +288,92 @@ public abstract class BinlogReadOnlyIncrementalSnapshotIT<C extends SourceConnec
                 .build();
         try (KafkaProducer<String, String> producer = new KafkaProducer<>(signalProducerConfig.asProperties())) {
             producer.send(executeSnapshotSignal).get();
+        }
+    }
+
+    private static List<String> binaryLogFiles(JdbcConnection connection) throws SQLException {
+        return connection.queryAndMap("SHOW BINARY LOGS", rs -> {
+            final List<String> files = new ArrayList<>();
+            while (rs.next()) {
+                files.add(rs.getString(1));
+            }
+            return files;
+        });
+    }
+
+    /**
+     * A connector that skips the initial snapshot has no incremental snapshot context, which is a normal state and
+     * not something to warn about. The server sends its {@code HEARTBEAT} events frequently enough that a warning
+     * would flood the log.
+     * <p>
+     * The short heartbeat interval also produces the heartbeat records, so the connector is started without the
+     * assertion that there are no records to consume.
+     */
+    @Test
+    @FixFor("debezium/dbz#1328")
+    // The InnoDB-based binary log keeps a pre-allocated next file and refuses to purge any binary log while the
+    // current one is in use, and this test needs a purged binary log.
+    @DisabledIfSystemProperty(named = "database.innodb.binlog", matches = "true", disabledReason = "Not supported with the InnoDB-based binary log")
+    void shouldNotWarnAboutTheMissingSnapshotContext() throws Exception {
+        final Logger snapshotLogger = (Logger) LoggerFactory.getLogger(BinlogReadOnlyIncrementalSnapshotChangeEventSource.class);
+        final Logger binlogLogger = (Logger) LoggerFactory.getLogger(BinlogStreamingChangeEventSource.class);
+        final Level snapshotLevel = snapshotLogger.getLevel();
+        final Level binlogLevel = binlogLogger.getLevel();
+        final LogInterceptor snapshotInterceptor = new LogInterceptor(BinlogReadOnlyIncrementalSnapshotChangeEventSource.class);
+        final LogInterceptor binlogInterceptor = new LogInterceptor(BinlogStreamingChangeEventSource.class);
+        snapshotLogger.setLevel(Level.TRACE);
+        binlogLogger.setLevel(Level.TRACE);
+        try {
+            // A connector without a stored offset starts at the beginning of the binary log, and the earlier tests
+            // of the suite leave their schema changes in it. A schema change gives the incremental snapshot source
+            // its context, so the binary log is rotated and the older ones are purged, and the connector then sees
+            // no schema change and the server has nothing to send but its HEARTBEAT events.
+            try (JdbcConnection connection = databaseConnection()) {
+                // make sure there's a new log file
+                connection.execute("FLUSH LOGS");
+
+                // purge all log files other than the last one
+                final List<String> binlogs = binaryLogFiles(connection);
+                connection.execute("PURGE BINARY LOGS TO '" + binlogs.get(binlogs.size() - 1) + "'");
+
+                // the purge is applied in the background, so the older binary logs can still be listed right after it
+                Awaitility.await()
+                        .alias("Awaiting the binary log purge")
+                        .atMost(30, TimeUnit.SECONDS)
+                        .until(() -> binaryLogFiles(connection).size() == 1);
+            }
+
+            startConnector(x -> x
+                    .with(BinlogConnectorConfig.SNAPSHOT_MODE, BinlogConnectorConfig.SnapshotMode.CONFIGURATION_BASED)
+                    .with(CommonConnectorConfig.SNAPSHOT_MODE_CONFIGURATION_BASED_SNAPSHOT_SCHEMA, false)
+                    .with(CommonConnectorConfig.SNAPSHOT_MODE_CONFIGURATION_BASED_SNAPSHOT_DATA, false)
+                    .with(CommonConnectorConfig.SNAPSHOT_MODE_CONFIGURATION_BASED_START_STREAM, true)
+                    .with(Heartbeat.HEARTBEAT_INTERVAL, "1000"),
+                    loggingCompletion(),
+                    false);
+
+            // Each server HEARTBEAT event reaches the incremental snapshot source, which logs that it has no
+            // context, so the source is reached often enough for the level of the message to matter.
+            Awaitility.await()
+                    .alias("Awaiting the server heartbeat events")
+                    .pollInterval(100, TimeUnit.MILLISECONDS)
+                    .atMost(30, TimeUnit.SECONDS)
+                    .until(() -> binlogInterceptor.getLoggingEvents("Server heartbeat:").size() >= 10
+                            && !snapshotInterceptor.getLoggingEvents(MISSING_CONTEXT_MESSAGE).isEmpty());
+
+            assertThat(snapshotInterceptor.getLoggingEvents(MISSING_CONTEXT_MESSAGE))
+                    .as("Messages about the missing snapshot context")
+                    .allSatisfy(event -> assertThat(event.getLevel().isGreaterOrEqual(Level.WARN))
+                            .as("Level of the message about the missing snapshot context")
+                            .isFalse());
+        }
+        finally {
+            snapshotLogger.setLevel(snapshotLevel);
+            binlogLogger.setLevel(binlogLevel);
+            snapshotLogger.detachAppender(snapshotInterceptor);
+            binlogLogger.detachAppender(binlogInterceptor);
+            snapshotInterceptor.stop();
+            binlogInterceptor.stop();
         }
     }
 

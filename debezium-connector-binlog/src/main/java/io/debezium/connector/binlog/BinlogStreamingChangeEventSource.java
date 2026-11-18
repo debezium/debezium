@@ -120,6 +120,7 @@ public abstract class BinlogStreamingChangeEventSource<P extends BinlogPartition
     private static final String KEEPALIVE_THREAD_NAME = "blc-keepalive";
     private static final String SET_STATEMENT_REGEX = "SET STATEMENT .* FOR";
     private static final Pattern TRUNCATE_STATEMENT_PATTERN = Pattern.compile("(SET STATEMENT .*)?TRUNCATE TABLE .*", Pattern.CASE_INSENSITIVE | Pattern.DOTALL);
+    private static final long MIN_HEARTBEAT_PERIOD_MS = 50;
 
     // DML statement prefixes used to filter out DML from DDL processing (DBZ-9428)
     private static final String DML_INSERT_PREFIX = "INSERT ";
@@ -491,11 +492,14 @@ public abstract class BinlogStreamingChangeEventSource<P extends BinlogPartition
                     keepAliveMaxReconnectAttempts);
         }
 
-        // Considering heartbeatInterval should be less than keepAliveInterval, use the heartbeatIntervalFactor
-        // multiply by keepAliveInterval and set the result value to heartbeatInterval. The default value of
-        // heartbeatIntervalFactor is 0.0, and we believe the left time (0.2 * keepAliveInterval) is enough
-        // to process the packet received from the database server.
-        client.setHeartbeatInterval((long) (keepAliveInterval * heartbeatIntervalFactor));
+        // The connector dispatches its heartbeat when a binlog event arrives, so on an idle binlog the
+        // server's HEARTBEAT events are the only events that can trigger it and their period bounds how
+        // often the heartbeat can run. Asking for them at an eighth of the configured interval sends eight
+        // of them per interval, so one of them arrives within one period after the heartbeat interval has
+        // elapsed.
+        final Duration heartbeatInterval = connectorConfig.getHeartbeatInterval();
+        final long keepAlivePeriod = (long) (keepAliveInterval * heartbeatIntervalFactor);
+        client.setHeartbeatInterval(serverHeartbeatPeriod(heartbeatInterval, keepAlivePeriod));
 
         final long netWriteTimeout = connectorConfig.getBinlogNetWriteTimeout();
         if (netWriteTimeout > 0) {
@@ -510,6 +514,19 @@ public abstract class BinlogStreamingChangeEventSource<P extends BinlogPartition
         }
 
         client.setEventDeserializer(createEventDeserializer());
+    }
+
+    /**
+     * Derives the period at which the server is asked to send its {@code HEARTBEAT} events. The period is
+     * capped at the keep-alive derived period, so that the events keep arriving before the connection is
+     * dropped, and floored at 50 milliseconds, so that a short interval does not flood the binlog. A
+     * disabled heartbeat keeps the keep-alive derived period.
+     */
+    static long serverHeartbeatPeriod(Duration heartbeatInterval, long keepAlivePeriod) {
+        if (heartbeatInterval.isZero()) {
+            return keepAlivePeriod;
+        }
+        return Math.min(keepAlivePeriod, Math.max(MIN_HEARTBEAT_PERIOD_MS, heartbeatInterval.toMillis() / 8));
     }
 
     protected void configureReplicaCompatibility(BinaryLogClient client) {

@@ -67,7 +67,7 @@ public abstract class BinlogReadOnlyIncrementalSnapshotChangeEventSource<P exten
     public void processMessage(P partition, DataCollectionId dataCollectionId, Object key, OffsetContext offsetContext)
             throws InterruptedException {
         if (getContext() == null) {
-            LOGGER.warn("Context is null, skipping message processing");
+            LOGGER.debug("Context is null, skipping message processing");
             return;
         }
         LOGGER.trace("Checking window for table '{}', key '{}', window contains '{}'", dataCollectionId, key, window);
@@ -84,7 +84,7 @@ public abstract class BinlogReadOnlyIncrementalSnapshotChangeEventSource<P exten
     @Override
     public void processHeartbeat(P partition, OffsetContext offsetContext) throws InterruptedException {
         if (getContext() == null) {
-            LOGGER.warn("Context is null, skipping message processing");
+            LOGGER.debug("Context is null, skipping message processing");
             return;
         }
         readUntilGtidChange(partition, offsetContext);
@@ -93,7 +93,7 @@ public abstract class BinlogReadOnlyIncrementalSnapshotChangeEventSource<P exten
     @Override
     public void processFilteredEvent(P partition, OffsetContext offsetContext) throws InterruptedException {
         if (getContext() == null) {
-            LOGGER.warn("Context is null, skipping message processing");
+            LOGGER.debug("Context is null, skipping message processing");
             return;
         }
         boolean windowClosed = getContext().updateWindowState(offsetContext);
@@ -106,7 +106,7 @@ public abstract class BinlogReadOnlyIncrementalSnapshotChangeEventSource<P exten
     @Override
     public void processTransactionStartedEvent(P partition, OffsetContext offsetContext) throws InterruptedException {
         if (getContext() == null) {
-            LOGGER.warn("Context is null, skipping message processing");
+            LOGGER.debug("Context is null, skipping message processing");
             return;
         }
         boolean windowClosed = getContext().updateWindowState(offsetContext);
@@ -119,7 +119,7 @@ public abstract class BinlogReadOnlyIncrementalSnapshotChangeEventSource<P exten
     @Override
     public void processTransactionCommittedEvent(P partition, OffsetContext offsetContext) throws InterruptedException {
         if (getContext() == null) {
-            LOGGER.warn("Context is null, skipping message processing");
+            LOGGER.debug("Context is null, skipping message processing");
             return;
         }
         readUntilGtidChange(partition, offsetContext);

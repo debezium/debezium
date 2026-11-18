@@ -51,7 +51,7 @@ public class DatabaseHeartbeatImpl implements Heartbeat {
     }
 
     @Override
-    public void forcedBeat(Map<String, ?> partition, Map<String, ?> offset, BlockingConsumer<SourceRecord> consumer) {
+    public synchronized void forcedBeat(Map<String, ?> partition, Map<String, ?> offset, BlockingConsumer<SourceRecord> consumer) {
         try {
             jdbcConnection.execute(heartBeatActionQuery);
         }
