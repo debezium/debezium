@@ -152,7 +152,7 @@
         <version.starrocks.driver>1.1.2</version.starrocks.driver>
         <version.mongo.driver>5.14.0</version.mongo.driver>
         <version.sqlserver.driver>13.6.2.jre11</version.sqlserver.driver>
-        <version.db2.driver>11.5.0.0</version.db2.driver>
+        <version.db2.driver>12.1.5.0</version.db2.driver>
         <version.informix.driver>15.0.1.4</version.informix.driver>
         <version.cassandra.driver>4.14.0</version.cassandra.driver>
         <version.mariadb.driver>3.5.11</version.mariadb.driver>
