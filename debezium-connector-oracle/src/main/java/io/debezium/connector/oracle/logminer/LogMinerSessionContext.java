@@ -97,8 +97,8 @@ public class LogMinerSessionContext implements AutoCloseable {
             Objects.requireNonNull(logFile.getFileName());
 
             LOGGER.debug("  Adding log file: {}", logFile);
-            connection.executeWithoutCommitting("BEGIN sys.dbms_logmnr.add_logfile(LOGFILENAME => '" +
-                    logFile.getFileName() + "', OPTIONS => DBMS_LOGMNR.ADDFILE); END;");
+            connection.prepareUpdate("BEGIN sys.dbms_logmnr.add_logfile(LOGFILENAME => ?, OPTIONS => DBMS_LOGMNR.ADDFILE); END;",
+                    ps -> ps.setString(1, logFile.getFileName()));
         }
     }
 

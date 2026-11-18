@@ -180,7 +180,7 @@ public class OracleConnection extends JdbcConnection {
         // container of the service. Switch back to the container the session was last set to.
         LOGGER.debug("Restoring session container to '{}' after reconnect.", lastSessionContainerName);
         try (Statement statement = connection.createStatement()) {
-            statement.execute("alter session set container=" + lastSessionContainerName);
+            statement.execute("alter session set container=" + statement.enquoteIdentifier(lastSessionContainerName, false));
         }
         catch (SQLException e) {
             // Close the physical connection so that the next call reconnects and retries the switch,
@@ -199,7 +199,7 @@ public class OracleConnection extends JdbcConnection {
         Statement statement = null;
         try {
             statement = connection().createStatement();
-            statement.execute("alter session set container=" + containerName);
+            statement.execute("alter session set container=" + statement.enquoteIdentifier(containerName, false));
         }
         catch (SQLException e) {
             throw new DebeziumException("Failed to set session container to " + containerName, e);

@@ -215,4 +215,28 @@ public abstract class BaseChangeRecordEmitter<T> extends RelationalChangeRecordE
             throw new DebeziumException(String.format("Failed to execute reselect query for value '%s'.", value), e);
         }
     }
+
+    /**
+     * Evaluates the given SQL expression against {@code DUAL}, binding the parameter to its single
+     * bind variable placeholder.
+     *
+     * @param connection the underlying jdbc connection, should not be {@code null}
+     * @param expression the SQL expression with exactly one bind variable placeholder, should not be {@code null}
+     * @param parameter the value to bind to the expression, may be {@code null}
+     * @return the evaluated value
+     */
+    protected Object convertValueViaQuery(Connection connection, String expression, Object parameter) {
+        try (PreparedStatement statement = connection.prepareStatement(String.format("SELECT %s FROM DUAL", expression))) {
+            statement.setObject(1, parameter);
+            try (ResultSet rs = statement.executeQuery()) {
+                if (!rs.next()) {
+                    throw new DebeziumException("Expected query to return a value but did not.");
+                }
+                return rs.getObject(1);
+            }
+        }
+        catch (SQLException e) {
+            throw new DebeziumException(String.format("Failed to execute reselect query '%s' for value '%s'.", expression, parameter), e);
+        }
+    }
 }
