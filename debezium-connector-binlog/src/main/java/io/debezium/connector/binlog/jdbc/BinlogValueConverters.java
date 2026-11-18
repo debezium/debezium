@@ -187,7 +187,7 @@ public abstract class BinlogValueConverters extends JdbcValueConverters {
             return Year.builder();
         }
         if (matches(typeName, "TIME") && temporalPrecisionMode == TemporalPrecisionMode.STRUCTURED) {
-            return StructuredDuration.builder();
+            return StructuredDuration.builder(getTimePrecision(column), StructuredDuration.Kind.DAY_TIME);
         }
         if (matches(typeName, "ENUM")) {
             String commaSeparatedOptions = extractEnumAndSetOptionsAsString(column);

@@ -81,6 +81,7 @@ import io.debezium.connector.jdbc.type.debezium.StructuredTimeType;
 import io.debezium.connector.jdbc.type.debezium.StructuredTimestampType;
 import io.debezium.connector.jdbc.type.debezium.StructuredZonedTimeType;
 import io.debezium.connector.jdbc.type.debezium.StructuredZonedTimestampType;
+import io.debezium.connector.jdbc.type.debezium.TargetTemporalCapabilities;
 import io.debezium.connector.jdbc.type.debezium.TimeType;
 import io.debezium.connector.jdbc.type.debezium.TimestampType;
 import io.debezium.connector.jdbc.type.debezium.VariableScaleDecimalType;
@@ -92,6 +93,7 @@ import io.debezium.metadata.CollectionId;
 import io.debezium.sink.column.ColumnDescriptor;
 import io.debezium.sink.field.FieldDescriptor;
 import io.debezium.sink.valuebinding.ValueBindDescriptor;
+import io.debezium.time.StructuredTemporal;
 import io.debezium.util.Strings;
 
 /**
@@ -111,6 +113,7 @@ public class GeneralDatabaseDialect implements DatabaseDialect {
     private final ColumnNamingStrategy columnNamingStrategy;
     private final Map<String, JdbcType> typeRegistry = new HashMap<>();
     private final boolean jdbcTimeZone;
+    private volatile TargetTemporalCapabilities targetTemporalCapabilities;
 
     public GeneralDatabaseDialect(JdbcSinkConnectorConfig config, SessionFactory sessionFactory) {
         this.connectorConfig = config;
@@ -125,6 +128,30 @@ public class GeneralDatabaseDialect implements DatabaseDialect {
         registerTypes();
 
         LOGGER.info("Database TimeZone: {}", getDatabaseTimeZone(sessionFactory));
+    }
+
+    /**
+     * Returns the temporal capabilities of the target database. Structured temporal types read them for every value they
+     * validate and bind, so they are created once per dialect.
+     */
+    @Override
+    public final TargetTemporalCapabilities getTargetTemporalCapabilities() {
+        TargetTemporalCapabilities capabilities = targetTemporalCapabilities;
+        if (capabilities == null) {
+            capabilities = createTargetTemporalCapabilities();
+            targetTemporalCapabilities = capabilities;
+        }
+        return capabilities;
+    }
+
+    /**
+     * Creates the temporal capabilities of the target database. Dialects override this method to describe their
+     * precision, ranges, and supported special values.
+     *
+     * @return the target temporal capabilities; never null
+     */
+    protected TargetTemporalCapabilities createTargetTemporalCapabilities() {
+        return TargetTemporalCapabilities.defaults(getMaxTimePrecision(), getMaxTimestampPrecision());
     }
 
     @Override
@@ -243,6 +270,11 @@ public class GeneralDatabaseDialect implements DatabaseDialect {
             }
         }
         return missingFields;
+    }
+
+    @Override
+    public ColumnDescriptor resolveColumn(TableDescriptor table, JdbcFieldDescriptor field) {
+        return table.getColumnByName(resolveColumnName(field));
     }
 
     protected String resolveColumnName(FieldDescriptor field) {
@@ -439,6 +471,13 @@ public class GeneralDatabaseDialect implements DatabaseDialect {
     }
 
     @Override
+    public List<ValueBindDescriptor> bindValue(JdbcFieldDescriptor field, ColumnDescriptor column, int startIndex, Object value) {
+        var schemaType = getSchemaType(field.getSchema());
+        LOGGER.trace("Bind field '{}' at position {} with type {}: {}", field.getName(), startIndex, schemaType.getClass().getName(), value);
+        return field.bind(startIndex, column, value, schemaType);
+    }
+
+    @Override
     public int getMaxVarcharLengthInKey() {
         return dialect.getMaxVarcharLength();
     }
@@ -471,7 +510,7 @@ public class GeneralDatabaseDialect implements DatabaseDialect {
         }
 
         if (!Objects.isNull(schema.name())) {
-            final JdbcType type = typeRegistry.get(schema.name());
+            final JdbcType type = typeRegistry.get(StructuredTemporal.schemaNameWithoutSourceColumn(schema.name()));
             if (!Objects.isNull(type)) {
                 LOGGER.trace("Schema '{}' resolved by name from registry to type '{}'", schema.name(), type);
                 return type;

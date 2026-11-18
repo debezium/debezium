@@ -176,16 +176,18 @@ public abstract class BinlogSnapshotSourceIT<C extends SourceConnector> extends 
         VerifyRecord.isValidRead(record, "id", 1);
 
         final Struct after = ((Struct) record.value()).getStruct("after");
-        assertThat(after.schema().field("d_zero").schema().name()).isEqualTo(StructuredDate.SCHEMA_NAME);
+        assertThat(after.schema().field("d_zero").schema().name()).isEqualTo(StructuredTemporal.schemaNameWithSourceColumn(StructuredDate.SCHEMA_NAME, "d_zero"));
         assertDate(after.getStruct("d_zero"), 0, 0, 0);
         assertDate(after.getStruct("d_invalid"), 2026, 2, 31);
 
-        assertThat(after.schema().field("dt_zero").schema().name()).isEqualTo(StructuredTimestamp.SCHEMA_NAME);
+        assertThat(after.schema().field("dt_zero").schema().name())
+                .isEqualTo(StructuredTemporal.schemaNameWithSourceColumn(StructuredTimestamp.schemaName(6), "dt_zero"));
         assertTimestamp(after.getStruct("dt_zero"), 0, 0, 0, 0, 0, 0, 0);
         assertTimestamp(after.getStruct("dt_invalid"), 2026, 2, 31, 12, 13, 14, 123_456_000);
         assertTimestamp(after.getStruct("dt_max"), 9999, 12, 31, 23, 59, 59, 999_999_000);
 
-        assertThat(after.schema().field("ts_zero").schema().name()).isEqualTo(StructuredZonedTimestamp.SCHEMA_NAME);
+        assertThat(after.schema().field("ts_zero").schema().name())
+                .isEqualTo(StructuredTemporal.schemaNameWithSourceColumn(StructuredZonedTimestamp.schemaName(6), "ts_zero"));
         assertTimestamp(after.getStruct("ts_zero"), 0, 0, 0, 0, 0, 0, 0);
         assertThat(after.getStruct("ts_zero").getInt32(StructuredTemporal.OFFSET_SECONDS_FIELD)).isZero();
     }
@@ -971,6 +973,6 @@ public abstract class BinlogSnapshotSourceIT<C extends SourceConnector> extends 
         assertThat(value.getInt8(StructuredTemporal.HOUR_FIELD)).isEqualTo((byte) hour);
         assertThat(value.getInt8(StructuredTemporal.MINUTE_FIELD)).isEqualTo((byte) minute);
         assertThat(value.getInt8(StructuredTemporal.SECOND_FIELD)).isEqualTo((byte) second);
-        assertThat(value.getInt32(StructuredTemporal.NANOS_FIELD)).isEqualTo(nanos);
+        assertThat(value.getInt64(StructuredTemporal.PICOSECONDS_FIELD)).isEqualTo(nanos * StructuredTemporal.PICOSECONDS_PER_NANOSECOND);
     }
 }

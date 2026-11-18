@@ -5,15 +5,12 @@
  */
 package io.debezium.connector.jdbc.dialect.postgres;
 
-import java.sql.Types;
 import java.util.List;
 
 import org.apache.kafka.connect.data.Schema;
-import org.apache.kafka.connect.data.Struct;
 
 import io.debezium.sink.column.ColumnDescriptor;
 import io.debezium.sink.valuebinding.ValueBindDescriptor;
-import io.debezium.time.StructuredTemporal;
 
 /**
  * PostgreSQL implementation of {@link io.debezium.time.StructuredDate} values.
@@ -28,15 +25,29 @@ public class StructuredDateType extends io.debezium.connector.jdbc.type.debezium
     }
 
     @Override
+    public String getDefaultValueBinding(Schema schema, Object value) {
+        return PostgresInfinity.defaultValueBinding(supportsInfinity(), value)
+                .orElseGet(() -> super.getDefaultValueBinding(schema, value));
+    }
+
+    @Override
     public List<ValueBindDescriptor> bind(int index, Schema schema, Object value) {
-        if (value instanceof Struct struct) {
-            if (StructuredTemporal.isPositiveInfinity(struct)) {
-                return List.of(new ValueBindDescriptor(index, "infinity", Types.VARCHAR));
-            }
-            if (StructuredTemporal.isNegativeInfinity(struct)) {
-                return List.of(new ValueBindDescriptor(index, "-infinity", Types.VARCHAR));
-            }
+        return PostgresInfinity.bind(supportsInfinity(), index, value).orElseGet(() -> super.bind(index, schema, value));
+    }
+
+    @Override
+    public void validate(ColumnDescriptor column, Schema schema, Object value) {
+        if (!PostgresInfinity.isStoredAsIs(supportsInfinity(), value)) {
+            super.validate(column, schema, value);
         }
-        return super.bind(index, schema, value);
+    }
+
+    @Override
+    public List<ValueBindDescriptor> bind(int index, ColumnDescriptor column, Schema schema, Object value) {
+        return PostgresInfinity.bind(supportsInfinity(), index, value).orElseGet(() -> super.bind(index, column, schema, value));
+    }
+
+    private boolean supportsInfinity() {
+        return getDialect() != null && getDialect().getTargetTemporalCapabilities().dateInfinitySupported();
     }
 }

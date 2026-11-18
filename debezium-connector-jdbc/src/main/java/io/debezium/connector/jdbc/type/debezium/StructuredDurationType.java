@@ -25,7 +25,7 @@ public class StructuredDurationType extends AbstractType {
 
     @Override
     public String[] getRegistrationKeys() {
-        return new String[]{ StructuredDuration.SCHEMA_NAME };
+        return StructuredDuration.schemaNames();
     }
 
     @Override
@@ -49,5 +49,13 @@ public class StructuredDurationType extends AbstractType {
             return List.of(new ValueBindDescriptor(index, null));
         }
         return List.of(new ValueBindDescriptor(index, StructuredTemporalSupport.toDurationString(requireStruct(value)), Types.VARCHAR));
+    }
+
+    @Override
+    public void validate(ColumnDescriptor column, Schema schema, Object value) {
+        if (value != null) {
+            StructuredTemporalPreflightValidator.validateDuration(
+                    schema, requireStruct(value), getDialect().getTargetTemporalCapabilities());
+        }
     }
 }
