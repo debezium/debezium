@@ -32,6 +32,8 @@ import org.apache.kafka.connect.source.SourceTaskContext;
 import org.apache.kafka.connect.util.ConnectorTaskId;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
@@ -194,8 +196,9 @@ class BaseSourceTaskTest {
         assertEquals(1, baseSourceTask.stopCount.get());
     }
 
-    @Test
-    public void verifyRestartFailsWhenMaxRetriesExhausted() throws InterruptedException {
+    @ParameterizedTest
+    @ValueSource(ints = { 1, 3 })
+    public void verifyRestartFailsWhenMaxRetriesExhausted(int maxRetries) throws InterruptedException {
         MyBaseSourceTask baseSourceTask = new MyBaseSourceTask() {
             @Override
             protected ChangeEventSourceCoordinator<Partition, OffsetContext> start(Configuration config) {
@@ -207,17 +210,40 @@ class BaseSourceTaskTest {
         baseSourceTask.initialize(mock(SourceTaskContext.class));
         Map<String, String> config = Map.of(
                 CommonConnectorConfig.RETRIABLE_RESTART_WAIT.name(), "1",
-                CommonConnectorConfig.ERRORS_MAX_RETRIES, "2");
+                CommonConnectorConfig.ERRORS_MAX_RETRIES, String.valueOf(maxRetries));
         baseSourceTask.start(config);
-        assertEquals(DebeziumTaskState.RESTARTING, baseSourceTask.getTaskState());
-        sleep(1);
-        baseSourceTask.poll(); // restart attempt 1/2
-        assertEquals(DebeziumTaskState.RESTARTING, baseSourceTask.getTaskState());
-        sleep(1);
-        baseSourceTask.poll(); // restart attempt 2/2
-        assertEquals(DebeziumTaskState.RESTARTING, baseSourceTask.getTaskState());
-        sleep(1);
-        assertThrows(ConnectException.class, () -> baseSourceTask.poll()); // restart attempt 3, max attempts exceeded expect failure
+        // Start i=1 as the first attempt of starting is counted as the first of X attempts
+        for (int i = 1; i < maxRetries; i++) {
+            baseSourceTask.poll();
+            assertEquals(DebeziumTaskState.RESTARTING, baseSourceTask.getTaskState());
+            sleep(1);
+        }
+        assertThrows(ConnectException.class, () -> baseSourceTask.poll()); // Max attempts exceeded expect failure
+    }
+
+    @Test
+    public void verifyRestartDoesNotExhaustWhenUnlimited() throws InterruptedException {
+        MyBaseSourceTask baseSourceTask = new MyBaseSourceTask() {
+            @Override
+            protected ChangeEventSourceCoordinator<Partition, OffsetContext> start(Configuration config) {
+                ChangeEventSourceCoordinator<Partition, OffsetContext> result = super.start(config);
+                throw new RetriableException("Connection refused");
+            }
+        };
+
+        baseSourceTask.initialize(mock(SourceTaskContext.class));
+        Map<String, String> config = Map.of(
+                CommonConnectorConfig.RETRIABLE_RESTART_WAIT.name(), "1",
+                CommonConnectorConfig.ERRORS_MAX_RETRIES, "-1");
+        baseSourceTask.start(config);
+        // Start i=1 as the first attempt of starting is counted as the first of X attempts
+        // i<5 is arbitrary to show restarts continue
+        for (int i = 1; i < 5; i++) {
+            baseSourceTask.poll();
+            assertEquals(DebeziumTaskState.RESTARTING, baseSourceTask.getTaskState());
+            sleep(1);
+        }
+        // Does not exhaust retries
     }
 
     @Test
