@@ -25,6 +25,7 @@ import io.debezium.doc.FixFor;
 import io.debezium.jdbc.JdbcValueConverters;
 import io.debezium.jdbc.TemporalPrecisionMode;
 import io.debezium.relational.RelationalDatabaseConnectorConfig;
+import io.debezium.relational.Table;
 import io.debezium.relational.Tables;
 import io.debezium.relational.Tables.TableFilter;
 import io.debezium.relational.ddl.DdlChanges;
@@ -184,6 +185,42 @@ public class MySqlPtAntlrDdlParserTest
         parser.parse(ddl, tables);
         assertThat(parser.getParsingExceptionsFromWalker()).isEmpty();
         assertThat(tables.size()).isEqualTo(0);
+    }
+
+    @Test
+    @FixFor("debezium/dbz#3102")
+    void shouldParseCastToTemporalTypeWithFractionalSecondsPrecision() {
+        parser.parse("CREATE TABLE dbz3102 (id bigint primary key, status json);", tables);
+        assertThat(parser.getParsingExceptionsFromWalker()).isEmpty();
+
+        parser.parse("ALTER TABLE dbz3102 ADD COLUMN status_ts DATETIME(6) "
+                + "GENERATED ALWAYS AS (CAST(status AS DATETIME(6))) STORED;", tables);
+        assertThat(parser.getParsingExceptionsFromWalker()).isEmpty();
+    }
+
+    @Test
+    @FixFor("debezium/dbz#3102")
+    void shouldParseGeneratedColumnWithCastToDatetime() {
+        final String ddl = "CREATE TABLE diagnosis_tasks (id bigint primary key, context_id bigint, status json);"
+                + "/*app=ndb*/ ALTER TABLE diagnosis_tasks "
+                + "ADD COLUMN status_state VARCHAR(64) "
+                + "GENERATED ALWAYS AS (JSON_UNQUOTE(JSON_EXTRACT(status, '$.state'))) STORED COMMENT 'state', "
+                + "ADD COLUMN status_ts DATETIME(6) "
+                + "GENERATED ALWAYS AS (CAST(CONVERT_TZ("
+                + "REGEXP_REPLACE(JSON_UNQUOTE(JSON_EXTRACT(status, '$.timestamp')), '[+-][0-9]{2}:[0-9]{2}$|Z$', ''), "
+                + "COALESCE(REGEXP_SUBSTR(JSON_UNQUOTE(JSON_EXTRACT(status, '$.timestamp')), '[+-][0-9]{2}:[0-9]{2}$'), '+00:00'), "
+                + "'+00:00') AS DATETIME(6))) STORED COMMENT 'timestamp', "
+                + "ADD KEY idx_diagnosis_tasks_context_ts (context_id, status_ts DESC, id ASC), "
+                + "ADD KEY idx_diagnosis_tasks_state_ts (status_state, status_ts DESC, id ASC), "
+                + "ADD KEY idx_diagnosis_tasks_ts (status_ts DESC, id ASC);";
+
+        parser.parse(ddl, tables);
+        assertThat(parser.getParsingExceptionsFromWalker()).isEmpty();
+
+        Table table = tables.forTable(null, null, "diagnosis_tasks");
+        assertThat(table).isNotNull();
+        assertThat(table.columnWithName("status_ts")).isNotNull();
+        assertThat(table.columnWithName("status_state")).isNotNull();
     }
 
     public static class MySqlPtDdlParserWithSimpleTestListener extends MySqlPtAntlrDdlParser {

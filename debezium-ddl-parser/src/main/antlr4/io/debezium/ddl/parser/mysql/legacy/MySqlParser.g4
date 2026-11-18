@@ -2273,7 +2273,8 @@ convertedDataType
     : (
         typeName = (BINARY | NCHAR | FLOAT) lengthOneDimension?
         | typeName = CHAR lengthOneDimension? (charSet charsetName)?
-        | typeName = (DATE | DATETIME | TIME | YEAR | JSON | INT | INTEGER | DOUBLE)
+        | typeName = (DATETIME | TIME | TIMESTAMP) lengthOneDimension?
+        | typeName = (DATE | YEAR | JSON | INT | INTEGER | DOUBLE)
         | typeName = (DECIMAL | DEC) lengthTwoOptionalDimension?
         | (SIGNED | UNSIGNED) (INTEGER | INT)?
     ) ARRAY?
