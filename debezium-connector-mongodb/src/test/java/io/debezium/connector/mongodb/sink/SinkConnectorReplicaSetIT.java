@@ -165,4 +165,16 @@ public class SinkConnectorReplicaSetIT implements SinkConnectorIT {
     void testPassthroughBufferWithMixedKeys(SinkRecordFactory factory) {
         checkPassthroughBufferWithMixedKeys(factory);
     }
+
+    @ParameterizedTest
+    @ArgumentsSource(SinkRecordFactoryArgumentsProvider.class)
+    void testDeleteWithColumnNamingStrategyRemovesDocument(SinkRecordFactory factory) {
+        checkDeleteWithColumnNamingStrategyRemovesDocument(factory);
+    }
+
+    @ParameterizedTest
+    @ArgumentsSource(SinkRecordFactoryArgumentsProvider.class)
+    void testSingleIdKeyFieldIsNotDoubleWrapped(SinkRecordFactory factory) {
+        checkSingleIdKeyFieldIsNotDoubleWrapped(factory);
+    }
 }

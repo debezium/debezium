@@ -104,6 +104,111 @@ class MongoDbSinkRecordTest {
         assertThat(filter.containsKey("_id")).isTrue();
     }
 
+    @ParameterizedTest
+    @ArgumentsSource(SinkRecordFactoryArgumentsProvider.class)
+    @SuppressWarnings("unchecked")
+    void deleteFilterShouldApplyColumnNamingStrategy(SinkRecordFactory factory) {
+        var config = createConfig(
+                "delete.enabled", "true",
+                "primary.key.mode", "record_key",
+                "column.naming.strategy", "io.debezium.connector.mongodb.sink.junit.LowerCaseColumnNamingStrategy");
+
+        SinkRecord createRecord = factory.record(TOPIC_PREFIX + ".inventory.products")
+                .keyField("userId", Schema.INT32_SCHEMA, 101)
+                .field("userId", Schema.INT32_SCHEMA, 101)
+                .field("firstName", Schema.OPTIONAL_STRING_SCHEMA, "John")
+                .build(0);
+        var createProcessed = new MongoDbSinkRecord(createRecord, config);
+        ReplaceOneModel<BsonDocument> replaceModel = (ReplaceOneModel<BsonDocument>) createProcessed.getWriteModel();
+        BsonDocument upsertFilter = (BsonDocument) replaceModel.getFilter();
+
+        SinkRecord deleteRecord = factory.record(TOPIC_PREFIX + ".inventory.products")
+                .keyField("userId", Schema.INT32_SCHEMA, 101)
+                .field("userId", Schema.INT32_SCHEMA, 101)
+                .field("firstName", Schema.OPTIONAL_STRING_SCHEMA, "John")
+                .operation(io.debezium.data.Envelope.Operation.DELETE)
+                .build(1);
+        var deleteProcessed = new MongoDbSinkRecord(deleteRecord, config);
+        DeleteOneModel<BsonDocument> deleteModel = (DeleteOneModel<BsonDocument>) deleteProcessed.getWriteModel();
+        BsonDocument deleteFilter = (BsonDocument) deleteModel.getFilter();
+
+        assertThat(deleteFilter).isEqualTo(upsertFilter);
+
+        BsonDocument idDoc = deleteFilter.getDocument("_id");
+        assertThat(idDoc.containsKey("userid")).isTrue();
+        assertThat(idDoc.containsKey("userId")).isFalse();
+    }
+
+    @ParameterizedTest
+    @ArgumentsSource(SinkRecordFactoryArgumentsProvider.class)
+    @SuppressWarnings("unchecked")
+    void singleIdKeyFieldShouldNotBeDoubleWrapped(SinkRecordFactory factory) {
+        var config = createConfig("delete.enabled", "true", "primary.key.mode", "record_key");
+
+        SinkRecord createRecord = factory.record(TOPIC_PREFIX + ".inventory.products")
+                .keyField("_id", Schema.INT32_SCHEMA, 42)
+                .field("_id", Schema.INT32_SCHEMA, 42)
+                .field("name", Schema.OPTIONAL_STRING_SCHEMA, "scooter")
+                .build(0);
+        var createProcessed = new MongoDbSinkRecord(createRecord, config);
+        ReplaceOneModel<BsonDocument> replaceModel = (ReplaceOneModel<BsonDocument>) createProcessed.getWriteModel();
+        BsonDocument upsertFilter = (BsonDocument) replaceModel.getFilter();
+
+        assertThat(upsertFilter.get("_id").isInt32()).isTrue();
+        assertThat(upsertFilter.getInt32("_id").getValue()).isEqualTo(42);
+
+        SinkRecord deleteRecord = factory.record(TOPIC_PREFIX + ".inventory.products")
+                .keyField("_id", Schema.INT32_SCHEMA, 42)
+                .field("_id", Schema.INT32_SCHEMA, 42)
+                .field("name", Schema.OPTIONAL_STRING_SCHEMA, "scooter")
+                .operation(io.debezium.data.Envelope.Operation.DELETE)
+                .build(1);
+        var deleteProcessed = new MongoDbSinkRecord(deleteRecord, config);
+        DeleteOneModel<BsonDocument> deleteModel = (DeleteOneModel<BsonDocument>) deleteProcessed.getWriteModel();
+        BsonDocument deleteFilter = (BsonDocument) deleteModel.getFilter();
+
+        assertThat(deleteFilter).isEqualTo(upsertFilter);
+        assertThat(deleteFilter.get("_id").isInt32()).isTrue();
+        assertThat(deleteFilter.getInt32("_id").getValue()).isEqualTo(42);
+    }
+
+    @ParameterizedTest
+    @ArgumentsSource(SinkRecordFactoryArgumentsProvider.class)
+    @SuppressWarnings("unchecked")
+    void compositeKeyWithIdFieldShouldStayWrapped(SinkRecordFactory factory) {
+        var config = createConfig("delete.enabled", "true", "primary.key.mode", "record_key");
+
+        SinkRecord createRecord = factory.record(TOPIC_PREFIX + ".inventory.products")
+                .keyField("_id", Schema.INT32_SCHEMA, 42)
+                .keyField("tenant", Schema.STRING_SCHEMA, "acme")
+                .field("_id", Schema.INT32_SCHEMA, 42)
+                .field("tenant", Schema.STRING_SCHEMA, "acme")
+                .field("name", Schema.OPTIONAL_STRING_SCHEMA, "scooter")
+                .build(0);
+        var createProcessed = new MongoDbSinkRecord(createRecord, config);
+        ReplaceOneModel<BsonDocument> replaceModel = (ReplaceOneModel<BsonDocument>) createProcessed.getWriteModel();
+        BsonDocument upsertFilter = (BsonDocument) replaceModel.getFilter();
+
+        assertThat(upsertFilter.get("_id").isDocument()).isTrue();
+        BsonDocument idDoc = upsertFilter.getDocument("_id");
+        assertThat(idDoc.containsKey("_id")).isTrue();
+        assertThat(idDoc.containsKey("tenant")).isTrue();
+
+        SinkRecord deleteRecord = factory.record(TOPIC_PREFIX + ".inventory.products")
+                .keyField("_id", Schema.INT32_SCHEMA, 42)
+                .keyField("tenant", Schema.STRING_SCHEMA, "acme")
+                .field("_id", Schema.INT32_SCHEMA, 42)
+                .field("tenant", Schema.STRING_SCHEMA, "acme")
+                .field("name", Schema.OPTIONAL_STRING_SCHEMA, "scooter")
+                .operation(io.debezium.data.Envelope.Operation.DELETE)
+                .build(1);
+        var deleteProcessed = new MongoDbSinkRecord(deleteRecord, config);
+        DeleteOneModel<BsonDocument> deleteModel = (DeleteOneModel<BsonDocument>) deleteProcessed.getWriteModel();
+        BsonDocument deleteFilter = (BsonDocument) deleteModel.getFilter();
+
+        assertThat(deleteFilter).isEqualTo(upsertFilter);
+    }
+
     // ─── TOMBSTONE ──────────────────────────────────────────────────────────────
 
     @ParameterizedTest

@@ -263,7 +263,7 @@ ifdef::community[]
 |Property | Default | Description
 
 |[[mongodb-sink-property-primary-key-mode]]<<mongodb-sink-property-primary-key-mode, `+primary.key.mode+`>>
-|`none`
+|`record_key`
 |Specifies how the connector resolves the `_id` field of the target MongoDB document from the event.
 
 `none`:: No primary key is derived from the event. The connector generates a unique MongoDB `ObjectId` for each document's `_id` field.
@@ -461,7 +461,7 @@ endif::product[]
 ifdef::community[]
 When the connector processes events, it resolves the MongoDB `_id` field based on the xref:mongodb-sink-property-primary-key-mode[`primary.key.mode`] configuration.
 
-When `primary.key.mode` is set to `none` (the default), the connector generates a unique MongoDB `ObjectId` for each document.
+When `primary.key.mode` is set to `none`, the connector generates a unique MongoDB `ObjectId` for each document.
 
 When `primary.key.mode` is set to `record_key`, the connector maps the event's record key to the `_id` field.
 For example, the following composite key in a Kafka topic:
@@ -533,7 +533,7 @@ When `primary.key.mode` is set to `record_key`, `kafka`, `record_value`, or `rec
 Because the connector writes documents using `ReplaceOneModel` with `upsert=true`, re-delivering the same record overwrites the existing document with the same `_id`; the write is idempotent, and no duplicates are created.
 
 Non-idempotent (keyless) mode::
-When `primary.key.mode` is set to `none` (the default), the connector generates a random MongoDB `ObjectId` for each write.
+When `primary.key.mode` is set to `none`, the connector generates a random MongoDB `ObjectId` for each write.
 A re-delivered record receives a new `ObjectId` and is inserted as a new document, resulting in a duplicate.
 +
 This applies to any scenario that triggers re-delivery:

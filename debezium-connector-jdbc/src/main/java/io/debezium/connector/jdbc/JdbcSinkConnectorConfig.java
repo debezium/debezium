@@ -77,7 +77,9 @@ public class JdbcSinkConnectorConfig implements SinkConnectorConfig {
     public static final String CONNECTION_RESTART_ON_ERRORS = "connection.restart.on.errors";
     public static final String TIMESTAMP_CLAMP_OUT_OF_RANGE_VALUES = "timestamp.clamp.out.of.range.values";
 
-    // todo add support for the ValueConverter contract
+    // Keep `NONE` as the default `primary.key.mode` for the JDBC sink connector until Debezium 4
+    public static final Field PRIMARY_KEY_MODE_FIELD = SinkConnectorConfig.PRIMARY_KEY_MODE_FIELD
+            .withEnum(PrimaryKeyMode.class, PrimaryKeyMode.NONE);
 
     public static final Field CONNECTION_PROVIDER_FIELD = Field.create(CONNECTION_PROVIDER)
             .withDisplayName("Connection provider")

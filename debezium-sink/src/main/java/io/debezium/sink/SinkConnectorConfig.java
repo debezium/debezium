@@ -212,7 +212,7 @@ public interface SinkConnectorConfig {
     String PRIMARY_KEY_MODE = "primary.key.mode";
     Field PRIMARY_KEY_MODE_FIELD = Field.create(PRIMARY_KEY_MODE)
             .withDisplayName("Primary key mode")
-            .withEnum(PrimaryKeyMode.class, PrimaryKeyMode.NONE)
+            .withEnum(PrimaryKeyMode.class, PrimaryKeyMode.RECORD_KEY)
             .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR))
             .withWidth(ConfigDef.Width.SHORT)
             .withImportance(ConfigDef.Importance.HIGH)

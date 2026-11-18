@@ -212,7 +212,7 @@ class MongoDbChangeEventSinkTest {
 
     @Test
     void mongoBulkWriteExceptionShouldBeRoutedToErrorReporterViaFrameworkIsolation() {
-        // MongoBulkWriteException causes handleTolerableWriteException() to throw DataException,
+        // MongoBulkWriteException causes handleTolerableWriteException() to throw DebeziumDataException,
         // which escapes doWriteBatch(). AbstractChangeEventSink.writeBatch() intercepts it and,
         // because the real errorReporter is now wired via super(sinkConfig, errorReporter),
         // calls reportFailedRecords(). For a single-record batch, reportRecord() is invoked
@@ -328,7 +328,7 @@ class MongoDbChangeEventSinkTest {
         when(mongoCollection.deleteMany(any(BsonDocument.class)))
                 .thenReturn(com.mongodb.client.result.DeleteResult.acknowledged(5));
 
-        var config = createConfig("truncate.enabled", "true");
+        var config = createConfig(MongoDbSinkConnectorConfig.TRUNCATE_ENABLED_FIELD.name(), "true");
 
         try (var sink = createSink(config)) {
             sink.execute(List.of(createEnvelopeRecord(TOPIC, 1, "John")));

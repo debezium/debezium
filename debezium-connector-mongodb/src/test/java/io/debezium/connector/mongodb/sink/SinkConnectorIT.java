@@ -27,6 +27,7 @@ import io.debezium.connector.mongodb.sink.junit.MongoSinkTaskTestContext;
 import io.debezium.connector.mongodb.sink.junit.SinkRecordFactory;
 import io.debezium.sink.SinkConnectorConfig;
 import io.debezium.sink.SinkConnectorConfig.BufferMode;
+import io.debezium.sink.SinkConnectorConfig.PrimaryKeyMode;
 import io.debezium.testing.testcontainers.MongoDbDeployment;
 
 public interface SinkConnectorIT {
@@ -145,7 +146,7 @@ public interface SinkConnectorIT {
 
     default void checkFieldFiltering(SinkRecordFactory factory) {
         var props = defaultSinkConfig();
-        props.put("field.exclude.list", "description");
+        props.put(MongoDbSinkConnectorConfig.FIELD_EXCLUDE_LIST_FIELD.name(), "description");
         var task = startSinkTask(props);
         try {
             List<SinkRecord> records = List.of(
@@ -168,7 +169,6 @@ public interface SinkConnectorIT {
 
     default void checkPrimaryKeyModeDeduplication(SinkRecordFactory factory) {
         var props = defaultSinkConfig();
-        props.put("primary.key.mode", "record_key");
         var task = startSinkTask(props);
         try {
             List<SinkRecord> records = List.of(
@@ -190,7 +190,7 @@ public interface SinkConnectorIT {
     default void checkDeleteRemovesDocument(SinkRecordFactory factory) {
         var props = defaultSinkConfig();
         props.put(MongoDbSinkConnectorConfig.DELETE_ENABLED_FIELD.name(), "true");
-        props.put(MongoDbSinkConnectorConfig.PRIMARY_KEY_MODE_FIELD.name(), SinkConnectorConfig.PrimaryKeyMode.RECORD_KEY.getValue());
+        props.put(MongoDbSinkConnectorConfig.PRIMARY_KEY_MODE_FIELD.name(), PrimaryKeyMode.RECORD_KEY.getValue());
         var task = startSinkTask(props);
         try {
             putAndFlush(task, List.of(
@@ -204,7 +204,6 @@ public interface SinkConnectorIT {
 
             List<Document> remaining = findDocuments(DATABASE_NAME, "dbserver1_inventory_products");
             assertThat(remaining).hasSize(1);
-            // FIXME
             Document id = remaining.get(0).get("_id", Document.class);
             assertThat(id.getInteger("id")).isEqualTo(102);
             assertThat(remaining.get(0).getString("name")).isEqualTo("car battery");
@@ -216,7 +215,6 @@ public interface SinkConnectorIT {
 
     default void checkTombstoneIsSkipped(SinkRecordFactory factory) {
         var props = defaultSinkConfig();
-        props.put("primary.key.mode", "record_key");
         var task = startSinkTask(props);
         try {
             putAndFlush(task, List.of(
@@ -250,7 +248,7 @@ public interface SinkConnectorIT {
 
     default void checkTruncateDeletesAllDocumentsWhenEnabled(SinkRecordFactory factory) {
         var props = defaultSinkConfig();
-        props.put("truncate.enabled", "true");
+        props.put(MongoDbSinkConnectorConfig.TRUNCATE_ENABLED_FIELD.name(), "true");
         var task = startSinkTask(props);
         try {
             putAndFlush(task, List.of(
@@ -272,7 +270,7 @@ public interface SinkConnectorIT {
 
     default void checkKafkaPrimaryKeyModeCreatesOneDocumentPerRecord(SinkRecordFactory factory) {
         var props = defaultSinkConfig();
-        props.put("primary.key.mode", "kafka");
+        props.put(MongoDbSinkConnectorConfig.PRIMARY_KEY_MODE_FIELD.name(), PrimaryKeyMode.KAFKA.getValue());
         var task = startSinkTask(props);
         try {
             List<SinkRecord> records = List.of(
@@ -296,7 +294,7 @@ public interface SinkConnectorIT {
 
     default void checkFieldIncludeList(SinkRecordFactory factory) {
         var props = defaultSinkConfig();
-        props.put("field.include.list", "name,weight");
+        props.put(MongoDbSinkConnectorConfig.FIELD_INCLUDE_LIST_FIELD.name(), "name,weight");
         var task = startSinkTask(props);
         try {
             putAndFlush(task, List.of(
@@ -317,8 +315,8 @@ public interface SinkConnectorIT {
 
     default void checkRecordValuePrimaryKeyMode(SinkRecordFactory factory) {
         var props = defaultSinkConfig();
-        props.put("primary.key.mode", "record_value");
-        props.put("primary.key.fields", "id");
+        props.put(MongoDbSinkConnectorConfig.PRIMARY_KEY_MODE_FIELD.name(), PrimaryKeyMode.RECORD_VALUE.getValue());
+        props.put(MongoDbSinkConnectorConfig.PRIMARY_KEY_FIELDS_FIELD.name(), "id");
         var task = startSinkTask(props);
         try {
             putAndFlush(task, List.of(
@@ -337,7 +335,7 @@ public interface SinkConnectorIT {
 
     default void checkRecordHeaderPrimaryKeyMode(SinkRecordFactory factory) {
         var props = defaultSinkConfig();
-        props.put("primary.key.mode", "record_header");
+        props.put(MongoDbSinkConnectorConfig.PRIMARY_KEY_MODE_FIELD.name(), PrimaryKeyMode.RECORD_HEADER.getValue());
         var task = startSinkTask(props);
         try {
             SinkRecord record = factory.record(TOPIC_PREFIX + ".inventory.products")
@@ -361,8 +359,7 @@ public interface SinkConnectorIT {
 
     default void checkPrimaryKeyFieldsRestriction(SinkRecordFactory factory) {
         var props = defaultSinkConfig();
-        props.put("primary.key.mode", "record_key");
-        props.put("primary.key.fields", "id");
+        props.put(MongoDbSinkConnectorConfig.PRIMARY_KEY_FIELDS_FIELD.name(), "id");
         var task = startSinkTask(props);
         try {
             SinkRecord record = factory.record(TOPIC_PREFIX + ".inventory.products")
@@ -387,7 +384,6 @@ public interface SinkConnectorIT {
 
     default void checkSameKeyUpsertProducesOneDocument(SinkRecordFactory factory) {
         var props = defaultSinkConfig();
-        props.put("primary.key.mode", "record_key");
         var task = startSinkTask(props);
         try {
             putAndFlush(task, List.of(
@@ -408,6 +404,7 @@ public interface SinkConnectorIT {
 
     default void checkKeylessPassthroughPreservesAllRecords(SinkRecordFactory factory) {
         var props = defaultSinkConfig();
+        props.put(MongoDbSinkConnectorConfig.PRIMARY_KEY_MODE_FIELD.name(), PrimaryKeyMode.NONE.getValue());
         var task = startSinkTask(props);
         try {
             putAndFlush(task, List.of(
@@ -434,6 +431,7 @@ public interface SinkConnectorIT {
 
     default void checkKeylessPassthroughPreservesIdenticalRecords(SinkRecordFactory factory) {
         var props = defaultSinkConfig();
+        props.put(MongoDbSinkConnectorConfig.PRIMARY_KEY_MODE_FIELD.name(), PrimaryKeyMode.NONE.getValue());
         var task = startSinkTask(props);
         try {
             putAndFlush(task, List.of(
@@ -459,7 +457,7 @@ public interface SinkConnectorIT {
 
     default void checkDeduplicatingBufferCollapsesSameKeyUpdates(SinkRecordFactory factory) {
         var props = defaultSinkConfig();
-        props.put("primary.key.mode", "record_key");
+        props.put(MongoDbSinkConnectorConfig.PRIMARY_KEY_MODE_FIELD.name(), PrimaryKeyMode.RECORD_KEY.getValue());
         var task = startSinkTask(props);
         try {
             putAndFlush(task, List.of(
@@ -484,7 +482,7 @@ public interface SinkConnectorIT {
 
     default void checkPassthroughBufferAppliesAllKeyedEvents(SinkRecordFactory factory) {
         var props = defaultSinkConfig();
-        props.put("primary.key.mode", "record_key");
+        props.put(MongoDbSinkConnectorConfig.PRIMARY_KEY_MODE_FIELD.name(), PrimaryKeyMode.RECORD_KEY.getValue());
         props.put(SinkConnectorConfig.BUFFER_MODE, BufferMode.PASSTHROUGH.getValue());
         var task = startSinkTask(props);
         try {
@@ -505,7 +503,7 @@ public interface SinkConnectorIT {
 
     default void checkPassthroughBufferWithDistinctKeys(SinkRecordFactory factory) {
         var props = defaultSinkConfig();
-        props.put("primary.key.mode", "record_key");
+        props.put(MongoDbSinkConnectorConfig.PRIMARY_KEY_MODE_FIELD.name(), PrimaryKeyMode.RECORD_KEY.getValue());
         props.put(SinkConnectorConfig.BUFFER_MODE, BufferMode.PASSTHROUGH.getValue());
         var task = startSinkTask(props);
         try {
@@ -524,7 +522,7 @@ public interface SinkConnectorIT {
 
     default void checkPassthroughBufferWithMixedKeys(SinkRecordFactory factory) {
         var props = defaultSinkConfig();
-        props.put("primary.key.mode", "record_key");
+        props.put(MongoDbSinkConnectorConfig.PRIMARY_KEY_MODE_FIELD.name(), PrimaryKeyMode.RECORD_KEY.getValue());
         props.put(SinkConnectorConfig.BUFFER_MODE, BufferMode.PASSTHROUGH.getValue());
         var task = startSinkTask(props);
         try {
@@ -549,6 +547,92 @@ public interface SinkConnectorIT {
                     .findFirst().orElseThrow();
             assertThat(hammer.getString("description")).isEqualTo("B2");
             assertThat(hammer.getDouble("weight")).isEqualTo(2.5);
+        }
+        finally {
+            task.stop();
+        }
+    }
+
+    default void checkDeleteWithColumnNamingStrategyRemovesDocument(SinkRecordFactory factory) {
+        var props = defaultSinkConfig();
+        props.put("delete.enabled", "true");
+        props.put(MongoDbSinkConnectorConfig.PRIMARY_KEY_MODE_FIELD.name(), PrimaryKeyMode.RECORD_KEY.getValue());
+        props.put("column.naming.strategy", "io.debezium.connector.mongodb.sink.junit.LowerCaseColumnNamingStrategy");
+        var task = startSinkTask(props);
+        try {
+            putAndFlush(task, List.of(
+                    factory.record(TOPIC_PREFIX + ".inventory.products")
+                            .keyField("userId", org.apache.kafka.connect.data.Schema.INT32_SCHEMA, 101)
+                            .field("userId", org.apache.kafka.connect.data.Schema.INT32_SCHEMA, 101)
+                            .field("firstName", org.apache.kafka.connect.data.Schema.OPTIONAL_STRING_SCHEMA, "Alice")
+                            .build(0),
+                    factory.record(TOPIC_PREFIX + ".inventory.products")
+                            .keyField("userId", org.apache.kafka.connect.data.Schema.INT32_SCHEMA, 102)
+                            .field("userId", org.apache.kafka.connect.data.Schema.INT32_SCHEMA, 102)
+                            .field("firstName", org.apache.kafka.connect.data.Schema.OPTIONAL_STRING_SCHEMA, "Bob")
+                            .build(1)));
+
+            List<Document> docs = findDocuments(DATABASE_NAME, "dbserver1_inventory_products");
+            assertThat(docs).hasSize(2);
+            Document id = docs.get(0).get("_id", Document.class);
+            assertThat(id.containsKey("userid")).isTrue();
+            assertThat(id.containsKey("userId")).isFalse();
+
+            putAndFlush(task, List.of(
+                    factory.record(TOPIC_PREFIX + ".inventory.products")
+                            .keyField("userId", org.apache.kafka.connect.data.Schema.INT32_SCHEMA, 101)
+                            .field("userId", org.apache.kafka.connect.data.Schema.INT32_SCHEMA, 101)
+                            .field("firstName", org.apache.kafka.connect.data.Schema.OPTIONAL_STRING_SCHEMA, "Alice")
+                            .operation(io.debezium.data.Envelope.Operation.DELETE)
+                            .build(2)));
+
+            List<Document> remaining = findDocuments(DATABASE_NAME, "dbserver1_inventory_products");
+            assertThat(remaining).hasSize(1);
+            Document remainingId = remaining.get(0).get("_id", Document.class);
+            assertThat(remainingId.getInteger("userid")).isEqualTo(102);
+        }
+        finally {
+            task.stop();
+        }
+    }
+
+    // ─── Single _id key passthrough (no double-wrapping) ─────────────────────────
+
+    default void checkSingleIdKeyFieldIsNotDoubleWrapped(SinkRecordFactory factory) {
+        var props = defaultSinkConfig();
+        props.put("delete.enabled", "true");
+        props.put(MongoDbSinkConnectorConfig.PRIMARY_KEY_MODE_FIELD.name(), PrimaryKeyMode.RECORD_KEY.getValue());
+        var task = startSinkTask(props);
+        try {
+            putAndFlush(task, List.of(
+                    factory.record(TOPIC_PREFIX + ".inventory.products")
+                            .keyField("_id", org.apache.kafka.connect.data.Schema.INT32_SCHEMA, 101)
+                            .field("_id", org.apache.kafka.connect.data.Schema.INT32_SCHEMA, 101)
+                            .field("name", org.apache.kafka.connect.data.Schema.OPTIONAL_STRING_SCHEMA, "scooter")
+                            .build(0),
+                    factory.record(TOPIC_PREFIX + ".inventory.products")
+                            .keyField("_id", org.apache.kafka.connect.data.Schema.INT32_SCHEMA, 102)
+                            .field("_id", org.apache.kafka.connect.data.Schema.INT32_SCHEMA, 102)
+                            .field("name", org.apache.kafka.connect.data.Schema.OPTIONAL_STRING_SCHEMA, "hammer")
+                            .build(1)));
+
+            List<Document> docs = findDocuments(DATABASE_NAME, "dbserver1_inventory_products");
+            assertThat(docs).hasSize(2);
+            assertThat(docs.get(0).get("_id")).isInstanceOf(Integer.class);
+            assertThat(docs.get(0).getInteger("_id")).isIn(101, 102);
+
+            putAndFlush(task, List.of(
+                    factory.record(TOPIC_PREFIX + ".inventory.products")
+                            .keyField("_id", org.apache.kafka.connect.data.Schema.INT32_SCHEMA, 101)
+                            .field("_id", org.apache.kafka.connect.data.Schema.INT32_SCHEMA, 101)
+                            .field("name", org.apache.kafka.connect.data.Schema.OPTIONAL_STRING_SCHEMA, "scooter")
+                            .operation(io.debezium.data.Envelope.Operation.DELETE)
+                            .build(2)));
+
+            List<Document> remaining = findDocuments(DATABASE_NAME, "dbserver1_inventory_products");
+            assertThat(remaining).hasSize(1);
+            assertThat(remaining.get(0).getInteger("_id")).isEqualTo(102);
+            assertThat(remaining.get(0).getString("name")).isEqualTo("hammer");
         }
         finally {
             task.stop();

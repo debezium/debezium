@@ -36,12 +36,13 @@ public class MongoDbSinkRecord extends KafkaDebeziumSinkRecord {
         this.config = config;
 
         try {
-            Struct filteredKey = getFilteredKey(config.getPrimaryKeyMode(), config.getPrimaryKeyFields(), config.fieldFilter());
-            this.keyDoc = filteredKey != null ? SinkRecordConverter.convertStruct(filteredKey) : new BsonDocument();
-
-            if (!isDelete() && !isTombstone() && !isTruncate()) {
-                Struct filteredPayload = getFilteredPayload(config.fieldFilter());
-                this.afterDoc = filteredPayload != null ? SinkRecordConverter.convertStruct(filteredPayload) : null;
+            if (!isTombstone() && !isTruncate()) {
+                Struct filteredKey = getFilteredKey(config.getPrimaryKeyMode(), config.getPrimaryKeyFields(), config.fieldFilter());
+                this.keyDoc = filteredKey != null ? SinkRecordConverter.convertStruct(filteredKey) : new BsonDocument();
+                if (!isDelete()) {
+                    Struct filteredPayload = getFilteredPayload(config.fieldFilter());
+                    this.afterDoc = filteredPayload != null ? SinkRecordConverter.convertStruct(filteredPayload) : null;
+                }
             }
 
             this.writeModel = buildWriteModel();

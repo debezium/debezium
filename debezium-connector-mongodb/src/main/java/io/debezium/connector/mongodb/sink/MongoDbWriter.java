@@ -17,16 +17,13 @@ import com.mongodb.client.model.BulkWriteOptions;
 import com.mongodb.client.model.WriteModel;
 
 import io.debezium.connector.mongodb.connection.client.MongoDbClient;
-import io.debezium.dlq.ErrorReporter;
 
 public class MongoDbWriter {
 
     private final MongoDbClient mongoClient;
-    private final ErrorReporter errorReporter;
 
-    public MongoDbWriter(MongoDbClient mongoClient, ErrorReporter errorReporter) {
+    public MongoDbWriter(MongoDbClient mongoClient) {
         this.mongoClient = mongoClient;
-        this.errorReporter = errorReporter;
     }
 
     public void deleteAll(MongoNamespace namespace) {

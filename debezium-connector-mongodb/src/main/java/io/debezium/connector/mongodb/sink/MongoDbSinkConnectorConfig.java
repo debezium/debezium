@@ -10,6 +10,7 @@ import java.util.function.Consumer;
 
 import org.apache.kafka.common.config.ConfigDef;
 import org.apache.kafka.connect.errors.ConnectException;
+import org.bson.BsonDocument;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -79,12 +80,10 @@ public class MongoDbSinkConnectorConfig implements SharedMongoDbConnectorConfig,
      */
     public static Field.Set ALL_FIELDS = Field.setOf(CONFIG_DEFINITION.all());
 
-    public WriteModelStrategy getWriteModelStrategy() {
-        return new DefaultWriteModelStrategy();
-    }
+    private final DeleteDefaultStrategy defaultDeleteStrategy;
 
     public WriteModelStrategy getDeleteWriteModelStrategy() {
-        return new DeleteDefaultStrategy();
+        return defaultDeleteStrategy;
     }
 
     private final Configuration config;
@@ -112,6 +111,18 @@ public class MongoDbSinkConnectorConfig implements SharedMongoDbConnectorConfig,
         this.collectionNameFormat = config.getString(COLLECTION_NAME_FORMAT_FIELD);
         this.collectionNamingStrategy = config.getInstance(COLLECTION_NAMING_STRATEGY_FIELD, CollectionNamingStrategy.class);
         this.columnNamingStrategy = config.getInstance(COLUMN_NAMING_STRATEGY_FIELD, ColumnNamingStrategy.class);
+
+        defaultDeleteStrategy = new DeleteDefaultStrategy((doc, orig) -> {
+            BsonDocument kd = doc.getKeyDoc().get();
+            BsonDocument remapped = new BsonDocument();
+            for (String fieldName : kd.keySet()) {
+                remapped.put(getColumnNamingStrategy().resolveColumnName(fieldName), kd.get(fieldName));
+            }
+            if (remapped.size() == 1 && remapped.containsKey(ID_FIELD)) {
+                return remapped.get(ID_FIELD);
+            }
+            return remapped;
+        });
 
         this.primaryKeyMode = PrimaryKeyMode.parse(config.getString(PRIMARY_KEY_MODE_FIELD));
         this.primaryKeyFields = Strings.setOf(config.getString(PRIMARY_KEY_FIELDS_FIELD), String::new);

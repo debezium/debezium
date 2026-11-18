@@ -25,6 +25,9 @@ public final class RelationalEventHandler {
         for (String f : keyDoc.keySet()) {
             pk.put(columnNamingStrategy.resolveColumnName(f), keyDoc.get(f));
         }
+        if (pk.size() == 1 && pk.containsKey(ID_FIELD)) {
+            return new BsonDocument(ID_FIELD, pk.get(ID_FIELD));
+        }
         return new BsonDocument(ID_FIELD, pk);
     }
 

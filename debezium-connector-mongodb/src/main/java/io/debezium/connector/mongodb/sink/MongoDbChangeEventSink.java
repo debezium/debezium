@@ -11,12 +11,9 @@ import static io.debezium.openlineage.dataset.DatasetMetadata.DatasetKind.OUTPUT
 
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
-import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 
-import org.apache.kafka.connect.errors.DataException;
 import org.apache.kafka.connect.sink.SinkRecord;
 import org.bson.BsonDocument;
 
@@ -28,6 +25,7 @@ import com.mongodb.MongoNotPrimaryException;
 import com.mongodb.MongoSocketException;
 import com.mongodb.client.model.WriteModel;
 
+import io.debezium.DebeziumDataException;
 import io.debezium.connector.common.DebeziumTaskState;
 import io.debezium.connector.mongodb.connection.client.MongoDbClient;
 import io.debezium.connector.mongodb.sink.eventhandler.relational.RelationalEventHandler;
@@ -58,7 +56,7 @@ final class MongoDbChangeEventSink extends AbstractChangeEventSink implements Ch
         this.sinkConfig = sinkConfig;
         this.mongoClient = mongoClient;
         this.errorReporter = errorReporter;
-        this.mongoDbWriter = new MongoDbWriter(mongoClient, errorReporter);
+        this.mongoDbWriter = new MongoDbWriter(mongoClient);
     }
 
     @Override
@@ -74,14 +72,13 @@ final class MongoDbChangeEventSink extends AbstractChangeEventSink implements Ch
 
         Map<String, List<WriteModel<BsonDocument>>> groupedByCollection = new LinkedHashMap<>();
         Map<String, MongoDbSinkRecord> firstRecordByCollection = new LinkedHashMap<>();
-        Set<String> truncatedCollections = new LinkedHashSet<>();
 
         for (var batchRecord : batch) {
             MongoDbSinkRecord record = (MongoDbSinkRecord) batchRecord.record();
 
             if (record.getConversionException() != null) {
                 if (!ErrorReporters.isEnabled(errorReporter)) {
-                    throw new DataException(
+                    throw new DebeziumDataException(
                             "Failed to convert record from topic '" + record.topicName() + "'",
                             record.getConversionException());
                 }
@@ -89,28 +86,31 @@ final class MongoDbChangeEventSink extends AbstractChangeEventSink implements Ch
                 continue;
             }
 
+            String collectionName = batchRecord.collectionId().identifier();
+
+            List<WriteModel<BsonDocument>> writeModelListForActualCollection = groupedByCollection.computeIfAbsent(collectionName, k -> new ArrayList<>());
             if (record.isTruncate()) {
-                truncatedCollections.add(batchRecord.collectionId().identifier());
+                MongoNamespace namespace = new MongoNamespace(sinkConfig.getSinkDatabaseName(), collectionName);
+                mongoDbWriter.deleteAll(namespace);
+                writeModelListForActualCollection.clear();
                 continue;
             }
 
             WriteModel<BsonDocument> model = record.getWriteModel();
             if (model != null) {
-                String collectionName = batchRecord.collectionId().identifier();
-                groupedByCollection.computeIfAbsent(collectionName, k -> new ArrayList<>()).add(model);
+                writeModelListForActualCollection.add(model);
                 firstRecordByCollection.putIfAbsent(collectionName, record);
             }
         }
 
-        for (String collectionName : truncatedCollections) {
-            MongoNamespace namespace = new MongoNamespace(sinkConfig.getSinkDatabaseName(), collectionName);
-            mongoDbWriter.deleteAll(namespace);
-        }
-
         for (var entry : groupedByCollection.entrySet()) {
-            MongoNamespace namespace = new MongoNamespace(sinkConfig.getSinkDatabaseName(), entry.getKey());
-            mongoDbWriter.bulkWriteBatch(namespace, entry.getValue());
-            emitDatasetMetadata(firstRecordByCollection.get(entry.getKey()), namespace);
+            String collectionName = entry.getKey();
+            List<WriteModel<BsonDocument>> writeModels = entry.getValue();
+            if (!writeModels.isEmpty()) {
+                MongoNamespace namespace = new MongoNamespace(sinkConfig.getSinkDatabaseName(), collectionName);
+                mongoDbWriter.bulkWriteBatch(namespace, writeModels);
+                emitDatasetMetadata(firstRecordByCollection.get(collectionName), namespace);
+            }
         }
     }
 
@@ -139,7 +139,6 @@ final class MongoDbChangeEventSink extends AbstractChangeEventSink implements Ch
         return false;
     }
 
-    @SuppressWarnings("try")
     @Override
     public void close() {
         if (null != mongoClient) {

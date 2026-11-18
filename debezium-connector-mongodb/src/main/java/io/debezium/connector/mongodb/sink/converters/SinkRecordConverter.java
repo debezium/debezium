@@ -9,10 +9,11 @@ import java.util.Map;
 
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.Struct;
-import org.apache.kafka.connect.errors.DataException;
 import org.bson.BsonDocument;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import io.debezium.DebeziumDataException;
 
 public class SinkRecordConverter {
     private static final Logger LOGGER = LoggerFactory.getLogger(SinkRecordConverter.class);
@@ -53,6 +54,6 @@ public class SinkRecordConverter {
             return BYTE_ARRAY_VALUE_CONVERTER;
         }
 
-        throw new DataException("No converter found for unexpected object type: " + data.getClass().getName());
+        throw new DebeziumDataException("No converter found for unexpected object type: " + data.getClass().getName());
     }
 }

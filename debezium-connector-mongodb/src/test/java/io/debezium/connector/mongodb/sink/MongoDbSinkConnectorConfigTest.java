@@ -172,9 +172,9 @@ class MongoDbSinkConnectorConfigTest {
     // the legacy RawSinkDocumentResolver never reads it. ---
 
     @Test
-    void shouldDefaultPrimaryKeyModeToNone() {
+    void shouldDefaultPrimaryKeyModeToRecordKey() {
         var config = createConfig();
-        assertThat(config.getPrimaryKeyMode()).isEqualTo(PrimaryKeyMode.NONE);
+        assertThat(config.getPrimaryKeyMode()).isEqualTo(PrimaryKeyMode.RECORD_KEY);
     }
 
     @Test

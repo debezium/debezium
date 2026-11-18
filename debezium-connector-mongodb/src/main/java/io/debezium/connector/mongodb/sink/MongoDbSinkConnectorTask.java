@@ -20,8 +20,6 @@ import org.apache.kafka.connect.sink.SinkTaskContext;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.mongodb.internal.VisibleForTesting;
-
 import io.debezium.config.Configuration;
 import io.debezium.connector.common.DebeziumTaskState;
 import io.debezium.connector.common.UUIDUtils;
@@ -169,8 +167,4 @@ public class MongoDbSinkConnectorTask extends SinkTask {
         return Configuration.from(props).withMaskedPasswords().asMap();
     }
 
-    @VisibleForTesting(otherwise = VisibleForTesting.AccessModifier.PRIVATE)
-    static ErrorReporter nopErrorReporter() {
-        return ErrorReporters.nop();
-    }
 }
