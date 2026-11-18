@@ -80,7 +80,7 @@ public class MongoDbChangeRecordEmitter extends AbstractChangeRecordEmitter<Mong
     }
 
     private void createAndEmitChangeRecord(Receiver<MongoDbPartition> receiver, MongoDbCollectionSchema schema) throws InterruptedException {
-        final Object newKey = schema.keyFromDocument(changeStreamEvent.getDocumentKey());
+        final Object newKey = schema.keyFromDocumentKey(changeStreamEvent.getDocumentKey());
         assert newKey != null;
 
         final Struct value = schema.valueFromDocumentChangeStream(changeStreamEvent, getOperation());
