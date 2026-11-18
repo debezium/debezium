@@ -273,18 +273,19 @@ public class SqlServerConnectorTask extends BaseSourceTask<SqlServerPartition, S
     }
 
     /**
-     * Streaming reads signals only from the change tables of the task's databases, so the signal data collection must
-     * be in one of them and have CDC enabled.
+     * Streaming reads signals only from the change tables of the task's databases, so a signal data collection in one
+     * of them must have CDC enabled. Each task receives every configured signal data collection but only its own
+     * databases, so collections in other databases are left to the task that streams them.
      */
     private void checkSignalDataCollection(SqlServerConnectorConfig connectorConfig, SqlServerConnection connection, TableId signalDataCollection,
                                            List<String> errors)
             throws SQLException {
         String databaseName = signalDataCollection.catalog();
-        boolean captured = connectorConfig.getDatabaseNames().contains(databaseName)
-                && connection.getChangeTables(databaseName).stream().anyMatch(changeTable -> changeTable.getSourceTableId().equals(signalDataCollection));
-        if (!captured) {
-            errors.add(String.format("Signal data collection '%s' will never receive signals because it must be in one of the task's databases %s "
-                    + "and have CDC enabled.", signalDataCollection, connectorConfig.getDatabaseNames()));
+        if (!connectorConfig.getDatabaseNames().contains(databaseName)) {
+            return;
+        }
+        if (connection.getChangeTables(databaseName).stream().noneMatch(changeTable -> changeTable.getSourceTableId().equals(signalDataCollection))) {
+            errors.add(String.format("Signal data collection '%s' will never receive signals because it does not have CDC enabled.", signalDataCollection));
         }
     }
 
