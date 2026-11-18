@@ -179,6 +179,7 @@ public abstract class RelationalChangeRecordEmitter<P extends Partition>
     /**
      * Returns the positions within {@link #getOldColumnValues()} of the values that are not available in the change
      * event, e.g. an unchanged TOAST column; {@code null} if there are none.
+     * Called after {@link #getOldColumnValues()}.
      */
     protected BitSet getUnavailableOldColumnPositions() {
         return null;
@@ -187,6 +188,7 @@ public abstract class RelationalChangeRecordEmitter<P extends Partition>
     /**
      * Returns the positions within {@link #getNewColumnValues()} of the values that are not available in the change
      * event; {@code null} if there are none.
+     * Called after {@link #getNewColumnValues()}.
      */
     protected BitSet getUnavailableNewColumnPositions() {
         return null;
