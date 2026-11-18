@@ -517,12 +517,10 @@ public abstract class BaseSourceTask<P extends Partition, O extends OffsetContex
                     }
                     catch (RetriableException e) {
                         restartRetries++;
-                        if (maxRestartRetries != ErrorHandler.RETRIES_UNLIMITED && restartRetries > maxRestartRetries) {
-                            LOGGER.error("The maximum number of {} restart retries has been reached. Failing the connector.", maxRestartRetries);
+                        if (!hasMoreRestartRetries()) {
                             throw new ConnectException("The maximum number of restart retries has been reached", e);
                         }
-                        LOGGER.warn("Failed to restart connector (attempt {} of {}), will re-attempt during next polling.",
-                                restartRetries, maxRestartRetries == ErrorHandler.RETRIES_UNLIMITED ? "unlimited" : maxRestartRetries, e);
+                        LOGGER.warn("Failed to restart connector, will re-attempt during next polling.", e);
                         stop(true);
                     }
                 }
@@ -744,5 +742,16 @@ public abstract class BaseSourceTask<P extends Partition, O extends OffsetContex
         serviceRegistry.registerServiceProvider(new CustomConverterServiceProvider());
         serviceRegistry.registerServiceProvider(new QueueProviderServiceProvider());
         serviceRegistry.registerServiceProvider(new OffsetActivityMonitorServiceProvider());
+    }
+
+    private boolean hasMoreRestartRetries() {
+        if (maxRestartRetries == ErrorHandler.RETRIES_UNLIMITED || restartRetries < maxRestartRetries) {
+            restartRetries++;
+            LOGGER.warn("Restart retry {} of {} will be attempted", restartRetries,
+                    maxRestartRetries == ErrorHandler.RETRIES_UNLIMITED ? "unlimited" : maxRestartRetries);
+            return true;
+        }
+        LOGGER.error("The maximum number of {} restart retries has been attempted", maxRestartRetries);
+        return false;
     }
 }
