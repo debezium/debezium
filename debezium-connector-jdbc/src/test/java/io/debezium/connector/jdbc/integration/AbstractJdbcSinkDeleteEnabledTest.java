@@ -340,6 +340,35 @@ public abstract class AbstractJdbcSinkDeleteEnabledTest extends AbstractJdbcSink
 
     @ParameterizedTest
     @ArgumentsSource(SinkRecordFactoryArgumentsProvider.class)
+    @FixFor("debezium/dbz#2916")
+    public void testTombstoneForMissingTableShouldBeSkipped(SinkRecordFactory factory) {
+        final Map<String, String> properties = getDefaultSinkConfig();
+        properties.put(JdbcSinkConnectorConfig.SCHEMA_EVOLUTION, SchemaEvolutionMode.BASIC.getValue());
+        properties.put(JdbcSinkConnectorConfig.PRIMARY_KEY_MODE, PrimaryKeyMode.RECORD_KEY.getValue());
+        properties.put(JdbcSinkConnectorConfig.DELETE_ENABLED, "true");
+        startSinkConnector(properties);
+        assertSinkConnectorIsRunning();
+
+        final String tableName = randomTableName();
+        final String topicName = topicName("server1", "schema", tableName);
+
+        final JdbcSinkConnectorConfig config = getConfig(properties);
+        final JdbcKafkaSinkRecord createRecord = factory.createRecord(topicName, config);
+
+        // The tombstone is the first record for the missing table. It is consumed on its own so that no
+        // buffer can deduplicate it against the following record with the same key.
+        consume(factory.tombstoneRecord(topicName, config));
+        consume(createRecord);
+
+        final TableAssert tableAssert = TestHelper.assertTable(assertDbConnection(), destinationTableName(createRecord));
+        tableAssert.exists().hasNumberOfRows(1).hasNumberOfColumns(3);
+
+        getSink().assertColumnType(tableAssert, "id", ValueType.NUMBER, (byte) 1);
+        getSink().assertColumnType(tableAssert, "name", ValueType.TEXT, "John Doe");
+    }
+
+    @ParameterizedTest
+    @ArgumentsSource(SinkRecordFactoryArgumentsProvider.class)
     @FixFor("DBZ-6970")
     public void testShouldSkipTruncateRecord(SinkRecordFactory factory) {
         final Map<String, String> properties = getDefaultSinkConfig();
