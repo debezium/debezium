@@ -591,6 +591,9 @@ public class OracleConnectorIT extends AbstractAsyncEngineConnectorTest {
         List<SourceRecord> testTableRecords = records.recordsForTopic("server1.DEBEZIUM.CUSTOMER");
         assertThat(testTableRecords).hasSize(expectedRecordCount);
 
+        // Make sure streaming has fully started before stopping, so the restart resumes from a streaming offset
+        waitForStreamingRunning(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
+
         stopConnector();
 
         connection.setAutoCommit(false);
@@ -606,6 +609,8 @@ public class OracleConnectorIT extends AbstractAsyncEngineConnectorTest {
             Testing.print("=== Starting connector second time ===");
             start(OracleConnector.class, config);
             assertConnectorIsRunning();
+
+            waitForStreamingRunning(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
 
             assertTxBatch(config, expectedRecordCount, 100);
             sendTxBatch(config, expectedRecordCount, 200);
@@ -804,43 +809,42 @@ public class OracleConnectorIT extends AbstractAsyncEngineConnectorTest {
                 .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "DEBEZIUM\\.DBZ800B")
                 .build();
 
-        start(OracleConnector.class, config);
-        assertConnectorIsRunning();
+        try {
+            start(OracleConnector.class, config);
+            assertConnectorIsRunning();
 
-        waitForSnapshotToBeCompleted(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
+            waitForStreamingRunning(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
 
-        connection.execute("CREATE TABLE debezium.dbz800a (id NUMBER(9) NOT NULL, aaa VARCHAR2(100), PRIMARY KEY (id) )");
-        connection.execute("CREATE TABLE debezium.dbz800b (id NUMBER(9) NOT NULL, bbb VARCHAR2(100), PRIMARY KEY (id) )");
-        connection.execute("INSERT INTO debezium.dbz800a VALUES (1, 'AAA')");
-        connection.execute("INSERT INTO debezium.dbz800b VALUES (2, 'BBB')");
-        connection.execute("COMMIT");
+            connection.execute("CREATE TABLE debezium.dbz800a (id NUMBER(9) NOT NULL, aaa VARCHAR2(100), PRIMARY KEY (id) )");
+            connection.execute("CREATE TABLE debezium.dbz800b (id NUMBER(9) NOT NULL, bbb VARCHAR2(100), PRIMARY KEY (id) )");
+            connection.execute("INSERT INTO debezium.dbz800a VALUES (1, 'AAA')");
+            connection.execute("INSERT INTO debezium.dbz800b VALUES (2, 'BBB')");
+            connection.execute("COMMIT");
 
-        // The number of heartbeat events may vary depending on how fast the events are seen in
-        // LogMiner, so to compensate for the varied number of heartbeats that might be emitted
-        // the following waits until we have seen the DBZ800B event before returning.
-        final AtomicReference<SourceRecords> records = new AtomicReference<>();
-        Awaitility.await()
-                .atMost(Duration.ofSeconds(60))
-                .until(() -> {
-                    if (records.get() == null) {
-                        records.set(consumeRecordsByTopic(1));
-                    }
-                    else {
-                        consumeRecordsByTopic(1).allRecordsInOrder().forEach(records.get()::add);
-                    }
-                    return records.get().recordsForTopic("server1.DEBEZIUM.DBZ800B") != null;
-                });
+            // The number of heartbeat events may vary depending on how fast the events are seen in
+            // LogMiner, so to compensate for the varied number of heartbeats that might be emitted
+            // the following consumes until we have seen the DBZ800B event. Because heartbeats keep
+            // arriving, the consumption is bounded by an overall wait time instead of empty polls.
+            final Duration maxWait = Duration.ofSeconds((long) TestHelper.defaultMessageConsumerPollTimeout() * waitTimeForRecordsAfterNulls());
+            final SourceRecords records = consumeRecordsByTopicUntil(
+                    (recordsConsumed, record) -> "server1.DEBEZIUM.DBZ800B".equals(record.topic()),
+                    maxWait);
 
-        List<SourceRecord> heartbeats = records.get().recordsForTopic("__debezium-heartbeat.server1");
-        List<SourceRecord> tableA = records.get().recordsForTopic("server1.DEBEZIUM.DBZ800A");
-        List<SourceRecord> tableB = records.get().recordsForTopic("server1.DEBEZIUM.DBZ800B");
+            List<SourceRecord> heartbeats = records.recordsForTopic("__debezium-heartbeat.server1");
+            List<SourceRecord> tableA = records.recordsForTopic("server1.DEBEZIUM.DBZ800A");
+            List<SourceRecord> tableB = records.recordsForTopic("server1.DEBEZIUM.DBZ800B");
 
-        // there should be at least one heartbeat, no events for DBZ800A and one for DBZ800B
-        assertThat(heartbeats).isNotEmpty();
-        assertThat(tableA).isNull();
-        assertThat(tableB).hasSize(1);
+            // there should be at least one heartbeat, no events for DBZ800A and one for DBZ800B
+            assertThat(heartbeats).isNotEmpty();
+            assertThat(tableA).isNull();
+            assertThat(tableB).hasSize(1);
 
-        VerifyRecord.isValidInsert(tableB.get(0), "ID", 2);
+            VerifyRecord.isValidInsert(tableB.get(0), "ID", 2);
+        }
+        finally {
+            TestHelper.dropTable(connection, "debezium.dbz800a");
+            TestHelper.dropTable(connection, "debezium.dbz800b");
+        }
     }
 
     @Test
@@ -2276,15 +2280,25 @@ public class OracleConnectorIT extends AbstractAsyncEngineConnectorTest {
                 connection.executeWithoutCommitting("COMMIT");
             }
 
-            SourceRecords records = consumeRecordsByTopic(1);
-            assertThat(records.recordsForTopic("server1.DEBEZIUM.DBZ3322")).hasSize(1);
+            // A separate, committed sentinel transaction guarantees that, once it has been received, any
+            // event for the rolled back insert would already have been emitted ahead of it.
+            connection.execute("INSERT INTO dbz3322 (id,data) values (2, 'Sentinel')");
 
-            final Struct after = (((Struct) records.recordsForTopic("server1.DEBEZIUM.DBZ3322").get(0).value()).getStruct("after"));
+            SourceRecords records = consumeRecordsByTopic(2);
+            final List<SourceRecord> tableRecords = records.recordsForTopic("server1.DEBEZIUM.DBZ3322");
+            assertThat(tableRecords).hasSize(2);
+
+            VerifyRecord.isValidInsert(tableRecords.get(0), "ID", 1);
+            Struct after = (((Struct) tableRecords.get(0).value()).getStruct("after"));
             assertThat(after.get("ID")).isEqualTo(1);
             assertThat(after.get("DATA")).isEqualTo("Test1");
 
-            assertNoRecordsToConsume();
+            VerifyRecord.isValidInsert(tableRecords.get(1), "ID", 2);
+            after = (((Struct) tableRecords.get(1).value()).getStruct("after"));
+            assertThat(after.get("ID")).isEqualTo(2);
+            assertThat(after.get("DATA")).isEqualTo("Sentinel");
 
+            assertNoRecordsToConsume();
         }
         finally {
             TestHelper.dropTable(connection, "dbz3322");
@@ -2389,15 +2403,23 @@ public class OracleConnectorIT extends AbstractAsyncEngineConnectorTest {
                 connection3.commit();
             }
 
-            final SourceRecords sourceRecords = consumeRecordsByTopic(3);
+            // A separate, committed sentinel transaction guarantees that, once it has been received, any
+            // event for the rolled back inserts would already have been emitted ahead of it.
+            connection.execute("INSERT INTO dbz5090 (id,data) values (4,'Sentinel')");
+
+            final SourceRecords sourceRecords = consumeRecordsByTopic(4);
             List<SourceRecord> records = sourceRecords.recordsForTopic("server1.DEBEZIUM.DBZ5090");
-            assertThat(records).hasSize(3);
+            assertThat(records).hasSize(4);
 
             VerifyRecord.isValidInsert(records.get(0), "ID", 1);
 
             final Struct after = (((Struct) records.get(0).value()).getStruct("after"));
             assertThat(after.get("ID")).isEqualTo(1);
             assertThat(after.get("DATA")).isEqualTo("Test1");
+
+            // Only the sessions' non-conflicting inserts and the sentinel follow, none of the rolled back rows
+            assertThat(records.stream().map(r -> ((Struct) r.value()).getStruct("after").get("DATA")))
+                    .containsExactly("Test1", "Test2", "Test3", "Sentinel");
 
             assertNoRecordsToConsume();
         }
@@ -4056,11 +4078,12 @@ public class OracleConnectorIT extends AbstractAsyncEngineConnectorTest {
 
             waitForStreamingRunning(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
 
-            Awaitility.await().atMost(60, TimeUnit.SECONDS).until(() -> {
-                final SourceRecords records = consumeRecordsByTopic(1);
-                final List<SourceRecord> heartbeatRecords = records.recordsForTopic("server1.DEBEZIUM.HEARTBEAT");
-                return heartbeatRecords != null && !heartbeatRecords.isEmpty();
-            });
+            // Heartbeats keep arriving, so consumption is bounded by an overall wait time instead of empty polls
+            final Duration maxWait = Duration.ofSeconds((long) TestHelper.defaultMessageConsumerPollTimeout() * waitTimeForRecordsAfterNulls());
+            final SourceRecords records = consumeRecordsByTopicUntil(
+                    (recordsConsumed, record) -> "server1.DEBEZIUM.HEARTBEAT".equals(record.topic()),
+                    maxWait);
+            assertThat(records.recordsForTopic("server1.DEBEZIUM.HEARTBEAT")).isNotEmpty();
 
             // stop connector and clean-up any potential residual heartbeat events
             stopConnector((success) -> {
