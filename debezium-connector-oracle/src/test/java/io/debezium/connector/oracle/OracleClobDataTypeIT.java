@@ -3070,6 +3070,61 @@ public class OracleClobDataTypeIT extends AbstractAsyncEngineConnectorTest {
     @Test
     @FixFor("debezium/dbz#3100")
     @SkipWhenAdapterNameIsNot(value = SkipWhenAdapterNameIsNot.AdapterName.ANY_LOGMINER, reason = "Only LogMiner merges LOB events at commit")
+    public void shouldStreamUpdateOfOutOfLineClobAsSeparateEventAfterInsertInSameTransaction() throws Exception {
+        shouldStreamUpdateOfOutOfLineClobAsSeparateEventAfterInsertInSameTransaction("");
+    }
+
+    @Test
+    @FixFor("debezium/dbz#3100")
+    @SkipWhenAdapterNameIsNot(value = SkipWhenAdapterNameIsNot.AdapterName.ANY_LOGMINER, reason = "Only LogMiner merges LOB events at commit")
+    public void shouldStreamUpdateOfOutOfLineClobAsSeparateEventAfterInsertInSameTransactionUsingBasicFileStorage() throws Exception {
+        // With BasicFile storage the trim that ends an update has a locator of its own
+        shouldStreamUpdateOfOutOfLineClobAsSeparateEventAfterInsertInSameTransaction(" LOB(data) STORE AS BASICFILE");
+    }
+
+    private void shouldStreamUpdateOfOutOfLineClobAsSeparateEventAfterInsertInSameTransaction(String storageClause) throws Exception {
+        TestHelper.dropTable(connection, "DBZ3100");
+        try {
+            connection.execute("CREATE TABLE DBZ3100 (id numeric(9,0) primary key, name varchar2(50), data clob)" + storageClause);
+            TestHelper.streamTable(connection, "DBZ3100");
+
+            Configuration config = TestHelper.defaultConfig()
+                    .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "DEBEZIUM\\.DBZ3100")
+                    .with(OracleConnectorConfig.LOB_ENABLED, true)
+                    .build();
+            start(OracleConnector.class, config);
+            assertConnectorIsRunning();
+            waitForStreamingRunning(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
+
+            // An update of only a value that is not stored in the row has no UPDATE row in the redo
+            connection.execute(
+                    "INSERT INTO DBZ3100 (id,name,data) VALUES (1,'first',TO_CLOB(RPAD('a',4000,'a')) || TO_CLOB(RPAD('b',4000,'b')))",
+                    "UPDATE DBZ3100 SET data = TO_CLOB(RPAD('c',4000,'c')) || TO_CLOB(RPAD('d',4000,'d')) WHERE id = 1",
+                    "UPDATE DBZ3100 SET name = 'second', data = TO_CLOB(RPAD('e',4000,'e')) || TO_CLOB(RPAD('f',4000,'f')) WHERE id = 1",
+                    "UPDATE DBZ3100 SET data = TO_CLOB(RPAD('g',4000,'g')) || TO_CLOB(RPAD('h',4000,'h')) WHERE id = 1");
+
+            final List<SourceRecord> records = consumeRecordsByTopic(4).recordsForTopic(topicName("DBZ3100"));
+            assertThat(records).hasSize(4);
+            VerifyRecord.isValidInsert(records.get(0), "ID", 1);
+            VerifyRecord.isValidUpdate(records.get(1), "ID", 1);
+            VerifyRecord.isValidUpdate(records.get(2), "ID", 1);
+            VerifyRecord.isValidUpdate(records.get(3), "ID", 1);
+            assertThat(getAfterField(records.get(0), "DATA")).isEqualTo("a".repeat(4000) + "b".repeat(4000));
+            assertThat(getAfterField(records.get(1), "DATA")).isEqualTo("c".repeat(4000) + "d".repeat(4000));
+            assertThat(getAfterField(records.get(2), "NAME")).isEqualTo("second");
+            assertThat(getAfterField(records.get(2), "DATA")).isEqualTo("e".repeat(4000) + "f".repeat(4000));
+            assertThat(getAfterField(records.get(3), "DATA")).isEqualTo("g".repeat(4000) + "h".repeat(4000));
+
+            assertThat(records).extracting(r -> ((Struct) r.value()).getStruct("source").getInt64("txSeq")).isSorted();
+        }
+        finally {
+            TestHelper.dropTable(connection, "DBZ3100");
+        }
+    }
+
+    @Test
+    @FixFor("debezium/dbz#3100")
+    @SkipWhenAdapterNameIsNot(value = SkipWhenAdapterNameIsNot.AdapterName.ANY_LOGMINER, reason = "Only LogMiner merges LOB events at commit")
     public void shouldStreamTableWithoutLobAfterTableWithLobInChangeOrder() throws Exception {
         TestHelper.dropTable(connection, "DBZ3100");
         try {
