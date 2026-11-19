@@ -5230,6 +5230,13 @@ The degree of latency depends on how frequently the database is configured to ar
 |The number of milliseconds the connector will sleep in between polling to determine if the starting system change number is in the archive logs.
 If `log.mining.archive.log.only.mode` is not enabled, this setting is not used.
 
+|[[oracle-property-log-mining-poll-interval-ms]]<<oracle-property-log-mining-poll-interval-ms, `+log.mining.poll.interval.ms+`>>
+|`1000`
+|The number of milliseconds that the connector waits between each LogMiner mining pass.
+Increase this value to reduce how frequently the connector polls the database for changes.
+A higher value lowers the load that the connector places on the database, but can increase the latency between an operation being committed and the connector emitting the associated change event.
+The value must be greater than `0`.
+
 |[[oracle-property-log-mining-buffer-deferred-transaction-start]]<<oracle-property-log-mining-buffer-deferred-transaction-start, `log.mining.buffer.deferred.transaction.start`>>
 |`false`
 |Boolean value that specifies whether the connector defers creating buffered LogMiner transactions until the first DML or DDL event is observed.

@@ -1018,13 +1018,12 @@ public abstract class AbstractLogMinerStreamingChangeEventSource
     }
 
     /**
-     * Pauses the connector's iteration by the sleep time.
+     * Pauses the connector's iteration by the configured poll interval.
      *
      * @throws InterruptedException if the thread is interrupted
      */
     protected void pauseBetweenMiningSessions() throws InterruptedException {
-        Duration period = Duration.ofSeconds(1);
-        Metronome.sleeper(period, clock).pause();
+        Metronome.sleeper(connectorConfig.getLogMiningPollInterval(), clock).pause();
     }
 
     /**
