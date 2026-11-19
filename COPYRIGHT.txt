@@ -36,6 +36,7 @@ Alexandru Cristu
 Alexey Loubyansky
 Alexey Miroshnikov
 Alfusainey Jallow
+Aline Moreira
 Alisa Houskova
 Alvar Viana
 Alvar Viana Gomez
@@ -352,6 +353,7 @@ Hong Xia
 Horia Chiorean
 Hossein Torabi
 Hubert Dulay
+Hurdad Ashouri
 Hussain Ansari
 Hyunjin Oh
 Ian Axelrod
@@ -528,6 +530,7 @@ Marc Zbyszynski
 Marcel Bruhn
 Marcelo Avancini
 Marci
+Marcin Michalski
 Marcin Piatek
 Marek Winkler
 Marian Derias
