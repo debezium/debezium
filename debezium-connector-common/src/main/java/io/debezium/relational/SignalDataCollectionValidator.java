@@ -11,6 +11,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -83,10 +84,10 @@ public class SignalDataCollectionValidator {
                 .orElse(null);
         if (resolved == null) {
             if (matches.size() == 1) {
-                errors.add(String.format("signal.data.collection must be '%s', not '%s'.", matches.iterator().next(), rawValue));
+                errors.add(String.format("signal.data.collection must be '%s', not '%s'.", suggestedName(matches.iterator().next()), rawValue));
             }
             else {
-                List<String> candidates = matches.stream().map(TableId::toString).sorted().toList();
+                List<String> candidates = matches.stream().map(SignalDataCollectionValidator::suggestedName).sorted().toList();
                 errors.add(String.format("signal.data.collection must be one of %s, not '%s'.", candidates, rawValue));
             }
             return;
@@ -124,6 +125,27 @@ public class SignalDataCollectionValidator {
         }
         String namespace = match.schema() != null ? match.schema() : match.catalog();
         return parsed.schema().equalsIgnoreCase(namespace);
+    }
+
+    /**
+     * Returns the table name to suggest: plain when it parses back to the same table, otherwise double-quoted, and the
+     * raw name parts when neither form parses back, e.g. a name that is itself wrapped in quotes.
+     */
+    private static String suggestedName(TableId table) {
+        List<String> parts = Stream.of(table.catalog(), table.schema(), table.table()).filter(part -> !Strings.isNullOrEmpty(part)).toList();
+        return Stream.of(table.toString(), table.toDoubleQuotedString())
+                .filter(candidate -> parsesTo(candidate, parts))
+                .findFirst()
+                .orElse(parts.toString());
+    }
+
+    private static boolean parsesTo(String candidate, List<String> parts) {
+        try {
+            return TableIdParser.parse(candidate).equals(parts);
+        }
+        catch (IllegalArgumentException e) {
+            return false;
+        }
     }
 
     /** Returns the columns surviving the connector's {@link ColumnNameFilter}, so the count matches what reaches Debezium's schema. */

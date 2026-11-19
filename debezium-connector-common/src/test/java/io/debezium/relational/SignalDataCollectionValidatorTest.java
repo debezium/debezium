@@ -29,6 +29,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import io.debezium.data.Envelope.Operation;
+import io.debezium.doc.FixFor;
 import io.debezium.jdbc.JdbcConnection;
 import io.debezium.junit.logging.LogInterceptor;
 import io.debezium.relational.SignalDataCollectionValidationRequest.ConnectorValidator;
@@ -188,6 +189,36 @@ public class SignalDataCollectionValidatorTest {
         assertThat(result.errors())
                 .containsExactly("signal.data.collection must be one of [" + dbOneMatch + ", " + dbTwoMatch + "], not '" + RAW_VALUE + "'.");
         verify(connection, never()).getColumnSizes(any());
+    }
+
+    @Test
+    @FixFor("debezium/dbz#3041")
+    public void shouldQuoteOnlySuggestedNamesThatWouldNotParseBack() throws SQLException {
+        // Pasting a suggestion back into signal.data.collection must resolve the same table, so a name with a dot is quoted.
+        TableId withDot = new TableId("db1", "dbo", "debezium.signal");
+        TableId plain = new TableId("db2", "dbo", "debezium_signal");
+        when(connection.readTableNames(PARSED_RAW_VALUE)).thenReturn(Set.of(withDot, plain));
+
+        SignalDataCollectionValidationResult result = SignalDataCollectionValidator.validate(
+                enabledRequest(table -> false, MATCH_ALL, RAW_VALUE));
+
+        String quoted = "\"db1\".\"dbo\".\"debezium.signal\"";
+        assertThat(result.errors())
+                .containsExactly("signal.data.collection must be one of [" + quoted + ", " + plain + "], not '" + RAW_VALUE + "'.");
+        assertThat(TableId.parse(quoted)).isEqualTo(withDot);
+    }
+
+    @Test
+    @FixFor("debezium/dbz#3041")
+    public void shouldSuggestNamePartsWhenNoFormParsesBack() throws SQLException {
+        // A name that is itself wrapped in double quotes loses them when parsed, whether or not it is quoted again.
+        TableId found = new TableId("testDB", "dbo", "\"sig\"");
+        when(connection.readTableNames(PARSED_RAW_VALUE)).thenReturn(Set.of(found));
+
+        SignalDataCollectionValidationResult result = SignalDataCollectionValidator.validate(
+                enabledRequest(table -> false, MATCH_ALL, RAW_VALUE));
+
+        assertThat(result.errors()).containsExactly("signal.data.collection must be '[testDB, dbo, \"sig\"]', not '" + RAW_VALUE + "'.");
     }
 
     @Test
