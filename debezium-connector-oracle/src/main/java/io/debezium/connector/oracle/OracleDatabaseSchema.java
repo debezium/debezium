@@ -260,10 +260,7 @@ public class OracleDatabaseSchema extends HistorizedRelationalDatabaseSchema {
         return column.jdbcType() == OracleTypes.NVARCHAR && column.length() > 2000;
     }
 
-    /**
-     * Returns whether the provided relational column model is a JSON data type.
-     */
-    public static boolean isJsonColumn(Column column) {
+    private static boolean isJsonColumn(Column column) {
         return "JSON".equals(column.typeName());
     }
 

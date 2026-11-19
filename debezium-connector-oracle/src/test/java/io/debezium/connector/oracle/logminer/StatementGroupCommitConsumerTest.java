@@ -532,6 +532,58 @@ public class StatementGroupCommitConsumerTest {
 
     @Test
     @FixFor("debezium/dbz#3100")
+    public void shouldDispatchSecondStatementLocatorOfColumnAsSeparateEvent() throws Exception {
+        final String statementRowId = "AAAAAAAAAAAAAAAAAA";
+        try (StatementGroupCommitConsumer consumer = createConsumer()) {
+            accept(consumer, insert());
+            accept(consumer, selectClobLocator("test3", statementRowId));
+            accept(consumer, lobWrite("insert value", 0));
+            // An update of only the out-of-line value has no row event of its own, only another locator
+            accept(consumer, selectClobLocator("test3", statementRowId));
+            accept(consumer, lobWrite("update value", 0));
+        }
+
+        assertThat(dispatched).extracting(LogMinerEvent::getEventType).containsExactly(EventType.INSERT, EventType.SELECT_LOB_LOCATOR);
+        assertThat(((DmlEvent) dispatched.get(0)).getNewValues()[DOC_INDEX]).isEqualTo("insert value");
+        assertThat(((DmlEvent) dispatched.get(1)).getNewValues()[DOC_INDEX]).isEqualTo("update value");
+        assertThat(dispatchedSequences).isSorted();
+    }
+
+    @Test
+    @FixFor("debezium/dbz#3100")
+    public void shouldKeepSecondStatementLocatorOfColumnThatIsNotWrittenTo() throws Exception {
+        final String statementRowId = "AAAAAAAAAAAAAAAAAA";
+        try (StatementGroupCommitConsumer consumer = createConsumer()) {
+            accept(consumer, insert());
+            accept(consumer, selectClobLocator("test3", statementRowId));
+            accept(consumer, lobWrite("insert value", 0));
+            // With BasicFile storage the trim of a statement has a locator of its own, and no writes
+            accept(consumer, selectClobLocator("test3", statementRowId));
+            accept(consumer, plainInsert());
+        }
+
+        assertThat(dispatched).extracting(LogMinerEvent::getEventType).containsExactly(EventType.INSERT, EventType.INSERT);
+        assertThat(((DmlEvent) dispatched.get(0)).getNewValues()[DOC_INDEX]).isEqualTo("insert value");
+        assertThat(dispatchedSequences).isSorted();
+    }
+
+    @Test
+    @FixFor("debezium/dbz#3100")
+    public void shouldKeepSecondStatementLocatorOfColumnAtEndOfTransaction() throws Exception {
+        final String statementRowId = "AAAAAAAAAAAAAAAAAA";
+        try (StatementGroupCommitConsumer consumer = createConsumer()) {
+            accept(consumer, insert());
+            accept(consumer, selectClobLocator("test3", statementRowId));
+            accept(consumer, lobWrite("insert value", 0));
+            accept(consumer, selectClobLocator("test3", statementRowId));
+        }
+
+        assertSingleEvent(EventType.INSERT, null);
+        assertThat(((DmlEvent) dispatched.get(0)).getNewValues()[DOC_INDEX]).isEqualTo("insert value");
+    }
+
+    @Test
+    @FixFor("debezium/dbz#3100")
     public void shouldDispatchSecondJsonLocatorOfRowAsSeparateEvent() throws Exception {
         try (StatementGroupCommitConsumer consumer = createConsumer()) {
             accept(consumer, new DmlEvent(EventType.INSERT, nextScn(), JSON_TABLE_ID, ROW_ID, "rsId", Instant.now(),
