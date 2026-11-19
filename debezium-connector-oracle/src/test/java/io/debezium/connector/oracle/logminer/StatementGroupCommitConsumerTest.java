@@ -601,6 +601,22 @@ public class StatementGroupCommitConsumerTest {
         assertThat(dispatchedSequences).isSorted();
     }
 
+    @Test
+    @FixFor("debezium/dbz#3100")
+    public void shouldIgnoreLobWritesWhenValueOfLocatorColumnIsMalformed() throws Exception {
+        final String malformed = "HEXTORAW('ZZ')";
+        try (StatementGroupCommitConsumer consumer = createConsumer()) {
+            accept(consumer, new DmlEvent(EventType.INSERT, nextScn(), JSON_TABLE_ID, ROW_ID, "rsId", Instant.now(),
+                    new Object[0], new Object[]{ "test3", malformed }));
+            // The column's value cannot be started from the malformed literal, so the writes have nowhere to go
+            accept(consumer, jsonLocator());
+            accept(consumer, jsonWrite("HEXTORAW('0102')"));
+        }
+
+        assertThat(dispatched).extracting(LogMinerEvent::getEventType).containsExactly(EventType.INSERT);
+        assertThat(((DmlEvent) dispatched.get(0)).getNewValues()[DATA_INDEX]).isEqualTo(malformed);
+    }
+
     private DmlEvent delete() {
         return new DmlEvent(EventType.DELETE, nextScn(), TABLE_ID, ROW_ID, "rsId", Instant.now(),
                 new Object[]{ "test3", "data", null, null }, new Object[0]);
