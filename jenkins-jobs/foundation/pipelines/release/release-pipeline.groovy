@@ -241,17 +241,12 @@ def checkPreReleaseContent(String dbzContent, String copyrightContent, String re
     }
 }
 
-@Field final BUILD_ARGS = [
-   'debezium': '-Poracle-all',
-   'server': "-Pnative -Dquarkus.native.builder-image=quay.io/quarkus/ubi9-quarkus-mandrel-builder-image:jdk-25 -Dversion.debezium=${params.RELEASE_VERSION}",
- ]
-
-// Build args used in the post-perform step (building the new development version).
-// If present, the value is used instead of BUILD_ARGS for that repo.
-// An empty string means no extra args.
-@Field final POST_PERFORM_BUILD_ARGS = [
-   'server': "-Dversion.debezium=${params.DEVELOPMENT_VERSION}",
+@Field BUILD_ARGS = [
 ]
+
+@Field POST_PERFORM_BUILD_ARGS = [
+]
+
 
 // Debezium Server must always ignore snapshots as it depends on Debezium Server BOM
 // and it is not possible to override it with a stable version
@@ -714,6 +709,16 @@ node {
         error "List of connectors not available"
     }
     echo "Connectors to be released: $CONNECTORS"
+
+    BUILD_ARGS = [
+        'debezium': '-Poracle-all',
+        'server': "-Pnative -Dquarkus.native.builder-image=quay.io/quarkus/ubi9-quarkus-mandrel-builder-image:jdk-25 -Dversion.debezium=${RELEASE_VERSION}",
+    ]
+
+    POST_PERFORM_BUILD_ARGS = [
+        'server': "-Dversion.debezium=${DEVELOPMENT_VERSION}",
+    ]
+
 
     // Repositories are parsed from SOURCE_REPOSITORIES in the order they are listed.
     // Ordering matters for 'Prepare release' which iterates MAVEN_REPOSITORIES directly.
