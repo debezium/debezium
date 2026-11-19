@@ -350,10 +350,7 @@ public class OracleDatabaseSchema extends HistorizedRelationalDatabaseSchema {
         return characterSet != null && !characterSet.isUnicode() && getMaxBytesPerChar(characterSet) > 1;
     }
 
-    /**
-     * Returns whether the provided relational column model is a JSON data type.
-     */
-    public static boolean isJsonColumn(Column column) {
+    private static boolean isJsonColumn(Column column) {
         return "JSON".equals(column.typeName());
     }
 

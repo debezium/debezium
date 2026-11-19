@@ -83,6 +83,8 @@ public class StatementGroupCommitConsumer implements AutoCloseable {
     private final Map<Integer, Integer> rowLobLengths = new HashMap<>();
 
     private Group group;
+    // A statement's second locator for a column, held until the next event shows what it is for
+    private PendingLocator pendingLocator;
     private long dispatchEventIndex = 0;
     private int totalEvents = 0;
 
@@ -96,6 +98,7 @@ public class StatementGroupCommitConsumer implements AutoCloseable {
 
     @Override
     public void close() throws InterruptedException {
+        resolvePendingLocator(null);
         flush();
         rowLobLengths.clear();
 
@@ -109,8 +112,11 @@ public class StatementGroupCommitConsumer implements AutoCloseable {
 
         if (!connectorConfig.isLobEnabled()) {
             dispatch(event, transactionId, transactionSequence);
+            return;
         }
-        else if (event instanceof DmlEvent dmlEvent) {
+
+        resolvePendingLocator(event);
+        if (event instanceof DmlEvent dmlEvent) {
             acceptRowEvent(dmlEvent, transactionId, transactionSequence);
         }
         else {
@@ -137,6 +143,7 @@ public class StatementGroupCommitConsumer implements AutoCloseable {
                 group.add(event, transactionSequence);
                 group.complete = true;
             }
+            case DEFERRED -> pendingLocator = new PendingLocator(table, lobPositions, (SelectLobLocatorEvent) event, transactionId, transactionSequence);
             case STARTS -> {
                 flush(sameRow);
                 group = new Group(table, lobPositions, event, transactionId, transactionSequence);
@@ -184,10 +191,7 @@ public class StatementGroupCommitConsumer implements AutoCloseable {
         return switch (event.getEventType()) {
             case INSERT -> Role.STARTS;
             case UPDATE -> classifyUpdate(event, lobPositions);
-            // A statement on a JSON column has no UPDATE row, so a second locator for the column is another statement
-            case SELECT_LOB_LOCATOR -> isForGroupRow(event, lobPositions) && !group.complete && !group.hasJsonLocatorFor((SelectLobLocatorEvent) event)
-                    ? Role.CONTINUES
-                    : Role.STARTS;
+            case SELECT_LOB_LOCATOR -> classifyLocator((SelectLobLocatorEvent) event, lobPositions);
             // A statement writes one document per XML column, so a second one is another statement
             case XML_BEGIN -> isForGroupRow(event, lobPositions) && !group.hasEndedXmlFor((XmlBeginEvent) event) ? Role.CONTINUES : Role.STARTS;
             // A statement writes an extended string column once, and never after its in-line update, so a
@@ -198,6 +202,38 @@ public class StatementGroupCommitConsumer implements AutoCloseable {
                             : Role.STARTS;
             default -> Role.STANDALONE;
         };
+    }
+
+    private Role classifyLocator(SelectLobLocatorEvent event, Set<Integer> lobPositions) {
+        if (!isForGroupRow(event, lobPositions) || group.complete) {
+            return Role.STARTS;
+        }
+        // An update of only an out-of-line value has no UPDATE row, its locator is all that starts it.
+        // The same locator can also precede the trim that ends the statement that is cached, so the
+        // event that follows decides. An application's locator has a row id and always continues.
+        return isStatementLocator(event) && group.hasLocatorFor(event) ? Role.DEFERRED : Role.CONTINUES;
+    }
+
+    /**
+     * Decides what a held locator is for, now that the event that follows it is known.
+     *
+     * @param next the event that follows the locator, {@code null} at the end of the transaction
+     */
+    private void resolvePendingLocator(LogMinerEvent next) throws InterruptedException {
+        if (pendingLocator == null) {
+            return;
+        }
+        final PendingLocator pending = pendingLocator;
+        pendingLocator = null;
+
+        if (next instanceof LobWriteEvent) {
+            // The locator is written to, which makes it the start of another statement for the same row
+            flush(true);
+            group = new Group(pending.table, pending.lobPositions, pending.event, pending.transactionId, pending.transactionSequence);
+        }
+        else {
+            group.add(pending.event, pending.transactionSequence);
+        }
     }
 
     private Role classifyUpdate(DmlEvent event, Set<Integer> lobPositions) {
@@ -449,6 +485,11 @@ public class StatementGroupCommitConsumer implements AutoCloseable {
         }
     }
 
+    private static boolean isStatementLocator(DmlEvent event) {
+        // LogMiner supplies the locator of a statement without a row id
+        return !hasRowId(event);
+    }
+
     private static boolean hasRowId(DmlEvent event) {
         return event.getRowId() != null && !event.getRowId().equals(RowIdCodec.EMPTY_ROW_ID);
     }
@@ -461,12 +502,20 @@ public class StatementGroupCommitConsumer implements AutoCloseable {
         CONTINUES,
         /** Belongs to the cached group and is the last row event of its statement. */
         COMPLETES,
+        /** A locator that either belongs to the cached group or starts a new one, the next event decides. */
+        DEFERRED,
         /** Ends the cached group and starts a new one. */
         STARTS,
         /** Ends the cached group and is a whole statement by itself. */
         STARTS_COMPLETE,
         /** Ends the cached group and is emitted as-is. */
         STANDALONE
+    }
+
+    /**
+     * A locator and what is needed to add it to the cached group or to start a group with it.
+     */
+    private record PendingLocator(Table table, Set<Integer> lobPositions, SelectLobLocatorEvent event, String transactionId, long transactionSequence) {
     }
 
     /**
@@ -547,9 +596,8 @@ public class StatementGroupCommitConsumer implements AutoCloseable {
             return false;
         }
 
-        boolean hasJsonLocatorFor(SelectLobLocatorEvent locator) {
-            final Column column = table.columnWithName(locator.getColumnName());
-            return column != null && OracleDatabaseSchema.isJsonColumn(column) && locatorPositions.contains(LogMinerHelper.getColumnIndexByName(column));
+        boolean hasLocatorFor(SelectLobLocatorEvent locator) {
+            return locatorPositions.contains(LogMinerHelper.getColumnIndexByName(locator.getColumnName(), table));
         }
 
         boolean hasLocatorFor(Set<Integer> positions) {
