@@ -34,6 +34,7 @@ The Extension supports well-established {prodname} features and much more! Here 
 - {prodname} Custom Data Type Converter
 - {prodname} Notification events
 - {prodname} Post Processors
+- {prodname} Schema Change events
 
 
 == Supported Connectors
@@ -436,6 +437,62 @@ the following events are available:
 - `SnapshotCompleted`
 - `SnapshotPaused`
 - `SnapshotResumed`
+
+== Schema Change events
+
+Connectors that support the `include.schema.changes` option emit a schema change event every time the structure of a captured table changes.
+The `@CapturingSchemaChange` annotation delivers these events to a method.
+The method is declared in a CDI bean. It must not be `static` or `private`, it must return `void`, and it takes a single `io.debezium.runtime.SchemaChange` parameter:
+
+```java
+import io.debezium.runtime.CapturingSchemaChange;
+import io.debezium.runtime.SchemaChange;
+import jakarta.enterprise.context.ApplicationScoped;
+
+@ApplicationScoped
+public class SchemaChangeListener {
+
+    @CapturingSchemaChange
+    public void onSchemaChange(SchemaChange change) {
+        // apply your logic
+    }
+}
+```
+
+`SchemaChange` gives access to the following information:
+
+- `engine()`: the engine that emitted the event
+- `destination()`: the destination of the event
+- `database()` and `schema()`: the database and the schema that contain the change, `null` when the connector does not report them
+- `ddl()`: the DDL statements that caused the change, `null` when the connector does not report them
+- `timestamp()`: the time at which the connector processed the change
+- `source()`: the source metadata of the event
+- `tableChanges()`: the structure of the tables affected by the change
+- `record()`: the original `SourceRecord` emitted by the connector
+
+When an engine has at least one `@CapturingSchemaChange` method, its schema change events are no longer delivered to the `@Capturing` methods.
+Without such a method nothing changes: the schema change events reach the `@Capturing` methods like any other event.
+
+The method is called in the position that the schema change has in the stream.
+The events that precede the schema change have already been delivered to the `@Capturing` methods, and the events that follow it have not.
+The method runs on the thread that delivers the events, so keep it fast.
+If the method throws an exception, the engine fails and reports an unsuccessful `DebeziumCompletionEvent`.
+
+Several methods can be declared for the same engine. Each one receives every schema change, in no guaranteed order.
+To receive the schema changes of another engine, set the `engine` attribute:
+
+```java
+@CapturingSchemaChange(engine = "alternative")
+public void onSchemaChange(SchemaChange change) {
+    // apply your logic
+}
+```
+
+[NOTE]
+====
+This annotation is incubating, so its API can change in future releases.
+The method is never called when `include.schema.changes` is disabled, or when the connector does not emit schema change events.
+====
 
 == Data Type Converter
 
