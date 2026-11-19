@@ -5,10 +5,10 @@
  */
 package io.debezium.connector.oracle;
 
+import java.math.BigDecimal;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.sql.Statement;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
@@ -59,10 +59,18 @@ public abstract class AbstractStreamingAdapter<T extends AbstractOracleStreaming
         if (scn2 == null) {
             return false;
         }
+        if (scn1.isNull() || scn2.isNull()) {
+            // SCN_TO_TIMESTAMP(NULL) yields NULL, which never compares equal
+            return false;
+        }
 
-        final String query = "SELECT 1 FROM DUAL WHERE SCN_TO_TIMESTAMP(" + scn1 + ")=SCN_TO_TIMESTAMP(" + scn2 + ")";
-        try (Statement s = connection.connection().createStatement(); ResultSet rs = s.executeQuery(query)) {
-            return rs.next();
+        final String query = "SELECT 1 FROM DUAL WHERE SCN_TO_TIMESTAMP(?)=SCN_TO_TIMESTAMP(?)";
+        try (PreparedStatement s = connection.connection().prepareStatement(query)) {
+            s.setBigDecimal(1, new BigDecimal(scn1.asBigInteger()));
+            s.setBigDecimal(2, new BigDecimal(scn2.asBigInteger()));
+            try (ResultSet rs = s.executeQuery()) {
+                return rs.next();
+            }
         }
     }
 

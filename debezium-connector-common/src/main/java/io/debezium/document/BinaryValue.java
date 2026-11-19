@@ -209,6 +209,7 @@ final class BinaryValue implements Value {
     }
 
     @Override
+    @SuppressWarnings("java:S2975")
     public Value clone() {
         byte[] copy = new byte[this.value.length];
         System.arraycopy(this.value, 0, copy, 0, this.value.length);

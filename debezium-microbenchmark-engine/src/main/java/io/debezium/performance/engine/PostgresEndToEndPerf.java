@@ -43,6 +43,8 @@ import org.openjdk.jmh.annotations.Setup;
 import org.openjdk.jmh.annotations.State;
 import org.openjdk.jmh.annotations.TearDown;
 import org.openjdk.jmh.annotations.Warmup;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
@@ -69,6 +71,7 @@ import io.debezium.util.IoUtil;
  */
 public class PostgresEndToEndPerf {
 
+    private static final Logger LOGGER = LoggerFactory.getLogger(PostgresEndToEndPerf.class.getName());
     private static final String HOST = "localhost";
     private static final int PORT = 5432;
     private static final String USER = "postgres";
@@ -191,7 +194,7 @@ public class PostgresEndToEndPerf {
             connection.execute("DROP TABLE IF EXISTS " + tableName);
         }
         catch (SQLException e) {
-            e.printStackTrace();
+            LOGGER.warn("Failed to drop table", e);
         }
         try {
             connection.execute("CREATE TABLE " + tableName + " (id numeric(9,0) primary key, name varchar(50))");

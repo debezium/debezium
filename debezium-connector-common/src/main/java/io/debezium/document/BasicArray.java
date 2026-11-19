@@ -185,6 +185,7 @@ final class BasicArray implements Array {
     }
 
     @Override
+    @SuppressWarnings("java:S2975")
     public Array clone() {
         return new BasicArray().addAll(this.values);
     }

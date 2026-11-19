@@ -9,6 +9,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyBoolean;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.startsWith;
 import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.inOrder;
@@ -54,6 +55,7 @@ public class OracleConnectionTest {
         statement = mock(Statement.class);
         when(connection.createStatement()).thenReturn(statement);
         when(statement.getConnection()).thenReturn(connection);
+        stubEnquoteIdentifier(statement);
         when(connectionFactory.connect(jdbcConfiguration)).thenReturn(connection);
 
     }
@@ -251,8 +253,16 @@ public class OracleConnectionTest {
         final Statement newStatement = mock(Statement.class);
         when(newConnection.createStatement()).thenReturn(newStatement);
         when(newStatement.getConnection()).thenReturn(newConnection);
+        stubEnquoteIdentifier(newStatement);
         when(connectionFactory.connect(jdbcConfiguration)).thenReturn(connection, newConnection);
         return newStatement;
+    }
+
+    /**
+     * Makes the mocked statement return identifiers unchanged when they are enquoted.
+     */
+    private static void stubEnquoteIdentifier(Statement statement) throws SQLException {
+        when(statement.enquoteIdentifier(anyString(), anyBoolean())).thenAnswer(invocation -> invocation.getArgument(0));
     }
 
     /**

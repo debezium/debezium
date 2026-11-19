@@ -15,6 +15,7 @@ import io.debezium.connector.oracle.util.TestHelper;
  * @author Chris Cranford
  */
 @SkipWhenAdapterNameIsNot(value = SkipWhenAdapterNameIsNot.AdapterName.LOGMINER_BUFFERED)
+@SuppressWarnings("java:S2187")
 public class EhcacheStreamingChangeEventSourceTest extends AbstractBufferedLogMinerStreamingChangeEventSourceTest {
 
     @Override

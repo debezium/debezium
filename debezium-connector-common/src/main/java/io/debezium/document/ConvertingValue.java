@@ -301,6 +301,7 @@ final class ConvertingValue implements Value {
     }
 
     @Override
+    @SuppressWarnings("java:S2975")
     public Value clone() {
         Value clonedValue = value.clone();
         if (clonedValue == value) {

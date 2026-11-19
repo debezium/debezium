@@ -382,6 +382,7 @@ final class ComparableValue implements Value {
     }
 
     @Override
+    @SuppressWarnings("java:S2975")
     public Value clone() {
         if (isArray()) {
             return new ComparableValue(asArray().clone());

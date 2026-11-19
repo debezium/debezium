@@ -21,6 +21,7 @@ import io.debezium.sink.SinkConnectorConfig;
 import io.debezium.sink.TestSinkConnectorConfig;
 import io.debezium.sink.TestSinkRecords;
 
+@SuppressWarnings("java:S2187")
 class PassthroughBufferTest {
 
     @Nested

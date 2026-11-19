@@ -12,7 +12,9 @@ import argparse
 from typing import List, Dict, Tuple, Optional
 from dataclasses import dataclass
 from collections import defaultdict
+from functools import total_ordering
 
+@total_ordering
 @dataclass
 class Version:
     """Represents a semantic version."""

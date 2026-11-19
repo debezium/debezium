@@ -6,6 +6,7 @@
 package io.debezium.ai.docling;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.util.HashMap;
@@ -94,10 +95,9 @@ public class FieldToDoclingTest {
         config.put("include.images", "false");
         config.put("output.format", "text");
 
-        FieldToDocling<?> transform = new FieldToDocling<>();
-        // Should not throw - boolean type is now correct
-        transform.configure(config);
-        transform.close();
+        try (FieldToDocling<?> transform = new FieldToDocling<>()) {
+            assertThatCode(() -> transform.configure(config)).doesNotThrowAnyException();
+        }
     }
 
     @Test
@@ -157,10 +157,9 @@ public class FieldToDoclingTest {
         config.put("input.format", "pdf");
         config.put("output.format", "text");
 
-        FieldToDocling<?> transform = new FieldToDocling<>();
-        // Should not throw
-        transform.configure(config);
-        transform.close();
+        try (FieldToDocling<?> transform = new FieldToDocling<>()) {
+            assertThatCode(() -> transform.configure(config)).doesNotThrowAnyException();
+        }
     }
 
     @Test
@@ -172,10 +171,9 @@ public class FieldToDoclingTest {
         config.put("input.format", "pdf");
         config.put("output.format", "text");
 
-        FieldToDocling<?> transform = new FieldToDocling<>();
-        // Should not throw
-        transform.configure(config);
-        transform.close();
+        try (FieldToDocling<?> transform = new FieldToDocling<>()) {
+            assertThatCode(() -> transform.configure(config)).doesNotThrowAnyException();
+        }
     }
 
     @Test
@@ -224,15 +222,13 @@ public class FieldToDoclingTest {
     @Test
     public void testvalidateUrlWithValidHttpUri() {
         FieldToDocling<?> transform = new FieldToDocling<>();
-        // Should not throw
-        transform.validateUrl("http://example.com/document.pdf");
+        assertThatCode(() -> transform.validateUrl("http://example.com/document.pdf")).doesNotThrowAnyException();
     }
 
     @Test
     public void testvalidateUrlWithValidHttpsUri() {
         FieldToDocling<?> transform = new FieldToDocling<>();
-        // Should not throw
-        transform.validateUrl("https://example.com/document.pdf");
+        assertThatCode(() -> transform.validateUrl("https://example.com/document.pdf")).doesNotThrowAnyException();
     }
 
     @Test
@@ -253,9 +249,9 @@ public class FieldToDoclingTest {
         config1.put("input.format", "pdf");
         config1.put("output.format", "text");
 
-        FieldToDocling<?> transform1 = new FieldToDocling<>();
-        transform1.configure(config1);
-        transform1.close();
+        try (FieldToDocling<?> transform1 = new FieldToDocling<>()) {
+            assertThatCode(() -> transform1.configure(config1)).doesNotThrowAnyException();
+        }
 
         Map<String, String> config2 = new HashMap<>();
         config2.put("field.source", "content");
@@ -264,9 +260,9 @@ public class FieldToDoclingTest {
         config2.put("input.format", "pdf");
         config2.put("output.format", "text");
 
-        FieldToDocling<?> transform2 = new FieldToDocling<>();
-        transform2.configure(config2);
-        transform2.close();
+        try (FieldToDocling<?> transform2 = new FieldToDocling<>()) {
+            assertThatCode(() -> transform2.configure(config2)).doesNotThrowAnyException();
+        }
     }
 
     @Test
@@ -278,10 +274,9 @@ public class FieldToDoclingTest {
         config.put("input.format", "PDF");
         config.put("output.format", "text");
 
-        FieldToDocling<?> transform = new FieldToDocling<>();
-        // Should not throw - case insensitive parsing
-        transform.configure(config);
-        transform.close();
+        try (FieldToDocling<?> transform = new FieldToDocling<>()) {
+            assertThatCode(() -> transform.configure(config)).doesNotThrowAnyException();
+        }
     }
 
     @Test
@@ -293,10 +288,9 @@ public class FieldToDoclingTest {
         config.put("input.format", "pdf");
         config.put("output.format", "HTML");
 
-        FieldToDocling<?> transform = new FieldToDocling<>();
-        // Should not throw - case insensitive parsing
-        transform.configure(config);
-        transform.close();
+        try (FieldToDocling<?> transform = new FieldToDocling<>()) {
+            assertThatCode(() -> transform.configure(config)).doesNotThrowAnyException();
+        }
     }
 
     @Test
@@ -310,11 +304,10 @@ public class FieldToDoclingTest {
         config.put("include.images", "true");
         config.put("output.format", "markdown");
 
-        FieldToDocling<?> transform = new FieldToDocling<>();
-        // Should not throw
-        transform.configure(config);
-        assertThat(transform.version()).isNotNull();
-        transform.close();
+        try (FieldToDocling<?> transform = new FieldToDocling<>()) {
+            assertThatCode(() -> transform.configure(config)).doesNotThrowAnyException();
+            assertThat(transform.version()).isNotNull();
+        }
     }
 
     @Test
@@ -326,9 +319,8 @@ public class FieldToDoclingTest {
         config.put("input.format", "pdf");
         config.put("output.format", "text");
 
-        FieldToDocling<?> transform = new FieldToDocling<>();
-        // Should not throw
-        transform.configure(config);
-        transform.close();
+        try (FieldToDocling<?> transform = new FieldToDocling<>()) {
+            assertThatCode(() -> transform.configure(config)).doesNotThrowAnyException();
+        }
     }
 }

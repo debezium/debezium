@@ -42,6 +42,7 @@ import io.debezium.data.Envelope;
 import io.debezium.data.SchemaUtil;
 import io.debezium.util.Testing;
 
+@SuppressWarnings("java:S2187")
 public class CloudEventsConverterTest {
 
     public static void shouldConvertToCloudEventsInJson(SourceRecord record, boolean hasTransaction) {

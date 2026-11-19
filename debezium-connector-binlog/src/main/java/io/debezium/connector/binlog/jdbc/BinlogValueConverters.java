@@ -90,7 +90,7 @@ import io.debezium.util.Strings;
 public abstract class BinlogValueConverters extends JdbcValueConverters {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(BinlogValueConverters.class);
-    private static final Logger INVALID_VALUE_LOGGER = LoggerFactory.getLogger(BinlogValueConverters.class.getName() + ".invalid_value");
+    private static final Logger INVALID_VALUE_LOGGER = LoggerFactory.getLogger(LOGGER.getName() + ".invalid_value");
 
     /**
      * Marker value indicating an unavailable column value, e.g. when the database

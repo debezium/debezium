@@ -13,10 +13,12 @@ import java.sql.SQLException;
 import java.sql.SQLTimeoutException;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 
 import org.junit.jupiter.api.Test;
 
+import io.debezium.DebeziumException;
 import io.debezium.config.Configuration;
 import io.debezium.connector.oracle.antlr.OracleDdlParser;
 import io.debezium.connector.oracle.junit.SkipWhenAdapterNameIsNot;
@@ -207,6 +209,26 @@ public class ConnectionIT implements Testing {
             conn.connection().close();
             conn.reconnect();
             assertThat(getSessionContainerName(conn)).isEqualToIgnoringCase("CDB$ROOT");
+        }
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2839")
+    void shouldSwitchSessionContainerRegardlessOfPdbNameQuotingOrCase() throws SQLException {
+        assumeTrue(TestHelper.isUsingPdb(), "Requires a pluggable database");
+
+        final String pdbName = new OracleConnectorConfig(TestHelper.defaultConfig().build()).getPdbName().toUpperCase(Locale.ROOT);
+        try (OracleConnection conn = TestHelper.defaultConnection()) {
+            for (String name : List.of(pdbName, pdbName.toLowerCase(Locale.ROOT), "\"" + pdbName + "\"")) {
+                conn.setSessionToPdb(name);
+                assertThat(getSessionContainerName(conn)).as(name).isEqualTo(pdbName);
+                conn.resetSessionToCdb();
+                assertThat(getSessionContainerName(conn)).as(name).isEqualTo("CDB$ROOT");
+            }
+
+            // A name with an embedded double quote is rejected rather than being spliced into the statement
+            assertThatThrownBy(() -> conn.setSessionToPdb(pdbName + "\" x"))
+                    .isInstanceOf(DebeziumException.class);
         }
     }
 
