@@ -307,7 +307,12 @@ public class ReselectColumnsPostProcessor implements PostProcessor, BeanRegistry
                 try {
                     final boolean found = jdbcConnection.reselectColumns(table, columnsToQuery, keyColumns, keyValues, source, rs -> {
                         for (String columnName : columnsToQuery) {
-                            rawValues.put(columnName, rs.getObject(columnName));
+                            final Column column = table.columnWithName(columnName);
+                            final org.apache.kafka.connect.data.Field field = fieldFor(after, column);
+                            // Convert value immediately, as some objects might not stay valid after the result set closes
+                            final Object convertedValue = getConvertedValue(tableId, column, field, rs.getObject(columnName));
+
+                            rawValues.put(columnName, convertedValue);
                         }
                     });
                     if (!found) {
@@ -326,7 +331,7 @@ public class ReselectColumnsPostProcessor implements PostProcessor, BeanRegistry
                     return;
                 }
 
-                // Convert freshly queried raw values once, then both apply and cache the converted value so
+                // apply and cache the converted value so
                 // cache hits and freshly queried values are handled identically.
                 for (String columnName : columnsToQuery) {
                     if (!rawValues.containsKey(columnName)) {
@@ -334,7 +339,7 @@ public class ReselectColumnsPostProcessor implements PostProcessor, BeanRegistry
                     }
                     final Column column = requiredColumnSelections.get(columnName);
                     final org.apache.kafka.connect.data.Field field = fieldFor(after, column);
-                    final Object convertedValue = getConvertedValue(tableId, column, field, rawValues.get(columnName));
+                    final Object convertedValue = rawValues.get(columnName);
                     selections.put(columnName, convertedValue);
                     if (rowCache != null) {
                         rowCache.put(columnName, field.schema(), convertedValue);
