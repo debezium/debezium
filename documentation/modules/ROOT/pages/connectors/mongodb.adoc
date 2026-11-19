@@ -1926,7 +1926,8 @@ With xref:mongodb-property-cursor-pipeline-order[`cursor.pipeline.order=user_fir
 The connector warns about this combination at startup, but does not reject the configuration.
 With `user_only`, the connector's filters are not applied in the change stream, so the custom stages must exclude such events.
 With regex filters, MongoDB applies the database and collection exclude lists on the server, and its regular expression syntax differs from Java's for some patterns.
-For example, with case-insensitive matching MongoDB matches non-ASCII letters in either case, and it supports POSIX character classes such as `[[:alpha:]]`.
+
+For example, with case-insensitive matching MongoDB matches non-ASCII letters in either case, and it supports POSIX character classes such as `+++[[:alpha:]]+++`.
 An exclude pattern that MongoDB matches but Java does not removes events that the connector would otherwise capture.
 For single-collection capture, xref:mongodb-property-capture-scope[`capture.scope=collection`] excludes events from other collections at the change stream level; see that property's signaling and incremental snapshot limitations.
 
