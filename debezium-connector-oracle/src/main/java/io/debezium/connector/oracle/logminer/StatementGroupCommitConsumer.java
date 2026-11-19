@@ -324,6 +324,8 @@ public class StatementGroupCommitConsumer implements AutoCloseable {
         for (LogMinerEvent event : group.events) {
             try {
                 if (event instanceof SelectLobLocatorEvent locator) {
+                    // Writes must not reach another column's value when this locator's value cannot be started
+                    lob = null;
                     final int position = LogMinerHelper.getColumnIndexByName(locator.getColumnName(), group.table);
                     if (!constructions.containsKey(position) && hasRowId(locator)
                             && (event == result || OracleValueConverters.UNAVAILABLE_VALUE.equals(values[position]))) {
@@ -340,7 +342,12 @@ public class StatementGroupCommitConsumer implements AutoCloseable {
                     constructions.put(LogMinerHelper.getColumnIndexByName(begin.getColumnName(), group.table), extendedString);
                 }
                 else if (event instanceof LobWriteEvent write) {
-                    lob.add(new LobFragment(write));
+                    if (lob != null) {
+                        lob.add(new LobFragment(write));
+                    }
+                    else {
+                        LOGGER.debug("\tGot {} for a locator without a usable value; ignoring {}.", event.getEventType(), event);
+                    }
                 }
                 else if (event instanceof XmlWriteEvent write) {
                     if (write.getXml() != null) {
@@ -386,7 +393,13 @@ public class StatementGroupCommitConsumer implements AutoCloseable {
                 rowLobLengths.remove(position);
             }
             else if (position < values.length && !OracleValueConverters.UNAVAILABLE_VALUE.equals(values[position])) {
-                rowLobLengths.put(position, getLobLength(values[position]));
+                try {
+                    rowLobLengths.put(position, getLobLength(values[position]));
+                }
+                catch (DebeziumException e) {
+                    // A malformed value has no known length
+                    rowLobLengths.remove(position);
+                }
             }
         }
 
