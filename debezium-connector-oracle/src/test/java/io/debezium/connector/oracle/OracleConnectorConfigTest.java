@@ -587,6 +587,36 @@ public class OracleConnectorConfigTest {
                         OracleConnectorConfig.LogMiningStrategy.DICTIONARY_FROM_FILE);
     }
 
+    @Test
+    @FixFor("debezium/dbz#3116")
+    public void shouldUseDefaultLogMiningPollInterval() {
+        final OracleConnectorConfig connectorConfig = new OracleConnectorConfig(logMinerConfig("logminer").build());
+        assertThat(connectorConfig.getLogMiningPollInterval()).isEqualTo(Duration.ofSeconds(1));
+    }
+
+    @Test
+    @FixFor("debezium/dbz#3116")
+    public void shouldUseConfiguredLogMiningPollInterval() {
+        final Configuration config = logMinerConfig("logminer")
+                .with(OracleConnectorConfig.LOG_MINING_POLL_INTERVAL_MS, 5000L)
+                .build();
+
+        final List<Field> fields = List.of(OracleConnectorConfig.LOG_MINING_POLL_INTERVAL_MS);
+        assertThat(config.validateAndRecord(fields, LOGGER::error)).isTrue();
+        assertThat(new OracleConnectorConfig(config).getLogMiningPollInterval()).isEqualTo(Duration.ofMillis(5000L));
+    }
+
+    @Test
+    @FixFor("debezium/dbz#3116")
+    public void shouldFailValidationWhenLogMiningPollIntervalIsNotPositive() {
+        final Configuration config = logMinerConfig("logminer")
+                .with(OracleConnectorConfig.LOG_MINING_POLL_INTERVAL_MS, 0L)
+                .build();
+
+        final List<Field> fields = List.of(OracleConnectorConfig.LOG_MINING_POLL_INTERVAL_MS);
+        assertThat(config.validateAndRecord(fields, LOGGER::error)).isFalse();
+    }
+
     private static Configuration.Builder logMinerConfig(String adapter) {
         return Configuration.create()
                 .with(CommonConnectorConfig.TOPIC_PREFIX, "myserver")

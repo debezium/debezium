@@ -65,6 +65,7 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
     protected final static int DEFAULT_QUERY_FETCH_SIZE = 10_000;
 
     protected final static Duration ARCHIVE_LOG_ONLY_POLL_TIME = Duration.ofMillis(10_000);
+    protected final static Duration DEFAULT_LOG_MINING_POLL_INTERVAL = Duration.ofMillis(1_000);
 
     protected final static long DEFAULT_RESUME_POSITION_INTERVAL = 10_000L;
 
@@ -251,6 +252,17 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
             .withGroup(Field.createGroupEntry(Field.Group.CONNECTION_ADVANCED))
             .withDefault(ARCHIVE_LOG_ONLY_POLL_TIME.toMillis())
             .withDescription("The interval in milliseconds to wait between polls checking to see if the SCN is in the archive logs.");
+
+    public static final Field LOG_MINING_POLL_INTERVAL_MS = Field.create("log.mining.poll.interval.ms")
+            .withDisplayName("The interval in milliseconds to wait between LogMiner mining passes")
+            .withType(Type.LONG)
+            .withWidth(Width.SHORT)
+            .withImportance(Importance.LOW)
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTION_ADVANCED))
+            .withDefault(DEFAULT_LOG_MINING_POLL_INTERVAL.toMillis())
+            .withValidation(Field::isPositiveLong)
+            .withDescription("The interval in milliseconds that the connector waits between each LogMiner mining pass. " +
+                    "Increase this value to reduce how frequently the connector polls the database for changes.");
 
     public static final Field LOG_MINING_READ_ONLY = Field.create("log.mining.read.only")
             .withDisplayName("Runs the connector in read-only mode")
@@ -853,7 +865,7 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
                     LOG_MINING_BUFFER_DROP_ON_STOP, LOG_MINING_BUFFER_INFINISPAN_CACHE_GLOBAL,
                     LOG_MINING_BUFFER_INFINISPAN_CACHE_TRANSACTIONS, LOG_MINING_BUFFER_INFINISPAN_CACHE_EVENTS,
                     LOG_MINING_BUFFER_INFINISPAN_CACHE_PROCESSED_TRANSACTIONS, LOG_MINING_BUFFER_INFINISPAN_CACHE_SCHEMA_CHANGES,
-                    LOG_MINING_BUFFER_TRANSACTION_EVENTS_THRESHOLD, LOG_MINING_ARCHIVE_LOG_ONLY_SCN_POLL_INTERVAL_MS,
+                    LOG_MINING_BUFFER_TRANSACTION_EVENTS_THRESHOLD, LOG_MINING_ARCHIVE_LOG_ONLY_SCN_POLL_INTERVAL_MS, LOG_MINING_POLL_INTERVAL_MS,
                     LOG_MINING_LOG_QUERY_MAX_RETRIES, LOG_MINING_LOG_BACKOFF_INITIAL_DELAY_MS,
                     LOG_MINING_LOG_BACKOFF_MAX_DELAY_MS, LOG_MINING_SESSION_MAX_MS, LOG_MINING_WINDOW_MAX_MS, LOG_MINING_TRANSACTION_SNAPSHOT_BOUNDARY_MODE,
                     LOG_MINING_READ_ONLY, LOG_MINING_FLUSH_TABLE_NAME, LOG_MINING_QUERY_FILTER_MODE, LOG_MINING_RESTART_CONNECTION, LOG_MINING_MAX_SCN_DEVIATION_MS,
@@ -910,6 +922,7 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
     private final Duration logMiningTransactionRetention;
     private final boolean archiveLogOnlyMode;
     private final Duration archiveLogOnlyScnPollTime;
+    private final Duration logMiningPollInterval;
     private final boolean lobEnabled;
     private final Set<String> logMiningUsernameIncludes;
     private final Set<String> logMiningUsernameExcludes;
@@ -1002,6 +1015,7 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
         this.logMiningBufferTransactionEventsThreshold = config.getLong(LOG_MINING_BUFFER_TRANSACTION_EVENTS_THRESHOLD);
         this.logMiningBufferDropOnStop = config.getBoolean(LOG_MINING_BUFFER_DROP_ON_STOP);
         this.archiveLogOnlyScnPollTime = Duration.ofMillis(config.getInteger(LOG_MINING_ARCHIVE_LOG_ONLY_SCN_POLL_INTERVAL_MS));
+        this.logMiningPollInterval = Duration.ofMillis(config.getLong(LOG_MINING_POLL_INTERVAL_MS));
         this.logMiningLogFileQueryMaxRetries = config.getInteger(LOG_MINING_LOG_QUERY_MAX_RETRIES);
         this.logMiningInitialDelay = Duration.ofMillis(config.getLong(LOG_MINING_LOG_BACKOFF_INITIAL_DELAY_MS));
         this.logMiningMaxDelay = Duration.ofMillis(config.getLong(LOG_MINING_LOG_BACKOFF_MAX_DELAY_MS));
@@ -1878,6 +1892,13 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
      */
     public Duration getArchiveLogOnlyScnPollTime() {
         return archiveLogOnlyScnPollTime;
+    }
+
+    /**
+     * @return the duration that the connector waits between each LogMiner mining pass
+     */
+    public Duration getLogMiningPollInterval() {
+        return logMiningPollInterval;
     }
 
     /**
