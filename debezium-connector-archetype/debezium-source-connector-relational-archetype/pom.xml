@@ -15,6 +15,17 @@
     <description>Maven archetype for bootstrapping a new Debezium relational source connector</description>
     <packaging>maven-archetype</packaging>
 
+    <dependencies>
+        <!-- Not used by the archetype itself. The archetype integration test generates a project depending on
+             debezium-connector-common and resolves it from the local repository, so the reactor must build and
+             install it (with its transitive modules) before this module, also in parallel builds. -->
+        <dependency>
+            <groupId>io.debezium</groupId>
+            <artifactId>debezium-connector-common</artifactId>
+            <scope>provided</scope>
+        </dependency>
+    </dependencies>
+
     <build>
         <resources>
             <!-- Filter only the archetype descriptor so its debeziumVersion default tracks the build version; the archetype-resources templates must stay verbatim. -->
