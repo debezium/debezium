@@ -2636,7 +2636,7 @@ public class OracleConnectorIT extends AbstractAsyncEngineConnectorTest {
     }
 
     @Test
-    @FixFor("DBZ-3898")
+    @FixFor({ "DBZ-3898", "debezium/dbz#3124" })
     @SkipWhenAdapterNameIsNot(value = SkipWhenAdapterNameIsNot.AdapterName.ANY_LOGMINER, reason = "Tests specific LogMiner features")
     @SkipOnDatabaseOption(value = "Real Application Clusters", enabled = true, reason = "Performance w/CATALOG_IN_REDO on Oracle RAC")
     public void shouldIgnoreAllTablesInExcludedSchemas() throws Exception {
@@ -2660,7 +2660,9 @@ public class OracleConnectorIT extends AbstractAsyncEngineConnectorTest {
 
             final Scn scnAfterInsert = TestHelper.getCurrentScn();
 
-            SourceRecords records = consumeRecordsByTopic(1);
+            // The first CATALOG_IN_REDO mining iteration can take more than a minute on slow
+            // environments, so allow up to ~3 minutes of empty polls before giving up.
+            SourceRecords records = consumeRecordsByTopic(1, 18);
             assertThat(records.recordsForTopic("server1.DEBEZIUM.DBZ3898")).hasSize(1);
 
             // Wait for the connector to advance beyond the current SCN after the INSERT.
