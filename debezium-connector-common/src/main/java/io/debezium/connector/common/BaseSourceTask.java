@@ -518,7 +518,7 @@ public abstract class BaseSourceTask<P extends Partition, O extends OffsetContex
                     catch (RetriableException e) {
                         restartRetries++;
                         if (!hasMoreRestartRetries()) {
-                            throw new ConnectException("The maximum number of restart retries has been reached", e);
+                            throw new DebeziumException("The maximum number of restart retries has been reached", e);
                         }
                         LOGGER.warn("Failed to restart connector, will re-attempt during next polling.", e);
                         stop(true);

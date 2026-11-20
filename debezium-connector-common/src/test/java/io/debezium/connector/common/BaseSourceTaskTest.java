@@ -25,7 +25,6 @@ import java.util.concurrent.atomic.AtomicInteger;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.data.Struct;
-import org.apache.kafka.connect.errors.ConnectException;
 import org.apache.kafka.connect.errors.RetriableException;
 import org.apache.kafka.connect.source.SourceRecord;
 import org.apache.kafka.connect.source.SourceTaskContext;
@@ -35,6 +34,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 
+import io.debezium.DebeziumException;
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
 import io.debezium.config.Field;
@@ -218,7 +218,7 @@ class BaseSourceTaskTest {
             assertEquals(DebeziumTaskState.RESTARTING, baseSourceTask.getTaskState());
             sleep(1);
         }
-        assertThrows(ConnectException.class, () -> baseSourceTask.poll()); // Max attempts exceeded expect failure
+        assertThrows(DebeziumException.class, () -> baseSourceTask.poll()); // Max attempts exceeded expect failure
     }
 
     @Test
