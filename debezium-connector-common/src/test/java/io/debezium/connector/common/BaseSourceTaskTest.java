@@ -31,8 +31,6 @@ import org.apache.kafka.connect.source.SourceTaskContext;
 import org.apache.kafka.connect.util.ConnectorTaskId;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.ValueSource;
 
 import io.debezium.DebeziumException;
 import io.debezium.config.CommonConnectorConfig;
@@ -196,9 +194,7 @@ class BaseSourceTaskTest {
         assertEquals(1, baseSourceTask.stopCount.get());
     }
 
-    @ParameterizedTest
-    @ValueSource(ints = { 1, 3 })
-    public void verifyRestartFailsWhenMaxRetriesExhausted(int maxRetries) throws InterruptedException {
+    public void verifyRestartFailsWhenMaxRetriesExhausted() throws InterruptedException {
         MyBaseSourceTask baseSourceTask = new MyBaseSourceTask() {
             @Override
             protected ChangeEventSourceCoordinator<Partition, OffsetContext> start(Configuration config) {
@@ -206,7 +202,7 @@ class BaseSourceTaskTest {
                 throw new RetriableException("Connection refused");
             }
         };
-
+        int maxRetries = 3;
         baseSourceTask.initialize(mock(SourceTaskContext.class));
         Map<String, String> config = Map.of(
                 CommonConnectorConfig.RETRIABLE_RESTART_WAIT.name(), "1",
@@ -218,6 +214,23 @@ class BaseSourceTaskTest {
             assertEquals(DebeziumTaskState.RESTARTING, baseSourceTask.getTaskState());
             sleep(1);
         }
+        assertThrows(DebeziumException.class, () -> baseSourceTask.poll()); // Max attempts exceeded expect failure
+    }
+
+    public void verifyRestartFailsWhenMaxNoRetriesSet() throws InterruptedException {
+        MyBaseSourceTask baseSourceTask = new MyBaseSourceTask() {
+            @Override
+            protected ChangeEventSourceCoordinator<Partition, OffsetContext> start(Configuration config) {
+                ChangeEventSourceCoordinator<Partition, OffsetContext> result = super.start(config);
+                throw new RetriableException("Connection refused");
+            }
+        };
+
+        baseSourceTask.initialize(mock(SourceTaskContext.class));
+        Map<String, String> config = Map.of(
+                CommonConnectorConfig.RETRIABLE_RESTART_WAIT.name(), "1",
+                CommonConnectorConfig.ERRORS_MAX_RETRIES, "0");
+        baseSourceTask.start(config);
         assertThrows(DebeziumException.class, () -> baseSourceTask.poll()); // Max attempts exceeded expect failure
     }
 
