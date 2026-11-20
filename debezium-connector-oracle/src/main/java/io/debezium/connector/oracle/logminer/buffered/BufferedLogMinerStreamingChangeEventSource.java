@@ -21,6 +21,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
+import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
 import org.slf4j.Logger;
@@ -1405,27 +1406,67 @@ public class BufferedLogMinerStreamingChangeEventSource extends AbstractLogMiner
      * Cleans up deferred transaction metadata that has been retained longer than the configured retention period.
      * <p>
      * This removes lightweight metadata for transactions that never emitted a DML event,
-     * preventing memory leaks in the deferred transaction map.
+     * preventing memory leaks in the deferred transaction map. When the database cannot convert the
+     * retention into a system change number, the change time of each deferred transaction is compared
+     * with the change time of the last processed event instead.
      *
      * @param retention the retention duration, should not be {@code null}
      */
     private void cleanupDeferredTransactions(Duration retention) {
-        if (Duration.ZERO.equals(retention) || deferredTransactions.isEmpty()) {
+        if (Duration.ZERO.equals(retention) || deferredTransactions.isEmpty() || lastProcessedScn.isNull()) {
             return;
         }
 
-        final Optional<Scn> lastScnToAbandon = getLastScnToAbandon(getStreamingConnection(), retention);
-        if (lastScnToAbandon.isEmpty()) {
-            return;
+        try {
+            final Scn thresholdScn = getScnByTimeDelta(getStreamingConnection(), retention);
+            removeDeferredTransactions(deferred -> deferred.startScn().compareTo(thresholdScn) <= 0,
+                    "start SCN <= " + thresholdScn);
         }
+        catch (SQLException e) {
+            // This can happen when the last processed SCN has aged out of the UNDO_RETENTION.
+            // Deferred transactions carry their own change time, so they can be expired by comparing
+            // it with the change time of the last processed event, regardless of the transaction cache.
+            if (lastProcessedScnChangeTime == null) {
+                LOGGER.error("Cannot fetch SCN {} by given duration to calculate SCN to clean up deferred transactions", lastProcessedScn, e);
+                getMetrics().incrementErrorCount();
+                return;
+            }
 
-        final Scn thresholdScn = lastScnToAbandon.get();
-        final int removedBefore = deferredTransactions.size();
-        deferredTransactions.values().removeIf(deferred -> deferred.startScn().compareTo(thresholdScn) <= 0);
-        final int removed = removedBefore - deferredTransactions.size();
-        if (removed > 0) {
-            LOGGER.debug("Cleaned up {} deferred transactions with start SCN <= {}", removed, thresholdScn);
+            final Instant thresholdTime = lastProcessedScnChangeTime.minus(retention);
+            LOGGER.debug("Cannot fetch SCN {} by given duration, cleaning up deferred transactions based on change time {}.",
+                    lastProcessedScn, thresholdTime, e);
+            removeDeferredTransactions(deferred -> deferred.changeTime() != null && deferred.changeTime().isBefore(thresholdTime),
+                    "change time before " + thresholdTime);
         }
+    }
+
+    private void removeDeferredTransactions(Predicate<DeferredTransaction> expired, String reason) {
+        final List<String> removed = new ArrayList<>();
+        deferredTransactions.values().removeIf(deferred -> {
+            if (expired.test(deferred)) {
+                removed.add(deferred.transactionId());
+                return true;
+            }
+            return false;
+        });
+        if (!removed.isEmpty()) {
+            LOGGER.debug("Cleaned up {} deferred transactions with {}: [{}]", removed.size(), reason, String.join(",", removed));
+        }
+    }
+
+    /**
+     * Computes the system change number that is the given {@code retention} before the last processed SCN.
+     *
+     * @param connection the database connection, should not be {@code null}
+     * @param retention the retention period, should not be {@code null}
+     * @return the computed system change number, never {@code null}
+     * @throws SQLException if the database failed to compute the system change number
+     */
+    private Scn getScnByTimeDelta(OracleConnection connection, Duration retention) throws SQLException {
+        final BigInteger scn = connection.singleOptionalValue(
+                SqlUtils.getScnByTimeDeltaQuery(lastProcessedScn, retention),
+                rs -> rs.getBigDecimal(1).toBigInteger());
+        return new Scn(scn);
     }
 
     /**
@@ -1467,10 +1508,7 @@ public class BufferedLogMinerStreamingChangeEventSource extends AbstractLogMiner
             if (lastProcessedScn.isNull()) {
                 return Optional.empty();
             }
-            BigInteger scnToAbandon = connection.singleOptionalValue(
-                    SqlUtils.getScnByTimeDeltaQuery(lastProcessedScn, retention),
-                    rs -> rs.getBigDecimal(1).toBigInteger());
-            return Optional.of(new Scn(scnToAbandon));
+            return Optional.of(getScnByTimeDelta(connection, retention));
         }
         catch (SQLException e) {
             // This can happen when the last processed SCN has aged out of the UNDO_RETENTION.
