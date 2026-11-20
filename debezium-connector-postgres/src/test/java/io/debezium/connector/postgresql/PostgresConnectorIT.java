@@ -1277,24 +1277,32 @@ public class PostgresConnectorIT extends AbstractAsyncEngineConnectorTest {
 
         TestHelper.executeDDL("postgres_create_role_specific_tables.ddl");
 
-        Configuration config = TestHelper.defaultConfig()
-                .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NO_DATA.getValue())
-                .with(PostgresConnectorConfig.DROP_SLOT_ON_STOP, Boolean.FALSE)
-                .with(PostgresConnectorConfig.REPLICA_IDENTITY_AUTOSET_VALUES, "s1.a:FULL,s2.a:DEFAULT")
-                .with(PostgresConnectorConfig.PUBLICATION_AUTOCREATE_MODE, PostgresConnectorConfig.AutoCreateMode.DISABLED.getValue())
-                .with("database.user", "role_2")
-                .with("database.password", "role_2_pass")
-                .build();
+        try {
+            Configuration config = TestHelper.defaultConfig()
+                    .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NO_DATA.getValue())
+                    .with(PostgresConnectorConfig.DROP_SLOT_ON_STOP, Boolean.FALSE)
+                    .with(PostgresConnectorConfig.REPLICA_IDENTITY_AUTOSET_VALUES, "s1.a:FULL,s2.a:DEFAULT")
+                    .with(PostgresConnectorConfig.PUBLICATION_AUTOCREATE_MODE, PostgresConnectorConfig.AutoCreateMode.DISABLED.getValue())
+                    .with("database.user", "role_2")
+                    .with("database.password", "role_2_pass")
+                    .build();
 
-        start(PostgresConnector.class, config);
-        assertConnectorIsRunning();
+            start(PostgresConnector.class, config);
+            assertConnectorIsRunning();
 
-        waitForStreamingRunning();
+            waitForStreamingRunning();
 
-        // Waiting for Replica Identity is updated
-        waitForAvailableRecords(5, TimeUnit.SECONDS);
+            // Waiting for Replica Identity is updated
+            waitForAvailableRecords(5, TimeUnit.SECONDS);
 
-        assertThat(logInterceptor.containsMessage(String.format("Replica identity could not be updated because of lack of privileges"))).isTrue();
+            assertThat(logInterceptor.containsMessage(String.format("Replica identity could not be updated because of lack of privileges"))).isTrue();
+        }
+        finally {
+            stopConnector();
+            // The DDL script creates the publication regardless of the decoder, so it must be
+            // dropped regardless of the decoder too, otherwise it leaks into subsequent tests.
+            TestHelper.execute("DROP PUBLICATION IF EXISTS " + ReplicationConnection.Builder.DEFAULT_PUBLICATION_NAME + ";");
+        }
     }
 
     @Test
@@ -4985,7 +4993,8 @@ public class PostgresConnectorIT extends AbstractAsyncEngineConnectorTest {
     public void testShouldFailTaskWhenRoleCannotLogin() throws Exception {
         // Start from a clean slate and create the database objects + a dedicated user
         TestHelper.dropAllSchemas();
-        TestHelper.dropPublication();
+        // Drop unconditionally, other tests may leave the publication behind regardless of the decoder
+        TestHelper.execute("DROP PUBLICATION IF EXISTS " + ReplicationConnection.Builder.DEFAULT_PUBLICATION_NAME + ";");
         TestHelper.dropDefaultReplicationSlot();
         TestHelper.executeDDL("postgres_create_tables.ddl");
 
@@ -4996,12 +5005,12 @@ public class PostgresConnectorIT extends AbstractAsyncEngineConnectorTest {
                 "GRANT ALL ON ALL TABLES IN SCHEMA public TO canarytest;",
                 "GRANT USAGE ON SCHEMA public TO canarytest;");
 
-        // Pre-create the publication as superuser so the non-superuser 'canarytest'
-        // does not need to run CREATE PUBLICATION ... FOR ALL TABLES (which requires superuser).
-        TestHelper.execute("CREATE PUBLICATION " + ReplicationConnection.Builder.DEFAULT_PUBLICATION_NAME
-                + " FOR ALL TABLES;");
-
         try {
+            // Pre-create the publication as superuser so the non-superuser 'canarytest'
+            // does not need to run CREATE PUBLICATION ... FOR ALL TABLES (which requires superuser).
+            // Only pgoutput uses a publication.
+            TestHelper.createPublicationForAllTables();
+
             Configuration config = TestHelper.defaultConfig()
                     .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NO_DATA)
                     .with(PostgresConnectorConfig.SLOT_NAME, ReplicationConnection.Builder.DEFAULT_SLOT_NAME)
