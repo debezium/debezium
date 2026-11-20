@@ -76,6 +76,7 @@ jobs:
       mariadb-ddl-parser-changed: ${{ steps.changed-files-mariadb-ddl-parser.outputs.any_changed }}
       non-code-only-changed: ${{ steps.changed-files-non-code.outputs.only_changed }}
       archetype-changed: ${{ steps.changed-files-archetype.outputs.any_changed }}
+      bom-overlay-changed: ${{ steps.changed-files-bom-overlay.outputs.any_changed }}
     steps:
       - name: Checkout Action
         uses: actions/checkout@v7
@@ -243,6 +244,14 @@ jobs:
         with:
           files: |
             debezium-connector-archetype/**
+
+      # The overlay BOM is consumed only by Debezium Server and Platform
+      - name: Get modified files (BOM overlay)
+        id: changed-files-bom-overlay
+        uses: tj-actions/changed-files@v47.0.6
+        with:
+          files: |
+            debezium-bom-overlay/**
 
 
 
@@ -735,7 +744,7 @@ jobs:
     name: "Debezium Server"
     needs: [ check_style, file_changes, build_core ]
     runs-on: ubuntu-latest
-    if: ${{ needs.file_changes.outputs.common-changed == 'true' || needs.file_changes.outputs.debezium-testing-changed == 'true' || needs.file_changes.outputs.mysql-ddl-parser-changed == 'true' || needs.file_changes.outputs.jdbc-changed == 'true' }}
+    if: ${{ needs.file_changes.outputs.common-changed == 'true' || needs.file_changes.outputs.debezium-testing-changed == 'true' || needs.file_changes.outputs.mysql-ddl-parser-changed == 'true' || needs.file_changes.outputs.jdbc-changed == 'true' || needs.file_changes.outputs.bom-overlay-changed == 'true' }}
     steps:
       - name: Checkout Action (Core)
         uses: actions/checkout@v7
@@ -809,7 +818,7 @@ jobs:
   build_platform_conductor:
     name: "Debezium Platform - conductor"
     needs: [ check_style, file_changes, build_core ]  
-    if: ${{ needs.file_changes.outputs.common-changed == 'true' || needs.file_changes.outputs.mongodb-changed == 'true' || needs.file_changes.outputs.mariadb-changed == 'true' || needs.file_changes.outputs.mysql-changed == 'true' || needs.file_changes.outputs.postgresql-changed == 'true' || needs.file_changes.outputs.oracle-changed == 'true' || needs.file_changes.outputs.sqlserver-changed == 'true' || needs.file_changes.outputs.schema-generator-changed == 'true' || needs.file_changes.outputs.debezium-testing-changed == 'true' }}
+    if: ${{ needs.file_changes.outputs.common-changed == 'true' || needs.file_changes.outputs.mongodb-changed == 'true' || needs.file_changes.outputs.mariadb-changed == 'true' || needs.file_changes.outputs.mysql-changed == 'true' || needs.file_changes.outputs.postgresql-changed == 'true' || needs.file_changes.outputs.oracle-changed == 'true' || needs.file_changes.outputs.sqlserver-changed == 'true' || needs.file_changes.outputs.schema-generator-changed == 'true' || needs.file_changes.outputs.debezium-testing-changed == 'true' || needs.file_changes.outputs.bom-overlay-changed == 'true' }}
     uses: ./.github/workflows/platform-conductor-workflow.yml
     with:
       maven-cache-key: maven-debezium-test-push-build
