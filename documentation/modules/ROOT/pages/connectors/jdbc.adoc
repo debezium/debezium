@@ -183,15 +183,6 @@ When `primary.key.mode` is set to `record_header`, the connector derives the pri
 The connector creates a `Struct` from all headers present in the Kafka record, using each header's key as the field name and the corresponding header value as the field value.
 Each header is included as a primary key column.
 
-[NOTE]
-====
-When `primary.key.mode` is set to `record_header`, the `primary.key.fields` property has no effect.
-All record headers are included as primary key columns, with no filtering available.
-This limitation is tracked in https://github.com/debezium/dbz/issues/2795[dbz#2795].
-====
-
-// The preceding note can be removed after 3.6 assuming that the fix for dbz#2795 is applied on `upstream/main`
-
 [WARNING]
 ====
 Avoid using nested `Struct` values in record headers when `primary.key.mode` is set to `record_header`.
