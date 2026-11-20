@@ -215,6 +215,14 @@ public interface LogMinerTransactionCache<T extends Transaction> {
     void resetTransactionToStart(T transaction);
 
     /**
+     * Rewinds the transaction so that the given event and all later events are buffered again when re-read.
+     *
+     * @param transaction the transaction to rewind, should not be {@code null}
+     * @param eventId the identifier of the first event to buffer again, should not be negative
+     */
+    void rewindTransaction(T transaction, int eventId);
+
+    /**
      * Synchronizes the transaction state in heap with disk caches.
      *
      * @param transaction the transaction to synchronize, should not be {@code null}

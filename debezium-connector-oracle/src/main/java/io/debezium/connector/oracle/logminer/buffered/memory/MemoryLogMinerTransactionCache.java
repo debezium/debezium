@@ -77,7 +77,7 @@ public class MemoryLogMinerTransactionCache extends AbstractLogMinerTransactionC
         consumer.accept(eventsByTransactionId.entrySet().stream()
                 .flatMap(entry -> {
                     String outerKey = entry.getKey();
-                    return entry.getValue().stream().map(LogMinerEventEntry::eventId).map(key -> outerKey + "-" + key);
+                    return entry.getValue().stream().map(LogMinerEventEntry::eventId).map(key -> toEventKey(outerKey, key));
                 }));
     }
 
@@ -163,6 +163,19 @@ public class MemoryLogMinerTransactionCache extends AbstractLogMinerTransactionC
             return events.size();
         }
         return 0;
+    }
+
+    @Override
+    public void rewindTransaction(MemoryTransaction transaction, int eventId) {
+        final List<LogMinerEventEntry> entries = eventsByTransactionId.get(transaction.getTransactionId());
+        if (entries != null) {
+            // Entries are in event identifier order, so the rewound events form the tail of the list
+            while (!entries.isEmpty() && entries.get(entries.size() - 1).eventId() >= eventId) {
+                entries.remove(entries.size() - 1);
+                transactionEvents--;
+            }
+        }
+        transaction.rewindTo(eventId);
     }
 
     @Override
