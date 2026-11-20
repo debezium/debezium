@@ -7,6 +7,8 @@ package io.debezium.connector.postgresql;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import java.sql.SQLException;
+
 import org.junit.jupiter.api.Test;
 import org.postgresql.util.PSQLException;
 import org.postgresql.util.PSQLState;
@@ -16,6 +18,7 @@ import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
 import io.debezium.connector.base.ChangeEventQueue;
 import io.debezium.connector.base.DefaultQueueProvider;
+import io.debezium.doc.FixFor;
 import io.debezium.pipeline.DataChangeEvent;
 
 public class PostgresErrorHandlerTest {
@@ -107,6 +110,116 @@ public class PostgresErrorHandlerTest {
     @Test
     void nullIsNotPermanent() {
         assertThat(PostgresErrorHandler.isPermanentError(null)).isFalse();
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2430")
+    void activeReplicationSlotIsStillRetriable() {
+        var e = new PSQLException("ERROR: replication slot \"debezium_slot\" is active for PID 1234", PSQLState.OBJECT_IN_USE);
+        assertThat(errorHandler.isRetriable(e)).isTrue();
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2430")
+    void prerequisiteStateErrorIsNotRetriable() {
+        var e = new DebeziumException("Failed to start replication stream",
+                new PSQLException("... has been invalidated ...", PSQLState.OBJECT_NOT_IN_STATE));
+        assertThat(errorHandler.isRetriable(e)).isFalse();
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2430")
+    void activeReplicationSlotIsNotPrerequisiteStateError() {
+        // Must keep retrying, so it must not be classified as an invalidation
+        var psqlException = new PSQLException(
+                "ERROR: replication slot \"debezium_slot\" is active for PID 1234",
+                PSQLState.OBJECT_IN_USE);
+        assertThat(PostgresErrorHandler.isPrerequisiteStateError(psqlException)).isFalse();
+        assertThat(PostgresErrorHandler.isPermanentError(psqlException)).isFalse();
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2430")
+    void prerequisiteStateStandbyRecoveryConflictIsDetected() {
+        // Simulates PostgreSQL 16+ standby invalidation due to recovery conflict
+        String errorMessage = "ERROR: can no longer get changes from replication slot \"debezium_slot\"\n"
+                + "  Detail: This slot has been invalidated because it was conflicting with recovery.";
+        PSQLException psqlException = new PSQLException(errorMessage, PSQLState.OBJECT_NOT_IN_STATE);
+        assertThat(PostgresErrorHandler.isPrerequisiteStateError(psqlException)).isTrue();
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2430")
+    void slotInvalidatedPrimaryWalRemovedIsDetected() {
+        // Simulates Primary database invalidation due to max_slot_wal_keep_size (wal_removed)
+        String errorMessage = "ERROR: can no longer get changes from replication slot \"debezium_slot\"\n"
+                + "  Detail: This slot has been invalidated because required WAL segments were removed.";
+        PSQLException psqlException = new PSQLException(errorMessage, PSQLState.OBJECT_NOT_IN_STATE);
+        assertThat(PostgresErrorHandler.isPrerequisiteStateError(psqlException)).isTrue();
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2430")
+    void deeplyNestedSlotInvalidationExceptionIsDetected() {
+        // Simulates deep nesting: RuntimeException -> DebeziumException -> PSQLException
+        String errorMessage = "ERROR: can no longer get changes from replication slot \"debezium_slot\"\n"
+                + "  Detail: This slot has been invalidated because it was conflicting with recovery.";
+        PSQLException rootCause = new PSQLException(errorMessage, PSQLState.OBJECT_NOT_IN_STATE);
+        DebeziumException middleException = new DebeziumException("Failed to start replication stream", rootCause);
+        RuntimeException outerException = new RuntimeException("Change event producer error", middleException);
+        assertThat(PostgresErrorHandler.isPrerequisiteStateError(outerException)).isTrue();
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2430")
+    void standardConnectionFailureIsNotSlotInvalidated() {
+        // Transient network/connection failures must NOT match slot invalidation
+        PSQLException psqlException = new PSQLException("Database connection failed when writing to copy", PSQLState.CONNECTION_FAILURE);
+        assertThat(PostgresErrorHandler.isPrerequisiteStateError(psqlException)).isFalse();
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2430")
+    void nullAndUnrelatedExceptionsAreNotSlotInvalidated() {
+        assertThat(PostgresErrorHandler.isPrerequisiteStateError(null)).isFalse();
+        assertThat(PostgresErrorHandler.isPrerequisiteStateError(new NullPointerException("null pointer"))).isFalse();
+        assertThat(PostgresErrorHandler.isPrerequisiteStateError(new DebeziumException("Generic Debezium error"))).isFalse();
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2430")
+    void slotInvalidatedIsDetectedFromSqlStateOnly() {
+        var psqlException = new PSQLException("non-English message text", PSQLState.OBJECT_NOT_IN_STATE);
+        assertThat(PostgresErrorHandler.isPrerequisiteStateError(psqlException)).isTrue();
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2430")
+    void invalidationMessageWithDifferentSqlStateIsNotSlotInvalidated() {
+        var psqlException = new PSQLException(
+                "ERROR: can no longer get changes from replication slot \"debezium_slot\"",
+                PSQLState.CONNECTION_FAILURE);
+        assertThat(PostgresErrorHandler.isPrerequisiteStateError(psqlException)).isFalse();
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2430")
+    public void shouldIdentifyPrerequisiteStateErrorFromSqlState() {
+        // SQLSTATE 55000: OBJECT_NOT_IN_PREREQUISITE_STATE
+        SQLException sqlException = new SQLException(
+                "ERROR: replication slot \"debezium_slot\" was invalidated",
+                PSQLState.OBJECT_NOT_IN_STATE.getState());
+        assertThat(PostgresErrorHandler.isPrerequisiteStateError(sqlException)).isTrue();
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2430")
+    public void shouldNotIdentifyOtherSqlStatesAsPrerequisiteStateError() {
+        // e.g., SQLSTATE 08006: CONNECTION_FAILURE (transient, retryable)
+        SQLException transientError = new SQLException(
+                "Connection reset by peer",
+                PSQLState.CONNECTION_FAILURE.getState());
+        assertThat(PostgresErrorHandler.isPrerequisiteStateError(transientError)).isFalse();
     }
 
 }
