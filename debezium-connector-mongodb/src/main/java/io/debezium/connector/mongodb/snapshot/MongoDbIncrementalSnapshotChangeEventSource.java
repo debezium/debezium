@@ -259,7 +259,7 @@ public class MongoDbIncrementalSnapshotChangeEventSource
     private WatermarkWindowCloser getWatermarkWindowCloser(CommonConnectorConfig connectorConfig, MongoDbConnection mongoDbConnection, CollectionId collectionId) {
 
         if (Objects.requireNonNull(connectorConfig.getIncrementalSnapshotWatermarkingStrategy()) == INSERT_DELETE) {
-            return new MongoDbDeleteWindowCloser(mongoDbConnection, collectionId, this);
+            return new MongoDbDeleteWindowCloser(mongoDbConnection, collectionId);
         }
 
         return new MongoDbInsertWindowCloser(mongoDbConnection, collectionId);
