@@ -31,7 +31,11 @@ then
   # The database container is started outside of Maven, so follow its output into a separate test artifact
   docker logs -f --timestamps oracledb > "${TMT_TEST_DATA:-.}/oracledb.log" 2>&1 &
   ORACLE_LOGS_PID=$!
-  trap 'kill ${ORACLE_LOGS_PID} 2>/dev/null || true' EXIT
+  # Oracle 21+ writes diagnostic messages (e.g. LogMiner sessions) to the ADR debug log, not the alert log
+  docker exec oracledb bash -c 'f=$(ls "$ORACLE_BASE"/diag/rdbms/*/*/log/debug_*.log 2>/dev/null) && exec tail -n +1 -F $f' \
+    > "${TMT_TEST_DATA:-.}/oracledb-debug.log" 2>&1 &
+  ORACLE_DEBUG_LOGS_PID=$!
+  trap 'kill ${ORACLE_LOGS_PID} ${ORACLE_DEBUG_LOGS_PID} 2>/dev/null || true' EXIT
   export LD_LIBRARY_PATH=$ORACLE_ARTIFACT_DIR
   if [ "$ORACLE_REGISTRY" != "quay.io/rh_integration/dbz-oracle" ]
   then
