@@ -90,7 +90,8 @@ if [[ "$QUALIFIER" != "Final" ]]; then
     PREVIOUS_VERSION=$(echo "$ALL_TAGS" \
       | grep -P "^${MICRO//./\\.}\." \
       | sort -t. -k1,1n -k2,2n -k3,3n -k4,4 \
-      | awk -F. -v q="$QUALIFIER" '$4 < q {last=$0} END {print last}')
+      | awk -F. -v q="$QUALIFIER" '$4 < q {last=$0} END {print last}' \
+      || true)
 else
     # Final release: ignore all tags of the same MICRO (pre-releases + the
     # current Final) and pick the greatest remaining tag in the same
@@ -238,8 +239,12 @@ awk '/^---RELEASE-NOTES-START---/{found=1; next} /^---RELEASE-NOTES-END---/{foun
 # Update CHANGELOG.md
 # ---------------------------------------------------------------------------
 step "Updating CHANGELOG.md..."
-{ head -n 3 debezium/CHANGELOG.md; cat /tmp/changelog-fragment.md; tail -n +4 debezium/CHANGELOG.md; } \
-    > /tmp/CHANGELOG.new && mv /tmp/CHANGELOG.new debezium/CHANGELOG.md
+if grep -qxF "## ${VERSION}" debezium/CHANGELOG.md; then
+    echo "CHANGELOG.md already contains ${VERSION}, skipping."
+else
+    { head -n 3 debezium/CHANGELOG.md; cat /tmp/changelog-fragment.md; tail -n +4 debezium/CHANGELOG.md; } \
+        > /tmp/CHANGELOG.new && mv /tmp/CHANGELOG.new debezium/CHANGELOG.md
+fi
 
 # ---------------------------------------------------------------------------
 # Update antora.yml
@@ -299,7 +304,7 @@ done
 # expects. It is invoked through the JDK source launcher exactly as the pom does, avoiding a full
 # Maven run here. A '#' line sorts before every name, so any placeholders end up at the top of
 # COPYRIGHT.txt where they are easy to find.
-java support/scripts/SortContributorFiles.java . sort
+#java support/scripts/SortContributorFiles.java . sort
 
 echo "  Contributors added: ${added}, placeholders left: ${placeholders}"
 if [[ "$placeholders" -gt 0 ]]; then
@@ -318,7 +323,11 @@ git add CHANGELOG.md documentation/antora.yml COPYRIGHT.txt \
     jenkins-jobs/scripts/config/Aliases.txt \
     jenkins-jobs/scripts/config/FilteredNames.txt \
     jenkins-jobs/scripts/config/FilteredCommits.txt
-git commit --signoff -m "[release] Changelog for ${VERSION}"
+if git diff --cached --quiet; then
+    echo "Nothing to commit in debezium, skipping."
+else
+    git commit --signoff -m "[release] Changelog for ${VERSION}"
+fi
 cd ..
 
 # ---------------------------------------------------------------------------
@@ -361,11 +370,14 @@ EOF
 # ---------------------------------------------------------------------------
 step "Prepending release notes into release-notes.asciidoc..."
 RNFILE="debezium.github.io/releases/${MAJOR_MINOR}/release-notes.asciidoc"
-INSERT_LINE=$(grep -n '^\[\[release-' "$RNFILE" | head -1 | cut -d: -f1)
-if [[ -z "$INSERT_LINE" ]]; then
-    echo "ERROR: could not find an existing [[release-...]] anchor in ${RNFILE}" >&2
+# The newest release always goes right after the toc::[] macro and the empty
+# line that follows it, whether or not earlier releases are already present.
+TOC_LINE=$(grep -n '^toc::\[\]' "$RNFILE" | head -1 | cut -d: -f1 || true)
+if [[ -z "$TOC_LINE" ]]; then
+    echo "ERROR: could not find the toc::[] macro in ${RNFILE}" >&2
     exit 1
 fi
+INSERT_LINE=$((TOC_LINE + 2))
 { head -n $((INSERT_LINE - 1)) "$RNFILE"; cat /tmp/release-notes-fragment.adoc; tail -n +"${INSERT_LINE}" "$RNFILE"; } \
     > /tmp/release-notes.new && mv /tmp/release-notes.new "$RNFILE"
 
@@ -376,7 +388,11 @@ step "Committing debezium.github.io repo (local only)..."
 cd debezium.github.io
 git add "releases/${MAJOR_MINOR}/release-notes.asciidoc" \
         "_data/releases/${MAJOR_MINOR}/${VERSION}.yml"
-git commit --signoff -m "[release] Changelog for ${VERSION}"
+if git diff --cached --quiet; then
+    echo "Nothing to commit in debezium.github.io, skipping."
+else
+    git commit --signoff -m "[release] Changelog for ${VERSION}"
+fi
 cd ..
 
 # ---------------------------------------------------------------------------
