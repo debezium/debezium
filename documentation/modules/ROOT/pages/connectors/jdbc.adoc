@@ -614,7 +614,7 @@ For CockroachDB targets, {prodname} uses PostgreSQL-compatible mappings for most
 * `io.debezium.data.geometry.Geometry`, `io.debezium.data.geometry.Geography`, and `io.debezium.data.geometry.Point` logical values are written to the built-in CockroachDB `geometry` and `geography` types; no PostGIS extension schema is required.
 * `io.debezium.data.FloatVector` logical values are written to the CockroachDB `vector` column type, because CockroachDB has no `halfvec` type.
 * `io.debezium.data.SparseDoubleVector` is not supported.
-
+endif::community[]
 
 [[jdbc-error-handling-and-dead-letter-queues]]
 === Error handling and dead letter queues
@@ -650,7 +650,7 @@ Because the connector provides at-least-once delivery, records that were already
 In `insert` mode, redelivered records fail with constraint violations, and the connector routes them to the dead letter queue.
 To avoid this, prefer the idempotent `upsert` mode when you enable a dead letter queue.
 ====
-endif::community[]
+
 
 [[jdbc-changing-how-table-names-are-resolved]]
 === Changing how table names are resolved
