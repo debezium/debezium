@@ -89,6 +89,7 @@ public class DeferredMemoryStreamingChangeEventSourceTest extends AbstractAsyncE
     private static final int OFFSET_ACTIVITY_MONITOR_INACTIVE_THRESHOLD_MS = 25;
     private static final String TRANSACTION_ID_1 = "1234567890";
     private static final String TRANSACTION_ID_2 = "9876543210";
+    private static final String TRANSACTION_ID_3 = "1122334455";
 
     private ChangeEventSourceContext context;
     private EventDispatcher<OraclePartition, TableId> dispatcher;
@@ -527,6 +528,111 @@ public class DeferredMemoryStreamingChangeEventSourceTest extends AbstractAsyncE
             assertThat(source.getDeferredTransactionCount()).isEqualTo(1);
             assertThat(source.hasDeferredTransaction(TRANSACTION_ID_1)).isFalse();
             assertThat(source.hasDeferredTransaction(TRANSACTION_ID_2)).isTrue();
+        }
+    }
+
+    @Test
+    @FixFor("debezium/dbz#3126")
+    public void testDeferredTransactionsAreCleanedUpByRetentionWhenScnLookupFailsAndCacheIsEmpty() throws Exception {
+        this.connectionFactory = createOracleConnectionFactory(true);
+        try (var source = getChangeEventSource(getConfig().build())) {
+            final Instant now = Instant.now();
+            source.processEvent(getStartLogMinerEventRow(1, TRANSACTION_ID_1, now.minus(Duration.ofHours(2))));
+            source.processEvent(getStartLogMinerEventRow(3, TRANSACTION_ID_2, now.minus(Duration.ofMinutes(10))));
+            source.processEvent(getStartLogMinerEventRow(5, TRANSACTION_ID_3, now));
+
+            assertThat(source.getTransactionCache().isEmpty()).isTrue();
+            assertThat(source.getDeferredTransactionCount()).isEqualTo(3);
+
+            final long errorCount = metrics.getErrorCount();
+            source.cleanupDeferredTransactionsForTest(Duration.ofHours(1));
+
+            assertThat(source.getDeferredTransactionCount()).isEqualTo(2);
+            assertThat(source.hasDeferredTransaction(TRANSACTION_ID_1)).isFalse();
+            assertThat(source.hasDeferredTransaction(TRANSACTION_ID_2)).isTrue();
+            assertThat(source.hasDeferredTransaction(TRANSACTION_ID_3)).isTrue();
+            assertThat(metrics.getErrorCount()).isEqualTo(errorCount);
+        }
+    }
+
+    @Test
+    @FixFor("debezium/dbz#3126")
+    public void testDeferredTransactionsAreCleanedUpByRetentionWhenScnLookupFailsAndCacheIsNotEmpty() throws Exception {
+        this.connectionFactory = createOracleConnectionFactory(true);
+        try (var source = getChangeEventSource(getConfig().build())) {
+            final Instant now = Instant.now();
+            // An expired transaction promoted into the cache, older than the expired deferred one
+            source.processEvent(getStartLogMinerEventRow(1, TRANSACTION_ID_1, now.minus(Duration.ofHours(3))));
+            source.processEvent(getInsertLogMinerEventRow(2, TRANSACTION_ID_1, now.minus(Duration.ofHours(3))));
+            source.processEvent(getStartLogMinerEventRow(3, TRANSACTION_ID_2, now.minus(Duration.ofHours(2))));
+            source.processEvent(getStartLogMinerEventRow(5, TRANSACTION_ID_3, now));
+
+            assertThat(source.getTransactionCache().containsTransaction(TRANSACTION_ID_1)).isTrue();
+            assertThat(source.getDeferredTransactionCount()).isEqualTo(2);
+
+            source.cleanupDeferredTransactionsForTest(Duration.ofHours(1));
+
+            assertThat(source.getDeferredTransactionCount()).isEqualTo(1);
+            assertThat(source.hasDeferredTransaction(TRANSACTION_ID_2)).isFalse();
+            assertThat(source.hasDeferredTransaction(TRANSACTION_ID_3)).isTrue();
+            // Deferred cleanup does not abandon cached transactions
+            assertThat(source.getTransactionCache().containsTransaction(TRANSACTION_ID_1)).isTrue();
+        }
+    }
+
+    @Test
+    @FixFor("debezium/dbz#3126")
+    public void testDeferredTransactionsAreCleanedUpBySubMinuteRetentionWhenScnLookupFails() throws Exception {
+        this.connectionFactory = createOracleConnectionFactory(true);
+        try (var source = getChangeEventSource(getConfig().build())) {
+            final Instant now = Instant.now();
+            source.processEvent(getStartLogMinerEventRow(1, TRANSACTION_ID_1, now.minus(Duration.ofSeconds(45))));
+            source.processEvent(getStartLogMinerEventRow(3, TRANSACTION_ID_2, now.minus(Duration.ofSeconds(10))));
+            source.processEvent(getStartLogMinerEventRow(5, TRANSACTION_ID_3, now));
+
+            source.cleanupDeferredTransactionsForTest(Duration.ofSeconds(30));
+
+            assertThat(source.getDeferredTransactionCount()).isEqualTo(2);
+            assertThat(source.hasDeferredTransaction(TRANSACTION_ID_1)).isFalse();
+            assertThat(source.hasDeferredTransaction(TRANSACTION_ID_2)).isTrue();
+            assertThat(source.hasDeferredTransaction(TRANSACTION_ID_3)).isTrue();
+        }
+    }
+
+    @Test
+    @FixFor("debezium/dbz#3126")
+    public void testOffsetScnIsNotPinnedByExpiredDeferredTransactionWhenScnLookupFails() throws Exception {
+        // The mined row is the commit of an unknown transaction, which leaves the checkpoint unchanged
+        final ResultSet rs = Mockito.mock(ResultSet.class);
+        Mockito.when(rs.next()).thenReturn(true, false);
+        Mockito.when(rs.getString(1)).thenReturn("260");
+        Mockito.when(rs.getString(2)).thenReturn("commit;");
+        Mockito.when(rs.getInt(3)).thenReturn(EventType.COMMIT.getValue());
+        Mockito.when(rs.getTimestamp(eq(4), any(Calendar.class))).thenReturn(Timestamp.valueOf(LocalDateTime.now()));
+        Mockito.when(rs.getBytes(5)).thenReturn(new byte[]{ 0x12, 0x34, 0x56, 0x78 });
+
+        final PreparedStatement ps = Mockito.mock(PreparedStatement.class);
+        Mockito.when(ps.executeQuery()).thenReturn(rs);
+
+        Mockito.when(commitScn.getMaxCommittedScn()).thenReturn(Scn.valueOf(500));
+
+        this.connectionFactory = createOracleConnectionFactory(true);
+        final Configuration config = getConfig()
+                .with(OracleConnectorConfig.LOG_MINING_BUFFER_DEFERRED_TRANSACTION_RETENTION_MS, Duration.ofHours(1).toMillis())
+                .build();
+        try (var source = getChangeEventSource(config)) {
+            final BufferedStreamingChangeEventSource mock = Mockito.spy(source);
+            Mockito.doReturn(ps).when(mock).createQueryStatement();
+
+            // A transaction without DML whose commit or rollback is never seen within the retention period
+            mock.processEvent(getStartLogMinerEventRow(90, TRANSACTION_ID_1, Instant.now().minus(Duration.ofHours(2))));
+            assertThat(mock.getDeferredTransactionCount()).isEqualTo(1);
+
+            mock.process(Scn.valueOf(240), Scn.valueOf(240), Scn.valueOf(300));
+
+            assertThat(mock.getDeferredTransactionCount()).isZero();
+            Mockito.verify(offsetContext).setScn(Scn.valueOf(500));
+            Mockito.verify(offsetContext, Mockito.never()).setScn(Scn.valueOf(89));
         }
     }
 
