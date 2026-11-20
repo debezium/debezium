@@ -28,6 +28,10 @@ then
 elif [ "$TEST_PROFILE" = "oracle" ]
 then
   source ${HOME}/install-oracle-driver.sh
+  # The database container is started outside of Maven, so follow its output into a separate test artifact
+  docker logs -f --timestamps oracledb > "${TMT_TEST_DATA:-.}/oracledb.log" 2>&1 &
+  ORACLE_LOGS_PID=$!
+  trap 'kill ${ORACLE_LOGS_PID} 2>/dev/null || true' EXIT
   export LD_LIBRARY_PATH=$ORACLE_ARTIFACT_DIR
   if [ "$ORACLE_REGISTRY" != "quay.io/rh_integration/dbz-oracle" ]
   then
