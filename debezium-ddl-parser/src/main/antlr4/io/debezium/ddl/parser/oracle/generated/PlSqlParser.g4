@@ -3780,8 +3780,12 @@ range_values_list
 list_values_clause
     : VALUES '(' (
         (literal (',' literal)* | TIMESTAMP literal (',' TIMESTAMP literal)* | DEFAULT)
-        | '(' (literal (',' literal*) | TIMESTAMP literal (',' TIMESTAMP literal)* | DEFAULT) ')'
+        | list_values_tuple (',' list_values_tuple)*
     ) ')'
+    ;
+
+list_values_tuple
+    : '(' (literal (',' literal)* | TIMESTAMP literal (',' TIMESTAMP literal)* | DEFAULT) ')'
     ;
 
 table_partition_description
