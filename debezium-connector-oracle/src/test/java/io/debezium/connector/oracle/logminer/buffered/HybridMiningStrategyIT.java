@@ -1266,7 +1266,6 @@ public class HybridMiningStrategyIT extends AbstractAsyncEngineConnectorTest {
         final Map<String, Object> source = Collect.linkMapOf("server", TestHelper.SERVER_NAME);
         final Map<String, Object> position = Collect.linkMapOf(
                 "commit_scn", "1001:1:",
-                "snapshot_scn", "1001",
                 "scn", "1001",
                 "snapshot_completed", true);
 

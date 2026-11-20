@@ -6,7 +6,6 @@
 package io.debezium.connector.oracle.xstream;
 
 import java.sql.SQLException;
-import java.util.Collections;
 import java.util.Optional;
 
 import org.slf4j.Logger;
@@ -150,8 +149,6 @@ public class XStreamAdapter extends AbstractStreamingAdapter<XStreamStreamingCha
         return OracleOffsetContext.create()
                 .logicalName(connectorConfig)
                 .scn(currentScn)
-                .snapshotScn(currentScn)
-                .snapshotPendingTransactions(Collections.emptyMap())
                 .transactionContext(new TransactionContext())
                 .incrementalSnapshotContext(new SignalBasedIncrementalSnapshotContext<>())
                 .build();
