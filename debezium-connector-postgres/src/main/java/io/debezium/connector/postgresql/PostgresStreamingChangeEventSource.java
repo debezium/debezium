@@ -34,6 +34,7 @@ import io.debezium.connector.postgresql.connection.ReplicationConnection;
 import io.debezium.connector.postgresql.connection.ReplicationMessage;
 import io.debezium.connector.postgresql.connection.ReplicationMessage.Operation;
 import io.debezium.connector.postgresql.connection.ReplicationStream;
+import io.debezium.connector.postgresql.connection.TransactionMessage;
 import io.debezium.connector.postgresql.connection.WalPositionLocator;
 import io.debezium.heartbeat.DatabaseHeartbeatImpl;
 import io.debezium.heartbeat.Heartbeat;
@@ -338,6 +339,11 @@ public class PostgresStreamingChangeEventSource implements StreamingChangeEventS
         if (message.isTransactionalMessage()) {
             if (message.getOperation() == Operation.BEGIN) {
                 offsetContext.clearOrigin();
+                // Stash the commit LSN (pgoutput Begin.final_lsn) for all events of this transaction. This is
+                // independent of provide.transaction.metadata, so source.commit_lsn is always populated.
+                if (message instanceof TransactionMessage txMessage) {
+                    offsetContext.setCurrentTransactionCommitLsn(txMessage.getFinalLsn());
+                }
             }
 
             offsetContext.updateWalPosition(lsn, lastCompletelyProcessedLsn, message.getCommitTime(), toLong(message.getTransactionId()),
@@ -353,6 +359,7 @@ public class PostgresStreamingChangeEventSource implements StreamingChangeEventS
                     offsetContext.resetLsnEventsProcessed();
                     commitMessage(partition, offsetContext, lsn);
                     dispatcher.dispatchTransactionCommittedEvent(partition, offsetContext, message.getCommitTime());
+                    offsetContext.setCurrentTransactionCommitLsn(null);
                 }
                 return;
             }
@@ -364,6 +371,7 @@ public class PostgresStreamingChangeEventSource implements StreamingChangeEventS
                 offsetContext.resetLsnEventsProcessed();
                 commitMessage(partition, offsetContext, lsn);
                 dispatcher.dispatchTransactionCommittedEvent(partition, offsetContext, message.getCommitTime());
+                offsetContext.setCurrentTransactionCommitLsn(null);
             }
             maybeWarnAboutGrowingWalBacklog(true);
         }

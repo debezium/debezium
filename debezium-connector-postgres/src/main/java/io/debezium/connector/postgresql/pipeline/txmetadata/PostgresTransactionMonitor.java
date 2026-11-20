@@ -12,6 +12,7 @@ import org.apache.kafka.connect.source.SourceRecord;
 
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.connector.postgresql.PostgresOffsetContext;
+import io.debezium.connector.postgresql.connection.Lsn;
 import io.debezium.function.BlockingConsumer;
 import io.debezium.pipeline.source.spi.EventMetadataProvider;
 import io.debezium.pipeline.spi.OffsetContext;
@@ -54,6 +55,14 @@ public class PostgresTransactionMonitor extends TransactionMonitor {
         final String lsn = Long.toString(((PostgresOffsetContext) offsetContext).asOffsetState().lastSeenLsn().asLong());
         final String txId = offsetContext.getTransactionContext().getTransactionId();
         txStruct.put(DEBEZIUM_TRANSACTION_ID_KEY, String.format("%s:%s", txId, lsn));
+
+        // Only the BEGIN/END value schema has a commit_lsn field (not the key or the data event transaction block)
+        if (txStruct.schema().field(PostgresTransactionStructMaker.DEBEZIUM_TRANSACTION_COMMIT_LSN_KEY) != null) {
+            final Lsn commitLsn = ((PostgresOffsetContext) offsetContext).getCurrentTransactionCommitLsn();
+            if (commitLsn != null && commitLsn.isValid()) {
+                txStruct.put(PostgresTransactionStructMaker.DEBEZIUM_TRANSACTION_COMMIT_LSN_KEY, commitLsn.asLong());
+            }
+        }
         return txStruct;
     }
 }
