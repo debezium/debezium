@@ -12,6 +12,7 @@ import static org.junit.jupiter.api.Assertions.fail;
 import java.math.BigDecimal;
 import java.nio.ByteBuffer;
 import java.sql.Types;
+import java.util.BitSet;
 import java.util.Collections;
 import java.util.Properties;
 
@@ -781,5 +782,67 @@ public class TableSchemaBuilderTest {
         assertThat(logInterceptor.containsErrorMessage(errorMessage)).isFalse();
         assertThat(logInterceptor.containsWarnMessage(errorMessage)).isFalse();
         logInterceptor.clear();
+    }
+
+    @Test
+    @FixFor("debezium/dbz#3052")
+    public void shouldReturnValueFieldNamesForColumnDataPositions() {
+        schema = new TableSchemaBuilder(new JdbcValueConverters(), null, adjuster, customConverterRegistry,
+                SchemaBuilder.struct().build(), avroFieldNamer, false, EventConvertingFailureHandlingMode.FAIL)
+                .create(topicNamingStrategy, table, (catalog, schemaName, tableName, columnName) -> !"C3".equals(columnName), null, null);
+
+        // C2, the excluded C3, 7C7, C-8 and a position beyond the table's columns
+        assertThat(schema.valueFieldNames(BitSet.valueOf(new long[]{ 0b10000000000011000110 }))).containsExactly("C2", "_7C7", "C_8");
+        assertThat(schema.valueFieldNames(null)).isEmpty();
+    }
+
+    @Test
+    @FixFor("debezium/dbz#3052")
+    public void shouldNotReturnValueFieldNameForExcludedColumnWithSameAdjustedName() {
+        final var collidingTable = Table.editor()
+                .tableId(id)
+                .addColumns(
+                        Column.editor().name("a-b").type("VARCHAR").jdbcType(Types.VARCHAR).create(),
+                        Column.editor().name("a_b").type("VARCHAR").jdbcType(Types.VARCHAR).create())
+                .create();
+        schema = new TableSchemaBuilder(new JdbcValueConverters(), null, adjuster, customConverterRegistry,
+                SchemaBuilder.struct().build(), avroFieldNamer, false, EventConvertingFailureHandlingMode.FAIL)
+                .create(topicNamingStrategy, collidingTable, (catalog, schemaName, tableName, columnName) -> !"a-b".equals(columnName), null, null);
+
+        assertThat(schema.valueFieldNames(BitSet.valueOf(new long[]{ 0b01 }))).isEmpty();
+    }
+
+    @Test
+    @FixFor("debezium/dbz#3052")
+    public void shouldNotReturnValueFieldNameForUnsupportedColumnWithSameAdjustedName() {
+        final var collidingTable = Table.editor()
+                .tableId(id)
+                .addColumns(
+                        Column.editor().name("a-b").type("_MONEY").jdbcType(Types.ARRAY).create(),
+                        Column.editor().name("a_b").type("VARCHAR").jdbcType(Types.VARCHAR).create())
+                .create();
+        schema = new TableSchemaBuilder(new JdbcValueConverters(), null, adjuster, customConverterRegistry,
+                SchemaBuilder.struct().build(), avroFieldNamer, false, EventConvertingFailureHandlingMode.FAIL)
+                .create(topicNamingStrategy, collidingTable, null, null, null);
+
+        assertThat(schema.valueFieldNames(BitSet.valueOf(new long[]{ 0b01 }))).isEmpty();
+        assertThat(schema.valueFieldNames(BitSet.valueOf(new long[]{ 0b10 }))).containsExactly("a_b");
+    }
+
+    @Test
+    @FixFor("debezium/dbz#3052")
+    public void shouldNotReturnValueFieldNameForUnsupportedColumnFollowingColumnWithSameAdjustedName() {
+        final var collidingTable = Table.editor()
+                .tableId(id)
+                .addColumns(
+                        Column.editor().name("a_b").type("VARCHAR").jdbcType(Types.VARCHAR).create(),
+                        Column.editor().name("a-b").type("_MONEY").jdbcType(Types.ARRAY).create())
+                .create();
+        schema = new TableSchemaBuilder(new JdbcValueConverters(), null, adjuster, customConverterRegistry,
+                SchemaBuilder.struct().build(), avroFieldNamer, false, EventConvertingFailureHandlingMode.FAIL)
+                .create(topicNamingStrategy, collidingTable, null, null, null);
+
+        assertThat(schema.valueFieldNames(BitSet.valueOf(new long[]{ 0b01 }))).containsExactly("a_b");
+        assertThat(schema.valueFieldNames(BitSet.valueOf(new long[]{ 0b10 }))).isEmpty();
     }
 }

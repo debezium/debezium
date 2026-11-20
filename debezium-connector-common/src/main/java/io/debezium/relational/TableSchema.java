@@ -7,6 +7,9 @@ package io.debezium.relational;
 
 import static io.debezium.util.Loggings.maybeRedactSensitiveData;
 
+import java.util.ArrayList;
+import java.util.BitSet;
+import java.util.List;
 import java.util.Objects;
 
 import org.apache.kafka.connect.data.Schema;
@@ -54,12 +57,15 @@ public class TableSchema implements DataCollectionSchema {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(TableSchema.class);
 
+    private static final String[] NO_FIELD_NAMES = new String[0];
+
     private final TableId id;
     private final Schema keySchema;
     private final Envelope envelopeSchema;
     private final Schema valueSchema;
     private final StructGenerator keyGenerator;
     private final StructGenerator valueGenerator;
+    private final String[] valueFieldNamesByPosition;
 
     /**
      * Create an instance with the specified {@link Schema}s for the keys and values, and the functions that generate the
@@ -74,12 +80,22 @@ public class TableSchema implements DataCollectionSchema {
      *            may return nulls
      */
     public TableSchema(TableId id, Schema keySchema, StructGenerator keyGenerator, Envelope envelopeSchema, Schema valueSchema, StructGenerator valueGenerator) {
+        this(id, keySchema, keyGenerator, envelopeSchema, valueSchema, valueGenerator, NO_FIELD_NAMES);
+    }
+
+    /**
+     * @param valueFieldNamesByPosition the value field name for each position of the column data; {@code null} where the
+     *            column is not part of the value; may be null
+     */
+    public TableSchema(TableId id, Schema keySchema, StructGenerator keyGenerator, Envelope envelopeSchema, Schema valueSchema, StructGenerator valueGenerator,
+                       String[] valueFieldNamesByPosition) {
         this.id = id;
         this.keySchema = keySchema;
         this.envelopeSchema = envelopeSchema;
         this.valueSchema = valueSchema;
         this.keyGenerator = keyGenerator != null ? keyGenerator : (row) -> null;
         this.valueGenerator = valueGenerator != null ? valueGenerator : (row) -> null;
+        this.valueFieldNamesByPosition = valueFieldNamesByPosition != null ? valueFieldNamesByPosition : NO_FIELD_NAMES;
     }
 
     @Override
@@ -140,6 +156,25 @@ public class TableSchema implements DataCollectionSchema {
      */
     public Struct valueFromColumnData(Object[] columnData) {
         return columnData == null ? null : valueGenerator.generateValue(columnData);
+    }
+
+    /**
+     * Returns the names of the value fields at the given positions of the column data, in column order.
+     *
+     * @param positions the positions within the column data; may be null
+     * @return the field names; never null
+     */
+    public List<String> valueFieldNames(BitSet positions) {
+        if (positions == null || positions.isEmpty()) {
+            return List.of();
+        }
+        final List<String> fieldNames = new ArrayList<>(positions.cardinality());
+        for (int i = positions.nextSetBit(0); i >= 0 && i < valueFieldNamesByPosition.length; i = positions.nextSetBit(i + 1)) {
+            if (valueFieldNamesByPosition[i] != null) {
+                fieldNames.add(valueFieldNamesByPosition[i]);
+            }
+        }
+        return fieldNames;
     }
 
     @Override
