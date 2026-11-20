@@ -22,11 +22,14 @@ import java.sql.SQLException;
 import java.sql.Types;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import org.apache.kafka.connect.data.Schema;
 import org.hibernate.SharedSessionContract;
 import org.hibernate.Transaction;
+import org.hibernate.exception.GenericJDBCException;
 import org.hibernate.exception.LockAcquisitionException;
+import org.hibernate.exception.LockTimeoutException;
 import org.hibernate.exception.SQLGrammarException;
 import org.hibernate.jdbc.ReturningWork;
 import org.hibernate.query.NativeQuery;
@@ -182,6 +185,43 @@ class DefaultRecordWriterTest extends AbstractBaseJdbcSinkTest {
         verify(alterQuery, times(2)).executeUpdate();
     }
 
+    @Test
+    @FixFor("debezium/dbz#3134")
+    void shouldDeferAlterRetryToLockConflictRetriesWhenAlterLosesLock() throws SQLException {
+        // The concurrent task holds the table lock while its own ALTER runs, so the first ALTER fails with a
+        // lock conflict and the recheck still sees the column missing. The concurrent task commits before the
+        // next ALTER, which therefore fails because the column now exists.
+        final AtomicBoolean columnAddedConcurrently = new AtomicBoolean();
+        when(dialect.readTable(any(), eq(collectionId)))
+                .thenAnswer(invocation -> columnAddedConcurrently.get() ? tableWithColumn : tableWithoutColumn);
+        when(alterQuery.executeUpdate())
+                .thenThrow(oracleLockConflict())
+                .thenAnswer(invocation -> {
+                    columnAddedConcurrently.set(true);
+                    throw oracleColumnAlreadyExists();
+                });
+
+        assertThat(writer.checkAndApplyTableChangesIfNeeded(collectionId, record)).isSameAs(tableWithColumn);
+
+        verify(alterQuery, times(2)).executeUpdate();
+    }
+
+    @Test
+    @FixFor("debezium/dbz#3134")
+    void shouldFailWithLockConflictWhenAlterLockConflictRetriesAreExhausted() throws SQLException {
+        when(dialect.readTable(any(), eq(collectionId))).thenReturn(tableWithoutColumn);
+        when(alterQuery.executeUpdate()).thenAnswer(invocation -> {
+            throw oracleLockConflict();
+        });
+
+        assertThatThrownBy(() -> writer.checkAndApplyTableChangesIfNeeded(collectionId, record))
+                .isInstanceOf(jakarta.persistence.LockTimeoutException.class)
+                .satisfies(e -> assertThat(e.getSuppressed()).isEmpty());
+
+        // initial attempt plus two retries, with no immediate re-ALTER after each lock conflict
+        verify(alterQuery, times(3)).executeUpdate();
+    }
+
     private static LockAcquisitionException deadlock() {
         return new LockAcquisitionException("Error executing work",
                 new SQLException("Transaction was deadlocked on lock resources with another process and has been chosen as the deadlock victim.",
@@ -190,5 +230,18 @@ class DefaultRecordWriterTest extends AbstractBaseJdbcSinkTest {
 
     private static SQLGrammarException columnAlreadyExists() {
         return new SQLGrammarException("Column names in each table must be unique.", new SQLException("Column already exists", "S0001", 2705));
+    }
+
+    // Hibernate converts ORA-00054 into its JPA form, keeping the Hibernate lock timeout as the cause
+    private static jakarta.persistence.LockTimeoutException oracleLockConflict() {
+        final SQLException sqlException = new SQLException("ORA-00054: resource busy and acquire with NOWAIT specified or timeout expired",
+                "61000", 54);
+        return new jakarta.persistence.LockTimeoutException(sqlException.getMessage(),
+                new LockTimeoutException("JDBC exception executing SQL", sqlException, ALTER_SQL));
+    }
+
+    private static GenericJDBCException oracleColumnAlreadyExists() {
+        return new GenericJDBCException("JDBC exception executing SQL",
+                new SQLException("ORA-01430: column being added already exists in table", "72000", 1430), ALTER_SQL);
     }
 }
