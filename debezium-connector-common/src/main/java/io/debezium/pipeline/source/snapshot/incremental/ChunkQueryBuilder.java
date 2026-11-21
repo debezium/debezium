@@ -60,8 +60,9 @@ public interface ChunkQueryBuilder<T extends DataCollectionId> {
 
     /**
      * Prepares a statement for reading the next incremental snapshot chunk from a table using the SQL statement returned by buildChunkQuery.
+     * The supplied connection is used to allocate the statement so parallel snapshot workers do not contend on a shared connection.
      */
-    PreparedStatement readTableChunkStatement(IncrementalSnapshotContext<T> context, Table table, String sql) throws SQLException;
+    PreparedStatement readTableChunkStatement(IncrementalSnapshotContext<T> context, Table table, String sql, JdbcConnection connection) throws SQLException;
 
     /**
      * Builds a query for reading the maximum primary key value from a table.
@@ -97,6 +98,25 @@ public interface ChunkQueryBuilder<T extends DataCollectionId> {
      */
     default OptionalLong countRows(IncrementalSnapshotContext<T> context, Table table, Optional<String> additionalCondition, Object[] maximumKey) {
         return OptionalLong.empty();
+    }
+
+    /**
+     * Same as {@link #estimateRowCount(IncrementalSnapshotContext, Table)} but reads the estimate through the given
+     * connection, for callers that run on a connection other than the builder's own (the parallel snapshot workers).
+     * The default implementation ignores the connection and delegates to the single-connection variant.
+     */
+    default OptionalLong estimateRowCount(IncrementalSnapshotContext<T> context, Table table, JdbcConnection connection) {
+        return estimateRowCount(context, table);
+    }
+
+    /**
+     * Same as {@link #countRows(IncrementalSnapshotContext, Table, Optional, Object[])} but runs the count through the
+     * given connection, for callers that run on a connection other than the builder's own (the parallel snapshot
+     * workers). The default implementation ignores the connection and delegates to the single-connection variant.
+     */
+    default OptionalLong countRows(IncrementalSnapshotContext<T> context, Table table, Optional<String> additionalCondition, Object[] maximumKey,
+                                   JdbcConnection connection) {
+        return countRows(context, table, additionalCondition, maximumKey);
     }
 
     /**

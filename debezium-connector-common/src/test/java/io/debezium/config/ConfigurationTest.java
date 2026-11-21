@@ -660,4 +660,13 @@ public class ConfigurationTest {
                         + "otherwise Kafka Connect's AbstractHerder will throw an NPE")
                 .isEmpty();
     }
+
+    @Test
+    public void shouldGetDoubleFromFieldWithDoubleDefault() {
+        final Field field = Field.create("test.multiplier").withDefault(2.0);
+
+        assertThat(Configuration.create().with(field.name(), "1.5").build().getDouble(field)).isEqualTo(1.5);
+        assertThat(Configuration.create().build().getDouble(field)).isEqualTo(2.0);
+        assertThat(Configuration.create().with(field.name(), "not-a-number").build().getDouble(field)).isEqualTo(2.0);
+    }
 }
