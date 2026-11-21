@@ -81,4 +81,35 @@ public final class Vectors {
         result.put(SparseDoubleVector.VECTOR_FIELD, vector);
         return result;
     }
+
+    static Struct fromSpaceVectorComponents(final Schema schema,
+                                            final int dimensions, final Map<Integer, Double> vector) {
+        Objects.requireNonNull(schema, "schema may not be null");
+
+        // While Postgres supports values > Short.MAX_VALUE, Debezium struct expects short, we need to fail if int
+        // received from Postgres > Short.MAX_VALUE
+        final var shortVector = new HashMap<Short, Double>(vector.size());
+
+        for (final var entry : vector.entrySet()) {
+            // We need to add one as Postgres recieved values is zero indexed, while the upstream expects one indexed.
+            shortVector.put(toShortExact(entry.getKey() + 1), entry.getValue());
+        }
+
+        final var result = new Struct(schema);
+        result.put(SparseDoubleVector.DIMENSIONS_FIELD, toShortExact(dimensions));
+        result.put(SparseDoubleVector.VECTOR_FIELD, shortVector);
+        return result;
+    }
+
+    /**
+     * Cast int to short and fail if the cast will result in data loss.
+     * @param value int value
+     * @return cast short value
+     */
+    private static short toShortExact(final int value) {
+        if (value < Short.MIN_VALUE || value > Short.MAX_VALUE) {
+            throw new ArithmeticException("integer overflow: " + value);
+        }
+        return (short) value;
+    }
 }
