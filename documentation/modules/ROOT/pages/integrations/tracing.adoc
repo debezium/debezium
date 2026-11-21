@@ -199,6 +199,49 @@ If set to `false` then the tracing span is created for all incoming events regar
 
 |===
 
+== Transformation spans
+
+When running {prodname} Server or the {prodname} engine, you can optionally create a span for each execution of a configured transformation.
+The span measures only the invocation of the transformation, so it shows how long each transformation takes, independently of the time a record waited before it was processed.
+
+For each traced transformation, the engine:
+
+* extracts the trace context that is propagated in the record headers, for example by the `ActivateTracingSpan` SMT
+* creates a `debezium-transform <alias>` span as a child of that context and makes it current while the transformation runs
+* records the `debezium.transform.alias`, `debezium.transform.type` and `debezium.transform.outcome` (`passed`, `filtered` or `failed`) attributes
+* sets the span status to error and records the `error.type` attribute when the transformation throws an exception
+
+Spans are created only for records that carry a valid trace context, or when a span is already active, so the engine does not start new traces for untraced records.
+Because the `ActivateTracingSpan` SMT adds the trace context to the record headers, transformations that run before it are not traced unless the records already carry a context.
+Transformations that are skipped by their predicate are not traced.
+The span inherits the sampling decision of the record's trace context.
+Record keys, values and exception messages are not recorded.
+
+Transformation spans require the OpenTelemetry API on the classpath.
+If the API is not available, a warning is logged and transformations run without tracing.
+
+In {prodname} Server, prefix the following options with `debezium.source.`, for example `debezium.source.tracing.transforms.enabled=true`.
+
+[cols="65%a,>15%a,>20%"]
+|===
+|Configuration property
+|Type
+|Default
+
+|`tracing.transforms.enabled`::
+Whether a span is created for each execution of a transformation listed in `transforms`.
+|boolean
+|false
+
+|`tracing.transforms.include`::
+Comma-separated list of transformation aliases to trace when `tracing.transforms.enabled` is `true`. +
++
+_When not set, all transformations are traced._
+|list
+|
+
+|===
+
 == Outbox Extension
 
 The {prodname} link:/documentation/reference/integrations/outbox[Quarkus extension] for implementing the outbox pattern provides the additional functionality necessary for tracing context propagation out-of-the-box.

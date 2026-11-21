@@ -142,6 +142,24 @@ public interface EmbeddedEngineConfig {
             .withDescription("Optional list of single message transformations applied on the messages. "
                     + "The transforms are defined using '<transform.prefix>.type' config option and configured using options '<transform.prefix>.<option>'");
 
+    Field TRANSFORMS_TRACING_ENABLED = Field.create("tracing.transforms.enabled")
+            .withDisplayName("Trace transformations")
+            .withType(ConfigDef.Type.BOOLEAN)
+            .withWidth(ConfigDef.Width.SHORT)
+            .withImportance(ConfigDef.Importance.LOW)
+            .withDefault(false)
+            .withDescription("Whether an OpenTelemetry span is created for each execution of a transformation listed in '" + TRANSFORMS.name() + "'. "
+                    + "Spans are only created for records that carry a propagated trace context in their headers, or when a span is active. "
+                    + "Requires the OpenTelemetry API on the classpath.");
+
+    Field TRANSFORMS_TRACING_INCLUDE = Field.create("tracing.transforms.include")
+            .withDisplayName("Traced transformations")
+            .withType(ConfigDef.Type.LIST)
+            .withWidth(ConfigDef.Width.MEDIUM)
+            .withImportance(ConfigDef.Importance.LOW)
+            .withDescription("Optional comma-separated list of transformation aliases to trace when '" + TRANSFORMS_TRACING_ENABLED.name() + "' is enabled. "
+                    + "When not set, all transformations are traced.");
+
     Field ERRORS_RETRY_DELAY_INITIAL_MS = Field.create("errors.retry.delay.initial.ms")
             .withDisplayName("Initial delay for retries")
             .withType(ConfigDef.Type.INT)
