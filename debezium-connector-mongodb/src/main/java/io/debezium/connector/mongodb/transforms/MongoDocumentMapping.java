@@ -25,6 +25,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 import io.debezium.connector.mongodb.transforms.MongoToRelationalMapper.JsonOutputMode;
+import io.debezium.connector.mongodb.transforms.MongoToRelationalMapper.StringUnsupportedTypeHandlingMode;
 import io.debezium.data.Json;
 import io.debezium.schema.SchemaNameAdjuster;
 
@@ -43,6 +44,7 @@ final class MongoDocumentMapping {
     private final List<MappingField> fields;
     private final Schema schema;
     private final JsonOutputMode jsonOutputMode;
+    private final StringUnsupportedTypeHandlingMode stringUnsupportedTypeHandlingMode;
     private final Set<String> jsonPaths;
 
     MongoDocumentMapping(String namespace, String json) {
@@ -50,7 +52,13 @@ final class MongoDocumentMapping {
     }
 
     MongoDocumentMapping(String namespace, String json, JsonOutputMode jsonOutputMode) {
+        this(namespace, json, jsonOutputMode, StringUnsupportedTypeHandlingMode.FAIL);
+    }
+
+    MongoDocumentMapping(String namespace, String json, JsonOutputMode jsonOutputMode,
+                         StringUnsupportedTypeHandlingMode stringUnsupportedTypeHandlingMode) {
         this.jsonOutputMode = jsonOutputMode;
+        this.stringUnsupportedTypeHandlingMode = stringUnsupportedTypeHandlingMode;
         final JsonNode mapping;
         try {
             mapping = MAPPER.readTree(json);
@@ -88,8 +96,9 @@ final class MongoDocumentMapping {
         });
         fields = List.copyOf(parsed);
         schema = builder.build();
+        // String fields with the JSON fallback can also need their incoming JSON representation.
         jsonPaths = fields.stream()
-                .filter(field -> Json.LOGICAL_NAME.equals(field.schema().name()) && !field.path().isRoot())
+                .filter(field -> (isJson(field) || hasStringJsonFallback(field)) && !field.path().isRoot())
                 .map(field -> field.path().pointer())
                 .collect(Collectors.toUnmodifiableSet());
     }
@@ -111,8 +120,11 @@ final class MongoDocumentMapping {
                 if (selected == null || selected.isNull()) {
                     value = null;
                 }
-                else if (jsonOutputMode == JsonOutputMode.INPUT && Json.LOGICAL_NAME.equals(field.schema().name())) {
-                    if (field.path().isRoot()) {
+                else if (isJson(field) || (hasStringJsonFallback(field) && !MongoMappingType.isStringConvertible(selected))) {
+                    if (jsonOutputMode == JsonOutputMode.CANONICAL) {
+                        value = MongoMappingType.canonicalJson(selected);
+                    }
+                    else if (field.path().isRoot()) {
                         value = originalJson;
                     }
                     else {
@@ -136,6 +148,19 @@ final class MongoDocumentMapping {
             }
         }
         return result;
+    }
+
+    private static boolean isJson(MappingField field) {
+        return Json.LOGICAL_NAME.equals(field.schema().name());
+    }
+
+    /**
+     * A plain {@code string} field, not a logical type with a string schema, can write unsupported BSON values as JSON.
+     */
+    private boolean hasStringJsonFallback(MappingField field) {
+        return stringUnsupportedTypeHandlingMode == StringUnsupportedTypeHandlingMode.JSON
+                && field.schema().type() == Schema.Type.STRING
+                && field.schema().name() == null;
     }
 
     private static String requiredText(JsonNode definition, String option, String field) {

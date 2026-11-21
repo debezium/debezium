@@ -62,7 +62,7 @@ public class MongoToRelationalMapperTest {
                     """));
             assertThat(mapper.config().configKeys()).containsKeys("json.output.mode", "schema.mapping.shop.orders");
             mapper.configure(Map.of());
-            assertThat(mapper.config().configKeys()).containsOnlyKeys("json.output.mode");
+            assertThat(mapper.config().configKeys()).containsOnlyKeys("json.output.mode", "string.unsupported.type.handling.mode");
             assertThat(mapper.config().configKeys().get("json.output.mode").defaultValue).isEqualTo("input");
         }
     }
@@ -80,6 +80,66 @@ public class MongoToRelationalMapperTest {
     @FixFor("debezium/dbz#1715")
     void shouldAcceptJsonOutputModes(String mode) {
         transformation.configure(Map.of("json.output.mode", mode));
+    }
+
+    @Test
+    @FixFor("debezium/dbz#3019")
+    void shouldExposeStringUnsupportedTypeHandlingMode() {
+        try (var mapper = new MongoToRelationalMapper<SourceRecord>()) {
+            final var option = mapper.config().configKeys().get("string.unsupported.type.handling.mode");
+            assertThat(option.type).isEqualTo(ConfigDef.Type.STRING);
+            assertThat(option.defaultValue).isEqualTo("fail");
+            assertThat(option.importance).isEqualTo(ConfigDef.Importance.MEDIUM);
+            assertThat(mapper.getConfigFields().asArray()).extracting(io.debezium.config.Field::name).contains("string.unsupported.type.handling.mode");
+        }
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = { "", " ", "array", "typo" })
+    @FixFor("debezium/dbz#3019")
+    void shouldRejectInvalidStringUnsupportedTypeHandlingModes(String mode) {
+        assertThatThrownBy(() -> transformation.configure(Map.of("string.unsupported.type.handling.mode", mode)))
+                .isInstanceOf(ConfigException.class).hasMessageContaining("string.unsupported.type.handling.mode");
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = { "fail", "json", "FAIL", "JSON", " fail ", " json " })
+    @FixFor("debezium/dbz#3019")
+    void shouldAcceptStringUnsupportedTypeHandlingModes(String mode) {
+        transformation.configure(Map.of("string.unsupported.type.handling.mode", mode));
+    }
+
+    @Test
+    @FixFor("debezium/dbz#3019")
+    public void shouldWriteUnsupportedStringValuesAsJsonWhenConfigured() {
+        transformation.configure(Map.of("json.output.mode", "canonical", "string.unsupported.type.handling.mode", "json",
+                "schema.mapping.db.collection", """
+                        {"_id":{"path":"/_id","type":"int32"},"tags":{"path":"/tags","type":"string"}}
+                        """));
+
+        Schema sourceSchema = SchemaBuilder.struct().name("io.debezium.connector.mongo.Source")
+                .field("db", Schema.STRING_SCHEMA).field("collection", Schema.STRING_SCHEMA).build();
+        Schema recordSchema = SchemaBuilder.struct().name("server.db.collection.Envelope")
+                .field(Envelope.FieldName.BEFORE, Schema.OPTIONAL_STRING_SCHEMA)
+                .field(Envelope.FieldName.AFTER, Schema.OPTIONAL_STRING_SCHEMA)
+                .field(Envelope.FieldName.SOURCE, sourceSchema)
+                .field(Envelope.FieldName.OPERATION, Schema.STRING_SCHEMA)
+                .field(Envelope.FieldName.TIMESTAMP, Schema.INT64_SCHEMA)
+                .build();
+        Struct recordValue = new Struct(recordSchema);
+        recordValue.put(Envelope.FieldName.BEFORE, "{\"_id\": 1, \"tags\": \"red\"}");
+        recordValue.put(Envelope.FieldName.AFTER, "{\"_id\": 1, \"tags\": [\"red\", 2]}");
+        recordValue.put(Envelope.FieldName.SOURCE, new Struct(sourceSchema).put("db", "db").put("collection", "collection"));
+        recordValue.put(Envelope.FieldName.OPERATION, Envelope.Operation.UPDATE.code());
+        recordValue.put(Envelope.FieldName.TIMESTAMP, 123456789L);
+
+        SourceRecord transformed = transformation.apply(
+                new SourceRecord(new HashMap<>(), new HashMap<>(), "server.db.collection", null, null, recordSchema, recordValue));
+
+        Struct val = (Struct) transformed.value();
+        assertThat(val.getStruct(Envelope.FieldName.BEFORE).getString("tags")).isEqualTo("red");
+        assertThat(val.getStruct(Envelope.FieldName.AFTER).getString("tags")).isEqualTo("[\"red\", {\"$numberInt\": \"2\"}]");
+        assertThat(val.getStruct(Envelope.FieldName.AFTER).schema().field("tags").schema()).isEqualTo(Schema.OPTIONAL_STRING_SCHEMA);
     }
 
     @Test
