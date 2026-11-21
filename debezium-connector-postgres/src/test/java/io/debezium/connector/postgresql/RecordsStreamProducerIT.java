@@ -2033,7 +2033,7 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
 
         String statement = "ALTER TABLE test_toast_table ADD COLUMN not_toast integer;"
                 + "ALTER TABLE test_toast_table ADD COLUMN date_array date[];"
-                + "ALTER TABLE test_toast_table ALTER COLUMN date_array SET STORAGE EXTENDED;"
+                + "ALTER TABLE test_toast_table ALTER COLUMN date_array SET STORAGE EXTERNAL;"
                 + "INSERT INTO test_toast_table (not_toast, date_array) values (10, ARRAY [" + toastedValue + "]);";
         consumer = testConsumer(1);
         executeAndWait(statement);
