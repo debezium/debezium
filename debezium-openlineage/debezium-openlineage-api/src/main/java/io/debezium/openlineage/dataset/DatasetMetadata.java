@@ -38,7 +38,11 @@ public record DatasetMetadata(String name, DatasetKind kind, String type, DataSt
      */
     public enum DataStore {
         KAFKA,
-        DATABASE
+        DATABASE;
+
+        public interface Provider {
+            DataStore get();
+        }
     }
 
     /**
