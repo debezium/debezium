@@ -60,16 +60,18 @@ public class PostgresEventDispatcher<T extends DataCollectionId> extends EventDi
         this.messageFilter = connectorConfig.getMessageFilter();
     }
 
-    public void dispatchLogicalDecodingMessage(PostgresPartition partition, OffsetContext offset, Long decodeTimestamp,
-                                               LogicalDecodingMessage message)
+    public boolean dispatchLogicalDecodingMessage(PostgresPartition partition, OffsetContext offset, Long decodeTimestamp,
+                                                  LogicalDecodingMessage message)
             throws InterruptedException {
         if (messageFilter.isIncluded(message.getPrefix())) {
             logicalDecodingMessageMonitor.logicalDecodingMessageEvent(
                     partition, offset, decodeTimestamp, message, transactionMonitor, getEventListener());
+            return true;
         }
         else {
             LOGGER.trace("Filtered data change event for logical decoding message with prefix{}", message.getPrefix());
             getEventListener().onFilteredEvent(partition, "logical decoding message with prefix = " + message.getPrefix(), Envelope.Operation.MESSAGE);
+            return false;
         }
     }
 
