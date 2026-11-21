@@ -215,6 +215,8 @@ When offsets fail to advance, monitoring systems might report that the connector
 
 To enable {prodname} heartbeat records on the `__debezium-heartbeat.<topic.prefix>` Kafka topic, set `heartbeat.interval.ms` to a value greater than `0` (in milliseconds).
 The `cockroachdb.changefeed.resolved.interval` property controls how frequently CockroachDB emits resolved timestamps (default: `10s`).
+CockroachDB does not emit resolved timestamps more often than its `min_checkpoint_frequency` changefeed option allows, which is `30s` by default.
+To receive resolved timestamps more often, also set that option in xref:cockroachdb-property-sink-options[`cockroachdb.changefeed.sink.options`], for example, `min_checkpoint_frequency = '10s'`.
 
 [[cockroachdb-schema-evolution]]
 === Schema evolution
@@ -1218,6 +1220,8 @@ The following properties configure the CockroachDB changefeed behavior.
 |The interval for resolved timestamp messages.
 Format: `10s`, `1m`, and so on.
 Resolved timestamps are used for offset tracking.
+CockroachDB does not emit them more often than its `min_checkpoint_frequency` changefeed option allows, which is `30s` by default.
+You can set that option in xref:cockroachdb-property-sink-options[`cockroachdb.changefeed.sink.options`].
 
 |[[cockroachdb-property-include-updated]]<<cockroachdb-property-include-updated, `+cockroachdb.changefeed.include.updated+`>>
 |`false`
@@ -1286,7 +1290,10 @@ Specify a value that optimizes performance while honoring CockroachDB recommenda
 
 |[[cockroachdb-property-sink-options]]<<cockroachdb-property-sink-options, `+cockroachdb.changefeed.sink.options+`>>
 |No default value
-|A comma-separated list of additional options for the sink in `key=value` format.
+|A comma-separated list of additional CockroachDB changefeed options.
+The connector adds the list to the `WITH` clause of the `CREATE CHANGEFEED` statement without changing it.
+Enclose option values in single quotes where CockroachDB requires it, for example, `min_checkpoint_frequency = '10s'`.
+If the list contains an option that the connector sets itself, such as `envelope`, `cursor`, `initial_scan`, or `resolved`, the value that the connector sets takes effect.
 
 |[[cockroachdb-property-sink-tls-ca-cert-file]]<<cockroachdb-property-sink-tls-ca-cert-file, `+cockroachdb.changefeed.sink.tls.ca.cert.file+`>>
 |No default
