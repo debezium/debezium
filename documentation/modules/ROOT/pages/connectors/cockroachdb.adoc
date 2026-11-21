@@ -86,8 +86,12 @@ The change events that the connector produces are identical in both modes; only 
 CockroachDB changefeeds natively support an link:https://www.cockroachlabs.com/docs/stable/create-changefeed#initial-scan[`initial_scan`] option that backfills all existing rows before streaming ongoing changes.
 The {prodname} CockroachDB connector maps its `snapshot.mode` configuration to the CockroachDB `initial_scan` changefeed option, so the connector does not require a separate JDBC-based snapshot phase.
 
-During the initial scan phase, captured events are marked `op=r` to designate a read operation, which distinguishes snapshot events from ongoing change events.
-After the initial scan completes and the changefeed transitions to streaming, events are marked with the appropriate operation type (`c` for create, `u` for update, `d` for delete).
+During the initial scan phase, the connector marks the rows that the scan returns as `op=r` to designate a read operation, which distinguishes snapshot events from ongoing change events.
+In snapshot modes that continue to stream changes after the scan, the initial scan phase ends when the connector receives the first resolved timestamp from the changefeed.
+CockroachDB can send that timestamp some time after the scan finishes.
+If a row is updated or deleted in the meantime, the connector emits the change with its own operation type (`u` or `d`).
+If a row is inserted in the meantime, the connector emits the change as `op=r`, because CockroachDB reports rows from the scan and inserted rows in the same way.
+After the initial scan phase ends, events are marked with the appropriate operation type (`c` for create, `u` for update, `d` for delete).
 
 The following table shows how each `snapshot.mode` maps to the CockroachDB `initial_scan` option:
 
