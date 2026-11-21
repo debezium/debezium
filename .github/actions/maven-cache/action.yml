@@ -29,6 +29,81 @@ runs:
         KEY: ${{ inputs.key }}
       run: echo "restore-prefix=${KEY%-*}-" >> "${GITHUB_OUTPUT}"
 
+    # The Maven wrapper (distributionType=only-script) installs Maven under ~/.m2/wrapper,
+    # which the repository cache below does not include.  It is cached separately, keyed on
+    # the wrapper distribution URL, so a single small entry is shared by all jobs and is only
+    # replaced when the Maven version changes.  It is deliberately not added as a path to the
+    # repository cache, which would change that cache's version and invalidate its entries.
+    # It is saved on a miss regardless of the save input, except in pull request runs, which
+    # never save caches and only restore it, as an entry saved there would be scoped to the
+    # pull request and not be usable by any other run.
+    #
+    # The properties file is resolved relative to this action rather than the workspace, as
+    # some jobs check out the core repository into a subdirectory.
+    - name: Compute Maven wrapper cache key
+      id: wrapper-meta
+      shell: bash
+      env:
+        CORE_DIR: ${{ github.action_path }}/../../..
+        RUNNER_OS_NAME: ${{ runner.os }}
+      run: |
+        core_dir="$(cd "${CORE_DIR}" && pwd)"
+        url="$(sed -n 's/^distributionUrl=//p' "${core_dir}/.mvn/wrapper/maven-wrapper.properties" | tr -d '[:space:]')"
+        if [ -z "${url}" ]; then
+          echo "::error::Cannot read distributionUrl from ${core_dir}/.mvn/wrapper/maven-wrapper.properties"
+          exit 1
+        fi
+        name="${url##*/}"
+        name="${name%.*}"
+        name="${name%-bin}"
+        echo "core-dir=${core_dir}" >> "${GITHUB_OUTPUT}"
+        echo "url=${url}" >> "${GITHUB_OUTPUT}"
+        echo "name=${name}" >> "${GITHUB_OUTPUT}"
+        echo "key=maven-wrapper-${RUNNER_OS_NAME}-$(printf '%s' "${url}" | sha256sum | cut -c1-16)" >> "${GITHUB_OUTPUT}"
+
+    - name: Restore Maven wrapper distribution (read-only)
+      if: ${{ github.event_name == 'pull_request' }}
+      id: wrapper-restore
+      uses: actions/cache/restore@v6
+      with:
+        path: ~/.m2/wrapper
+        key: ${{ steps.wrapper-meta.outputs.key }}
+
+    - name: Cache Maven wrapper distribution
+      if: ${{ github.event_name != 'pull_request' }}
+      id: wrapper-cache
+      uses: actions/cache@v6
+      with:
+        path: ~/.m2/wrapper
+        key: ${{ steps.wrapper-meta.outputs.key }}
+
+    # On a cache miss, install the wrapper distribution up front with a few retries, since
+    # mvnw itself makes a single download attempt and fails the build on a transient error.
+    # Success is judged by the installed distribution rather than the exit code, so that the
+    # step also works when Java has not been set up yet.
+    - name: Install Maven wrapper distribution
+      if: ${{ (steps.wrapper-restore.outputs.cache-hit || steps.wrapper-cache.outputs.cache-hit) != 'true' }}
+      shell: bash
+      working-directory: ${{ steps.wrapper-meta.outputs.core-dir }}
+      env:
+        WRAPPER_URL: ${{ steps.wrapper-meta.outputs.url }}
+        WRAPPER_NAME: ${{ steps.wrapper-meta.outputs.name }}
+      run: |
+        installed() {
+          compgen -G "${HOME}/.m2/wrapper/dists/${WRAPPER_NAME}/*/bin/mvn" > /dev/null
+        }
+        for attempt in 1 2 3; do
+          ./mvnw -B -v || true
+          if installed; then
+            exit 0
+          fi
+          echo "Maven wrapper distribution not installed (attempt ${attempt}/3)"
+          if [ "${attempt}" -lt 3 ]; then
+            sleep $((attempt * 10))
+          fi
+        done
+        echo "::warning::Failed to install the Maven wrapper distribution from ${WRAPPER_URL}"
+
     - name: Restore Maven Repository (read-only)
       if: ${{ inputs.save != 'true' }}
       id: cache-restore
