@@ -141,8 +141,8 @@ public abstract class ScriptingTransformation<R extends ConnectRecord<R>> implem
             throw new DebeziumException("The provided configuration isn't valid; check the error log for details.");
         }
 
-        final String expression = config.getString(expressionField());
         String language = config.getString(LANGUAGE);
+        final String expression = getExpression(config, language);
 
         LOGGER.info("Using language '{}' to evaluate expression '{}'", language, expression);
 
@@ -186,6 +186,11 @@ public abstract class ScriptingTransformation<R extends ConnectRecord<R>> implem
         if (!Strings.isNullOrEmpty(topicRegex)) {
             this.topicPattern = Pattern.compile(topicRegex);
         }
+    }
+
+    protected String getExpression(final Configuration config, String language) {
+        final String expression = config.getString(expressionField());
+        return expression;
     }
 
     @Override

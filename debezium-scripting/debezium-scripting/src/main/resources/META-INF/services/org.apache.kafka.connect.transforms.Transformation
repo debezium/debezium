@@ -1,2 +1,3 @@
+io.debezium.transforms.ColumnExpression
 io.debezium.transforms.ContentBasedRouter
 io.debezium.transforms.Filter
