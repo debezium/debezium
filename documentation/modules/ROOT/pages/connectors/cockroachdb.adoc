@@ -236,6 +236,7 @@ The schema that the connector uses comes from its own JDBC discovery of the tabl
 
 The CockroachDB connector supports {prodname} {link-prefix}:{link-signalling}#debezium-signaling-incremental-snapshots[signal-based incremental snapshots].
 An incremental snapshot re-reads existing rows from one or more tables and emits them as `op=r` (read) events, while the connector continues to capture ongoing changes without interruption.
+In these events, the `source.snapshot` field is set to `incremental`, which distinguishes them from the events of an initial scan.
 
 You can use incremental snapshots to perform the following tasks:
 
