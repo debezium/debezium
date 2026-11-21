@@ -1,6 +1,6 @@
- /**
- * Taken from https://github.com/antlr/grammars-v4/commits/master/plsql/PlSqlParser.g4
- * Version: 25ff41798a0b707d57000a31a1533cf8f2eda5df 2018-01-17
+/**
+ * Taken from https://github.com/antlr/grammars-v4/blob/de38599628d221099c046e92962f70204d852b54/sql/plsql/PlSqlParser.g4
+ * Version: de38599628d221099c046e92962f70204d852b54 2026-11-18
  *
  * Oracle(c) PL/SQL 11g Parser
  *
@@ -36,12 +36,44 @@ options {
 }
 
 sql_script
-    : sql_plus_command_no_semicolon? (
-        (((sql_plus_command SEMICOLON? '/'?) | (unit_statement SEMICOLON '/'?))* (sql_plus_command | unit_statement)) SEMICOLON? '/'?
-    ) EOF
+    : (sql_plus_command SEMICOLON?)* (
+        script_unit (terminator script_unit)* terminator?
+    )? EOF
     ;
 
-unit_statement
+// Actions set a flag for the `terminator` predicate: bare '/' is accepted only
+// after a SQL unit; a PL/SQL unit requires a preceding SEMICOLON.
+script_unit
+    : plsql_unit {this.setLastUnitPlsql();}
+    | sql_unit {this.setLastUnitSql();}
+    | sql_plus_command {this.setLastUnitSql();}
+    ;
+
+// Separator between units (and optional terminator after the last one).
+// SEMICOLON is always valid; bare '/' only after a SQL unit — the predicate
+// rejects '/' after a PL/SQL block, yielding useful diagnostic.
+// isSolidusSeparator() checks that '/' is on its own line (SQL*Plus separator
+// vs division operator).
+terminator
+    : SEMICOLON
+    | SEMICOLON {this.isSolidusSeparator()}? SOLIDUS
+    | {this.isLastUnitSql() && this.isSolidusSeparator()}? SOLIDUS
+    ;
+
+plsql_unit
+    : anonymous_block
+    | create_function_body
+    | create_procedure_body
+    | create_package
+    | create_package_body
+    | create_trigger
+    | create_type_body
+    ;
+
+// SQL/DDL statements. A trailing terminator is optional (the last unit in a
+// script may omit it); when present it is matched by the `terminator` rule,
+// which accepts SEMICOLON, SOLIDUS, or both.
+sql_unit
     : alter_analytic_view
     | alter_attribute_dimension
     | alter_audit_policy
@@ -79,7 +111,6 @@ unit_statement
     | alter_type
     | alter_user
     | alter_view
-    | anonymous_block
     | call_statement
     | create_analytic_view
     | create_attribute_dimension
@@ -95,7 +126,6 @@ unit_statement
     | create_diskgroup
     | create_edition
     | create_flashback_archive
-    | create_function_body
     | create_hierarchy
     | create_index
     | create_inmemory_join_group
@@ -107,10 +137,7 @@ unit_statement
     | create_materialized_zonemap
     | create_operator
     | create_outline
-    | create_package
-    | create_package_body
     | create_pmem_filestore
-    | create_procedure_body
     | create_profile
     | create_restore_point
     | create_role
@@ -121,8 +148,7 @@ unit_statement
     | create_table
     | create_tablespace
     | create_tablespace_set
-    | create_trigger
-    | create_type
+    | create_type_spec
     | create_user
     | create_view
     | drop_analytic_view
@@ -764,10 +790,13 @@ procedure_body
     ;
 
 create_procedure_body
-    : CREATE (OR REPLACE)? PROCEDURE procedure_name ('(' parameter (',' parameter)* ')')? invoker_rights_clause? (PARALLEL_ENABLE | DETERMINISTIC)* (
-        IS
-        | AS
-    ) (DECLARE? seq_of_declare_specs? body | call_spec | EXTERNAL)
+    : CREATE (OR REPLACE)? (EDITIONABLE | NONEDITIONABLE)? PROCEDURE procedure_name (
+        '(' parameter (',' parameter)* ')'
+    )? invoker_rights_clause? (PARALLEL_ENABLE | DETERMINISTIC)* (IS | AS) (
+        DECLARE? seq_of_declare_specs? body
+        | call_spec
+        | EXTERNAL
+    )
     ;
 
 // https://docs.oracle.com/en/database/oracle/oracle-database/21/sqlrf/ALTER-RESOURCE-COST.html
@@ -845,7 +874,7 @@ alter_trigger
     ;
 
 create_trigger
-    : CREATE (OR REPLACE)? TRIGGER trigger_name (
+    : CREATE (OR REPLACE)? (EDITIONABLE | NONEDITIONABLE)? TRIGGER trigger_name (
         simple_dml_trigger
         | compound_dml_trigger
         | non_dml_trigger
@@ -953,6 +982,7 @@ alter_type
         compile_type_clause
         | replace_type_clause
         | alter_method_spec
+        | alter_attribute_definition
         | alter_collection_clauses
         | modifier_clause
         | overriding_subprogram_spec
@@ -977,6 +1007,11 @@ alter_method_element
     : (ADD | DROP) (map_order_function_spec | subprogram_spec)
     ;
 
+alter_attribute_definition
+    : (ADD | MODIFY) ATTRIBUTE (identifier type_spec? | '(' identifier type_spec (',' identifier type_spec)* ')')
+    | DROP ATTRIBUTE (identifier | '(' identifier (',' identifier)* ')')
+    ;
+
 alter_collection_clauses
     : MODIFY (LIMIT expression | ELEMENT TYPE type_spec)
     ;
@@ -991,7 +1026,17 @@ dependent_exceptions_part
     ;
 
 create_type
-    : CREATE (OR REPLACE)? (EDITIONABLE | NONEDITIONABLE)? TYPE (type_definition | type_body)
+    : create_type_spec | create_type_body
+    ;
+
+// Type spec (SQL, no END) — semicolon optional, solidus valid as terminator
+create_type_spec
+    : CREATE (OR REPLACE)? (EDITIONABLE | NONEDITIONABLE)? TYPE type_definition
+    ;
+
+// Type body (PL/SQL, has END) — requires semicolon, solidus optional after
+create_type_body
+    : CREATE (OR REPLACE)? (EDITIONABLE | NONEDITIONABLE)? TYPE type_body
     ;
 
 // Create Type Specific Clauses
@@ -1211,7 +1256,7 @@ sequence_spec
     ;
 
 sequence_start_clause
-    : START WITH UNSIGNED_INTEGER
+    : START WITH (UNSIGNED_INTEGER | APPROXIMATE_NUM_LIT)
     ;
 
 // https://docs.oracle.com/en/database/oracle/oracle-database/21/sqlrf/CREATE-ANALYTIC-VIEW.html
@@ -1256,9 +1301,9 @@ dim_by_clause
 
 dim_key
     : dim_ref classification_clause* KEY (
-        '(' (a = id_expression '.')? f = column_name (',' (a = id_expression '.')? f = column_name)* ')'
-        | (a = id_expression '.')? f = column_name
-    ) REFERENCES DISTINCT? ('(' attribute_name (',' attribute_name) ')' | attribute_name) HIERARCHIES '(' hier_ref (
+        '(' (a += id_expression '.')? f += column_name (',' (a += id_expression '.')? f += column_name)* ')'
+        | (a += id_expression '.')? f += column_name
+    ) REFERENCES DISTINCT? ('(' attribute_name (',' attribute_name)* ')' | attribute_name) HIERARCHIES '(' hier_ref (
         ',' hier_ref
     )* ')'
     ;
@@ -1615,9 +1660,8 @@ index_expr
     ;
 
 index_properties
-    : ( (global_partitioned_index | local_partitioned_index | index_attributes)+
-        | INDEXTYPE IS (domain_index_clause | xmlindex_clause)
-    )*
+    : (global_partitioned_index | local_partitioned_index | index_attributes)+
+    | INDEXTYPE IS (domain_index_clause | xmlindex_clause)
     ;
 
 domain_index_clause
@@ -3246,7 +3290,9 @@ drop_binding_clause
     ;
 
 create_materialized_view
-    : CREATE MATERIALIZED VIEW tableview_name (OF type_name)? (
+    : CREATE MATERIALIZED VIEW (
+        IF NOT EXISTS
+    )? tableview_name (OF type_name)? (
         '(' (scoped_table_ref_constraint | mv_column_alias) (
             ',' (scoped_table_ref_constraint | mv_column_alias)
         )* ')'
@@ -3256,7 +3302,11 @@ create_materialized_view
     ) (
         USING INDEX ((physical_attributes_clause | TABLESPACE mv_tablespace = id_expression)+)*
         | USING NO INDEX
-    )? create_mv_refresh? (FOR UPDATE)? ((DISABLE | ENABLE) QUERY REWRITE)? AS select_only_statement
+    )? create_mv_refresh? (FOR UPDATE)? /* todo: not upstream */ evaluation_edition_clause? (
+        (ENABLE | DISABLE) ON QUERY COMPUTATION
+    )? query_rewrite_clause? (
+        (ENABLE | DISABLE) CONCURRENT REFRESH
+    )? annotations_clause? AS select_only_statement
     ;
 
 scoped_table_ref_constraint
@@ -3264,7 +3314,7 @@ scoped_table_ref_constraint
     ;
 
 mv_column_alias
-    : (identifier | quoted_string) (ENCRYPT encryption_spec)?
+    : (identifier | quoted_string) (ENCRYPT encryption_spec)? (annotations_clause | scoped_table_ref_constraint)?
     ;
 
 create_mv_refresh
@@ -3272,15 +3322,27 @@ create_mv_refresh
         NEVER REFRESH
         | REFRESH (
             (FAST | COMPLETE | FORCE)
-            | ON (DEMAND | COMMIT)
-            | (START WITH | NEXT) //date goes here TODO
+            | ON (DEMAND | COMMIT | STATEMENT)
+            | (START WITH | NEXT) expression
             | WITH (PRIMARY KEY | ROWID)
             | USING (
                 DEFAULT (MASTER | LOCAL)? ROLLBACK SEGMENT
-                | (MASTER | LOCAL)? ROLLBACK SEGMENT rb_segment = REGULAR_ID
+                | (MASTER | LOCAL)? ROLLBACK SEGMENT rollback_segment_name
             )
             | USING (ENFORCED | TRUSTED) CONSTRAINTS
         )+
+    )
+    ;
+
+query_rewrite_clause
+    : (ENABLE | DISABLE) QUERY REWRITE unusable_editions_clause?
+    ;
+
+unusable_editions_clause
+    : UNUSABLE (
+        (BEFORE | BEGINNING WITH) CURRENT EDITION
+        | (BEFORE | BEGINNING WITH) EDITION edition_name
+        | BEGINNING WITH NULL_ EDITION
     )
     ;
 
@@ -3418,7 +3480,8 @@ xmltype_storage
     ;
 
 xmlschema_spec
-    : ((XMLSCHEMA DELIMITED_ID)? ELEMENT id_expression)? (allow_or_disallow (NONSCHEMA | ANYSCHEMA))*
+    : (XMLSCHEMA DELIMITED_ID)? ELEMENT id_expression (allow_or_disallow (NONSCHEMA | ANYSCHEMA))*
+    | (allow_or_disallow (NONSCHEMA | ANYSCHEMA))+
     ;
 
 object_table
@@ -3523,9 +3586,9 @@ table_properties
     | flashback_archive_clause
     | physical_properties
     | ROW ARCHIVAL
-    | annotations_clause
     | AS select_only_statement
     | FOR EXCHANGE WITH TABLE (schema_name '.')? table_name
+    | annotations_clause
     ;
 
 read_only_clause
@@ -4751,7 +4814,7 @@ default_settings_clause
     ;
 
 set_time_zone_clause
-    : SET TIMEZONE EQUALS_OP CHAR_STRING
+    : SET TIME_ZONE EQUALS_OP CHAR_STRING
     ;
 
 instance_clauses
@@ -4992,15 +5055,29 @@ role_identified_clause
     ;
 
 alter_table
-    : ALTER TABLE tableview_name memoptimize_read_write_clause* (
-        | alter_table_properties
-        | constraint_clauses
-        | column_clauses
-        | alter_table_partitioning
-        //TODO      | alter_external_table
-        | move_table_clause
-        | modify_to_partitioned
-    ) ((enable_disable_clause | enable_or_disable (TABLE LOCK | ALL TRIGGERS))+)?
+    : ALTER TABLE tableview_name (
+        memoptimize_read_write_clause+ alter_table_body?
+        | alter_table_body
+    )
+    ;
+
+alter_table_body
+    : alter_table_action enable_disable_clauses?
+    | enable_disable_clauses
+    ;
+
+alter_table_action
+    : alter_table_properties
+    | constraint_clauses
+    | column_clauses
+    | alter_table_partitioning
+    //TODO      | alter_external_table
+    | move_table_clause
+    | modify_to_partitioned
+    ;
+
+enable_disable_clauses
+    : (enable_disable_clause | enable_or_disable (TABLE LOCK | ALL TRIGGERS))+
     ;
 
 memoptimize_read_write_clause
@@ -5015,7 +5092,7 @@ alter_table_properties
     | READ WRITE
     | REKEY CHAR_STRING
     | NO? ROW ARCHIVAL
-    | annotations_clause? // todo: not upstream
+    | annotations_clause
     ;
 
 alter_table_partitioning
@@ -5206,7 +5283,7 @@ enable_disable_clause
     ;
 
 using_index_clause
-    : USING INDEX (index_name | '(' create_index ')' | index_properties)
+    : USING INDEX (index_name | '(' create_index ')' | index_properties)?
     ;
 
 index_attributes
@@ -5764,7 +5841,7 @@ record_type_def
     ;
 
 field_spec
-    : column_name type_spec? (NOT NULL_)? default_value_part?
+    : column_name type_spec? (NOT? NULL_)? default_value_part?
     ;
 
 ref_cursor_type_def
@@ -5903,9 +5980,9 @@ pipe_row_statement
     ;
 
 selection_directive
-    : DOLLAR_IF condition DOLLAR_THEN selection_directive_body (
-        DOLLAR_ELSIF selection_directive_body
-    )* (DOLLAR_ELSE selection_directive_body)? DOLLAR_END
+    : DOLLAR_IF condition DOLLAR_THEN selection_directive_body? (
+        DOLLAR_ELSIF condition DOLLAR_THEN selection_directive_body?
+    )* (DOLLAR_ELSE selection_directive_body?)? DOLLAR_END
     ;
 
 error_directive
@@ -6104,7 +6181,7 @@ explain_statement
     ;
 
 select_only_statement
-    : with_clause? subquery
+    : subquery
     ;
 
 select_statement
@@ -6123,7 +6200,7 @@ with_factoring_clause
     ;
 
 subquery_factoring_clause
-    : query_name paren_column_list? AS '(' subquery order_by_clause? ')' search_clause? cycle_clause?
+    : query_name paren_column_list? AS '(' subquery_no_with order_by_clause? ')' search_clause? cycle_clause?
     ;
 
 search_clause
@@ -6165,12 +6242,18 @@ add_calc_meas_clause
     ;
 
 subquery
+    : with_clause? subquery_basic_elements subquery_operation_part*
+    ;
+
+// A subquery that must not start with (or contain, parenthesized) a WITH clause.
+// Used where Oracle rejects a CTE: inside another CTE definition and as UNION/INTERSECT/MINUS operands.
+subquery_no_with
     : subquery_basic_elements subquery_operation_part*
     ;
 
 subquery_basic_elements
     : query_block
-    | '(' subquery ')'
+    | '(' subquery_no_with ')'
     ;
 
 subquery_operation_part
@@ -6195,7 +6278,7 @@ from_clause
 
 select_list_elements
     : tableview_name '.' ASTERISK
-    | expression column_alias?
+    | expression ({this.isNotBulkCollect()}? column_alias)?
     ;
 
 table_ref_list
@@ -6212,7 +6295,7 @@ table_ref
     ;
 
 table_ref_aux
-    : table_ref_aux_internal flashback_query_clause* (/*{isTableAlias()}?*/ table_alias)?
+    : table_ref_aux_internal flashback_query_clause* ({this.isNotStartOfJoin()}? table_alias)?
     ;
 
 table_ref_aux_internal
@@ -6473,14 +6556,18 @@ insert_into_clause
     ;
 
 values_clause
-    : VALUES (REGULAR_ID | '(' expressions_ ')' | collection_expression)
+    : VALUES (
+        record_name
+        | '(' expressions_ ')' (COMMA '(' expressions_ ')')*
+        | collection_expression
+    )
     ;
 
 merge_statement
-    : MERGE INTO tableview_name table_alias? USING selected_tableview ON '(' condition ')' (
+    : MERGE INTO selected_tableview USING selected_tableview ON '(' condition ')' (
         merge_update_clause merge_insert_clause?
         | merge_insert_clause merge_update_clause?
-    )? error_logging_clause?
+    ) error_logging_clause? static_returning_clause?
     ;
 
 // Merge Specific Clauses
@@ -6619,7 +6706,7 @@ logical_operation
         | A_LETTER SET
         | EMPTY_
         | OF TYPE? '(' ONLY? type_spec (',' type_spec)* ')'
-        | JSON (FORMAT JSON)? (STRICT | LAX)? ((WITH | WITHOUT) UNIQUE KEYS)?
+        | JSON (FORMAT JSON)? (STRICT | LAX | '(' (STRICT | LAX) ')')? ((WITH | WITHOUT) UNIQUE KEYS)?
     )
     ;
 
@@ -6679,11 +6766,10 @@ concatenation
 interval_expression
     : DAY ('(' concatenation ')')? TO SECOND ('(' concatenation ')')?
     | YEAR ('(' concatenation ')')? TO MONTH
-    | concatenation (SECOND | DAY | MONTH | YEAR)
     ;
 
 model_expression
-    : unary_expression ('[' model_expression_element ']')?
+    : ('-' | '+')? unary_expression ('[' model_expression_element ']')?
     ;
 
 model_expression_element
@@ -6707,21 +6793,32 @@ multi_column_for_loop
     ;
 
 unary_expression
-    : ('-' | '+') unary_expression
-    | PRIOR unary_expression
-    | CONNECT_BY_ROOT unary_expression
-    | /*TODO {input.LT(1).getText().equalsIgnoreCase("new") && !input.LT(2).getText().equals(".")}?*/ NEW unary_expression
-    | DISTINCT unary_expression
-    | ALL unary_expression
-    | /*TODO{(input.LA(1) == CASE || input.LA(2) == CASE)}?*/ case_expression
-    | unary_expression '.' (
-        (COUNT | FIRST | LAST | LIMIT)
-        | (EXISTS | NEXT | PRIOR) '(' index += expression ')'
-    )
+    : PRIOR unary_expression_core
+    | CONNECT_BY_ROOT unary_expression_core
+    | NEW unary_expression_core
+    | OLD unary_expression_core
+    | unary_expression_core (
+        '.' (
+            (COUNT | FIRST | LAST | LIMIT)
+            | (EXISTS | NEXT | PRIOR) '(' index += expression ')'
+        )
+    )?
+    ;
+
+unary_expression_core
+    : case_expression
     | quantified_expression
     | standard_function
-    | atom
+    | {this.IsNotNumericFunction()}? atom
     | implicit_cursor_expression
+    | selection_directive_expression
+    ;
+
+// https://docs.oracle.com/en/database/oracle/oracle-database/26/lnpls/conditional-compilation1.html
+selection_directive_expression
+    : DOLLAR_IF condition DOLLAR_THEN expression (
+        DOLLAR_ELSIF condition DOLLAR_THEN expression
+    )* (DOLLAR_ELSE expression)? DOLLAR_END
     ;
 
 // https://docs.oracle.com/en/database/oracle/oracle-database/21/lnpls/plsql-optimization-and-tuning.html#GUID-DAF46F06-EF3F-4B1A-A518-5238B80C69FA
@@ -6743,14 +6840,20 @@ case_statement
     ;
 
 simple_case_statement
-    : label_declaration? ck1 = CASE expression case_when_part_statement+ case_else_part_statement? END CASE? label_name?
+    : label_declaration? ck1 = CASE expression simple_case_when_part_statement+ case_else_part_statement? END CASE? label_name?
     ;
 
 searched_case_statement
-    : label_declaration? ck1 = CASE case_when_part_statement+ case_else_part_statement? END CASE? label_name?
+    : label_declaration? ck1 = CASE searched_case_when_part_statement+ case_else_part_statement? END CASE? label_name?
     ;
 
-case_when_part_statement
+simple_case_when_part_statement
+    : WHEN (expression | dangling_predicate) (
+        ',' (expression | dangling_predicate)
+    )* THEN seq_of_statements
+    ;
+
+searched_case_when_part_statement
     : WHEN expression THEN seq_of_statements
     ;
 
@@ -6758,6 +6861,16 @@ case_else_part_statement
     : ELSE seq_of_statements
     ;
 
+dangling_predicate
+    : relational_operator expression
+    | NOT? (
+        IN in_elements
+        | BETWEEN between_elements
+        | (LIKE | LIKEC | LIKE2 | LIKE4) concatenation (ESCAPE concatenation)?
+        | (MEMBER | SUBMULTISET) OF? concatenation
+    )
+    | IS NOT? logical_operation
+    ;
 
 // CASE expression
 case_expression
@@ -6766,14 +6879,20 @@ case_expression
     ;
 
 simple_case_expression
-    : ck1 = CASE expression case_when_part_expression+ case_else_part_expression? END CASE?
+    : ck1 = CASE expression simple_case_when_part_expression+ case_else_part_expression? END CASE?
     ;
 
 searched_case_expression
-    : ck1 = CASE case_when_part_expression+ case_else_part_expression? END CASE?
+    : ck1 = CASE searched_case_when_part_expression+ case_else_part_expression? END CASE?
     ;
 
-case_when_part_expression
+simple_case_when_part_expression
+    : WHEN (expression | dangling_predicate) (
+        ',' (expression | dangling_predicate)
+    )* THEN expression
+    ;
+
+searched_case_when_part_expression
     : WHEN expression THEN expression
     ;
 
@@ -6786,7 +6905,8 @@ atom
     | constant
     | inquiry_directive
     | general_element outer_join_sign?
-    | '(' subquery ')' subquery_operation_part*
+    | '(' subquery ')'
+    | '(' expression ')' ('.' general_element_part)*
     | '(' expressions_ ')'
     ;
 
@@ -6815,7 +6935,7 @@ standard_function
     : string_function
     | numeric_function_wrapper
     | json_function
-    | other_function
+    | {this.IsNotNumericFunction()}? other_function
     ;
 
 //see as https://docs.oracle.com/en/database/oracle/oracle-database/21/sqlrf/JSON_ARRAY.html#GUID-46CDB3AF-5795-455B-85A8-764528CEC43B
@@ -6828,7 +6948,7 @@ json_function
     )? STRICT? (WITH UNIQUE KEYS)? ')'
     | JSON_QUERY '(' expression (FORMAT JSON)? ',' CHAR_STRING json_query_returning_clause json_query_wrapper_clause? json_query_on_error_clause?
         json_query_on_empty_clause? ')'
-    | JSON_SERIALIZE '(' CHAR_STRING (RETURNING json_query_return_type)? PRETTY? ASCII? TRUNCATE? (
+    | JSON_SERIALIZE '(' concatenation (RETURNING json_query_return_type)? PRETTY? ASCII? TRUNCATE? (
         (NULL_ | ERROR | EMPTY_ (ARRAY | OBJECT)) ON ERROR
     )? ')'
     | JSON_TRANSFORM '(' expression ',' json_transform_op (',' json_transform_op)* ')'
@@ -6930,7 +7050,7 @@ json_value_return_type
     | CLOB
     | DATE
     | NUMBER ('(' INTEGER (',' INTEGER)? ')')?
-    | TIMESTAMP (WITH TIMEZONE)?
+    | TIMESTAMP (WITH TIME ZONE)?
     | SDO_GEOMETRY
     | expression (USING CASESENSITIVE MAPPING)?
     ;
@@ -6952,11 +7072,12 @@ numeric_function_wrapper
     ;
 
 numeric_function
-    : SUM '(' (DISTINCT | ALL)? expression ')'
-    | COUNT '(' (ASTERISK | ((DISTINCT | UNIQUE | ALL)? concatenation)?) ')' over_clause?
-    | ROUND '(' expression (',' UNSIGNED_INTEGER)? ')'
-    | AVG '(' (DISTINCT | ALL)? expression ')'
-    | MAX '(' (DISTINCT | ALL)? expression ')'
+    : SUM '(' (DISTINCT | ALL)? expression ')' (over_clause | keep_clause)?
+    | COUNT '(' (ASTERISK | ((DISTINCT | UNIQUE | ALL)? concatenation)?) ')' (over_clause | keep_clause)?
+    | ROUND '(' expression (',' (UNSIGNED_INTEGER | expression))? ')'
+    | AVG '(' (DISTINCT | ALL)? expression ')' (over_clause | keep_clause)?
+    | MIN '(' (DISTINCT | ALL)? expression ')' (over_clause | keep_clause)?
+    | MAX '(' (DISTINCT | ALL)? expression ')' (over_clause | keep_clause)?
     | LEAST '(' expressions_ ')'
     | GREATEST '(' expressions_ ')'
     ;
@@ -7177,29 +7298,18 @@ annotations_clause
     ;
 
 annotations_list
-    : ADD (IF NOT EXISTS | OR REPLACE)? annotation (',' annotations_list)*
-    | DROP (IF EXISTS)? annotation (',' annotations_list)*
-    | REPLACE annotation (',' annotations_list)*
-    | annotation (',' annotations_list)*
+    : (
+        ADD (IF NOT EXISTS | OR REPLACE)?
+        | DROP (IF EXISTS)?
+        | REPLACE
+    )? annotation (',' annotations_list)*
     ;
 
 annotation
-    : annotation_name annotation_value?
-    ;
-
-annotation_name
-    : identifier
-    ;
-
-annotation_value
-    : CHAR_STRING
+    : identifier CHAR_STRING?
     ;
 
 // SqlPlus
-
-sql_plus_command_no_semicolon
-    : set_command
-    ;
 
 sql_plus_command
     : EXIT
@@ -7210,10 +7320,24 @@ sql_plus_command
     | start_command
     | set_command
     | clear_command
+    | execute_command
+    ;
+
+// SQL*Plus EXEC[UTE] executes a single PL/SQL statement. The command word must
+// start a line so that `EXEC` used as an identifier and PL/SQL `EXECUTE
+// IMMEDIATE` keep their normal meaning.
+execute_command
+    : {this.isLineStart()}? (EXEC | EXECUTE) statement
     ;
 
 start_command
-    : START_CMD id_expression PERIOD (SQL | FILE_EXT)
+    : (START | AT_SIGN AT_SIGN?) sql_plus_filepath
+    ;
+
+sql_plus_filepath
+    : (id_expression COLON)? (SOLIDUS | RSOLIDUS)? (
+        id_expression (SOLIDUS | RSOLIDUS)
+    )* id_expression PERIOD (SQL | FILE_EXT)
     ;
 
 whenever_command
@@ -7413,6 +7537,8 @@ tableview_name
 
 xmltable
     : XMLTABLE '(' (xml_namespaces_clause ',')? concatenation xml_passing_clause? (
+        RETURNING SEQUENCE BY REF
+    )? (
         COLUMNS xml_table_column (',' xml_table_column)*
     )? ')' ('.' general_element_part)?
     ;
@@ -7797,14 +7923,20 @@ regular_id
     | CONSTRUCTOR
     | CUSTOMDATUM
     | CASESENSITIVE
+    | COMPRESSION
+    | COUNTED
+    | DATE
     | DECIMAL
     | DELETE
     | DEPRECATE
+    | DETECTED
     | DETERMINISTIC
+    | DISABLED
     | DSINTERVAL_UNCONSTRAINED
     | DURATION
     | E_LETTER
     | ENABLED
+    | ENCLOSED
     | ERROR_INDEX
     | ERROR_CODE
     | ERR
@@ -7812,8 +7944,11 @@ regular_id
     | EXCEPTION_INIT
     | EXCEPTIONS
     | EXISTS
+    | EXEC
     | EXIT
     | EXTEND
+    | FIELDS
+    | FILE_EXT
     | FILESTORE
     | FLOAT
     | FORALL
@@ -7821,6 +7956,7 @@ regular_id
     | INDICES
     | INOUT
     | INTEGER
+    | INTERNAL
     | JSON_TRANSFORM
     | K_LETTER
     | LANGUAGE
@@ -7833,6 +7969,7 @@ regular_id
     | MISMATCH
     | NUMBER
     | ORADATA
+    | ORC
     | OSERROR
     | OUT
     | OVERRIDING
@@ -7885,6 +8022,9 @@ regular_id
     | VAR_
     | VALUE
     | COVAR_
+    | DATE_FORMAT
+    | CSV
+    | CHARACTERSET
     ;
 
 non_reserved_keywords_in_18c
@@ -8094,6 +8234,7 @@ non_reserved_keywords_in_12c
     | NOCOPY
     | NOKEEP
     | NONEDITIONABLE
+    | NONPARTITIONED
     | NOPARTITION
     | NORELOCATE
     | NOREPLAY
@@ -8348,7 +8489,6 @@ non_reserved_keywords_pre12c
     | BATCH
     | BECOME
     | BEFORE
-    | BEGIN
     | BEGIN_OUTLINE_DATA
     | BEHALF
     | BFILE
