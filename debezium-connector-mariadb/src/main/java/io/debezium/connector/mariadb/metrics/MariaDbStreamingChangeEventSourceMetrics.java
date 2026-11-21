@@ -12,6 +12,7 @@ import io.debezium.connector.binlog.metrics.BinlogStreamingChangeEventSourceMetr
 import io.debezium.connector.mariadb.MariaDbDatabaseSchema;
 import io.debezium.connector.mariadb.MariaDbPartition;
 import io.debezium.connector.mariadb.MariaDbTaskContext;
+import io.debezium.pipeline.meters.ConnectedServerMeter;
 import io.debezium.pipeline.metrics.CapturedTablesSupplier;
 import io.debezium.pipeline.source.spi.EventMetadataProvider;
 
@@ -26,7 +27,8 @@ public class MariaDbStreamingChangeEventSourceMetrics
                                                     ChangeEventQueueMetrics changeEventQueueMetrics,
                                                     EventMetadataProvider eventMetadataProvider,
                                                     CapturedTablesSupplier capturedTablesSupplier,
-                                                    BinaryLogClient client) {
-        super(taskContext, changeEventQueueMetrics, eventMetadataProvider, capturedTablesSupplier, client);
+                                                    BinaryLogClient client,
+                                                    ConnectedServerMeter connectedServerMeter) {
+        super(taskContext, changeEventQueueMetrics, eventMetadataProvider, capturedTablesSupplier, client, connectedServerMeter);
     }
 }

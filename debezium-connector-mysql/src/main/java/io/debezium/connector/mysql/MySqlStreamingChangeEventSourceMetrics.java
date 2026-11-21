@@ -9,6 +9,7 @@ import com.github.shyiko.mysql.binlog.BinaryLogClient;
 
 import io.debezium.connector.base.ChangeEventQueueMetrics;
 import io.debezium.connector.binlog.metrics.BinlogStreamingChangeEventSourceMetrics;
+import io.debezium.pipeline.meters.ConnectedServerMeter;
 import io.debezium.pipeline.metrics.CapturedTablesSupplier;
 import io.debezium.pipeline.source.spi.EventMetadataProvider;
 
@@ -22,7 +23,8 @@ public class MySqlStreamingChangeEventSourceMetrics
                                                   ChangeEventQueueMetrics changeEventQueueMetrics,
                                                   EventMetadataProvider metadataProvider,
                                                   CapturedTablesSupplier capturedTablesSupplier,
-                                                  BinaryLogClient client) {
-        super(taskContext, changeEventQueueMetrics, metadataProvider, capturedTablesSupplier, client);
+                                                  BinaryLogClient client,
+                                                  ConnectedServerMeter connectedServerMeter) {
+        super(taskContext, changeEventQueueMetrics, metadataProvider, capturedTablesSupplier, client, connectedServerMeter);
     }
 }

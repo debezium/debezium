@@ -26,12 +26,15 @@ import java.util.concurrent.CopyOnWriteArrayList;
  * left open so that neither side observes an error, and further connection attempts are refused so that a
  * reconnect cannot succeed.
  *
+ * <p>{@link #retarget(String, int)} and {@link #dropConnections()} reproduce a failover behind a DNS name or a VIP:
+ * the clients reconnect to the same address, but reach another database.
+ *
  * @author Chris Cranford
  */
 public class DatabaseTcpProxy implements Closeable {
 
-    private final String targetHost;
-    private final int targetPort;
+    private volatile String targetHost;
+    private volatile int targetPort;
     private final ServerSocket serverSocket;
     private final List<Socket> sockets = new CopyOnWriteArrayList<>();
 
@@ -78,6 +81,27 @@ public class DatabaseTcpProxy implements Closeable {
 
     public boolean hasFailedRequest() {
         return requestFailed;
+    }
+
+    /**
+     * Forwards the connections that are established from now on to another database. The connections that are
+     * already established keep their database until {@link #dropConnections()} closes them.
+     *
+     * @param targetHost the database hostname
+     * @param targetPort the database port
+     */
+    public void retarget(String targetHost, int targetPort) {
+        this.targetHost = targetHost;
+        this.targetPort = targetPort;
+    }
+
+    /**
+     * Closes the connections that are established, so that the clients have to reconnect, while the proxy keeps
+     * accepting new connections.
+     */
+    public void dropConnections() {
+        sockets.forEach(DatabaseTcpProxy::closeQuietly);
+        sockets.clear();
     }
 
     /**
