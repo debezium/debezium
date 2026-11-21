@@ -3001,6 +3001,8 @@ Set the value to `drop` to skip tombstones intentionally.
 |[[zerobus-max-inflight]]<<zerobus-max-inflight, `debezium.sink.zerobus.max.inflight.records`>>
 |`50000`
 |Maximum number of un-acknowledged records per stream.
+When a stream reaches this limit, the sink waits for acknowledgements before it sends more records.
+For more information, see <<debezium-server-zerobus-grpc-route-tuning-throughput, Tuning throughput on the gRPC route>>.
 
 |[[zerobus-max-open-streams]]<<zerobus-max-open-streams, `debezium.sink.zerobus.max.open.streams`>>
 |`100`
@@ -3034,6 +3036,9 @@ If the recovery process cannot resolve an error, the connector stops, and the of
 |[[zerobus-flush-timeout-ms]]<<zerobus-flush-timeout-ms, `debezium.sink.zerobus.flush.timeout.ms`>>
 |The SDK default.
 |Specifies the time, in milliseconds, that a flush waits for the records in the stream to be acknowledged.
+If the acknowledgements take longer, the stream closes and {prodname} Server stops with an error.
+Because the source offsets of the batch are not committed, the service sends the batch again after it restarts.
+To see a wait that is approaching this timeout, keep <<zerobus-flush-warn-threshold-ms, `debezium.sink.zerobus.flush.warn.threshold.ms`>> below it.
 
 |[[zerobus-flush-warn-threshold-ms]]<<zerobus-flush-warn-threshold-ms, `debezium.sink.zerobus.flush.warn.threshold.ms`>>
 |`30000`
@@ -3188,6 +3193,10 @@ The default is `8192`.
 The value should always be larger than `max.batch.size`.
 
 Each connector describes both properties in its configuration properties, for example the PostgreSQL connector properties xref:{link-postgresql-connector}#postgresql-property-max-batch-size[`max.batch.size`] and xref:{link-postgresql-connector}#postgresql-property-max-queue-size[`max.queue.size`].
+
+When you raise `debezium.source.max.batch.size`, also check the sink property <<zerobus-max-inflight, `debezium.sink.zerobus.max.inflight.records`>>, which limits the number of records that a stream has sent but that Zerobus has not acknowledged yet.
+The default is `50000`.
+When a batch has more records for one table than this limit, the sink waits for acknowledgements before it sends the rest of the batch, so keep this value at least as large as `debezium.source.max.batch.size`.
 
 A larger batch means fewer round trips for the same number of records, which raises throughput.
 This effect is most visible during the initial snapshot, when the source emits a large number of snapshot read (`op=r`) events.
