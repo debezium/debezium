@@ -19,6 +19,7 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import java.io.IOException;
 import java.sql.Connection;
 import java.sql.SQLException;
 import java.sql.SQLRecoverableException;
@@ -241,6 +242,48 @@ public class OracleConnectionTest {
 
             verify(newStatement).execute("alter session set container=PDB1");
         }
+    }
+
+    @Test
+    @FixFor("debezium/dbz#3139")
+    void shouldNotFallbackWhenCauseChainHasNoSqlException() {
+        assertThat(OracleConnection.shouldReselectFallbackToNonFlashbackQuery(
+                new RuntimeException("x", new IOException("y")))).isFalse();
+    }
+
+    @Test
+    @FixFor("debezium/dbz#3139")
+    void shouldNotFallbackWhenConversionFailsWithIoException() {
+        assertThat(OracleConnection.shouldReselectFallbackToNonFlashbackQuery(
+                new DebeziumException(new IOException("Failed to read CLOB")))).isFalse();
+    }
+
+    @Test
+    @FixFor("debezium/dbz#3139")
+    void shouldNotFallbackWhenSqlExceptionHasNoMessageAndOtherErrorCode() {
+        assertThat(OracleConnection.shouldReselectFallbackToNonFlashbackQuery(
+                new SQLException(null, null, 942))).isFalse();
+    }
+
+    @Test
+    @FixFor("debezium/dbz#3139")
+    void shouldFallbackWhenErrorCodeMatches() {
+        assertThat(OracleConnection.shouldReselectFallbackToNonFlashbackQuery(
+                new SQLException("ORA-01555: snapshot too old", null, 1555))).isTrue();
+    }
+
+    @Test
+    @FixFor("debezium/dbz#3139")
+    void shouldFallbackWhenOnlyMessagePrefixMatches() {
+        assertThat(OracleConnection.shouldReselectFallbackToNonFlashbackQuery(
+                new SQLException("ORA-01466: unable to read data - table definition has changed", null, 0))).isTrue();
+    }
+
+    @Test
+    @FixFor("debezium/dbz#3139")
+    void shouldFallbackWhenWrappedSqlExceptionErrorCodeMatches() {
+        assertThat(OracleConnection.shouldReselectFallbackToNonFlashbackQuery(
+                new RuntimeException("wrapped", new SQLException("table definition has changed", null, 1466)))).isTrue();
     }
 
     /**

@@ -900,7 +900,7 @@ public class OracleConnection extends JdbcConnection {
             "ORA-01555",
             "ORA-01466");
 
-    private static boolean shouldReselectFallbackToNonFlashbackQuery(Exception exception) {
+    static boolean shouldReselectFallbackToNonFlashbackQuery(Exception exception) {
         SQLException sqlException = null;
         Throwable cause = exception;
         while (cause != null) {
@@ -913,9 +913,14 @@ public class OracleConnection extends JdbcConnection {
             }
             cause = cause.getCause();
         }
-        return sqlException != null &&
-                ORACLE_RESELECT_ERROR_CODE_FALLBACK.contains(sqlException.getErrorCode()) ||
-                ORACLE_RESELECT_ERROR_PREFIX_FALLBACK.stream().anyMatch(sqlException.getMessage()::startsWith);
+        if (sqlException == null) {
+            return false;
+        }
+        if (ORACLE_RESELECT_ERROR_CODE_FALLBACK.contains(sqlException.getErrorCode())) {
+            return true;
+        }
+        final String message = sqlException.getMessage();
+        return message != null && ORACLE_RESELECT_ERROR_PREFIX_FALLBACK.stream().anyMatch(message::startsWith);
     }
 
     @Override
