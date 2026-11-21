@@ -125,6 +125,94 @@ public abstract class AbstractConnectorTest implements Testing {
      */
     protected abstract DebeziumEngine.Builder<SourceRecord> createEngineBuilder();
 
+    /**
+     * Minimum time a connector's streaming must have been connected before the harness stops it, see
+     * {@link #awaitMinimumStreamingConnectedTime()}. Zero, the default, disables the guard.
+     */
+    private static final long STREAMING_MIN_CONNECTED_MS = Long.getLong(TEST_PROPERTY_PREFIX + "streaming.min.connected.ms", 0L);
+
+    private volatile Thread streamingConnectedWatcher;
+    private volatile long streamingConnectedSinceNanos = -1;
+
+    /**
+     * Records when the streaming {@code Connected} metric of the running connector turns true, by polling every
+     * streaming metrics MBean. Only runs when {@link #STREAMING_MIN_CONNECTED_MS} is set.
+     */
+    private void startStreamingConnectedWatcher() {
+        if (STREAMING_MIN_CONNECTED_MS <= 0) {
+            return;
+        }
+        final ObjectName streamingMetrics;
+        try {
+            streamingMetrics = new ObjectName("debezium.*:type=connector-metrics,context=streaming,*");
+        }
+        catch (JMException e) {
+            throw new IllegalStateException(e);
+        }
+        streamingConnectedSinceNanos = -1;
+        final var watcher = new Thread(() -> {
+            final var mbeanServer = ManagementFactory.getPlatformMBeanServer();
+            while (!Thread.currentThread().isInterrupted()) {
+                boolean connected = false;
+                try {
+                    for (ObjectName name : mbeanServer.queryNames(streamingMetrics, null)) {
+                        if (Boolean.TRUE.equals(mbeanServer.getAttribute(name, "Connected"))) {
+                            connected = true;
+                            break;
+                        }
+                    }
+                }
+                catch (JMException ignored) {
+                }
+                if (connected && streamingConnectedSinceNanos < 0) {
+                    streamingConnectedSinceNanos = System.nanoTime();
+                }
+                else if (!connected) {
+                    streamingConnectedSinceNanos = -1;
+                }
+                try {
+                    Thread.sleep(20);
+                }
+                catch (InterruptedException e) {
+                    return;
+                }
+            }
+        }, "streaming-connected-watcher");
+        watcher.setDaemon(true);
+        watcher.start();
+        streamingConnectedWatcher = watcher;
+    }
+
+    private void stopStreamingConnectedWatcher() {
+        final var watcher = streamingConnectedWatcher;
+        streamingConnectedWatcher = null;
+        if (watcher != null) {
+            watcher.interrupt();
+        }
+    }
+
+    /**
+     * Delays the stop until streaming has been connected for at least {@link #STREAMING_MIN_CONNECTED_MS}. Oracle XStream
+     * restarts its capture right after every attach, and a detach during that restart can leave the next connector
+     * without data for 80 seconds.
+     */
+    private void awaitMinimumStreamingConnectedTime() {
+        final var since = streamingConnectedSinceNanos;
+        if (STREAMING_MIN_CONNECTED_MS <= 0 || streamingConnectedWatcher == null || since < 0) {
+            return;
+        }
+        final var remainingMs = STREAMING_MIN_CONNECTED_MS - TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - since);
+        if (remainingMs > 0) {
+            logger.info("Delaying the connector stop by {} ms, streaming has been connected for less than {} ms", remainingMs, STREAMING_MIN_CONNECTED_MS);
+            try {
+                Thread.sleep(remainingMs);
+            }
+            catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+            }
+        }
+    }
+
     @BeforeEach
     public final void initializeConnectorTestFramework() {
         LoggingContext.forConnector(getClass().getSimpleName(), "", "test");
@@ -161,6 +249,8 @@ public abstract class AbstractConnectorTest implements Testing {
      */
     public void stopConnector(BooleanConsumer callback) {
         try {
+            awaitMinimumStreamingConnectedTime();
+            stopStreamingConnectedWatcher();
             logger.info("Stopping the connector");
             // Try to stop the connector ...
             if (engine != null && isEngineRunning.get()) {
@@ -519,6 +609,7 @@ public abstract class AbstractConnectorTest implements Testing {
             LoggingContext.forConnector(getClass().getSimpleName(), "", "engine");
             engine.run();
         });
+        startStreamingConnectedWatcher();
         try {
             if (!latch.await(5, TimeUnit.MINUTES)) {
                 // maybe it takes more time to start up, so just log a warning and continue

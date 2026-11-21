@@ -242,6 +242,7 @@
         <log.mining.buffer.type.name>memory</log.mining.buffer.type.name>
         <log.mining.read.only.mode>false</log.mining.read.only.mode>
         <version.oracle.server>19.3.0</version.oracle.server>
+        <streaming.min.connected.ms>0</streaming.min.connected.ms>
 
         <!--
         Ehcache-specific dependency version overrides.
@@ -363,6 +364,7 @@
                         <internal.log.mining.read.only>${log.mining.read.only.mode}</internal.log.mining.read.only>
                         <javax.xml.parsers.SAXParserFactory>com.sun.org.apache.xerces.internal.jaxp.SAXParserFactoryImpl</javax.xml.parsers.SAXParserFactory>
                         <version.oracle.server>${version.oracle.server}</version.oracle.server>
+                        <debezium.test.streaming.min.connected.ms>${streaming.min.connected.ms}</debezium.test.streaming.min.connected.ms>
                     </systemPropertyVariables>
                     <runOrder>${runOrder}</runOrder>
                 </configuration>
@@ -446,6 +448,9 @@
             <properties>
                 <!-- Point (3) enables the xstream adapter for tests -->
                 <adapter.name>xstream</adapter.name>
+                <!-- XStream restarts its capture right after every attach; a detach during that restart
+                     can stall the next attach for 80 seconds, so tests keep a connector attached this long -->
+                <streaming.min.connected.ms>5000</streaming.min.connected.ms>
             </properties>
             <activation>
                 <activeByDefault>false</activeByDefault>
