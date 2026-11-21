@@ -8,6 +8,7 @@ package io.debezium.openlineage;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.nio.file.Path;
 import java.util.Map;
 import java.util.UUID;
 
@@ -41,13 +42,13 @@ public class DebeziumLineageEmitterFactoryTest {
     }
 
     @Test
-    void shouldReturnOpenLineageEmitterWhenEnabled() {
+    void shouldReturnOpenLineageEmitterWhenEnabled() throws Exception {
 
         Map<String, String> config = Map.of(
                 "name", "test-connector",
                 "openlineage.integration.enabled", "true",
                 "openlineage.integration.config.file.path",
-                DebeziumLineageEmitterFactoryTest.class.getClassLoader().getResource("openlineage/openlineage.yml").getPath(),
+                Path.of(DebeziumLineageEmitterFactoryTest.class.getClassLoader().getResource("openlineage/openlineage.yml").toURI()).toString(),
                 "openlineage.integration.job.namespace", "test-namespace",
                 "openlineage.integration.job.description", "test-desc",
                 "openlineage.integration.job.tags", "tag1=value1",
