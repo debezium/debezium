@@ -525,6 +525,25 @@ public abstract class BinlogSourceInfoTest<S extends BinlogSourceInfo, O extends
     }
 
     @Test
+    @FixFor("debezium/dbz#2689")
+    void shouldComparePositionsByCoordinatesWhenOnlyRecordedHasGtid() {
+        final String gtids = String.format("%s:1-14", IdA);
+        final Document earlierWithGtid = positionWith("mysql-bin.000003", 154, gtids, 0, 0, false);
+        final Document laterWithGtid = positionWith("mysql-bin.000009", 4000, gtids, 0, 0, false);
+        final Document withoutFileName = positionWith("", 4, gtids, 0, 0, false);
+        final Document desired = positionWithoutGtids("mysql-bin.000005", 900, 0, 0);
+
+        // An offset loses its GTID under gtid.ignore.on.recovery while the server keeps handing them out,
+        // and the connector then resumes by binlog coordinates, so the record has to be placed by them too.
+        assertThatDocument(earlierWithGtid).isAtOrBefore(desired);
+        assertThatDocument(laterWithGtid).isAfter(desired);
+
+        // An offset starts out with an empty file name, which leaves nothing to compare.
+        assertPositionWithGtids(gtids).isAfter(desired);
+        assertThatDocument(withoutFileName).isAfter(desired);
+    }
+
+    @Test
     void shouldComparePositionsWithoutGtids() {
         // Same position ...
         assertPositionWithoutGtids("fn.01", 1, 0, 0).isAt(positionWithoutGtids("fn.01", 1, 0, 0));
