@@ -8,7 +8,7 @@ package io.debezium.storage.nats.history;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-import java.time.Duration;
+import java.nio.charset.StandardCharsets;
 import java.util.Map;
 
 import org.junit.jupiter.api.AfterEach;
@@ -20,6 +20,7 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 
 import io.debezium.config.Configuration;
 import io.debezium.connector.mysql.antlr.MySqlAntlrDdlParser;
+import io.debezium.document.DocumentReader;
 import io.debezium.relational.Tables;
 import io.debezium.relational.history.HistoryRecord;
 import io.debezium.relational.history.SchemaHistory;
@@ -29,9 +30,9 @@ import io.debezium.storage.nats.NatsCommonConfig;
 import io.debezium.storage.nats.NatsContainer;
 import io.debezium.util.Collect;
 import io.nats.client.Connection;
-import io.nats.client.Message;
+import io.nats.client.JetStreamApiException;
 import io.nats.client.Nats;
-import io.nats.client.Subscription;
+import io.nats.client.api.MessageInfo;
 import io.nats.client.support.NatsJetStreamConstants;
 
 /**
@@ -93,21 +94,34 @@ class NatsSchemaHistoryIntegrityIT {
     public void shouldTagAPublishWithAMessageId() throws Exception {
         // JetStream can only recognize a retried publish as a duplicate when the message
         // carries an ID, so every schema history record has to be published with one.
-        try (Connection conn = Nats.connect(natsUrl)) {
-            Subscription subscription = conn.subscribe(SUBJECT);
-            try {
-                history.record(server(), position(1), "testdb", "CREATE TABLE t1 (id INT);");
+        history.record(server(), position(1), "testdb", "CREATE TABLE t1 (id INT);");
 
-                Message message = subscription.nextMessage(Duration.ofSeconds(10));
-                assertThat(message).as("the recorded DDL should have been published to '%s'", SUBJECT).isNotNull();
-                assertThat(message.getHeaders()).as("the published record should carry headers").isNotNull();
-                assertThat(message.getHeaders().get(NatsJetStreamConstants.MSG_ID_HDR))
-                        .as("the published record should carry a message ID so it can be deduplicated")
-                        .isNotNull();
+        // The record is published synchronously, so it is already stored in the stream and
+        // can be read back without depending on when a subscription becomes active.
+        try (Connection conn = Nats.connect(natsUrl)) {
+            MessageInfo message;
+            try {
+                message = conn.jetStreamManagement().getLastMessage(STREAM_NAME, SUBJECT);
             }
-            finally {
-                subscription.unsubscribe();
+            catch (JetStreamApiException e) {
+                if (e.getApiErrorCode() == NatsJetStreamConstants.JS_NO_MESSAGE_FOUND_ERR) {
+                    throw new AssertionError(String.format(
+                            "the recorded DDL should have been published to '%s', but the stream '%s' holds no message for it",
+                            SUBJECT, STREAM_NAME), e);
+                }
+                throw e;
             }
+            assertThat(message.getHeaders()).as("the published record should carry headers").isNotNull();
+            assertThat(message.getHeaders().get(NatsJetStreamConstants.MSG_ID_HDR))
+                    .as("the published record should carry a message ID so it can be deduplicated")
+                    .isNotNull();
+
+            // Confirms the message read back is the record this test wrote, which only matters
+            // if the stream is ever shared between tests.
+            HistoryRecord record = new HistoryRecord(DocumentReader.defaultReader().read(new String(message.getData(), StandardCharsets.UTF_8)));
+            assertThat(record.document().getString(HistoryRecord.Fields.DDL_STATEMENTS))
+                    .as("the message read back should be the record this test wrote")
+                    .isEqualTo("CREATE TABLE t1 (id INT);");
         }
     }
 
