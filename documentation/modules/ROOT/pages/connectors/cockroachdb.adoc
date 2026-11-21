@@ -99,8 +99,10 @@ To distinguish them, in snapshot modes that continue to stream changes after the
 If no stored offset exists, the connector uses the current cluster timestamp.
 `updated`:: Adds a timestamp to each changefeed message.
 A row from the scan carries the timestamp of the scan, and a row that is inserted after the scan carries a later timestamp.
-The connector sets this option even if xref:cockroachdb-property-include-updated[`cockroachdb.changefeed.include.updated`] is set to `false`.
-The connector uses the timestamp only to identify rows from the scan, and does not add it to the events that it emits.
+The connector sets this option for every changefeed that it creates, except in the `initial_only` snapshot mode, whatever the value of xref:cockroachdb-property-include-updated[`cockroachdb.changefeed.include.updated`] is.
+The connector uses the timestamp only internally, and does not add it to the events that it emits.
+The connector also uses the timestamp to recognize events that CockroachDB delivers more than once.
+For more information, see xref:cockroachdb-when-things-go-wrong[Behavior when things go wrong].
 
 The connector reads the timestamp from the `source` property of the enriched envelope.
 In the following cases, the connector cannot distinguish rows from the scan from rows that are inserted before the first resolved timestamp:
@@ -209,6 +211,12 @@ If a running changefeed matches the connector's topic prefix and tables, but it 
 The connector then fails to start and returns an error stating that you must recreate that changefeed with `envelope='enriched'` or else use a different topic prefix.
 In `initial_only` snapshot mode, the matching changefeed must have been created with `initial_scan='only'`, because a changefeed that keeps streaming never completes the snapshot.
 Otherwise, the connector fails to start and returns an error that names the changefeed job.
+
+A changefeed that an earlier version of the connector created might not use the `updated` option.
+The connector reuses such a changefeed, and logs the ID of its job.
+To add the option, pause the changefeed job, wait until its status is `paused`, run `ALTER CHANGEFEED _<job_id>_ SET updated`, and resume the job.
+`PAUSE JOB` returns before the job is paused, and `ALTER CHANGEFEED` rejects a job that is not paused yet.
+You do not have to stop the connector while you pause and resume the changefeed job.
 
 [NOTE]
 ====
@@ -1252,9 +1260,10 @@ Resolved timestamps are used for offset tracking.
 
 |[[cockroachdb-property-include-updated]]<<cockroachdb-property-include-updated, `+cockroachdb.changefeed.include.updated+`>>
 |`false`
-|Specifies whether the connector creates the changefeed with the CockroachDB `updated` option, which adds a timestamp to each changefeed message.
-The timestamp is the commit timestamp of the change, or, for a row from an initial scan, the timestamp of the scan.
-The connector always sets the `updated` option for a changefeed that it creates with an initial scan, regardless of the value of this property.
+|This property has no effect.
+The connector creates every changefeed with the CockroachDB `updated` option, except in the `initial_only` snapshot mode.
+The option adds a timestamp to each changefeed message: the commit timestamp of the change, or, for a row from an initial scan, the timestamp of the scan.
+The connector uses the timestamp internally and does not add it to the events that it emits.
 For more information, see xref:cockroachdb-snapshots[Snapshots].
 
 |[[cockroachdb-property-include-diff]]<<cockroachdb-property-include-diff, `+cockroachdb.changefeed.include.diff+`>>
@@ -1482,11 +1491,19 @@ For more information, see xref:cockroachdb-heartbeats[Heartbeats] .
 == Behavior when things go wrong
 
 {prodname} is a distributed system that captures all changes in multiple upstream databases; it never misses or loses an event.
-When the system is operating normally and is managed carefully, {prodname} provides _exactly once_ delivery of every change event record.
+CockroachDB changefeeds deliver every change at least once.
+Even when the system is operating normally, CockroachDB can deliver a change more than once, for example, after it retries, pauses, or restarts a changefeed.
+The copies of a change are identical except for the time at which the changefeed processed them.
+The connector identifies an event by its table, operation, key, `updated` timestamp, and row images.
+If an event is a copy of the event that the connector emitted last for the same row, the connector discards it.
+If a row changed more than once in the interval that CockroachDB delivers again, the connector emits all of those changes of the row again, in their original order.
+As a result, the last event that the connector emits for a row is always the most recent change of that row.
+The connector remembers the last event of the 10,000 rows that changed most recently, and only for as long as the connector task runs.
+For a xref:cockroachdb-reusing-an-existing-changefeed[reused changefeed] that was created without the `updated` option, the connector cannot recognize these copies.
 
 If a fault occurs, the system is designed to prevent the loss of any events.
 However, while it is recovering from a fault, it might repeat some change events.
-In these abnormal situations, {prodname}, like Kafka, provides _at least once_ delivery of change events.
+As a result, {prodname}, like Kafka, provides _at least once_ delivery of change events, and consumers must anticipate duplicate events.
 
 The rest of this section describes how {prodname} handles various kinds of faults and problems.
 
