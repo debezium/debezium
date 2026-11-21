@@ -10,16 +10,22 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import java.sql.Clob;
 import java.sql.ResultSet;
+import java.sql.SQLException;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+
+import javax.sql.rowset.serial.SerialClob;
+import javax.sql.rowset.serial.SerialException;
 
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
@@ -68,6 +74,7 @@ public class ReselectColumnsPostProcessorFieldNameAdjustmentTest {
     private JdbcConnection jdbcConnection;
     private BeanRegistry beanRegistry;
     private ServiceRegistry serviceRegistry;
+    private ValueConverterProvider valueConverterProvider;
 
     private TableId reselectedTableId;
     private TableId otherTableId;
@@ -97,7 +104,7 @@ public class ReselectColumnsPostProcessorFieldNameAdjustmentTest {
         jdbcConnection = mock(JdbcConnection.class);
         final RelationalDatabaseSchema relationalSchema = mock(RelationalDatabaseSchema.class);
         final RelationalDatabaseConnectorConfig connectorConfig = mock(RelationalDatabaseConnectorConfig.class);
-        final ValueConverterProvider valueConverterProvider = mock(ValueConverterProvider.class);
+        valueConverterProvider = mock(ValueConverterProvider.class);
         final CustomConverterRegistry customConverterRegistry = mock(CustomConverterRegistry.class);
         beanRegistry = mock(BeanRegistry.class);
         serviceRegistry = mock(ServiceRegistry.class);
@@ -242,6 +249,66 @@ public class ReselectColumnsPostProcessorFieldNameAdjustmentTest {
 
         assertThat(after.get("DATA")).isEqualTo(UNAVAILABLE);
         verify(jdbcConnection, never()).reselectColumns(any(Table.class), anyList(), anyList(), anyList(), any(Struct.class), any(ResultSetConsumer.class));
+    }
+
+    @Test
+    @FixFor("debezium/dbz#3120")
+    public void reselectedValueIsConvertedBeforeResultSetIsClosed() throws Exception {
+        final ReselectColumnsPostProcessor processor = newProcessor(false, false, null);
+
+        // A LOB-like value that, like a driver Clob, can only be read while its result set is open
+        final ClosableClob clob = new ClosableClob("db-doc-content");
+        doAnswer(invocation -> {
+            final ResultSetConsumer consumer = invocation.getArgument(5);
+            final ResultSet rs = mock(ResultSet.class);
+            when(rs.getObject("DOC$")).thenReturn(clob);
+            consumer.accept(rs);
+            clob.closed = true;
+            return true;
+        }).when(jdbcConnection).reselectColumns(any(Table.class), anyList(), anyList(), anyList(), any(Struct.class), any(ResultSetConsumer.class));
+
+        final Column docColumn = reselectedTable.columnWithName("DOC$");
+        when(valueConverterProvider.converter(eq(docColumn), any())).thenReturn(value -> {
+            try {
+                final Clob c = (Clob) value;
+                return c.getSubString(1, (int) c.length());
+            }
+            catch (SQLException e) {
+                throw new IllegalStateException(e);
+            }
+        });
+
+        final Struct after = reselectedAfter(7, "real-data", UNAVAILABLE);
+        processor.apply(reselectedKey(7), envelope(after, RESELECTED_TABLE));
+
+        assertThat(after.get("DOC_")).isEqualTo("db-doc-content");
+    }
+
+    private static class ClosableClob extends SerialClob {
+
+        private boolean closed;
+
+        ClosableClob(String value) throws SQLException {
+            super(value.toCharArray());
+        }
+
+        @Override
+        public long length() throws SerialException {
+            checkOpen();
+            return super.length();
+        }
+
+        @Override
+        public String getSubString(long pos, int length) throws SerialException {
+            checkOpen();
+            return super.getSubString(pos, length);
+        }
+
+        private void checkOpen() throws SerialException {
+            if (closed) {
+                throw new SerialException("Clob is no longer valid, its result set was closed");
+            }
+        }
     }
 
     private boolean answerReselect(InvocationOnMock invocation) throws Exception {
