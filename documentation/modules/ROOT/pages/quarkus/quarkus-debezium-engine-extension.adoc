@@ -29,6 +29,7 @@ The Extension supports well-established {prodname} features and much more! Here 
 
 - {prodname} Capturing Listener
 - {prodname} Custom Deserializer
+- {prodname} Error Handling and Retries
 - {prodname} Lifecycle events
 - {prodname} Heartbeat events
 - {prodname} Custom Data Type Converter
@@ -328,6 +329,104 @@ public class ProductHandler {
 
 }
 ```
+
+=== Error Handling and Retries for Capturing destinations
+
+When events are dispatched to capturing destinations, transient exceptions (e.g. temporary network failures or database locks) can occur. You can configure an automatic retry mechanism with exponential backoff or provide a custom CDI `ErrorHandler`.
+
+==== Default Exponential Backoff Retry
+
+The extension provides a built-in retry error handler using exponential backoff. Configure it in `application.properties`:
+
+[source,properties]
+----
+# Maximum number of retry attempts (0 disables retries)
+quarkus.debezium.capturing.error-handling.max-retries=3
+
+# Initial delay in milliseconds before the first retry (default: 1000)
+quarkus.debezium.capturing.error-handling.initial-delay-ms=500
+
+# Maximum delay in milliseconds between retries (default: 10000)
+quarkus.debezium.capturing.error-handling.max-delay-ms=5000
+
+# Backoff multiplier for delay increase (default: 2.0)
+quarkus.debezium.capturing.error-handling.delay-multiplier=2.0
+----
+
+In multi-engine configurations, you can also configure retries for a specific engine by ID:
+
+[source,properties]
+----
+quarkus.debezium.capturing.my-engine.error-handling.max-retries=5
+quarkus.debezium.capturing.my-engine.error-handling.initial-delay-ms=1000
+----
+
+==== Custom ErrorHandler
+
+For specialized requirements, such as dead-letter queuing, alerts, or poison-pill record filtering, you can implement the `io.debezium.runtime.ErrorHandler` interface:
+
+[source,java]
+----
+import io.debezium.runtime.BatchEvent;
+import io.debezium.runtime.CapturingEvent;
+import io.debezium.runtime.CapturingEvents;
+import io.debezium.runtime.ErrorHandler;
+import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.inject.Named;
+import org.apache.kafka.connect.source.SourceRecord;
+
+@ApplicationScoped
+@Named("customErrorHandler")
+public class CustomErrorHandler implements ErrorHandler {
+
+    @Override
+    public void handle(CapturingEvents<BatchEvent> records, BatchConsumer consumer) throws Exception {
+        try {
+            // Forward records to consumer (or filter/modify them)
+            consumer.accept(records);
+        }
+        catch (Exception e) {
+            // custom error or dead-letter logic
+            throw e;
+        }
+    }
+
+    @Override
+    public void handle(CapturingEvent<SourceRecord, SourceRecord> event, EventConsumer consumer) throws Exception {
+        try {
+            consumer.accept(event);
+        }
+        catch (Exception e) {
+            // custom error or dead-letter logic
+            throw e;
+        }
+    }
+}
+----
+
+Specify your custom handler in `application.properties` by CDI bean name or class name:
+
+[source,properties]
+----
+quarkus.debezium.capturing.error-handler=customErrorHandler
+----
+
+Or per engine:
+
+[source,properties]
+----
+quarkus.debezium.capturing.my-engine.error-handler=customErrorHandler
+----
+
+[NOTE]
+====
+If both a custom `error-handler` and retry configuration properties (`error-handling.*`) are specified, the custom `ErrorHandler` takes precedence and the built-in retry settings are ignored.
+====
+
+[NOTE]
+====
+When a batch execution is retried, all destination consumers in that batch will be re-executed. If a destination succeeded prior to a failure in another destination within the same batch, the successful destination will re-receive its events upon retry. Downstream consumers should be designed with at-least-once delivery semantics in mind.
+====
 
 == Lifecycle events
 
