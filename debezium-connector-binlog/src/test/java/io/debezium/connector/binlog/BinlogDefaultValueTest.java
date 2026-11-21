@@ -1058,7 +1058,7 @@ public abstract class BinlogDefaultValueTest<V extends BinlogValueConverters, P 
 
     @ParameterizedTest(name = "{0} DEFAULT {1}, {3}")
     @MethodSource("compactTemporalDefaults")
-    @FixFor("debezium/dbz#2767")
+    @FixFor({ "debezium/dbz#2767", "debezium/dbz#459" })
     void shouldConvertTemporalDefaultsWithoutDelimiters(String type, String literal, String normalizedLiteral, String action) {
         // The default temporal precision mode represents negative TIME values and TIME values of more than 24 hours
         final V adaptiveConverters = getValueConverter(JdbcValueConverters.DecimalMode.PRECISE,
@@ -1094,6 +1094,19 @@ public abstract class BinlogDefaultValueTest<V extends BinlogValueConverters, P 
                 Arguments.of("TIMESTAMP", "'20260928123456'", "'2026-09-28 12:34:56'"),
                 Arguments.of("TIMESTAMP", "20260928", "'2026-09-28 00:00:00'"),
                 Arguments.of("TIMESTAMP(3)", "20260928123456.789", "'2026-09-28 12:34:56.789'"),
+                // DATE defaults, and numbers that MySQL and MariaDB pad with leading zeros
+                Arguments.of("DATE", "123", "'2000-01-23'"),
+                Arguments.of("DATE", "1231", "'2000-12-31'"),
+                Arguments.of("DATE", "260928", "'2026-09-28'"),
+                Arguments.of("DATE", "'260928'", "'2026-09-28'"),
+                Arguments.of("DATE", "991231", "'1999-12-31'"),
+                Arguments.of("DATE", "20260928", "'2026-09-28'"),
+                Arguments.of("DATE", "'20260928'", "'2026-09-28'"),
+                Arguments.of("DATE", "101123456", "'2000-01-01'"),
+                Arguments.of("DATE", "20260928123456", "'2026-09-28'"),
+                Arguments.of("DATETIME", "123", "'2000-01-23 00:00:00'"),
+                Arguments.of("DATETIME", "101123456", "'2000-01-01 12:34:56'"),
+                Arguments.of("TIMESTAMP", "123", "'2000-01-23 00:00:00'"),
                 Arguments.of("TIME", "123456", "'12:34:56'"),
                 Arguments.of("TIME", "'123456'", "'12:34:56'"),
                 Arguments.of("TIME", "3456", "'00:34:56'"),
