@@ -69,6 +69,7 @@ public class EventRouter<R extends ConnectRecord<R>> implements Transformation<R
                 EventRouterConfigDefinition.OPERATION_INVALID_BEHAVIOR,
                 EventRouterConfigDefinition.EXPAND_JSON_PAYLOAD,
                 EventRouterConfigDefinition.TABLE_JSON_PAYLOAD_NULL_BEHAVIOR,
+                EventRouterConfigDefinition.TABLE_JSON_PAYLOAD_EXPANSION_FAILURE_BEHAVIOR,
                 ActivateTracingSpan.TRACING_SPAN_CONTEXT_FIELD,
                 ActivateTracingSpan.TRACING_OPERATION_NAME,
                 ActivateTracingSpan.TRACING_CONTEXT_FIELD_REQUIRED);

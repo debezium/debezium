@@ -276,6 +276,9 @@ transforms.outbox.table.expand.json.payload=true
 value.converter=org.apache.kafka.connect.json.JsonConverter
 ----
 
+By default, when the payload cannot be expanded into real JSON, the SMT logs a warning and emits the record with the unexpanded payload.
+To stop processing in this case instead, set the xref:outbox-event-router-property-table-json-payload-expansion-failure-behavior[`table.json.payload.expansion.failure.behavior`] option to `fail`.
+
 // Type: concept
 // Title: Using Apache Avro as the payload format in {prodname} outbox messages
 // ModuleID: outbox-event-router-using-avro-as-the-payload-format-in-debezium-outbox-messages
@@ -446,7 +449,8 @@ This ID will be stored in the emitted event's headers under the `id` key.
 |`false`
 |Table
 a|Specifies whether the SMT performs JSON expansion of a String payload.
-If no content found or in case of parsing error, the content is kept "as is".
+If no content found or the content is not valid JSON, the content is kept "as is" by default;
+see the xref:outbox-event-router-property-table-json-payload-expansion-failure-behavior[`table.json.payload.expansion.failure.behavior`] option for how to change this behavior.
 
 For more details, please see the xref:expanding-escaped-json-string-as-json[expanding escaped json] section.
 
@@ -466,6 +470,14 @@ Possible settings are:
 
 * `ignore` - Drop the empty array field.
 * `optional_string` - Keep the field as an optional array with an optional string element type.
+
+|[[outbox-event-router-property-table-json-payload-expansion-failure-behavior]]<<outbox-event-router-property-table-json-payload-expansion-failure-behavior, `table.json.payload.expansion.failure.behavior`>>
+|`warn`
+|Table
+a|When the JSON expansion property `table.expand.json.payload` is enabled and the payload cannot be expanded into real JSON, determines the behavior of the SMT. Possible settings are:
+
+* `warn` - The SMT logs a warning and emits the record with the unexpanded payload.
+* `fail` - The SMT throws an error that names the failing field and stops processing, both for a payload string that is not valid JSON and for a payload value that is not a string. In Kafka Connect the task stops unless `errors.tolerance=all` is set, which skips the record instead; Debezium Server and the embedded engine always stop processing.
 
 |[[outbox-event-router-property-table-fields-additional-placement]]<<outbox-event-router-property-table-fields-additional-placement, `table.fields.additional.placement`>>
 |

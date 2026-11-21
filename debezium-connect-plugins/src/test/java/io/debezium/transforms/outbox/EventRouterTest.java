@@ -1321,6 +1321,241 @@ public class EventRouterTest {
         assertThat(valueStruct.getString("payload")).isEqualTo(rawPayload);
     }
 
+    @Test
+    @FixFor("debezium/dbz#2744")
+    public void shouldFallBackToRawStringAndOnlyWarnWhenPayloadIsNotValidJson() {
+        // The payload is a truncated JSON string, so the expansion cannot even parse it. With the
+        // default 'warn' behavior the record must still be routed with the unexpanded string payload.
+        final LogInterceptor logInterceptor = new LogInterceptor(EventRouterDelegate.class);
+        final EventRouter<SourceRecord> router = new EventRouter<>();
+        final Map<String, String> config = new HashMap<>();
+        config.put(EventRouterConfigDefinition.EXPAND_JSON_PAYLOAD.name(), "true");
+        config.put(EventRouterConfigDefinition.FIELDS_ADDITIONAL_PLACEMENT.name(), "type:envelope");
+        router.configure(config);
+
+        final String rawPayload = "{\"items\": [{\"name\": \"itemA\"}, {\"name\":";
+        final SourceRecord eventRecord = createEventRecord(
+                "da8d6de6-3b77-45ff-8f44-57db55a7a06c",
+                "UserCreated",
+                "10711fa5",
+                "User",
+                rawPayload,
+                new HashMap<>(),
+                new HashMap<>());
+
+        final SourceRecord eventRouted = router.apply(eventRecord);
+
+        assertThat(eventRouted).isNotNull();
+        assertThat(logInterceptor.containsWarnMessage("JSON expansion of the 'payload' field failed")).isTrue();
+
+        final Schema valueSchema = eventRouted.valueSchema();
+        assertThat(valueSchema.type()).isEqualTo(SchemaBuilder.struct().type());
+        assertThat(valueSchema.field("payload").schema().type()).isEqualTo(Schema.Type.STRING);
+
+        final Struct valueStruct = (Struct) eventRouted.value();
+        assertThat(valueStruct.get("type")).isEqualTo("UserCreated");
+        assertThat(valueStruct.getString("payload")).isEqualTo(rawPayload);
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2744")
+    public void shouldFailWhenPayloadIsNotValidJsonAndExpansionFailureBehaviorIsFail() {
+        // Same unparseable payload, but with 'table.json.payload.expansion.failure.behavior=fail'
+        // the transform must stop instead of falling back to the unexpanded string.
+        final EventRouter<SourceRecord> router = new EventRouter<>();
+        final Map<String, String> config = new HashMap<>();
+        config.put(EventRouterConfigDefinition.EXPAND_JSON_PAYLOAD.name(), "true");
+        config.put(EventRouterConfigDefinition.TABLE_JSON_PAYLOAD_EXPANSION_FAILURE_BEHAVIOR.name(),
+                EventRouterConfigDefinition.JsonPayloadExpansionFailureBehavior.FAIL.getValue());
+        router.configure(config);
+
+        final String rawPayload = "{\"items\": [{\"name\": \"itemA\"}, {\"name\":";
+        final SourceRecord eventRecord = createEventRecord(
+                "da8d6de6-3b77-45ff-8f44-57db55a7a06c",
+                "UserCreated",
+                "10711fa5",
+                "User",
+                rawPayload,
+                new HashMap<>(),
+                new HashMap<>());
+
+        final ConnectException exception = assertThrows(ConnectException.class, () -> router.apply(eventRecord));
+
+        assertThat(exception.getMessage()).contains("'payload'");
+        assertThat(exception.getMessage()).contains("Cause:");
+        assertThat(exception.getMessage()).contains("com.fasterxml.jackson");
+        assertThat(exception.getMessage()).doesNotContain(rawPayload);
+        assertThat(exception.getCause()).isNull();
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2744")
+    public void shouldEmitTombstoneForEmptyPayloadEvenWhenExpansionFailureBehaviorIsFail() {
+        // An empty payload is a delete signal (route.tombstone.on.empty.payload), not an
+        // expansion failure; with 'fail' configured it must not stop the task, and it must
+        // not be logged as an expansion failure either.
+        final LogInterceptor logInterceptor = new LogInterceptor(EventRouterDelegate.class);
+        final EventRouter<SourceRecord> router = new EventRouter<>();
+        final Map<String, String> config = new HashMap<>();
+        config.put(EventRouterConfigDefinition.EXPAND_JSON_PAYLOAD.name(), "true");
+        config.put(EventRouterConfigDefinition.TABLE_JSON_PAYLOAD_EXPANSION_FAILURE_BEHAVIOR.name(),
+                EventRouterConfigDefinition.JsonPayloadExpansionFailureBehavior.FAIL.getValue());
+        config.put(EventRouterConfigDefinition.ROUTE_TOMBSTONE_ON_EMPTY_PAYLOAD.name(), "true");
+        router.configure(config);
+
+        final SourceRecord eventRecord = createEventRecord(
+                "da8d6de6-3b77-45ff-8f44-57db55a7a06c",
+                "UserCreated",
+                "10711fa5",
+                "User",
+                "",
+                new HashMap<>(),
+                new HashMap<>());
+
+        final SourceRecord eventRouted = router.apply(eventRecord);
+
+        assertThat(eventRouted).isNotNull();
+        assertThat(eventRouted.value()).isNull();
+        VerifyRecord.isValidTombstone(eventRouted);
+        assertThat(logInterceptor.containsWarnMessage("JSON expansion of the 'payload' field failed")).isFalse();
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2744")
+    public void shouldExpandJsonWithLeadingWhitespaceEvenWhenExpansionFailureBehaviorIsFail() {
+        // The JSON detection must trim first: a payload string with leading whitespace is still
+        // valid JSON and must be expanded even with 'fail' configured.
+        final EventRouter<SourceRecord> router = new EventRouter<>();
+        final Map<String, String> config = new HashMap<>();
+        config.put(EventRouterConfigDefinition.EXPAND_JSON_PAYLOAD.name(), "true");
+        config.put(EventRouterConfigDefinition.FIELDS_ADDITIONAL_PLACEMENT.name(), "type:envelope");
+        config.put(EventRouterConfigDefinition.TABLE_JSON_PAYLOAD_EXPANSION_FAILURE_BEHAVIOR.name(),
+                EventRouterConfigDefinition.JsonPayloadExpansionFailureBehavior.FAIL.getValue());
+        router.configure(config);
+
+        final SourceRecord eventRecord = createEventRecord(
+                "da8d6de6-3b77-45ff-8f44-57db55a7a06c",
+                "UserCreated",
+                "10711fa5",
+                "User",
+                "  {\"fullName\": \"John Doe\"}",
+                new HashMap<>(),
+                new HashMap<>());
+        final SourceRecord eventRouted = router.apply(eventRecord);
+
+        assertThat(eventRouted).isNotNull();
+
+        final Schema valueSchema = eventRouted.valueSchema();
+        assertThat(valueSchema.type()).isEqualTo(SchemaBuilder.struct().type());
+        assertThat(valueSchema.field("payload").schema().type()).isEqualTo(Schema.Type.STRUCT);
+
+        final Struct valueStruct = (Struct) eventRouted.value();
+        assertThat(asStruct(valueStruct.get("payload")).get("fullName")).isEqualTo("John Doe");
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2744")
+    public void shouldEmitEmptyStringPayloadUnchangedWithoutWarningWhenBehaviorIsWarn() {
+        // An empty payload is a delete signal, not an expansion failure, so even with expansion
+        // enabled it must not be logged as one. With route.tombstone.on.empty.payload disabled
+        // (the default) the empty string is emitted unchanged rather than as a tombstone.
+        final LogInterceptor logInterceptor = new LogInterceptor(EventRouterDelegate.class);
+        final EventRouter<SourceRecord> router = new EventRouter<>();
+        final Map<String, String> config = new HashMap<>();
+        config.put(EventRouterConfigDefinition.EXPAND_JSON_PAYLOAD.name(), "true");
+        config.put(EventRouterConfigDefinition.TABLE_JSON_PAYLOAD_EXPANSION_FAILURE_BEHAVIOR.name(), "warn");
+        config.put(EventRouterConfigDefinition.FIELDS_ADDITIONAL_PLACEMENT.name(), "type:envelope");
+        router.configure(config);
+
+        final SourceRecord eventRecord = createEventRecord(
+                "da8d6de6-3b77-45ff-8f44-57db55a7a06c",
+                "UserCreated",
+                "10711fa5",
+                "User",
+                "",
+                new HashMap<>(),
+                new HashMap<>());
+
+        final SourceRecord eventRouted = router.apply(eventRecord);
+
+        assertThat(eventRouted).isNotNull();
+        assertThat(eventRouted.value()).isNotNull();
+
+        final Schema valueSchema = eventRouted.valueSchema();
+        assertThat(valueSchema.field("payload").schema().type()).isEqualTo(Schema.Type.STRING);
+
+        final Struct valueStruct = (Struct) eventRouted.value();
+        assertThat(valueStruct.getString("payload")).isEmpty();
+        assertThat(logInterceptor.containsWarnMessage("JSON expansion of the 'payload' field failed")).isFalse();
+        assertThat(logInterceptor.containsWarnMessage("Expand JSON payload is turned on but payload is not a string")).isFalse();
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2744")
+    public void shouldFailWhenPayloadIsNotAStringAndExpansionFailureBehaviorIsFail() {
+        // A non-string payload cannot be expanded at all, which is almost always a configuration
+        // error; with 'fail' the transform must stop on the first record with an error naming the
+        // field and the actual type instead of warning once per record.
+        final EventRouter<SourceRecord> router = new EventRouter<>();
+        final Map<String, String> config = new HashMap<>();
+        config.put(EventRouterConfigDefinition.EXPAND_JSON_PAYLOAD.name(), "true");
+        config.put(EventRouterConfigDefinition.TABLE_JSON_PAYLOAD_EXPANSION_FAILURE_BEHAVIOR.name(),
+                EventRouterConfigDefinition.JsonPayloadExpansionFailureBehavior.FAIL.getValue());
+        router.configure(config);
+
+        final SourceRecord eventRecord = createEventRecord(
+                "da8d6de6-3b77-45ff-8f44-57db55a7a06c",
+                SchemaBuilder.string(),
+                "UserCreated",
+                SchemaBuilder.string(),
+                "10711fa5",
+                "User",
+                SchemaBuilder.bytes(),
+                "not json".getBytes(),
+                new HashMap<>(),
+                new HashMap<>());
+
+        final ConnectException exception = assertThrows(ConnectException.class, () -> router.apply(eventRecord));
+
+        assertThat(exception.getMessage()).contains("'payload'");
+        assertThat(exception.getMessage()).contains("byte[]");
+        assertThat(exception.getMessage()).contains("not a string");
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2744")
+    public void shouldWarnAndEmitRecordUnchangedWhenPayloadIsNotAStringAndBehaviorIsWarn() {
+        // With the default 'warn' behavior a non-string payload keeps its existing handling:
+        // a warning is logged and the record is emitted with the payload unchanged.
+        final LogInterceptor logInterceptor = new LogInterceptor(EventRouterDelegate.class);
+        final EventRouter<SourceRecord> router = new EventRouter<>();
+        final Map<String, String> config = new HashMap<>();
+        config.put(EventRouterConfigDefinition.EXPAND_JSON_PAYLOAD.name(), "true");
+        config.put(EventRouterConfigDefinition.FIELDS_ADDITIONAL_PLACEMENT.name(), "type:envelope");
+        router.configure(config);
+
+        final byte[] payload = "not json".getBytes();
+        final SourceRecord eventRecord = createEventRecord(
+                "da8d6de6-3b77-45ff-8f44-57db55a7a06c",
+                SchemaBuilder.string(),
+                "UserCreated",
+                SchemaBuilder.string(),
+                "10711fa5",
+                "User",
+                SchemaBuilder.bytes(),
+                payload,
+                new HashMap<>(),
+                new HashMap<>());
+
+        final SourceRecord eventRouted = router.apply(eventRecord);
+
+        assertThat(eventRouted).isNotNull();
+        assertThat(logInterceptor.containsWarnMessage("Expand JSON payload is turned on but payload is not a string")).isTrue();
+
+        final Struct valueStruct = (Struct) eventRouted.value();
+        assertThat((byte[]) valueStruct.get("payload")).containsExactly(payload);
+    }
+
     private SourceRecord createEventRecord() {
         return createEventRecord(
                 "da8d6de6-3b77-45ff-8f44-57db55a7a06c",
