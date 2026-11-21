@@ -11,6 +11,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
@@ -245,9 +246,11 @@ class MongoDbConnectionLifecycleIT extends AbstractMongoConnectorIT {
                 firstTask.start(configuration(first).asMap());
                 secondTask.start(configuration(second).asMap());
                 firstTask.put(List.of(sinkRecord(1)));
+                firstTask.flush(Map.of());
                 firstTask.stop();
                 first.assertReleased();
                 secondTask.put(List.of(sinkRecord(2)));
+                secondTask.flush(Map.of());
                 second.assertAuthenticationActive();
                 try (var client = TestHelper.connect(mongo)) {
                     assertThat(client.getDatabase("lifecycle_sink").getCollection("lifecycle_items").countDocuments()).isEqualTo(2);

@@ -7,12 +7,8 @@ package io.debezium.connector.mongodb.sink;
 
 import static io.debezium.config.ConfigurationNames.CONNECTOR_NAME_PROPERTY;
 import static io.debezium.config.ConfigurationNames.TASK_ID_PROPERTY_NAME;
-import static io.debezium.openlineage.dataset.DatasetMetadata.STREAM_DATASET_TYPE;
-import static io.debezium.openlineage.dataset.DatasetMetadata.DataStore.KAFKA;
-import static io.debezium.openlineage.dataset.DatasetMetadata.DatasetKind.INPUT;
 
 import java.util.Collection;
-import java.util.List;
 import java.util.Map;
 
 import org.apache.kafka.clients.consumer.OffsetAndMetadata;
@@ -24,8 +20,6 @@ import org.apache.kafka.connect.sink.SinkTaskContext;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.mongodb.internal.VisibleForTesting;
-
 import io.debezium.config.Configuration;
 import io.debezium.connector.common.DebeziumTaskState;
 import io.debezium.connector.common.UUIDUtils;
@@ -35,15 +29,14 @@ import io.debezium.dlq.ErrorReporter;
 import io.debezium.dlq.ErrorReporters;
 import io.debezium.openlineage.ConnectorContext;
 import io.debezium.openlineage.DebeziumOpenLineageEmitter;
-import io.debezium.openlineage.dataset.DatasetDataExtractor;
-import io.debezium.openlineage.dataset.DatasetMetadata;
+import io.debezium.util.Stopwatch;
 
 public class MongoDbSinkConnectorTask extends SinkTask {
     static final Logger LOGGER = LoggerFactory.getLogger(MongoDbSinkConnectorTask.class);
+
     private static final String CONNECTOR_TYPE = "sink";
     private MongoDbChangeEventSink mongoSink;
     private ConnectorContext connectorContext;
-    private DatasetDataExtractor datasetDataExtractor;
     private MongoDbConnectionContext connectionContext;
 
     @Override
@@ -67,15 +60,15 @@ public class MongoDbSinkConnectorTask extends SinkTask {
             connectionContext = new MongoDbConnectionContext(config);
             client = connectionContext.openClient();
 
-            datasetDataExtractor = new DatasetDataExtractor();
             String connectorName = props.get(CONNECTOR_NAME_PROPERTY);
             String taskId = props.getOrDefault(TASK_ID_PROPERTY_NAME, "0");
             connectorContext = new ConnectorContext(connectorName, Module.name(), taskId, Module.version(), UUIDUtils.generateNewUUID(),
                     getMaskedConfigurationMap(props));
 
             DebeziumOpenLineageEmitter.emit(connectorContext, DebeziumTaskState.INITIAL);
-            mongoSink = new MongoDbChangeEventSink(sinkConfig, client, ErrorReporters.fromContext(context), connectorContext);
-            DebeziumOpenLineageEmitter.emit(connectorContext, DebeziumTaskState.RUNNING);
+            ErrorReporter errorReporter = ErrorReporters.fromContext(context);
+            ErrorReporters.validateConfiguration(errorReporter, props);
+            mongoSink = new MongoDbChangeEventSink(sinkConfig, client, errorReporter, connectorContext);
         }
         catch (RuntimeException | Error taskStartingException) {
             // noinspection EmptyTryBlock
@@ -91,6 +84,7 @@ public class MongoDbSinkConnectorTask extends SinkTask {
             throw new ConnectException("Failed to start MongoDB sink task", taskStartingException);
         }
 
+        DebeziumOpenLineageEmitter.emit(connectorContext, DebeziumTaskState.RUNNING);
         LOGGER.debug("Started MongoDB sink task");
     }
 
@@ -108,14 +102,17 @@ public class MongoDbSinkConnectorTask extends SinkTask {
      */
     @Override
     public void put(final Collection<SinkRecord> records) {
+        Stopwatch executeStopWatch = Stopwatch.reusable();
         try {
-            records.forEach(record -> DebeziumOpenLineageEmitter.emit(connectorContext, DebeziumTaskState.RUNNING,
-                    List.of(new DatasetMetadata(record.topic(), INPUT, STREAM_DATASET_TYPE, KAFKA, datasetDataExtractor.extract(record)))));
+            executeStopWatch.start();
             mongoSink.execute(records);
+            executeStopWatch.stop();
         }
         catch (Exception e) {
             DebeziumOpenLineageEmitter.emit(connectorContext, DebeziumTaskState.RESTARTING, e);
+            throw e;
         }
+        LOGGER.trace("[PERF] Sink execute execution time {}", executeStopWatch.durations());
     }
 
     /**
@@ -126,9 +123,19 @@ public class MongoDbSinkConnectorTask extends SinkTask {
      *     offsets included in the {@link SinkRecord}s passed to {@link #put}.
      */
     @Override
+    public Map<TopicPartition, OffsetAndMetadata> preCommit(Map<TopicPartition, OffsetAndMetadata> currentOffsets) {
+        flush(currentOffsets);
+        return currentOffsets;
+    }
+
+    @Override
     public void flush(final Map<TopicPartition, OffsetAndMetadata> currentOffsets) {
-        // NOTE: flush is not used for now...
-        LOGGER.debug("Flush called - noop");
+        if (mongoSink != null) {
+            mongoSink.forceFlush();
+        }
+        else {
+            LOGGER.debug("Flush called - noop");
+        }
     }
 
     /**
@@ -160,8 +167,4 @@ public class MongoDbSinkConnectorTask extends SinkTask {
         return Configuration.from(props).withMaskedPasswords().asMap();
     }
 
-    @VisibleForTesting(otherwise = VisibleForTesting.AccessModifier.PRIVATE)
-    static ErrorReporter nopErrorReporter() {
-        return ErrorReporters.nop();
-    }
 }

@@ -17,7 +17,6 @@ import io.debezium.sink.batch.Batch;
 /**
  * A change event sink that consumes events from one or more Kafka topics.
  *
- * @author Chris Cranford
  */
 @Incubating
 public interface ChangeEventSink extends AutoCloseable {
@@ -43,4 +42,16 @@ public interface ChangeEventSink extends AutoCloseable {
      * @return a list of {@link Batch}es of {@link io.debezium.sink.DebeziumSinkRecord}
      */
     List<Batch> forcePoll();
+
+    /**
+     * This is the main entry point called by the sink connector task's
+     * {@link org.apache.kafka.connect.sink.SinkTask#put(Collection)} method. It combines
+     * {@link #put(Collection)} (conversion and buffering) with batch writing in a single call.
+     * Records that fail conversion or writing are reported to the configured error reporter
+     * rather than propagating exceptions, unless the error is classified as retriable.
+     *
+     * @param records the Kafka Connect sink records to process, never {@code null}
+     */
+    void execute(Collection<SinkRecord> records);
+
 }

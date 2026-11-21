@@ -8,7 +8,10 @@ package io.debezium.sink;
 import java.util.Set;
 
 import org.apache.kafka.common.config.ConfigDef;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
+import io.debezium.config.Configuration;
 import io.debezium.config.EnumeratedValue;
 import io.debezium.config.Field;
 import io.debezium.sink.filter.FieldFilterFactory.FieldNameFilter;
@@ -16,6 +19,18 @@ import io.debezium.sink.naming.CollectionNamingStrategy;
 import io.debezium.sink.naming.DefaultCollectionNamingStrategy;
 
 public interface SinkConnectorConfig {
+
+    /**
+     * Hidden LOGGER.
+     *
+     * @return Logger returns the interface's internal non-public LOGGER.
+     */
+    private static Logger getLogger() {
+        final class LogHolder {
+            private static final Logger LOGGER = LoggerFactory.getLogger(SinkConnectorConfig.class);
+        }
+        return LogHolder.LOGGER;
+    }
 
     /**
      * Different modes that which primary keys are handled.
@@ -171,6 +186,18 @@ public interface SinkConnectorConfig {
             .withDefault(false)
             .withDescription("Whether to process debezium event `t` as truncate statement.");
 
+    private static int validateDeleteEnabled(Configuration config, Field field, Field.ValidationOutput problems) {
+        if (config.getBoolean(field)) {
+            final PrimaryKeyMode primaryKeyMode = PrimaryKeyMode.parse(config.getString(PRIMARY_KEY_MODE));
+            if (PrimaryKeyMode.NONE.equals(primaryKeyMode)) {
+                getLogger().error("Cannot enable '{}' when '{}' is set to '{}': deletes require a primary key to identify target rows.",
+                        DELETE_ENABLED_FIELD.name(), PRIMARY_KEY_MODE_FIELD.name(), PrimaryKeyMode.NONE.getValue());
+                return 1;
+            }
+        }
+        return 0;
+    }
+
     String DELETE_ENABLED = "delete.enabled";
     Field DELETE_ENABLED_FIELD = Field.create(DELETE_ENABLED)
             .withDisplayName("Controls whether records can be deleted by the connector")
@@ -179,12 +206,13 @@ public interface SinkConnectorConfig {
             .withWidth(ConfigDef.Width.SHORT)
             .withImportance(ConfigDef.Importance.LOW)
             .withDefault(false)
+            .withValidation(SinkConnectorConfig::validateDeleteEnabled)
             .withDescription("Whether to treat `null` record values as deletes. Requires primary.key.mode to be `record.key`.");
 
     String PRIMARY_KEY_MODE = "primary.key.mode";
     Field PRIMARY_KEY_MODE_FIELD = Field.create(PRIMARY_KEY_MODE)
             .withDisplayName("Primary key mode")
-            .withEnum(PrimaryKeyMode.class, PrimaryKeyMode.NONE)
+            .withEnum(PrimaryKeyMode.class, PrimaryKeyMode.RECORD_KEY)
             .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR))
             .withWidth(ConfigDef.Width.SHORT)
             .withImportance(ConfigDef.Importance.HIGH)
