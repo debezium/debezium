@@ -868,6 +868,11 @@ A CockroachDB user that has one of the following privileges on the target tables
 * The `ALL` privilege
 * Membership in the `admin` role
 
++
+In CockroachDB v26.4 and later, a user that is not a member of the `admin` role also requires the `EXTERNALIOIMPLICITACCESS` system privilege to create a changefeed that writes to a Kafka URI.
+The connector creates such a changefeed in the `kafka` delivery mode.
+The `sinkless` delivery mode does not require the privilege.
+
 [id="cockroachdb-grant-changefeed-permissions"]
 === Granting changefeed permissions
 
@@ -889,9 +894,19 @@ GRANT VIEWCLUSTERSETTING TO myuser;
 
 -- Or grant on all tables in a database
 GRANT CHANGEFEED ON ALL TABLES IN DATABASE defaultdb TO myuser;
+
+-- CockroachDB v26.4 and later, kafka delivery mode: allow a non-admin user to write to a Kafka URI
+GRANT SYSTEM EXTERNALIOIMPLICITACCESS TO myuser;
 ----
 +
 Granting `VIEWCLUSTERSETTING` lets the connector verify that `kv.rangefeed.enabled` is set to `true`, which is a prerequisite for changefeeds.
++
+In CockroachDB v26.4 and later, if a user that is not a member of the `admin` role does not have the `EXTERNALIOIMPLICITACCESS` system privilege, CockroachDB rejects a changefeed that writes to a Kafka URI with the following error:
++
+[source]
+----
+only users with the admin role or the EXTERNALIOIMPLICITACCESS system privilege are allowed to access the specified kafka URI
+----
 
 [id="cockroachdb-securing-the-changefeed-sink"]
 == Securing the changefeed sink
