@@ -973,7 +973,12 @@ public class PostgresConnection extends JdbcConnection {
                 catalogName,
                 null,
                 null,
-                new String[]{ "TABLE", "PARTITIONED TABLE" });
+                getCapturableTableTypes());
+    }
+
+    @Override
+    protected String[] getCapturableTableTypes() {
+        return new String[]{ "TABLE", "PARTITIONED TABLE" };
     }
 
     @Override

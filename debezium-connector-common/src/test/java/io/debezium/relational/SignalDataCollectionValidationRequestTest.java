@@ -9,14 +9,17 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
+import java.util.EnumSet;
 import java.util.List;
 import java.util.function.Function;
 
 import org.junit.jupiter.api.Test;
 
 import io.debezium.config.CommonConnectorConfig.WatermarkStrategy;
+import io.debezium.data.Envelope.Operation;
 import io.debezium.jdbc.JdbcConnection;
 import io.debezium.pipeline.signal.channels.SourceSignalChannel;
+import io.debezium.relational.SignalDataCollectionValidationRequest.ConnectorValidator;
 import io.debezium.relational.Tables.ColumnNameFilter;
 
 /**
@@ -32,6 +35,7 @@ public class SignalDataCollectionValidationRequestTest {
         when(connectorConfig.getEnabledChannels()).thenReturn(List.of(SourceSignalChannel.CHANNEL_NAME));
         when(connectorConfig.getColumnFilter()).thenReturn((catalog, schema, table, column) -> true);
         when(connectorConfig.getIncrementalSnapshotWatermarkingStrategy()).thenReturn(WatermarkStrategy.INSERT_INSERT);
+        when(connectorConfig.getSkippedSignalOperations()).thenReturn(EnumSet.of(Operation.CREATE));
         return connectorConfig;
     }
 
@@ -41,21 +45,26 @@ public class SignalDataCollectionValidationRequestTest {
         ColumnNameFilter columnFilter = connectorConfig.getColumnFilter();
         Function<String, JdbcConnection> connectionResolver = rawValue -> mock(JdbcConnection.class);
 
-        SignalDataCollectionValidationRequest request = SignalDataCollectionValidationRequest.forConnector(connectorConfig, connectionResolver);
+        ConnectorValidator connectorCheck = (signalDataCollection, errors) -> {
+        };
+
+        SignalDataCollectionValidationRequest request = SignalDataCollectionValidationRequest.forConnector(connectorConfig, connectionResolver, connectorCheck);
 
         assertThat(request.rawValues()).containsExactly("dbo.debezium_signal");
         assertThat(request.validationEnabled()).isTrue();
         assertThat(request.streamingCapable()).isTrue();
         assertThat(request.sourceChannelEnabled()).isTrue();
         assertThat(request.insertDeleteWatermarking()).isFalse();
+        assertThat(request.skippedSignalOperations()).containsExactly(Operation.CREATE);
         assertThat(request.connectionResolver()).isSameAs(connectionResolver);
         assertThat(request.columnFilter()).isSameAs(columnFilter);
+        assertThat(request.connectorCheck()).isSameAs(connectorCheck);
     }
 
     @Test
     public void shouldMarkNotStreamingCapableWhenSnapshotModeIsInitialOnly() {
         SignalDataCollectionValidationRequest request = SignalDataCollectionValidationRequest.forConnector(
-                connectorConfig("initial_only"), rawValue -> mock(JdbcConnection.class));
+                connectorConfig("initial_only"), rawValue -> mock(JdbcConnection.class), ConnectorValidator.NONE);
 
         assertThat(request.streamingCapable()).isFalse();
     }
@@ -66,7 +75,7 @@ public class SignalDataCollectionValidationRequestTest {
         when(connectorConfig.getIncrementalSnapshotWatermarkingStrategy()).thenReturn(WatermarkStrategy.INSERT_DELETE);
 
         SignalDataCollectionValidationRequest request = SignalDataCollectionValidationRequest.forConnector(
-                connectorConfig, rawValue -> mock(JdbcConnection.class));
+                connectorConfig, rawValue -> mock(JdbcConnection.class), ConnectorValidator.NONE);
 
         assertThat(request.insertDeleteWatermarking()).isTrue();
     }

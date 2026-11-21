@@ -2280,7 +2280,10 @@ Use the following format to specify the collection name:
 |[[mongodb-property-signal-data-collection-validation-enabled]]<<mongodb-property-signal-data-collection-validation-enabled, `+signal.data.collection.validation.enabled+`>>
 |`false`
 |Specifies whether the connector validates the configured `signal.data.collection` when the connector starts.
-When set to `true`, the connector checks that the signal data collection exists and uses the expected format, and reports a problem if the configuration is invalid.
+When set to `true`, the connector reports a problem and fails to start if any of the following checks do not pass:
+
+* The signal data collection exists as a collection, not a view, and is visible to the connector user.
+* The value uses the `<database>.<collection>` format.
 
 |[[mongodb-property-signal-enabled-channels]]<<mongodb-property-signal-enabled-channels, `+signal.enabled.channels+`>>
 |source
