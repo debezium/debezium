@@ -849,6 +849,8 @@ public abstract class BinlogStreamingChangeEventSource<P extends BinlogPartition
                     BinlogConnectorConfig.BUFFER_SIZE_FOR_BINLOG_READER.name());
         }
 
+        applySessionTimeZone(command);
+
         List<SchemaChangeEvent> schemaChangeEvents = schema.parseStreamingDdl(partition, sql,
                 command.getDatabase(), offsetContext, eventTime);
 
@@ -887,6 +889,21 @@ public abstract class BinlogStreamingChangeEventSource<P extends BinlogPartition
         }
         catch (InterruptedException e) {
             LOGGER.info("Processing interrupted");
+        }
+    }
+
+    /**
+     * Sets the time zone of the session that ran the statement, in which MySQL and MariaDB interpret its {@code TIMESTAMP}
+     * literals, if it differs from the current one. The schema history records it with the statement, if it records the
+     * statement.
+     *
+     * @see BinlogDatabaseSchema#setSessionTimeZone(String)
+     */
+    private void applySessionTimeZone(QueryEventData command) {
+        // The binlog client reads it from the status variables of the query event
+        final String timeZone = command.getTimeZone();
+        if (timeZone != null && !timeZone.equals(schema.sessionTimeZone())) {
+            schema.setSessionTimeZone(timeZone);
         }
     }
 
