@@ -573,6 +573,44 @@ The connector rejects an unsupported table before emitting snapshot data or stre
 Add a primary key, configure an explicit message key, or disable this mode to capture such a table.
 +
 Because the schema is read from the binlog itself, the connector correctly resumes streaming after a restart that occurs in the middle of a multi-row `INSERT` or `UPDATE` operation.
+
+[id="{context}-property-binlog-metadata-based-schema-change-events"]
+xref:{context}-property-binlog-metadata-based-schema-change-events[`binlog.metadata.based.schema.change.events`]::
+
+Default value::: `false`
+
+Description:::
+Specifies whether the connector emits a schema change event when it detects, from `TABLE_MAP` metadata alone, that the structure of a table changed.
+This option applies only when xref:{context}-property-binlog-metadata-based-schema[`binlog.metadata.based.schema`] is set to `true`, and the events are published only when xref:{context}-property-include-schema-changes[`include.schema.changes`] is enabled.
++
+A schema change that runs with binary logging disabled, for example an `ALTER TABLE` that is applied to each replica with `sql_log_bin=OFF`, leaves no DDL statement in the binlog.
+When this option is set to `true`, the connector compares the structure in each `TABLE_MAP` event with the structure from the previous `TABLE_MAP` event for the same table.
+If the structures differ and the connector read no DDL statement for the change, it emits a schema change event before the row events that follow.
++
+These events differ from the events for DDL statements:
+
+* The `ddl` field is `null`, because the original statement is not available.
+* The `tableChanges` field describes the table as reconstructed from `TABLE_MAP` metadata.
+It does not include attributes that the metadata does not carry, such as default values, comments, and secondary indexes.
+Consumers must not interpret the absence of these attributes as their removal.
+* The source position is the position of the `TABLE_MAP` event in which the connector first observes the new structure, not the time at which the DDL statement ran.
+* An event reports that the structure that the connector observes changed; it is not a record of the DDL statements that ran.
+If a table is altered several times before the connector reads its next `TABLE_MAP` event, the connector emits one event for the resulting structure.
+* The connector emits the event before the row events that follow it.
+Because schema change events and data change events are written to different topics, consumers cannot rely on reading them in that order.
+
++
+Detection is best effort:
+
+* The connector keeps the previous structure of a table in memory only.
+After a restart, the first `TABLE_MAP` event that the connector reads for a table only establishes the structure to compare against.
+A change is therefore not reported if the connector restarts after the unlogged change and does not read a `TABLE_MAP` event with the previous structure again.
+This can also happen if the connector stops after it detects a change but before the schema change event is written to Kafka.
+* A change can be reported more than once.
+If the connector resumes from an offset before the change, for example after a restart or an offset rewind, it reads both structures again and emits the event again.
+* A change is not reported for a table that the connector has not yet read a `TABLE_MAP` event for, such as a change between the snapshot and the first row change of the table.
+* Only changes to attributes that are present in `TABLE_MAP` metadata are detected: column names, types, lengths, character sets, nullability, `ENUM`/`SET` values, and the primary key.
+* A change is not reported when a DDL statement that the connector could not parse was skipped, because the connector then discards the structures that it compares against.
 +
 This mode works with any `snapshot.mode`.
 For modes that do not snapshot data (for example `no_data`), a fresh connector records the current binlog position before it begins streaming, so it captures only changes that occur from that point forward, rather than replaying the earliest available binlog.

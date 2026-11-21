@@ -1018,7 +1018,15 @@ public abstract class BinlogStreamingChangeEventSource<P extends BinlogPartition
             // event precedes the row events for its table within every transaction (and is re-read from the
             // transaction BEGIN when a restart resumes mid-transaction), the schema is always refreshed
             // before the resumed row events are decoded.
-            schema.registerTableFromBinlogMetadata(metadata);
+            if (connectorConfig.isBinlogMetadataBasedSchemaChangeEventsEnabled()) {
+                final Optional<Table> changedTable = schema.registerTableFromBinlogMetadataAndDetectChange(metadata);
+                if (changedTable.isPresent()) {
+                    dispatchSchemaChangeDetectedFromBinlogMetadata(partition, offsetContext, changedTable.get());
+                }
+            }
+            else {
+                schema.registerTableFromBinlogMetadata(metadata);
+            }
         }
         if (schema.assignTableNumber(tableNumber, tableId)) {
             LOGGER.debug("Received update table metadata event: {}", event);
@@ -1026,6 +1034,32 @@ public abstract class BinlogStreamingChangeEventSource<P extends BinlogPartition
         else {
             informAboutUnknownTableIfRequired(partition, offsetContext, event, tableId);
         }
+    }
+
+    /**
+     * Emits a schema change event for a table whose structure changed without a DDL statement in the binlog.
+     * The event is positioned at the {@code TABLE_MAP} event that first carries the new structure and is
+     * dispatched before the row events that follow it. It has no DDL statement, and its table lacks what the
+     * binlog metadata does not carry, such as default values and comments.
+     */
+    private void dispatchSchemaChangeDetectedFromBinlogMetadata(P partition, O offsetContext, Table table) throws InterruptedException {
+        final TableId tableId = table.id();
+        LOGGER.info("The structure of table '{}' changed without a DDL statement in the binlog; emitting a schema change event "
+                + "for the table reconstructed from the TABLE_MAP metadata", tableId);
+        offsetContext.tableEvent(tableId.catalog(), Set.of(tableId), Conversions.toInstantFromMillis(eventTimestamp.toEpochMilli()));
+        final SchemaChangeEvent schemaChangeEvent = SchemaChangeEvent.of(SchemaChangeEvent.SchemaChangeEventType.ALTER,
+                partition, offsetContext, tableId.catalog(), null, null, table, false);
+        if (schema.skipSchemaChangeEvent(schemaChangeEvent)) {
+            return;
+        }
+        eventDispatcher.dispatchSchemaChangeEvent(partition, offsetContext, tableId, (receiver) -> {
+            try {
+                receiver.schemaChangeEvent(schemaChangeEvent);
+            }
+            catch (Exception e) {
+                throw new DebeziumException(e);
+            }
+        });
     }
 
     /**
