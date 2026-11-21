@@ -48,7 +48,20 @@ public class SignalBasedIncrementalSnapshotChangeEventSource<P extends Partition
                                                            SnapshotProgressListener<P> progressListener,
                                                            DataChangeEventListener<P> dataChangeEventListener,
                                                            NotificationService<P, ? extends OffsetContext> notificationService) {
-        super(config, jdbcConnection, dispatcher, databaseSchema, clock, progressListener, dataChangeEventListener, notificationService);
+        this(config, jdbcConnection, dispatcher, databaseSchema, clock, progressListener, dataChangeEventListener, notificationService,
+                UndefinedColumnClassifier.NONE);
+    }
+
+    public SignalBasedIncrementalSnapshotChangeEventSource(RelationalDatabaseConnectorConfig config,
+                                                           JdbcConnection jdbcConnection,
+                                                           EventDispatcher<P, T> dispatcher, DatabaseSchema<?> databaseSchema,
+                                                           Clock clock,
+                                                           SnapshotProgressListener<P> progressListener,
+                                                           DataChangeEventListener<P> dataChangeEventListener,
+                                                           NotificationService<P, ? extends OffsetContext> notificationService,
+                                                           UndefinedColumnClassifier undefinedColumnClassifier) {
+        super(config, jdbcConnection, dispatcher, databaseSchema, clock, progressListener, dataChangeEventListener, notificationService,
+                undefinedColumnClassifier);
     }
 
     /**

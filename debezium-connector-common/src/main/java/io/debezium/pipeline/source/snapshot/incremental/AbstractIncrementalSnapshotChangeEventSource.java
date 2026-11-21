@@ -25,6 +25,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.OptionalLong;
+import java.util.Set;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -76,12 +77,22 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<P extends Par
 
     private static final Logger LOGGER = LoggerFactory.getLogger(AbstractIncrementalSnapshotChangeEventSource.class);
 
+    private static final int MAX_STALE_SCHEMA_DEFERRALS = 3;
+    private static final int MAX_STALE_TABLE_DEFERRALS = 10;
+
     protected final RelationalDatabaseConnectorConfig connectorConfig;
     private final Clock clock;
     private final RelationalDatabaseSchema databaseSchema;
     private final SnapshotProgressListener<P> progressListener;
     private final DataChangeEventListener<P> dataListener;
+    private final UndefinedColumnClassifier undefinedColumnClassifier;
     private long totalRowsScanned = 0;
+    private int staleSchemaDeferrals = 0;
+    private Table lastStaleTable;
+    private int staleTableDeferrals = 0;
+    private boolean chunkDeferred;
+    private Object[] windowStartPosition;
+    private TableSchema windowSchema;
 
     private Table currentTable;
 
@@ -100,6 +111,20 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<P extends Par
                                                         SnapshotProgressListener<P> progressListener,
                                                         DataChangeEventListener<P> dataChangeEventListener,
                                                         NotificationService<P, ? extends OffsetContext> notificationService) {
+        this(config, jdbcConnection, dispatcher, databaseSchema, clock, progressListener, dataChangeEventListener, notificationService,
+                UndefinedColumnClassifier.NONE);
+    }
+
+    public AbstractIncrementalSnapshotChangeEventSource(RelationalDatabaseConnectorConfig config,
+                                                        JdbcConnection jdbcConnection,
+                                                        EventDispatcher<P, T> dispatcher,
+                                                        DatabaseSchema<?> databaseSchema,
+                                                        Clock clock,
+                                                        SnapshotProgressListener<P> progressListener,
+                                                        DataChangeEventListener<P> dataChangeEventListener,
+                                                        NotificationService<P, ? extends OffsetContext> notificationService,
+                                                        UndefinedColumnClassifier undefinedColumnClassifier) {
+        this.undefinedColumnClassifier = undefinedColumnClassifier;
         this.connectorConfig = config;
         this.jdbcConnection = jdbcConnection;
         this.chunkQueryBuilder = jdbcConnection.chunkQueryBuilder(config);
@@ -119,7 +144,22 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<P extends Par
         if (!context.closeWindow(id)) {
             return;
         }
-        sendWindowEvents(partition, offsetContext);
+        try {
+            sendWindowEvents(partition, offsetContext);
+        }
+        catch (InterruptedException e) {
+            throw e;
+        }
+        catch (Exception e) {
+            // An exception escaping the signal processing path is swallowed and stalls the snapshot: skip the table visibly
+            offsetContext.postSnapshotCompletion();
+            window.clear();
+            warnAndSkip(partition, offsetContext,
+                    SQL_EXCEPTION,
+                    "Error while emitting the incremental snapshot window of table '%s', skipping and continuing streaming"
+                            .formatted(context.currentDataCollectionId().getId()),
+                    e);
+        }
         readChunk(partition, offsetContext);
     }
 
@@ -174,12 +214,29 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<P extends Par
 
     protected void sendWindowEvents(P partition, OffsetContext offsetContext) throws InterruptedException {
         LOGGER.debug("Sending {} events from window buffer", window.size());
+        if (!window.isEmpty() && windowSchema != null && !windowSchema.equals(databaseSchema.schemaFor(currentTable.id()))) {
+            // The emission schema rotated after the window was buffered. The comparison is structural
+            // because a refresh replaces the TableSchema instance even when nothing changed (pgoutput
+            // relation messages). The whole window is re-read from its start (at-least-once): the
+            // position is restored first, so the state is consistent even when the deferral bound is hit.
+            context.revertChunk();
+            context.nextChunkPosition(windowStartPosition);
+            deferChunkOrSkipTable(partition, offsetContext, new DebeziumException(
+                    "The schema of table '%s' was refreshed after the window was buffered".formatted(currentTable.id())));
+            return;
+        }
+        // A chunk counts as progress only once it is both read and emitted: the window closed after a
+        // read-path deferral is empty and must keep counting against the bound
+        final var emitted = !window.isEmpty();
         offsetContext.incrementalSnapshotEvents();
         for (Object[] row : window.values()) {
             sendEvent(partition, dispatcher, offsetContext, row);
         }
         offsetContext.postSnapshotCompletion();
         window.clear();
+        if (emitted) {
+            resetStaleSchemaDeferrals();
+        }
     }
 
     protected void sendEvent(P partition, EventDispatcher<P, T> dispatcher, OffsetContext offsetContext, Object[] row) throws InterruptedException {
@@ -264,6 +321,7 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<P extends Par
             // This commit should be unnecessary and might be removed later
             jdbcConnection.commit();
             context.startNewChunk();
+            chunkDeferred = false;
             emitWindowOpen(partition, offsetContext);
             LOGGER.trace("Window open emitted");
             while (context.snapshotRunning()) {
@@ -272,10 +330,22 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<P extends Par
                 if (isTableInvalid(partition, offsetContext)) {
                     continue;
                 }
-                if (connectorConfig.isIncrementalSnapshotSchemaChangesEnabled() && !schemaHistoryIsUpToDate()) {
-                    // Schema has changed since the previous window.
-                    // Closing the current window and repeating schema verification within the following window.
-                    break;
+                try {
+                    if (connectorConfig.isIncrementalSnapshotSchemaChangesEnabled() && !schemaHistoryIsUpToDate()) {
+                        // Schema has changed since the previous window.
+                        // Closing the current window and repeating schema verification within the following window.
+                        break;
+                    }
+                }
+                catch (DebeziumException e) {
+                    // The verification query uses the cached projection and fails like the chunk query does
+                    if (isStaleSchemaError(e)) {
+                        if (deferChunkOrSkipTable(partition, offsetContext, e)) {
+                            break;
+                        }
+                        continue;
+                    }
+                    throw e;
                 }
                 final TableId currentTableId = (TableId) context.currentDataCollectionId().getId();
                 if (context.maximumKey().isEmpty()) {
@@ -288,7 +358,7 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<P extends Par
                                         return null;
                                     }
                                     return keyFromRow(jdbcConnection.rowToArray(currentTable, rs,
-                                            ColumnUtils.toArray(rs, currentTable)));
+                                            columnArrayOrStale(rs, currentTable)));
                                 });
                         context.maximumKey(maximumKey);
                     }
@@ -296,10 +366,22 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<P extends Par
                         if (e instanceof SQLNonTransientConnectionException) {
                             closeJdbcConnection();
                         }
+                        if (isStaleSchemaError(e)) {
+                            if (deferChunkOrSkipTable(partition, offsetContext, e)) {
+                                break;
+                            }
+                            continue;
+                        }
                         LOGGER.error("Failed to read maximum key for table {}", currentTableId, e);
                         notificationService.incrementalSnapshotNotificationService().notifyTableScanCompleted(context, partition, offsetContext, totalRowsScanned,
                                 SQL_EXCEPTION);
                         nextDataCollection(partition, offsetContext);
+                        continue;
+                    }
+                    catch (StaleResultSetSchemaException e) {
+                        if (deferChunkOrSkipTable(partition, offsetContext, e.getCause())) {
+                            break;
+                        }
                         continue;
                     }
                     if (context.maximumKey().isEmpty()) {
@@ -353,6 +435,9 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<P extends Par
                             SQL_EXCEPTION);
                     nextDataCollection(partition, offsetContext);
                 }
+                catch (StaleSchemaException e) {
+                    skipStaleTable(partition, offsetContext, e);
+                }
             }
             emitWindowClose(partition, offsetContext);
             LOGGER.trace("Window close emitted");
@@ -361,6 +446,7 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<P extends Par
             if (e instanceof SQLNonTransientConnectionException) {
                 closeJdbcConnection();
             }
+            commitWindowTransaction();
             warnAndSkip(partition, offsetContext,
                     SQL_EXCEPTION,
                     "SQL error while executing incremental snapshot for table '%s', skipping and continuing streaming"
@@ -368,6 +454,7 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<P extends Par
                     e);
         }
         catch (Exception e) {
+            commitWindowTransaction();
             warnAndSkip(partition, offsetContext,
                     SQL_EXCEPTION,
                     "Error while executing incremental snapshot for table '%s', skipping and continuing streaming".formatted(context.currentDataCollectionId().getId()),
@@ -409,6 +496,22 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<P extends Par
             return true;
         }
         return false;
+    }
+
+    /**
+     * An exception that skips {@code emitWindowClose} leaves the window transaction open, and its
+     * metadata lock blocks later DDL on the table. Commit rather than roll back: the transaction only
+     * reads, and a rollback would invalidate the cursors of connectors that stream over the same connection.
+     */
+    private void commitWindowTransaction() {
+        try {
+            if (jdbcConnection.isConnected()) {
+                jdbcConnection.commit();
+            }
+        }
+        catch (SQLException e) {
+            LOGGER.warn("Failed to commit the incremental snapshot window transaction", e);
+        }
     }
 
     private void closeJdbcConnection() {
@@ -490,6 +593,7 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<P extends Par
     }
 
     private void nextDataCollection(P partition, OffsetContext offsetContext) {
+        resetStaleSchemaDeferrals();
         context.nextDataCollection();
         if (!context.snapshotRunning()) {
             progressListener.snapshotCompleted(partition);
@@ -723,13 +827,14 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<P extends Par
                 selectStatement, context.chunkEndPosititon(), maybeRedactSensitiveData(context.maximumKey().get()));
 
         final TableSchema tableSchema = databaseSchema.schemaFor(currentTable.id());
+        windowSchema = tableSchema;
 
         try (PreparedStatement statement = chunkQueryBuilder.readTableChunkStatement(context, currentTable, selectStatement);
                 ResultSet rs = statement.executeQuery()) {
             if (checkSchemaChanges(rs)) {
                 return false;
             }
-            final ColumnUtils.ColumnArray columnArray = ColumnUtils.toArray(rs, currentTable);
+            final ColumnUtils.ColumnArray columnArray = columnArrayOrStale(rs, currentTable);
             long rows = 0;
             Timer logTimer = getTableScanLogTimer();
 
@@ -759,6 +864,7 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<P extends Par
             else {
                 progressListener.currentChunk(partition, context.currentChunkId(), firstKey, lastKey, context.maximumKey().orElse(null));
             }
+            windowStartPosition = context.chunkEndPosititon();
             context.nextChunkPosition(chunkQueryBuilder.resolveChunkEndPosition(context, currentTable, lastKey));
             if (lastRow != null) {
                 LOGGER.debug("\t Next window will resume from {}", (Object) context.chunkEndPosititon());
@@ -769,8 +875,16 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<P extends Par
             incrementTableRowsScanned(partition, rows);
         }
         catch (SQLException e) {
+            if (isStaleSchemaError(e)) {
+                deferChunkOnStaleSchema(e);
+                return false;
+            }
             LOGGER.error("Snapshotting of table {} failed. Skipping it", currentTable.id(), e);
             throw e;
+        }
+        catch (StaleResultSetSchemaException e) {
+            deferChunkOnStaleSchema(e.getCause());
+            return false;
         }
         return true;
     }
@@ -786,6 +900,168 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<P extends Par
             context.setSchema(schema);
             LOGGER.info("Schema has changed during the incremental snapshot: Old Schema: {} New Schema: {}", oldSchema, schema);
             return true;
+        }
+        return false;
+    }
+
+    /**
+     * Defers the current chunk when a DDL made the cached table disagree with the database: the chunk
+     * or verification query references a column that no longer exists, the result set carries a
+     * column the cache lacks, or the emission schema rotated before the window closed. Closing the
+     * window lets streaming deliver the pending DDL and the chunk is re-read in the next one.
+     * Consecutive deferrals on the same observed schema are bounded, so a sequence of DDLs keeps
+     * making progress as long as the connector learns each new schema, while a schema that never
+     * catches up ends with the table skipped; a second bound on the total deferrals of the table
+     * stops alternating DDLs from deferring the chunk forever. Recovery therefore relies on the
+     * connector learning the new schema before the bound: the binlog connectors
+     * receive the DDL from the log and PostgreSQL re-reads it from the catalog
+     * ({@link #refreshTableSchema}); where neither applies, SQL Server until a new capture instance
+     * exists for instance, the deferrals are exhausted and the table is skipped.
+     */
+    private void deferChunkOnStaleSchema(Exception cause) {
+        // A read can fail mid result set: the partial buffer must not reach the emission or the skip handlers
+        window.clear();
+        if (lastStaleTable == null || !lastStaleTable.id().equals(currentTable.id())) {
+            staleSchemaDeferrals = 0;
+            staleTableDeferrals = 0;
+        }
+        else if (!lastStaleTable.equals(currentTable)) {
+            staleSchemaDeferrals = 0;
+        }
+        lastStaleTable = currentTable;
+        staleSchemaDeferrals++;
+        staleTableDeferrals++;
+        if (staleSchemaDeferrals > MAX_STALE_SCHEMA_DEFERRALS) {
+            resetStaleSchemaDeferrals();
+            throw new StaleSchemaException(
+                    "Cached schema for table '%s' is still stale against the database after %d chunk deferrals"
+                            .formatted(currentTable.id(), MAX_STALE_SCHEMA_DEFERRALS),
+                    cause);
+        }
+        if (staleTableDeferrals > MAX_STALE_TABLE_DEFERRALS) {
+            resetStaleSchemaDeferrals();
+            throw new StaleSchemaException(
+                    "Schema of table '%s' kept changing across %d chunk deferrals without the chunk being read"
+                            .formatted(currentTable.id(), MAX_STALE_TABLE_DEFERRALS),
+                    cause);
+        }
+        LOGGER.warn("Cached schema for table '{}' is stale against the database (deferral {}/{}): re-reading the chunk in the next window",
+                currentTable.id(), staleSchemaDeferrals, MAX_STALE_SCHEMA_DEFERRALS, cause);
+        chunkDeferred = true;
+        // Strict drivers reject further statements on the aborted transaction until it is closed
+        commitWindowTransaction();
+        context.setSchemaVerificationPassed(false);
+        try {
+            currentTable = chunkQueryBuilder.prepareTable(context, refreshTableSchema(currentTable));
+        }
+        catch (SQLException e) {
+            throw new StaleSchemaException("Schema refresh failed while deferring a chunk of table '%s'".formatted(currentTable.id()), e);
+        }
+    }
+
+    /**
+     * Reports whether the chunk was deferred; when the deferral bound is exhausted (or the schema
+     * cannot be refreshed) the table is skipped instead and the snapshot moves on to the next one,
+     * on the read path as well as on the emission path of the signal-based and read-only sources.
+     */
+    /**
+     * Whether the last read deferred its chunk instead of filling the window. The read-only sources that
+     * re-read chunks back to back use it to let the streaming thread process the pending schema change first.
+     */
+    protected boolean isChunkDeferred() {
+        return chunkDeferred;
+    }
+
+    private boolean deferChunkOrSkipTable(P partition, OffsetContext offsetContext, Exception cause) {
+        try {
+            deferChunkOnStaleSchema(cause);
+            return true;
+        }
+        catch (StaleSchemaException e) {
+            skipStaleTable(partition, offsetContext, e);
+            return false;
+        }
+    }
+
+    private void skipStaleTable(P partition, OffsetContext offsetContext, StaleSchemaException e) {
+        commitWindowTransaction();
+        warnAndSkip(partition, offsetContext,
+                UNKNOWN_SCHEMA,
+                "%s, skipping the table and continuing streaming".formatted(e.getMessage()),
+                e.getCause());
+    }
+
+    /**
+     * An undefined-column error is schema drift only when a column the chunk projects no longer exists
+     * in the database: the same SQLSTATE comes back for a column misspelled in an additional condition
+     * or surrogate key, and that must fail the table at once as before instead of being deferred. The
+     * check is an inclusion, not an equality, because the cached table may legitimately carry fewer
+     * columns than the database (SQL Server capture instances). When the database cannot be read the
+     * error is treated as drift and the chunk is retried.
+     */
+    private boolean isStaleSchemaError(Exception e) {
+        if (!isUndefinedColumn(e)) {
+            return false;
+        }
+        // PostgreSQL rejects the catalog read until the transaction aborted by the failed query is closed
+        commitWindowTransaction();
+        try {
+            return !columnNames(readSchemaForTable(currentTable.id())).containsAll(columnNames(currentTable));
+        }
+        catch (SQLException | DebeziumException refreshFailure) {
+            LOGGER.debug("Could not read the schema of table '{}' to classify an undefined-column error, deferring the chunk",
+                    currentTable.id(), refreshFailure);
+            return true;
+        }
+    }
+
+    private static Set<String> columnNames(Table table) {
+        return Set.copyOf(table.retrieveColumnNames());
+    }
+
+    private static final class StaleSchemaException extends DebeziumException {
+
+        StaleSchemaException(String message, Throwable cause) {
+            super(message, cause);
+        }
+    }
+
+    /**
+     * A result set column the cached table does not know is rejected by {@link ColumnUtils#toArray}; only
+     * that call is classified, the same exception from row conversion or key extraction is unrelated to schema drift.
+     */
+    private ColumnUtils.ColumnArray columnArrayOrStale(ResultSet rs, Table table) throws SQLException {
+        try {
+            return ColumnUtils.toArray(rs, table);
+        }
+        catch (IllegalArgumentException e) {
+            throw new StaleResultSetSchemaException(e);
+        }
+    }
+
+    private static final class StaleResultSetSchemaException extends RuntimeException {
+
+        StaleResultSetSchemaException(IllegalArgumentException cause) {
+            super(cause);
+        }
+
+        @Override
+        public synchronized IllegalArgumentException getCause() {
+            return (IllegalArgumentException) super.getCause();
+        }
+    }
+
+    private void resetStaleSchemaDeferrals() {
+        staleSchemaDeferrals = 0;
+        staleTableDeferrals = 0;
+        lastStaleTable = null;
+    }
+
+    private boolean isUndefinedColumn(Exception e) {
+        for (Throwable t = e; t != null; t = t.getCause()) {
+            if (t instanceof SQLException sql && undefinedColumnClassifier.isUndefinedColumn(sql)) {
+                return true;
+            }
         }
         return false;
     }
