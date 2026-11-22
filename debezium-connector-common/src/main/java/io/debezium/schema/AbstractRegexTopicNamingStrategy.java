@@ -214,7 +214,7 @@ public abstract class AbstractRegexTopicNamingStrategy extends AbstractTopicNami
      *
      * @param tableId  the table id
      * @param oldTopic the name of the old topic
-     * @return return the new topic name, if the regex applies. Otherwise, return original topic.
+     * @return the new topic name, if the regex applies. Otherwise, return original topic.
      */
     protected String determineNewTopic(DataCollectionId tableId, String oldTopic) {
         String newTopic = topicNames.get(tableId);
