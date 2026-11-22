@@ -1576,12 +1576,30 @@ In the following situations, the connector fails when trying to start, reports a
 * The connector cannot successfully connect to CockroachDB by using the specified connection parameters.
 * The connector cannot create a changefeed because the user lacks sufficient privileges (`CHANGEFEED`, `ALL`, or `admin` role membership).
 * CockroachDB rejects the changefeed because an option has an invalid value or contains a syntax error.
+* CockroachDB rejects the changefeed because an option, a parameter of the sink URI, or the type of the sink does not exist.
 
 In these cases, the error message has details about the problem and possibly a suggested workaround.
 After you correct the configuration or address the CockroachDB problem, restart the connector.
+CockroachDB checks the changefeed privileges as of the time at which a changefeed starts.
+If a changefeed starts at a stored offset, a privilege that was granted after that offset does not count, and the error message from the connector says so.
 
 The connector decides by the SQLSTATE of a CockroachDB error whether a retry can succeed.
 It stops for the error classes `0A` (feature not supported), `22` (data exception, which includes an invalid option value), `3D` (unknown database), and `42` (syntax error or access rule violation, which includes a missing privilege), and for the SQL state `28P01` (wrong password).
+CockroachDB reports some errors that a retry cannot fix without a specific SQLSTATE.
+The connector recognizes the following errors by their text, and stops:
+
+* A changefeed option that does not exist.
+* A parameter of the sink URI that does not exist.
+* A sink type that does not exist.
+* For a sinkless changefeed, a stored offset that is older than the garbage collection threshold, unless `snapshot.mode` is `when_needed`.
+The error message names that snapshot mode.
+With `when_needed`, the connector starts again with an initial scan, also when CockroachDB reports the error after the changefeed has delivered events.
+* For a sinkless changefeed, a stored offset that is older than one of the captured tables, unless `snapshot.mode` is `when_needed`.
+CockroachDB rejects a changefeed that starts before one of its tables was created.
+* For a sinkless changefeed, an initial scan that does not finish before CockroachDB garbage-collects the data as of the start of the scan.
+The connector stops in every snapshot mode, because a new scan would end in the same way.
+To resolve the error, increase `gc.ttlseconds` for the captured tables so that it covers the duration of the scan.
+
 It retries after all other CockroachDB errors, for example, when the Kafka sink of the changefeed cannot be reached.
 
 [id="cockroachdb-changefeed-job-stops"]
