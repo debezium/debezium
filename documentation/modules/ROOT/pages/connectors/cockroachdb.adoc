@@ -221,13 +221,16 @@ In `initial_only` snapshot mode, the matching changefeed must have been created 
 Otherwise, the connector fails to start and returns an error that names the changefeed job.
 If the connector configuration enables xref:cockroachdb-property-include-diff[`cockroachdb.changefeed.include.diff`] and the matching changefeed does not use the `diff` option, the connector also fails to start, because update events from that changefeed cannot carry a before image.
 The same applies to `cockroachdb.changefeed.include.mvcc.timestamp` and the `mvcc_timestamp` option.
-To add the missing option to the existing changefeed, pause the changefeed job, wait until its status is `paused`, run `ALTER CHANGEFEED _<job_id>_ SET diff` (or `SET mvcc_timestamp`), resume the job, and then restart the connector.
+It also applies to xref:cockroachdb-property-include-updated[`cockroachdb.changefeed.include.updated`] and the `updated` option, unless `cockroachdb.changefeed.include.mvcc.timestamp` is enabled as well, because the connector then emits the MVCC timestamp.
+If either of the two timestamp properties is enabled, the `enriched_properties` option of the matching changefeed must include `source`, because the timestamps are in the `source` block of the changefeed messages.
+To add the missing option to the existing changefeed, pause the changefeed job, wait until its status is `paused`, run `ALTER CHANGEFEED _<job_id>_ SET diff` (or `SET mvcc_timestamp`, `SET updated`, or `SET enriched_properties = 'source'`), resume the job, and then restart the connector.
+`ALTER CHANGEFEED` replaces the value of the `enriched_properties` option, so name the properties that the changefeed already sends together with `source`, for example, `SET enriched_properties = 'schema,source'`.
 `PAUSE JOB` returns before the job is paused, and `ALTER CHANGEFEED` rejects a job that is not paused yet.
 If the connector uses more than one changefeed, the error lists every job that lacks the option.
 Alternatively, cancel the job so that the connector creates a new changefeed, or disable the property.
 
 A changefeed that an earlier version of the connector created might not use the `updated` option.
-The connector reuses such a changefeed, and logs the ID of its job.
+If `cockroachdb.changefeed.include.updated` is disabled, the connector reuses such a changefeed, and logs the ID of its job.
 To add the option, follow the same procedure with `ALTER CHANGEFEED _<job_id>_ SET updated`.
 To add the `resolved` option to a changefeed that does not use it, run `ALTER CHANGEFEED _<job_id>_ SET resolved = '_<interval>_'`.
 You do not have to stop the connector while you pause and resume the changefeed job.
@@ -1308,6 +1311,12 @@ The default value is `source` because that block identifies the originating data
 This information is useful when you inspect the intermediate topics or when other tools also consume them.
 The connector also reads the timestamp in the `source` block to distinguish rows from an initial scan from rows that are inserted after the scan.
 For more information, see xref:cockroachdb-snapshots[Snapshots].
+The value must include `source` in the following cases, and the connector does not start otherwise:
+
+* The connector uses a sinkless changefeed.
+A sinkless changefeed delivers the events of all tables in one stream, and the connector reads the table of each event from the `source` block.
+* xref:cockroachdb-property-include-updated[`cockroachdb.changefeed.include.updated`] or `cockroachdb.changefeed.include.mvcc.timestamp` is enabled.
+The connector reads the timestamp that it emits from the `source` block.
 
 |[[cockroachdb-property-cursor]]<<cockroachdb-property-cursor, `+cockroachdb.changefeed.cursor+`>>
 |`now`
