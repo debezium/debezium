@@ -1587,6 +1587,23 @@ To resolve the error, increase `gc.ttlseconds` for the captured tables so that i
 
 It retries after all other CockroachDB errors, for example, when the Kafka sink of the changefeed cannot be reached.
 
+[id="cockroachdb-changefeed-job-stops"]
+=== A changefeed job stops
+
+In the `kafka` delivery mode, CockroachDB runs each changefeed as a job that writes to the intermediate topics.
+If the job fails or is canceled, it writes no further events, and CockroachDB does not report that to the consumers of the topics.
+While the connector streams, it reads the status of its changefeed jobs a few seconds after it starts, and then every 30 seconds.
+
+If a changefeed job has ended, the connector stops, and reports the status and the error of the job.
+After you address the problem, restart the connector.
+The connector then creates a changefeed that continues at the stored offset.
+If no offset is stored, the connector creates the changefeed in the same way as on a first start.
+After you cancel a job, CockroachDB needs a few seconds to stop it.
+The connector waits until the job has stopped, both before it reports the job and before it creates a new changefeed.
+
+If a changefeed job is paused, the connector logs a warning and continues to run.
+A paused changefeed delivers the changes that it missed after you resume it.
+
 [id="cockroachdb-event-cannot-be-processed"]
 === An event cannot be processed
 
@@ -1649,6 +1666,11 @@ That is, it generates change event records for all database changes that were ma
 The CockroachDB link:https://www.cockroachlabs.com/docs/stable/configure-replication-zones#gc-ttlseconds[garbage collection TTL] (default: 4 hours) limits how far back in time a changefeed can be started.
 If the connector is stopped for longer than the configured TTL interval, the stored offset may no longer be valid.
 In this case, use `snapshot.mode=when_needed` to automatically re-snapshot when the offset has expired.
+In the `kafka` delivery mode, CockroachDB accepts a changefeed at an expired offset and fails the changefeed job afterwards.
+The connector detects the failed job when it reads the status of its xref:cockroachdb-changefeed-job-stops[changefeed jobs].
+With `snapshot.mode=when_needed`, the connector then creates a changefeed with a new initial scan for the tables of that job.
+If that changefeed fails for the same reason, the connector stops.
+In the other snapshot modes, the connector stops with an error that names `snapshot.mode=when_needed`.
 The new snapshot re-emits rows that still exist, which can result in duplicate events.
 It cannot recover delete events for rows that were deleted while the connector was offline.
 
