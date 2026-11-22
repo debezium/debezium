@@ -100,7 +100,7 @@ public class TransactionMetadataIT extends AbstractAsyncEngineConnectorTest {
         start(OracleConnector.class, config);
         assertConnectorIsRunning();
 
-        waitForSnapshotToBeCompleted(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
+        waitForStreamingRunning(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
 
         connection.executeWithoutCommitting("INSERT INTO debezium.customer VALUES (1, 'Billie-Bob', 1234.56, TO_DATE('2018-02-22', 'yyyy-mm-dd'))");
         connection.executeWithoutCommitting("INSERT INTO debezium.orders VALUES (1, TO_DATE('2021-02-01', 'yyyy-mm-dd'), 1001, 1, 102)");
@@ -159,7 +159,7 @@ public class TransactionMetadataIT extends AbstractAsyncEngineConnectorTest {
             start(OracleConnector.class, config);
             assertConnectorIsRunning();
 
-            waitForSnapshotToBeCompleted(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
+            waitForStreamingRunning(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
 
             // Create multiple transaction commits, notice commit order
             connection.executeWithoutCommitting("INSERT INTO debezium.customer VALUES (1, 'Billie-Bob', 1234.56, TO_DATE('2018-02-22', 'yyyy-mm-dd'))");

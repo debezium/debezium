@@ -92,7 +92,7 @@ public class SchemaHistoryTopicIT extends AbstractAsyncEngineConnectorTest {
 
         start(OracleConnector.class, config);
         assertConnectorIsRunning();
-        waitForSnapshotToBeCompleted(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
+        waitForStreamingRunning(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
 
         Testing.Print.enable();
 
