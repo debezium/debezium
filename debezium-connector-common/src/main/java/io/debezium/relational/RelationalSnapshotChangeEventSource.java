@@ -431,7 +431,7 @@ public abstract class RelationalSnapshotChangeEventSource<P extends Partition, O
 
     /**
      * Determines the current offset (MySQL binlog position, Oracle SCN etc.), storing it into the passed context
-     * object. Subsequently, the DB's schema (and data) will be be read at this position. Once the snapshot is
+     * object. Subsequently, the DB's schema (and data) will be read at this position. Once the snapshot is
      * completed, a {@link StreamingChangeEventSource} will be set up with this initial position to continue with stream
      * reading from there.
      */
