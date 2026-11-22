@@ -163,6 +163,8 @@ The connector consumes these events, transforms them into {prodname} change even
 CockroachDB changefeeds emit link:https://www.cockroachlabs.com/docs/stable/changefeed-messages#resolved-messages[resolved timestamp messages] at a configurable interval.
 These messages indicate that all changes up to that timestamp have been emitted.
 The connector uses resolved timestamps for offset tracking, so that on restart it can create a new changefeed with a `cursor` pointing to the last resolved timestamp, ensuring that it does not miss any events.
+If the connector uses more than one changefeed, each changefeed emits its own resolved timestamps.
+The connector then stores the lowest of the latest resolved timestamps of the captured tables, so that the stored timestamp is never ahead of any of its changefeeds.
 
 When the connector receives changes it transforms the events into {prodname} _read_, _create_, _update_, or _delete_ event records.
 The connector forwards these change records to the Kafka Connect framework, which is running in the same process.
@@ -201,7 +203,11 @@ The specified prefix must include a trailing dot (`.`).
 `enriched_properties`:: Optional. The connector reads the base enriched fields (`op`, `ts_ns`, `after`, and `before` when `diff` is set), so it does not require any enriched property to consume the feed. 
 The default value,  `source` ensures that intermediate topics include origin and commit-time metadata.
 `format='json'`:: Required. The connector consumes JSON-encoded changefeed messages.
-`diff`, `updated`, `resolved`:: Set these to match the connector configuration so that before-images, update markers, and resolved timestamps are available.
+`diff`, `updated`:: Set these to match the connector configuration so that before-images and update markers are available.
+`resolved`:: Required for the connector to advance its stored offset.
+The connector stores the resolved timestamp that all of its changefeeds have reached.
+If one of the changefeeds emits no resolved timestamps, the stored offset does not advance, and the connector logs a warning that includes the ID of the changefeed job.
+If a changefeed is behind the stored offset, for example, a changefeed that you created with an earlier cursor, the stored offset moves back to the resolved timestamp that all of the changefeeds have reached.
 `cursor`:: Recommended for a changefeed that starts with an initial scan (`initial_scan='yes'`).
 Set the cursor to a decimal timestamp, for example, the value that `SELECT cluster_logical_timestamp()` returns, and also set the `updated` option.
 The connector then distinguishes rows from the scan from rows that are inserted before the first resolved timestamp, as described in xref:cockroachdb-snapshots[Snapshots].
@@ -223,6 +229,7 @@ Alternatively, cancel the job so that the connector creates a new changefeed, or
 A changefeed that an earlier version of the connector created might not use the `updated` option.
 The connector reuses such a changefeed, and logs the ID of its job.
 To add the option, follow the same procedure with `ALTER CHANGEFEED _<job_id>_ SET updated`.
+To add the `resolved` option to a changefeed that does not use it, run `ALTER CHANGEFEED _<job_id>_ SET resolved = '_<interval>_'`.
 You do not have to stop the connector while you pause and resume the changefeed job.
 
 When you add a table to `table.include.list` and restart the connector, the changefeed that covers the other tables keeps running, and the connector creates another changefeed for the added table.
