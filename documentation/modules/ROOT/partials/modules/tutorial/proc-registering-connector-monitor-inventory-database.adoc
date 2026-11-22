@@ -108,7 +108,7 @@ This command uses the Kafka Connect service's API to submit a `POST` request aga
 
 This command uses `localhost` to connect to the Docker host.
 If you are using a non-native Docker platform,
-replace `localhost` with the IP address of of your Docker host.
+replace `localhost` with the IP address of your Docker host.
 
 [source,shell,options="nowrap"]
 ----
