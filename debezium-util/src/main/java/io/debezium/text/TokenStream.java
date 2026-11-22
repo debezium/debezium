@@ -183,7 +183,7 @@ import io.debezium.function.BooleanConsumer;
  * of case need to be used. The TokenStream framework provides a very simple solution that requires no more effort than providing
  * a boolean parameter to the constructor.
  * <p>
- * When a <code>false</code> value is provided for the the <code>caseSensitive</code> parameter, the TokenStream performs all
+ * When a <code>false</code> value is provided for the <code>caseSensitive</code> parameter, the TokenStream performs all
  * matching operations as if each token's value were in uppercase only. This means that the arguments supplied to the
  * <code>match(...)</code>, <code>canConsume(...)</code>, and <code>consume(...)</code> methods should be upper-cased. Note that
  * the <i>actual value</i> of each token remains the <i>actual</i> case as it appears in the input.
