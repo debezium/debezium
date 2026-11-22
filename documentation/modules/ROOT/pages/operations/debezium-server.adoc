@@ -1403,7 +1403,7 @@ The `debezium.sink.eventhubs.dynamicpartitionrouting` configuration is only appl
 
 |[[hash-message-key-function]]<<hash-message-key-function, `debezium.sink.eventhubs.hashmessagekeyfunction`>>
 |No default value
-|(Optional) Specifies the hash function that {prodname} uses to encrypt encrypt Azure Event Hubs message keys.
+|(Optional) Specifies the hash function that {prodname} uses to encrypt Azure Event Hubs message keys.
 
 Specify one of the following values:
 

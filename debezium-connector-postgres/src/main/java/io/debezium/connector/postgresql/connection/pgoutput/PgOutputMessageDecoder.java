@@ -407,7 +407,7 @@ public class PgOutputMessageDecoder extends AbstractMessageDecoder {
             columnNames.add(columnName);
         }
 
-        // Remove any PKs that do not exist as part of this this relation message. This can occur when issuing
+        // Remove any PKs that do not exist as part of this relation message. This can occur when issuing
         // multiple schema changes in sequence since the lookup of primary keys is an out-of-band procedure, without
         // any logical linkage or context to the point in time the relation message was emitted.
         //

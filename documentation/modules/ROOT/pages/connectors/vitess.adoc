@@ -28,7 +28,7 @@ Applications and services can then consume data change event records from the re
 [[vitess-overview]]
 == Overview
 
-Vitess's link:https://vitess.io/docs/concepts/vstream/[VStream] feature was introduced in version 4.0. It is a change event subscription service that provides equivalent information to the MySQL binary logs from the underlying MySQL shards of the Vitess cluster. An user can subscribe to multiple shards in a keyspace, making it a convenient tool to feed downstream CDC processes.
+Vitess's link:https://vitess.io/docs/concepts/vstream/[VStream] feature was introduced in version 4.0. It is a change event subscription service that provides equivalent information to the MySQL binary logs from the underlying MySQL shards of the Vitess cluster. A user can subscribe to multiple shards in a keyspace, making it a convenient tool to feed downstream CDC processes.
 
 To read and process database changes, the Vitess connector subscribes to link:https://vitess.io/docs/concepts/vtgate/[VTGate]'s VStream gRPC service. VTGate is a lightweight, stateless gRPC server, which is part of the Vitess cluster setup.
 

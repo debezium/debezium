@@ -19,7 +19,7 @@ import io.debezium.annotation.Immutable;
 @Immutable
 public interface Table {
     /**
-     * Obtain an table definition editor that can be used to define a table.
+     * Obtain a table definition editor that can be used to define a table.
      *
      * @return the editor; never null
      */

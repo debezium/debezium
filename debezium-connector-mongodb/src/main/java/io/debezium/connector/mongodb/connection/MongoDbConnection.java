@@ -102,7 +102,7 @@ public final class MongoDbConnection implements AutoCloseable {
      *
      * @param desc      the description of the operation, for logging purposes
      * @param operation the operation to be performed
-     * @return return value of the executed operation
+     * @return the result of the executed operation
      */
     public <T> T execute(String desc, BlockingFunction<MongoClient, T> operation) throws InterruptedException {
         if (!running.get()) {

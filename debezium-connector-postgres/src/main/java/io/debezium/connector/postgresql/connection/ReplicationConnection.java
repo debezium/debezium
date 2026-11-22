@@ -67,7 +67,7 @@ public interface ReplicationConnection extends AutoCloseable {
 
     /**
      *  Forces the connection to be created, is called by startStreaming, but can be called manually
-     *  in cases where we want the connection but not to to start streaming yet.
+     *  in cases where we want the connection but not to start streaming yet.
      *
      *  Can be called multiple times
      */

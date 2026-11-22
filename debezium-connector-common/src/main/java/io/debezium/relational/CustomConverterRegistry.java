@@ -138,7 +138,7 @@ public class CustomConverterRegistry implements Service {
      *
      * @param table the table that contains the column
      * @param column the column metadata
-     * @return the the value converter or empty if converter does not support the column
+     * @return the value converter or empty if converter does not support the column
      */
     public Optional<ValueConverter> getValueConverter(TableId table, Column column) {
         final ConverterDefinition<SchemaBuilder> converterDefinition = conversionFunctionMap.get(fullColumnName(table, column));

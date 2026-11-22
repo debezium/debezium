@@ -38,7 +38,7 @@ public final class MongoDbConnections {
      * Creates {@link MongoDbConnection.ErrorHandler} that
      * <ul>
      *     <li>Logs the error</li>
-     *     <li>Notifies dispatcher in case of of authorisation error</li>
+     *     <li>Notifies dispatcher in case of authorisation error</li>
      *     <li>Rethrows the error as {@link DebeziumException}</li>
      * </ul>
      *

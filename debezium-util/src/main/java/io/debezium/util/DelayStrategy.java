@@ -130,7 +130,7 @@ public interface DelayStrategy {
 
     /**
      * Create a delay strategy that applies an exponentially-increasing delay as long as the criteria is met. As soon as
-     * the criteria is not met, the delay resets to the intial value.
+     * the criteria is not met, the delay resets to the initial value.
      *
      * @param initialDelay the initial delay; must be positive
      * @param maxDelay the maximum delay; must be greater than the initial delay

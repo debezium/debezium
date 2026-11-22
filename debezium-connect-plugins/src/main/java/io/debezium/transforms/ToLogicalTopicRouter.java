@@ -304,7 +304,7 @@ public class ToLogicalTopicRouter<R extends ConnectRecord<R>> implements Transfo
      * Determine the new topic name.
      *
      * @param oldTopic the name of the old topic
-     * @return return the new topic name, if the regex applies. Otherwise, return null.
+     * @return the new topic name, if the regex applies. Otherwise, return null.
      */
     private String determineNewTopic(String oldTopic) {
         String newTopic = topicRegexReplaceCache.get(oldTopic);

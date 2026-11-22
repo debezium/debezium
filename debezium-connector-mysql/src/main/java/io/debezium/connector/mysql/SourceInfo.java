@@ -45,7 +45,7 @@ import io.debezium.data.Envelope;
  * The "{@code gtids}" field only appears in offsets produced when GTIDs are enabled. The "{@code snapshot}" field only appears in
  * offsets produced when the connector is in the middle of a snapshot. And finally, the "{@code ts}" field contains the
  * <em>seconds</em> since Unix epoch (since Jan 1, 1970) of the MySQL event; the message {@link Envelope envelopes} also have a
- * timestamp, but that timestamp is the <em>milliseconds</em> since since Jan 1, 1970.
+ * timestamp, but that timestamp is the <em>milliseconds</em> since Jan 1, 1970.
  * <p>
  * Each change event envelope also includes the {@link #struct() source} struct that contains MySQL information about that
  * particular event, including a mixture the fields from the binlog filename and position where the event can be found,

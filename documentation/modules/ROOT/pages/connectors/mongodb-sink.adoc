@@ -53,7 +53,7 @@ endif::community[]
 ifdef::product[]
 For information about the MongoDB versions that are compatible with this connector, see the link:{LinkDebeziumSupportedConfigurations}[{NameDebeziumSupportedConfigurations}].
 
-Information about the {prodname} sink connector for MongoDB and and instructions about how to use it is available in the following topics:
+Information about the {prodname} sink connector for MongoDB and instructions about how to use it is available in the following topics:
 
 * xref:architecture-of-debezium-mongodb-sink-connector[]
 * xref:limitations-of-debezium-mongodb-sink-connector[]

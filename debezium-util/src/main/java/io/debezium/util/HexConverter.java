@@ -40,7 +40,7 @@ public class HexConverter {
     }
 
     /**
-     * Take the supplied byte array and convert it to to a byte array of the encoded
+     * Take the supplied byte array and convert it to a byte array of the encoded
      * hex values.
      * <p>
      * Each byte on the incoming array will be converted to two bytes on the return
