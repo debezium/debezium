@@ -187,7 +187,8 @@ It also lets an operator pre-provision a changefeed that the connector then atta
 A changefeed is considered a match only when both of the following are true for the running changefeed job:
 
 * Its description includes the fully-qualified name of each configured table.
-* Its description includes the `topic_prefix` that the connector expects, which is the value of xref:cockroachdb-property-sink-topic-prefix[`cockroachdb.changefeed.sink.topic.prefix`], or the value of xref:cockroachdb-property-topic-prefix[`topic.prefix`] when no sink topic prefix is set.
+* Its `topic_prefix` is equal to the prefix that the connector expects, which is the value of xref:cockroachdb-property-sink-topic-prefix[`cockroachdb.changefeed.sink.topic.prefix`], or the value of xref:cockroachdb-property-topic-prefix[`topic.prefix`] when no sink topic prefix is set.
+A changefeed whose prefix only begins with the expected prefix, for example, `crdb.v2.` when the connector expects `crdb.`, belongs to another connector and is not a match.
 
 For the connector to consume the existing changefeed correctly, the changefeed must publish to Kafka topics whose names match the topics that the connector subscribes to, in the format `_topicPrefix_._database_._schema_._table_`.
 To produce that topic layout, and to emit events in the structure that the connector expects, create the changefeed with the following options:
