@@ -99,7 +99,7 @@ public class OracleBinaryModeIT extends AbstractAsyncEngineConnectorTest {
 
         start(OracleConnector.class, config);
         assertConnectorIsRunning();
-        waitForSnapshotToBeCompleted(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
+        waitForStreamingRunning(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
 
         SourceRecords records = consumeRecordsByTopic(1);
         final List<SourceRecord> results = records.recordsForTopic("server1.DEBEZIUM.BINARY_MODE_TEST");
