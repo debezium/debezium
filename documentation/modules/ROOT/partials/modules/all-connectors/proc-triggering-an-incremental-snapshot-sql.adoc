@@ -48,7 +48,7 @@ The `id` parameter contains the value `ad-hoc`, an arbitrary string that serves 
 `type`:::
 The `type` parameter specifies the type of operation to perform, in this case, `execute-snapshot`.
 
-`data`::: The the `data` field of a signal contains the following fields:
+`data`::: The `data` field of a signal contains the following fields:
 
 `data-collections`:::: An array of {data-collection} names or regular expressions to match {data-collection} names to include in the snapshot.
 `type`:::: An optional `type` component of the `data` field of a signal that specifies the type of snapshot operation to run.
