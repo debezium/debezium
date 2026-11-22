@@ -52,7 +52,7 @@ import io.debezium.util.ElapsedTimeStrategy;
  * <p>A {@link StreamingChangeEventSource} based on SQL Server change data capture functionality.
  * A main loop polls database DDL change and change data tables and turns them into change events.</p>
  *
- * <p>The connector uses CDC functionality of SQL Server that is implemented as as a process that monitors
+ * <p>The connector uses CDC functionality of SQL Server that is implemented as a process that monitors
  * source table and write changes from the table into the change table.</p>
  *
  * <p>The main loop keeps a pointer to the LSN of changes that were already processed. It queries all change
