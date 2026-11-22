@@ -179,14 +179,15 @@ When Kafka Connect restarts, it reads the last recorded offset for each connecto
 === Reusing an existing changefeed
 
 By default, the connector creates and manages its own CockroachDB changefeed.
-Before it creates a changefeed, the connector checks whether a running changefeed already covers the configured tables.
-If a matching changefeed is found, the connector skips creation and consumes from the existing changefeed instead.
+Before it creates a changefeed, the connector checks for each configured table whether a running changefeed already covers the table.
+If a matching changefeed is found, the connector consumes from the existing changefeed instead of creating one.
+For the tables that no running changefeed covers, the connector creates a changefeed.
 This behavior keeps connector restarts idempotent and avoids creating duplicate changefeed jobs on the cluster.
 It also lets an operator pre-provision a changefeed that the connector then attaches to.
 
-A changefeed is considered a match only when both of the following are true for the running changefeed job:
+A changefeed is considered a match for a table only when both of the following are true for the running changefeed job:
 
-* Its description includes the fully-qualified name of each configured table.
+* Its description includes the fully-qualified name of the table.
 * Its `topic_prefix` is equal to the prefix that the connector expects, which is the value of xref:cockroachdb-property-sink-topic-prefix[`cockroachdb.changefeed.sink.topic.prefix`], or the value of xref:cockroachdb-property-topic-prefix[`topic.prefix`] when no sink topic prefix is set.
 A changefeed whose prefix only begins with the expected prefix, for example, `crdb.v2.` when the connector expects `crdb.`, belongs to another connector and is not a match.
 
@@ -223,6 +224,34 @@ A changefeed that an earlier version of the connector created might not use the 
 The connector reuses such a changefeed, and logs the ID of its job.
 To add the option, follow the same procedure with `ALTER CHANGEFEED _<job_id>_ SET updated`.
 You do not have to stop the connector while you pause and resume the changefeed job.
+
+When you add a table to `table.include.list` and restart the connector, the changefeed that covers the other tables keeps running, and the connector creates another changefeed for the added table.
+The new changefeed starts at the stored offset and does not scan the table, so it emits the changes that were made to the table since the stored offset.
+To capture the rows that already exist in the table, run an xref:cockroachdb-incremental-snapshots[incremental snapshot].
+
+CockroachDB does not accept the stored offset for every table.
+In the following cases, the connector starts the changefeed for the added table in a different way:
+
+* The table was created after the stored offset.
+All rows in such a table were written after the stored offset, so the connector creates the changefeed with an initial scan, in every snapshot mode.
+The connector emits the rows that the scan returns as read events (`op=r`).
+* The user of the connector received the `CHANGEFEED` privilege on the table after the stored offset.
+CockroachDB checks the privilege as of the time at which a changefeed starts, and rejects the stored offset for such a table.
+The connector then creates the changefeed at the current time, so that it captures the changes that are made from then on.
+The connector does this only for a table that it did not capture before.
+If its offsets do not show which tables it captured, for example, because they come from a sinkless changefeed, the connector keeps the stored offset, and CockroachDB rejects the changefeed with a privilege error.
+The connector also does not replace a start time that xref:cockroachdb-property-cursor[`cockroachdb.changefeed.cursor`] sets.
+
+In both cases, the connector records in its offsets where the changefeed started.
+If the changefeed has to be created again before the stored offset has reached that point, the connector starts it at the same point again, with an initial scan as of that time if the first changefeed began with a scan.
+The connector then emits again the events that the first changefeed delivered.
+While the connector scans an added table, it continues to emit the changes to the other tables with their own operations.
+
+A sinkless changefeed covers all tables with a single statement that starts at the stored offset, so the connector cannot start an added table in a different way.
+If a table was created after the stored offset, the connector stops with an error that lists the tables.
+If the user of the connector received the `CHANGEFEED` privilege on a table after the stored offset, CockroachDB rejects the statement with a privilege error.
+To resolve either error, exclude the added tables, start the connector so that it stores a later offset, and then include the tables again.
+For tables that were created after the stored offset, you can alternatively set `snapshot.mode` to `when_needed`, so that the connector starts again with an initial scan of all tables.
 
 [NOTE]
 ====
@@ -286,6 +315,7 @@ The table set in the running CockroachDB changefeed does not change automaticall
 As a result, the connector does not capture a table that is created later, even if its name matches an include-list regular expression.
 
 Restart the connector to discover and add the table.
+For information about how the connector captures a table that it adds after a restart, see xref:cockroachdb-reusing-an-existing-changefeed[Reusing an existing changefeed].
 An `execute-snapshot` signal cannot add a table to the running changefeed.
 If a signal requests a table outside the running capture set, the connector logs a warning.
 Restart the connector, and then reissue the signal so that the snapshot runs and subsequent changes are streamed.
