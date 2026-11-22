@@ -45,6 +45,7 @@ public class BinlogOffsetContext<T extends BinlogSourceInfo> extends CommonOffse
     private long restartBinlogPosition = 0L;
     private int restartRowsToSkip = 0;
     private long restartEventsToSkip = 0;
+    private RestartPosition replayPosition;
     private long currentEventLengthInBytes = 0;
     private boolean inTransaction = false;
     private String transactionId = null;
@@ -68,7 +69,7 @@ public class BinlogOffsetContext<T extends BinlogSourceInfo> extends CommonOffse
 
     @Override
     public Map<String, ?> getOffset() {
-        final Map<String, Object> offset = offsetUsingPosition(restartRowsToSkip);
+        final Map<String, Object> offset = offsetUsingPosition();
         if (getSnapshot().isPresent()) {
             offset.put(AbstractSourceInfo.SNAPSHOT_KEY, getSnapshot().get().toString());
         }
@@ -108,6 +109,26 @@ public class BinlogOffsetContext<T extends BinlogSourceInfo> extends CommonOffse
     public void setInitialSkips(long restartEventsToSkip, int restartRowsToSkip) {
         this.restartEventsToSkip = restartEventsToSkip;
         this.restartRowsToSkip = restartRowsToSkip;
+    }
+
+    // A resumed stream can replay ROTATE, format and GTID events before returning to the saved row.
+    // Keep reporting its durable coordinates while rebuilding the live transaction state from those events.
+    void beginReplay() {
+        if (restartEventsToSkip != 0 || restartRowsToSkip != 0) {
+            replayPosition = restartPosition();
+        }
+    }
+
+    void completeReplay() {
+        replayPosition = null;
+    }
+
+    private RestartPosition restartPosition() {
+        return replayPosition != null ? replayPosition
+                : new RestartPosition(restartBinlogFilename, restartBinlogPosition, restartGtidSet, restartEventsToSkip, restartRowsToSkip);
+    }
+
+    private record RestartPosition(String filename, long position, String gtids, long events, int rows) {
     }
 
     public void databaseEvent(String database, Instant timestamp) {
@@ -219,7 +240,10 @@ public class BinlogOffsetContext<T extends BinlogSourceInfo> extends CommonOffse
      * Capture that we're starting a new event.
      */
     public void completeEvent() {
-        ++restartEventsToSkip;
+        // Outside a transaction the restart position already points past the completed event.
+        if (inTransaction) {
+            ++restartEventsToSkip;
+        }
     }
 
     /**
@@ -261,7 +285,7 @@ public class BinlogOffsetContext<T extends BinlogSourceInfo> extends CommonOffse
      * @see #startNextTransaction()
      */
     public long eventsToSkipUponRestart() {
-        return restartEventsToSkip;
+        return replayPosition != null ? replayPosition.events() : restartEventsToSkip;
     }
 
     /**
@@ -271,7 +295,7 @@ public class BinlogOffsetContext<T extends BinlogSourceInfo> extends CommonOffse
      * @return the number of rows to be skipped
      */
     public int rowsToSkipUponRestart() {
-        return restartRowsToSkip;
+        return replayPosition != null ? replayPosition.rows() : restartRowsToSkip;
     }
 
     /**
@@ -320,22 +344,22 @@ public class BinlogOffsetContext<T extends BinlogSourceInfo> extends CommonOffse
         transactionId = null;
     }
 
-    private Map<String, Object> offsetUsingPosition(long rowsToSkip) {
+    private Map<String, Object> offsetUsingPosition() {
         final Map<String, Object> map = new HashMap<>();
+        final RestartPosition position = restartPosition();
         if (sourceInfo.getServerId() != 0) {
             map.put(BinlogSourceInfo.SERVER_ID_KEY, sourceInfo.getServerId());
         }
-        if (restartGtidSet != null) {
-            // Put the previously-completed GTID set in the offset along with the event number ...
-            map.put(GTID_SET_KEY, restartGtidSet);
+        if (position.gtids() != null) {
+            map.put(GTID_SET_KEY, position.gtids());
         }
-        map.put(BinlogSourceInfo.BINLOG_FILENAME_OFFSET_KEY, restartBinlogFilename);
-        map.put(BinlogSourceInfo.BINLOG_POSITION_OFFSET_KEY, restartBinlogPosition);
-        if (restartEventsToSkip != 0) {
-            map.put(EVENTS_TO_SKIP_OFFSET_KEY, restartEventsToSkip);
+        map.put(BinlogSourceInfo.BINLOG_FILENAME_OFFSET_KEY, position.filename());
+        map.put(BinlogSourceInfo.BINLOG_POSITION_OFFSET_KEY, position.position());
+        if (position.events() != 0) {
+            map.put(EVENTS_TO_SKIP_OFFSET_KEY, position.events());
         }
-        if (rowsToSkip != 0) {
-            map.put(BinlogSourceInfo.BINLOG_ROW_IN_EVENT_OFFSET_KEY, rowsToSkip);
+        if (position.rows() != 0) {
+            map.put(BinlogSourceInfo.BINLOG_ROW_IN_EVENT_OFFSET_KEY, (long) position.rows());
         }
         if (sourceInfo.timestamp() != null) {
             map.put(TIMESTAMP_KEY, sourceInfo.timestamp().getEpochSecond());

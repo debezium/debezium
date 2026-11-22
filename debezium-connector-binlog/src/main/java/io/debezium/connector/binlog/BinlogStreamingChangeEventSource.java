@@ -212,6 +212,7 @@ public abstract class BinlogStreamingChangeEventSource<P extends BinlogPartition
         // Register our event handlers ...
         eventHandlers.put(EventType.STOP, (event) -> handleServerStop(effectiveOffsetContext, event));
         eventHandlers.put(EventType.HEARTBEAT, (event) -> handleServerHeartbeat(partition, effectiveOffsetContext, event));
+        eventHandlers.put(EventType.HEARTBEAT_V2, (event) -> handleServerHeartbeat(partition, effectiveOffsetContext, event));
         eventHandlers.put(EventType.INCIDENT, (event) -> handleServerIncident(partition, effectiveOffsetContext, event));
         eventHandlers.put(EventType.ROTATE, (event) -> handleRotateLogsEvent(effectiveOffsetContext, event));
         eventHandlers.put(EventType.TABLE_MAP, (event) -> handleUpdateTableMetadata(partition, effectiveOffsetContext, event));
@@ -339,6 +340,7 @@ public abstract class BinlogStreamingChangeEventSource<P extends BinlogPartition
 
         // Only when we reach the first BEGIN event will we start to skip events ...
         skipEvent = false;
+        effectiveOffsetContext.beginReplay();
 
         try {
             // Start the log reader, which starts background threads ...
@@ -611,10 +613,8 @@ public abstract class BinlogStreamingChangeEventSource<P extends BinlogPartition
         long ts = 0;
         totalRecordCounter.incrementAndGet();
 
-        if (event.getHeader().getEventType() == EventType.HEARTBEAT) {
-            // HEARTBEAT events have no timestamp but are fired only when
-            // there is no traffic on the connection which means we are caught-up
-            // https://dev.mysql.com/doc/internals/en/heartbeat-event.html
+        if (isServerHeartbeat(event.getHeader().getEventType())) {
+            // Server heartbeats report a replication position without a source timestamp.
             metrics.setMilliSecondsBehindSource(ts);
             return;
         }
@@ -635,6 +635,10 @@ public abstract class BinlogStreamingChangeEventSource<P extends BinlogPartition
         metrics.setMilliSecondsBehindSource(ts);
     }
 
+    private static boolean isServerHeartbeat(EventType type) {
+        return type == EventType.HEARTBEAT || type == EventType.HEARTBEAT_V2;
+    }
+
     protected abstract void setEventTimestamp(Event event, long eventTs);
 
     protected void ignoreEvent(O offsetContext, Event event) {
@@ -650,22 +654,19 @@ public abstract class BinlogStreamingChangeEventSource<P extends BinlogPartition
         offsetContext.setBinlogServerId(eventHeader.getServerId());
 
         final EventType eventType = eventHeader.getEventType();
+        final boolean heartbeat = isServerHeartbeat(eventType);
         if (eventType == EventType.ROTATE) {
-            EventData eventData = event.getData();
-            RotateEventData rotateEventData;
-            if (eventData instanceof EventDeserializer.EventDataWrapper) {
-                rotateEventData = (RotateEventData) ((EventDeserializer.EventDataWrapper) eventData).getInternal();
-            }
-            else {
-                rotateEventData = (RotateEventData) eventData;
-            }
-            offsetContext.setBinlogStartPoint(rotateEventData.getBinlogFilename(), rotateEventData.getBinlogPosition());
+            final RotateEventData rotate = unwrapData(event);
+            offsetContext.setBinlogStartPoint(rotate.getBinlogFilename(), rotate.getBinlogPosition());
         }
-        else if (eventHeader instanceof EventHeaderV4) {
-            EventHeaderV4 trackableEventHeader = (EventHeaderV4) eventHeader;
-            if (trackableEventHeader.getPosition() > 0) {
-                offsetContext.setEventPosition(
-                        trackableEventHeader.getPosition(), trackableEventHeader.getEventLength());
+        else if (eventHeader instanceof EventHeaderV4 header) {
+            if (heartbeat) {
+                if (header.getNextPosition() > 0) {
+                    offsetContext.setEventPosition(header.getNextPosition(), 0);
+                }
+            }
+            else if (header.getPosition() > 0) {
+                offsetContext.setEventPosition(header.getPosition(), header.getEventLength());
             }
         }
 
@@ -676,11 +677,20 @@ public abstract class BinlogStreamingChangeEventSource<P extends BinlogPartition
             // Forward the event to the handler ...
             eventHandlers.getOrDefault(eventType, (e) -> ignoreEvent(offsetContext, e)).accept(event);
 
-            // Generate heartbeat message if the time is right
-            eventDispatcher.dispatchHeartbeatEvent(partition, offsetContext);
+            // A server heartbeat has no corresponding event to skip when a transaction is replayed.
+            if (!heartbeat) {
+                offsetContext.completeEvent();
+                if (skipEvent) {
+                    --initialEventsToSkip;
+                    skipEvent = initialEventsToSkip > 0;
+                }
+            }
 
-            // Capture that we've completed another event ...
-            offsetContext.completeEvent();
+            if (initialEventsToSkip == 0 && startingRowNumber == 0) {
+                offsetContext.completeReplay();
+            }
+            // A heartbeat after a row event must include that completed event in the restart offset.
+            eventDispatcher.dispatchHeartbeatEvent(partition, offsetContext);
 
             // update last offset used for logging
             lastOffset = offsetContext.getOffset();
@@ -688,12 +698,6 @@ public abstract class BinlogStreamingChangeEventSource<P extends BinlogPartition
             // Invoked on the binlog client thread; the monitor is registered on the coordinator
             // thread before the client is connected, so it is safely published by the thread start
             offsetActivityMonitorService.pulse(partition, offsetContext);
-
-            if (skipEvent) {
-                // We're in the mode of skipping events and we just skipped this one, so decrement our skip count ...
-                --initialEventsToSkip;
-                skipEvent = initialEventsToSkip > 0;
-            }
         }
         catch (RuntimeException e) {
             // There was an error in the event handler, so propagate the failure to Kafka Connect ...
@@ -716,11 +720,7 @@ public abstract class BinlogStreamingChangeEventSource<P extends BinlogPartition
 
     @SuppressWarnings("unchecked")
     protected <T extends EventData> T unwrapData(Event event) {
-        EventData eventData = event.getData();
-        if (eventData instanceof EventDeserializer.EventDataWrapper) {
-            eventData = ((EventDeserializer.EventDataWrapper) eventData).getInternal();
-        }
-        return (T) eventData;
+        return (T) EventDeserializer.EventDataWrapper.internal(event.getData());
     }
 
     /**
@@ -1393,6 +1393,8 @@ public abstract class BinlogStreamingChangeEventSource<P extends BinlogPartition
             int count = 0;
             int numRows = rows.size();
             if (startingRowNumber < numRows) {
+                // The first row emitted after replay must carry its own restart position.
+                offsetContext.completeReplay();
                 for (int rowIndex = startingRowNumber; rowIndex != numRows; ++rowIndex) {
                     U row = rows.get(rowIndex);
                     changeEventValidator.validate(tableId, row);
