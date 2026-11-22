@@ -1513,6 +1513,16 @@ For details, see {link-prefix}:{link-avro-serialization}#avro-naming[Avro naming
 |`__debezium_unavailable_value`
 |Placeholder for unavailable values (for example, for toasted columns).
 
+|[[cockroachdb-property-event-processing-failure-handling-mode]]<<cockroachdb-property-event-processing-failure-handling-mode, `+event.processing.failure.handling.mode+`>>
+|`fail`
+|Specifies how the connector should react to exceptions during processing of events:
+
+`fail` propagates the exception and causes the connector to stop.
+
+`warn` logs the problematic event, skips that event, and continues processing.
+
+`skip` skips the problematic event and continues processing.
+
 |[[cockroachdb-property-heartbeat-interval]]<<cockroachdb-property-heartbeat-interval, `+heartbeat.interval.ms+`>>
 |`0`
 |Specifies the interval, in milliseconds, at which the connector emits heartbeat records to the `__debezium-heartbeat.<topic.prefix>` Kafka topic.
@@ -1576,6 +1586,15 @@ The connector stops in every snapshot mode, because a new scan would end in the 
 To resolve the error, increase `gc.ttlseconds` for the captured tables so that it covers the duration of the scan.
 
 It retries after all other CockroachDB errors, for example, when the Kafka sink of the changefeed cannot be reached.
+
+[id="cockroachdb-event-cannot-be-processed"]
+=== An event cannot be processed
+
+If the connector cannot process a changefeed event, for example, because a message in an intermediate topic is not valid JSON, the connector applies the xref:cockroachdb-property-event-processing-failure-handling-mode[`event.processing.failure.handling.mode`] property.
+By default, the connector stops and reports the error.
+The connector does not skip the event.
+After a restart, the connector reads the event again.
+To continue without such events, set the property to `warn` or `skip`.
 
 [id="cockroachdb-becomes-unavailable"]
 === CockroachDB becomes unavailable
