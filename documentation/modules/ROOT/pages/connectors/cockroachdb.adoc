@@ -136,7 +136,7 @@ On restart with an existing offset, streaming resumes from the stored cursor.
 |The snapshot backfills all existing rows, then the connector stops.
 Useful for one-time data migration.
 CockroachDB does not allow the `updated` or `diff` options together with `initial_scan='only'`.
-In this mode, the connector ignores xref:cockroachdb-property-include-updated[`cockroachdb.changefeed.include.updated`] and xref:cockroachdb-property-include-diff[`cockroachdb.changefeed.include.diff`], and logs a warning.
+In this mode, the connector ignores xref:cockroachdb-property-include-diff[`cockroachdb.changefeed.include.diff`], and logs a warning.
 After the snapshot completes, the connector does not repeat it when it restarts.
 If every captured table is empty, no event records the completed snapshot, so the connector repeats the empty scan after a restart unless heartbeats are enabled (xref:cockroachdb-property-heartbeat-interval[`heartbeat.interval.ms`]).
 If the connector stops before it has read the whole scan, it runs the scan again after it restarts, so some rows can be emitted more than once.
@@ -225,6 +225,9 @@ The connector reuses such a changefeed, and logs the ID of its job.
 To add the option, pause the changefeed job, wait until its status is `paused`, run `ALTER CHANGEFEED _<job_id>_ SET updated`, and resume the job.
 `PAUSE JOB` returns before the job is paused, and `ALTER CHANGEFEED` rejects a job that is not paused yet.
 To add the `resolved` option to a changefeed that does not use it, run `ALTER CHANGEFEED _<job_id>_ SET resolved = '_<interval>_'`.
+If the `enriched_properties` option of a reused changefeed does not include `source`, the connector also logs the ID of its job.
+To add the property, run `ALTER CHANGEFEED _<job_id>_ SET enriched_properties = 'source'`.
+The statement replaces the value of the option, so name the properties that the changefeed already sends together with `source`, for example, `SET enriched_properties = 'schema,source'`.
 You do not have to stop the connector while you pause and resume the changefeed job.
 
 When you add a table to `table.include.list` and restart the connector, the changefeed that covers the other tables keeps running, and the connector creates another changefeed for the added table.
@@ -1323,6 +1326,8 @@ The connector does not read the `schema` block, which duplicates information tha
 The default value is `source` because that block identifies the originating database, schema, table, and commit timestamp.
 This information is useful when you inspect the intermediate topics or when other tools also consume them.
 The connector also reads the timestamp in the `source` block to distinguish rows from an initial scan from rows that are inserted after the scan.
+If the connector uses a sinkless changefeed, the value must include `source`, and the connector does not start otherwise.
+A sinkless changefeed delivers the events of all tables in one stream, and the connector reads the table of each event from the `source` block.
 For more information, see xref:cockroachdb-snapshots[Snapshots].
 
 |[[cockroachdb-property-cursor]]<<cockroachdb-property-cursor, `+cockroachdb.changefeed.cursor+`>>
