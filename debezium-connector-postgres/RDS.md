@@ -3,7 +3,7 @@ In order to run the test suite against an Amazon RDS PostgreSQL environment, the
 ## Setup remote connectivity
 
 When you setup an account with Amazon RDS, they should automatically create a new Security Group for your VPC environment.
-By default this new security group does not allow remote connections from your local machine to the resources which it secures, so you you need to explicitly grant remote access.
+By default this new security group does not allow remote connections from your local machine to the resources which it secures, so you need to explicitly grant remote access.
 
 1. Navigate to **VPC** > **Security** > **Security Groups**
 2. Select your Security Group in the top pane
