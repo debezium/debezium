@@ -1393,7 +1393,7 @@ public class TokenStream {
      * Attempt to consume the next token if it matches one of the supplied values.
      *
      * @param options the options for the value of the current token
-     * @return true if the current token's value did match one of the suplied options, or false otherwise
+     * @return true if the current token's value did match one of the supplied options, or false otherwise
      * @throws IllegalStateException if this method was called before the stream was {@link #start() started}
      */
     public boolean canConsumeAnyOf(String[] options) throws IllegalStateException {
