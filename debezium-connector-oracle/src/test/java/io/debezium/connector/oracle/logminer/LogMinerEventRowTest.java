@@ -54,7 +54,7 @@ public class LogMinerEventRowTest {
         LogMinerEventRow row = LogMinerEventRow.fromResultSet(resultSet, null, defaultIndexes());
         assertThat(row.getChangeTime()).isEqualTo(Instant.ofEpochMilli(1000L));
 
-        when(resultSet.getTimestamp(eq(4), any(Calendar.class))).thenThrow(SQLException.class);
+        when(resultSet.getTimestamp(eq(4), any(Calendar.class))).thenThrow(new SQLException("Test exception"));
         assertThrows(resultSet, SQLException.class);
 
         verify(resultSet, times(2)).getTimestamp(eq(4), any(Calendar.class));
@@ -68,7 +68,7 @@ public class LogMinerEventRowTest {
         assertThat(row.getEventType()).isEqualTo(EventType.UPDATE);
         verify(resultSet).getInt(3);
 
-        when(resultSet.getInt(3)).thenThrow(SQLException.class);
+        when(resultSet.getInt(3)).thenThrow(new SQLException("Test exception"));
         assertThrows(resultSet, SQLException.class);
 
         verify(resultSet, times(2)).getInt(3);
@@ -82,7 +82,7 @@ public class LogMinerEventRowTest {
         assertThat(row.getTableName()).isEqualTo("TABLENAME");
         verify(resultSet).getString(7);
 
-        when(resultSet.getString(7)).thenThrow(SQLException.class);
+        when(resultSet.getString(7)).thenThrow(new SQLException("Test exception"));
         assertThrows(resultSet, SQLException.class);
 
         verify(resultSet, times(2)).getString(7);
@@ -96,7 +96,7 @@ public class LogMinerEventRowTest {
         assertThat(row.getTablespaceName()).isEqualTo("DEBEZIUM");
         verify(resultSet).getString(8);
 
-        when(resultSet.getString(8)).thenThrow(SQLException.class);
+        when(resultSet.getString(8)).thenThrow(new SQLException("Test exception"));
         assertThrows(resultSet, SQLException.class);
 
         verify(resultSet, times(2)).getString(8);
@@ -110,7 +110,7 @@ public class LogMinerEventRowTest {
         assertThat(row.getScn()).isEqualTo(Scn.valueOf(12345L));
         verify(resultSet).getString(1);
 
-        when(resultSet.getString(1)).thenThrow(SQLException.class);
+        when(resultSet.getString(1)).thenThrow(new SQLException("Test exception"));
         assertThrows(resultSet, SQLException.class);
 
         verify(resultSet, times(2)).getString(1);
@@ -124,7 +124,7 @@ public class LogMinerEventRowTest {
         assertThat(row.getTransactionId()).isEqualToIgnoringCase("74725F6964");
         verify(resultSet).getBytes(5);
 
-        when(resultSet.getBytes(5)).thenThrow(SQLException.class);
+        when(resultSet.getBytes(5)).thenThrow(new SQLException("Test exception"));
         assertThrows(resultSet, SQLException.class);
 
         verify(resultSet, times(2)).getBytes(5);
@@ -139,7 +139,7 @@ public class LogMinerEventRowTest {
         assertThat(row.getTableId().toString()).isEqualTo(TestHelper.getDatabaseName() + ".SCHEMA.TABLE");
         verify(resultSet).getString(8);
 
-        when(resultSet.getString(8)).thenThrow(SQLException.class);
+        when(resultSet.getString(8)).thenThrow(new SQLException("Test exception"));
         assertThrows(resultSet, SQLException.class);
     }
 
@@ -153,7 +153,7 @@ public class LogMinerEventRowTest {
         assertThat(row.getTableId().toString()).isEqualTo(TestHelper.getDatabaseName() + ".Schema.table");
         verify(resultSet).getString(8);
 
-        when(resultSet.getString(8)).thenThrow(SQLException.class);
+        when(resultSet.getString(8)).thenThrow(new SQLException("Test exception"));
         assertThrows(resultSet, SQLException.class);
     }
 
@@ -195,7 +195,7 @@ public class LogMinerEventRowTest {
         verify(resultSet, times(14)).getString(2);
 
         when(resultSet.getInt(6)).thenReturn(0);
-        when(resultSet.getString(2)).thenThrow(SQLException.class);
+        when(resultSet.getString(2)).thenThrow(new SQLException("Test exception"));
 
         assertThrows(resultSet, SQLException.class);
 
