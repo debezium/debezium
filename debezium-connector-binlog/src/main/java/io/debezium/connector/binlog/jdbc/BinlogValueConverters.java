@@ -515,7 +515,7 @@ public abstract class BinlogValueConverters extends JdbcValueConverters {
 
     /**
      * Converts a value object for a {@code YEAR}, which appear in the binlog as an integer though returns from
-     * the the JDBC driver as either a short or a {@link java.sql.Date}.
+     * the JDBC driver as either a short or a {@link java.sql.Date}.
      *
      * @param column the column definition describing the {@code data} value; never null
      * @param fieldDefn the field definition; never null
