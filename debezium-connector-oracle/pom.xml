@@ -258,6 +258,8 @@
         -->
         <skipITs>true</skipITs>
 
+        <it.test>MemoryStreamingChangeEventSourceIT,EhcacheStreamingChangeEventSourceIT,EmbeddedInfinispanStreamingChangeEventSourceIT</it.test>
+
         <!--
         Specify properties used for setting up the Oracle DB container instance/s for integration tests.
         Note that the `docker.host.address` property is computed from the IP address of DOCKER_HOST, which will
