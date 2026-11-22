@@ -49,7 +49,7 @@ The {prodname} Spanner connector spends all its time streaming changes from the 
 
 The connector offers an abstraction over the Spanner API for querying change streams. With this connector, you don't have to manage the change stream partition lifecycle. The connector provides you with a stream of data change records so that you are free to focus more on application logic and less on specific API details and dynamic change stream partitioning.
 
-When subscribing to a change stream, the connector needs to provide the the project ID, Spanner instance ID, Spanner database ID, as well as the change stream name. Optionally, the user can also provide a start timestamp and an end timestamp. See the xref:spanner-connector-properties[this section] for a more detailed list of the connector configuration properties.
+When subscribing to a change stream, the connector needs to provide the project ID, Spanner instance ID, Spanner database ID, as well as the change stream name. Optionally, the user can also provide a start timestamp and an end timestamp. See the xref:spanner-connector-properties[this section] for a more detailed list of the connector configuration properties.
 
 When the connector receives changes it transforms the events into {prodname} _create_, _update_, or _delete_ events. The connector forwards these change events in records to the Kafka Connect framework, which is running in the same process. The Kafka Connect process asynchronously writes the change event records in the same order in which they were generated to the appropriate Kafka topic.
 
