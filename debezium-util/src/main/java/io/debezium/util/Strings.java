@@ -1278,7 +1278,7 @@ public final class Strings {
      *
      * @param str    The string to get the begin from
      * @param length The length of the string to return
-     * @return {@code null}, if the given string is {@code null}, the first first
+     * @return {@code null}, if the given string is {@code null}, the first
      *         {@code length} characters of that string otherwise. If the string is
      *         shorter than the given number of characters, the string itself will
      *         be returned.
