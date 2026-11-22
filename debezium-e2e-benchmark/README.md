@@ -117,7 +117,7 @@ git clone https://github.com/debezium/debezium-examples
 git clone https://github.com/debezium/debezium
 
 cd debezium/debezium-e2e-benchmark
-# if you like do do it with an other db, adapt the docker-compose file to your preferred database and update the tpc-config.json file for appropriate database ( SQL)
+# if you'd like to do it with another db, adapt the docker-compose file to your preferred database and update the tpc-config.json file for appropriate database (SQL)
 docker-compose -f docker-compose-db2-tpc.yaml up --build
 ```
 

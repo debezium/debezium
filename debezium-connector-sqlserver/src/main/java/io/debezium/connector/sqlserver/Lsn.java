@@ -41,7 +41,7 @@ public class Lsn implements Comparable<Lsn>, Nullable {
     }
 
     /**
-     * @return true if this is a real LSN or false it is {@code NULL}
+     * @return true if this is a real LSN or false if it is {@code NULL}
      */
     @Override
     public boolean isAvailable() {

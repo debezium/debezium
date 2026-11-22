@@ -438,7 +438,7 @@ public interface Document extends Iterable<Document.Field>, Comparable<Document>
      *
      * @param fieldName The name of the field
      * @param defaultValue the default value to return if there is no such field or if the value is not an integer
-     * @return The integer field value if found, or <code>defaultValue</code> if there is no such field or if the value is not a
+     * @return The integer field value if found, or <code>defaultValue</code> if there is no such field or if the value is not an
      *         integer
      */
     default int getInteger(CharSequence fieldName,
