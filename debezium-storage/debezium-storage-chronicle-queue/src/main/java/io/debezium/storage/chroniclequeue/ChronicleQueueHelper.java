@@ -21,6 +21,7 @@ import io.debezium.DebeziumException;
 import io.debezium.pipeline.DataChangeEvent;
 import io.debezium.util.Strings;
 
+import net.openhft.chronicle.core.io.BackgroundResourceReleaser;
 import net.openhft.chronicle.queue.ChronicleQueue;
 import net.openhft.chronicle.queue.ExcerptAppender;
 import net.openhft.chronicle.queue.ExcerptTailer;
@@ -98,6 +99,7 @@ class ChronicleQueueHelper implements AutoCloseable {
     @Override
     public void close() {
         chronicleQueue.close();
+        BackgroundResourceReleaser.releasePendingResources();
         if (ownsDirectory) {
             deleteDirectory(queuePath);
         }
