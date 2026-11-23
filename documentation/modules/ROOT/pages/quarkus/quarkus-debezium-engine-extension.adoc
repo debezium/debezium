@@ -135,18 +135,18 @@ public class ProductHandler {
 
 
     @Capturing
-    public void capture(CapturingEvent<SourceRecord> record) {
+    public void capture(CapturingEvent<SourceRecord, SourceRecord> record) {
         // process your events
     }
 
 }
 ```
 
-The `CapturingEvent<T>` contains information related to the kind of database operation:
+The `CapturingEvent<K,T>` contains information related to the kind of database operation:
 
 ```java
     @Capturing
-    public void capture(CapturingEvent<SourceRecord> record) {
+    public void capture(CapturingEvent<SourceRecord, SourceRecord> record) {
         switch (record) {
             case Create<SourceRecord> event -> {}
             case Delete<SourceRecord> event -> {}
@@ -166,7 +166,7 @@ It's possible to filter events by `destination`:
 
 ```java
     @Capturing(destination = "native.inventory.products")
-    public void capture(CapturingEvent<SourceRecord> record) {
+    public void capture(CapturingEvent<SourceRecord, SourceRecord> record) {
         // process your event
     }
 ```
@@ -295,7 +295,7 @@ public class ProductHandler {
 
 
     @Capturing(destination = "native.inventory.products")
-    public void capture(CapturingEvent<Product> record) {
+    public void capture(CapturingEvent<String, Product> record) {
         // process your events
     }
 
