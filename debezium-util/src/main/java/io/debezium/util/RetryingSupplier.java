@@ -40,7 +40,6 @@ public class RetryingSupplier<V, E extends Exception> {
     private final DelayStrategy delayStrategy;
     private final List<Class<? extends Exception>> retriableExceptions;
     private final Predicate<Exception> retriableWhen;
-    private final String customRetriableMessagePattern;
     private final boolean walkCauseChain;
     private final String name;
     private final Logger logger;
@@ -52,7 +51,6 @@ public class RetryingSupplier<V, E extends Exception> {
         this.delayStrategy = b.delayStrategy;
         this.retriableExceptions = b.retriableExceptions;
         this.retriableWhen = b.retriableWhen;
-        this.customRetriableMessagePattern = b.customRetriableMessagePattern;
         this.walkCauseChain = b.walkCauseChain;
         this.name = b.name;
         this.logger = b.logger;
@@ -95,7 +93,10 @@ public class RetryingSupplier<V, E extends Exception> {
                 }
                 attempts--;
                 String retriesExplained = retries == -1 ? "infinity" : String.valueOf(retries);
-                logger.info("{} failed with exception, will try and auto heal (if configured); attempt #{} out of {}",
+                final var message = doAutoHeal == null
+                        ? "{} failed with retriable exception, will retry later; attempt #{} out of {}"
+                        : "{} failed with exception, will try and auto heal (if configured); attempt #{} out of {}";
+                logger.info(message,
                         name,
                         retries - attempts,
                         retriesExplained,
@@ -181,10 +182,6 @@ public class RetryingSupplier<V, E extends Exception> {
                     return true;
                 }
             }
-            if (customRetriableMessagePattern != null && current.getMessage() != null
-                    && current.getMessage().matches(customRetriableMessagePattern)) {
-                return true;
-            }
             if (!walkCauseChain) {
                 return false;
             }
@@ -220,7 +217,6 @@ public class RetryingSupplier<V, E extends Exception> {
         private DelayStrategy delayStrategy = DelayStrategy.none();
         private List<Class<? extends Exception>> retriableExceptions = new ArrayList<>();
         private Predicate<Exception> retriableWhen;
-        private String customRetriableMessagePattern;
         private boolean walkCauseChain = true;
         private String name = "Operation";
         private Logger logger = LOGGER;
@@ -273,18 +269,6 @@ public class RetryingSupplier<V, E extends Exception> {
             this.retriableExceptions = (retriableExceptions == null)
                     ? new ArrayList<>()
                     : new ArrayList<>(retriableExceptions);
-            return this;
-        }
-
-        /**
-         * Sets a regular expression matched against the messages of the thrown exception and, subject to
-         * {@link #walkCauseChain(boolean)}, its causes; a match classifies the exception as retriable even
-         * when its type does not. This mirrors the semantics of the internal
-         * {@code custom.retriable.exception} connector option. A {@code null} pattern (the default)
-         * disables the message-based classification.
-         */
-        public Builder<V, E> customRetriableMessagePattern(String customRetriableMessagePattern) {
-            this.customRetriableMessagePattern = customRetriableMessagePattern;
             return this;
         }
 

@@ -35,10 +35,11 @@ public class RetryingRunnable<E extends Exception> {
     private final RetryingSupplier<Void, E> delegate;
 
     private RetryingRunnable(Builder<E> b) {
+        final var doRun = b.doRun;
         this.delegate = RetryingSupplier.<Void, E> builder()
                 .retries(b.retries)
                 .doGet(() -> {
-                    b.doRun.run();
+                    doRun.run();
                     return null;
                 })
                 .doAutoHeal(b.doAutoHeal)
