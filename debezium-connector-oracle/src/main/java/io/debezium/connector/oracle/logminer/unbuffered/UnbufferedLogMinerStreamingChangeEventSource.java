@@ -260,6 +260,7 @@ public class UnbufferedLogMinerStreamingChangeEventSource extends AbstractLogMin
             LOGGER.debug("Advancing offset low-watermark scn to {}", computedResumeScn);
             getOffsetContext().setScn(computedResumeScn);
         }
+        getOffsetContext().removeSnapshotPendingTransactionsIfSnapshotScnReached();
 
         return computedResumeScn;
     }

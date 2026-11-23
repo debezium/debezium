@@ -105,6 +105,46 @@ public class OracleOffsetContextTest {
     }
 
     @Test
+    @FixFor("debezium/dbz#2779")
+    public void shouldWriteSnapshotPendingTransactionsToStreamingOffsets() throws Exception {
+        final Map<String, Object> offsetValues = new HashMap<>();
+        offsetValues.put(SourceInfo.SCN_KEY, "90");
+        offsetValues.put(OracleOffsetContext.SNAPSHOT_SCN_KEY, "100");
+        offsetValues.put(OracleOffsetContext.SNAPSHOT_PENDING_TRANSACTIONS_KEY, "0a001100e1040000:91,0b000200f2050000:95");
+
+        final OracleOffsetContext offsetContext = (OracleOffsetContext) offsetLoader.load(offsetValues);
+
+        final Map<String, ?> writeValues = offsetContext.getOffset();
+        assertThat(writeValues.get(SourceInfo.SNAPSHOT_KEY)).isNull();
+        assertThat(OracleOffsetContext.loadSnapshotPendingTransactions(writeValues)).containsOnly(
+                Map.entry("0a001100e1040000", Scn.valueOf(91)),
+                Map.entry("0b000200f2050000", Scn.valueOf(95)));
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2779")
+    public void shouldRemoveSnapshotPendingTransactionsOnceScnReachesSnapshotScn() throws Exception {
+        final Map<String, Object> offsetValues = new HashMap<>();
+        offsetValues.put(SourceInfo.SCN_KEY, "90");
+        offsetValues.put(OracleOffsetContext.SNAPSHOT_SCN_KEY, "100");
+        offsetValues.put(OracleOffsetContext.SNAPSHOT_PENDING_TRANSACTIONS_KEY, "0a001100e1040000:91,0b000200f2050000:95");
+
+        final OracleOffsetContext offsetContext = (OracleOffsetContext) offsetLoader.load(offsetValues);
+
+        // Past the start of both transactions, but events older than the snapshot SCN can still be read
+        offsetContext.setScn(Scn.valueOf(99));
+        offsetContext.removeSnapshotPendingTransactionsIfSnapshotScnReached();
+        assertThat(offsetContext.getSnapshotPendingTransactions()).hasSize(2);
+        assertThat(offsetContext.getOffset().get(OracleOffsetContext.SNAPSHOT_PENDING_TRANSACTIONS_KEY)).isNotNull();
+
+        offsetContext.setScn(Scn.valueOf(100));
+        offsetContext.removeSnapshotPendingTransactionsIfSnapshotScnReached();
+        assertThat(offsetContext.getSnapshotPendingTransactions()).isEmpty();
+        assertThat(offsetContext.getOffset().get(OracleOffsetContext.SNAPSHOT_PENDING_TRANSACTIONS_KEY)).isNull();
+        assertThat(offsetContext.getOffset().get(OracleOffsetContext.SNAPSHOT_SCN_KEY)).isEqualTo("100");
+    }
+
+    @Test
     @FixFor({ "DBZ-8924" })
     @SkipWhenAdapterNameIsNot(SkipWhenAdapterNameIsNot.AdapterName.LOGMINER_UNBUFFERED)
     public void shouldCorrectlyDeserializeTransactionDetails() throws Exception {

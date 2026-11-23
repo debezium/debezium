@@ -3591,6 +3591,82 @@ public class OracleConnectorIT extends AbstractAsyncEngineConnectorTest {
     }
 
     @Test
+    @FixFor("debezium/dbz#2779")
+    @SkipWhenAdapterNameIsNot(value = SkipWhenAdapterNameIsNot.AdapterName.ANY_LOGMINER, reason = "Only applies to LogMiner")
+    public void shouldCaptureTransactionInProgressDuringSnapshotAfterRestart() throws Exception {
+        TestHelper.dropTable(connection, "dbz2779");
+        try (OracleConnection otherConnection = TestHelper.testConnection()) {
+            connection.execute("CREATE TABLE dbz2779 (id numeric(9,0) primary key, data varchar2(50))");
+            TestHelper.streamTable(connection, "dbz2779");
+
+            // In progress when the snapshot is taken, so it can only be captured by streaming.
+            connection.executeWithoutCommitting("INSERT INTO dbz2779 (id,data) values (1, 'in progress at snapshot')");
+
+            final Configuration config = TestHelper.defaultConfig()
+                    .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "DEBEZIUM\\.DBZ2779")
+                    .with(OracleConnectorConfig.LOG_MINING_TRANSACTION_SNAPSHOT_BOUNDARY_MODE, TransactionSnapshotBoundaryMode.ALL)
+                    .build();
+            // Heartbeats flush the offsets while no captured transaction commits.
+            final Configuration heartbeatConfig = config.edit().with(Heartbeat.HEARTBEAT_INTERVAL, 1000).build();
+            final Map<String, String> partition = new OraclePartition(TestHelper.SERVER_NAME, TestHelper.DATABASE).getSourcePartition();
+            final String topicName = "server1.DEBEZIUM.DBZ2779";
+
+            start(OracleConnector.class, config);
+            assertConnectorIsRunning();
+            waitForStreamingRunning(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
+
+            // Committed while the in-progress transaction is still open, so that a streaming offset is stored.
+            otherConnection.execute("INSERT INTO dbz2779 (id,data) values (2, 'committed after snapshot')");
+            assertThat(consumeRecordsUntilId(topicName, 2)).hasSize(1);
+
+            stopConnector();
+
+            // The in-progress transaction keeps the offset SCN below the snapshot SCN, so the streaming offset
+            // must still carry the transactions that were in progress when the snapshot was taken.
+            final Map<String, Object> streamingOffset = readLastCommittedOffset(config, partition);
+            final Scn snapshotScn = OracleOffsetContext.loadSnapshotScn(streamingOffset);
+            assertThat(OracleOffsetContext.getScnFromOffsetMapByKey(streamingOffset, SourceInfo.SCN_KEY)).isLessThan(snapshotScn);
+            assertThat(OracleOffsetContext.loadSnapshotPendingTransactions(streamingOffset)).isNotEmpty();
+
+            start(OracleConnector.class, heartbeatConfig);
+            assertConnectorIsRunning();
+            waitForStreamingRunning(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
+
+            // The insert precedes the snapshot SCN and is mined again after the restart. It must be emitted.
+            connection.commit();
+            final List<SourceRecord> records = consumeRecordsUntilId(topicName, 1);
+            assertThat(records).hasSize(1);
+            assertThat(((Struct) records.get(0).value()).getString("op")).isEqualTo(Envelope.Operation.CREATE.code());
+
+            // Once the in-progress transaction has committed, the offset SCN reaches the snapshot SCN and the
+            // transactions are no longer stored.
+            Awaitility.await().atMost(Duration.ofMinutes(2)).until(() -> {
+                final Map<String, Object> committedOffset = readLastCommittedOffset(config, partition);
+                return committedOffset != null
+                        && OracleOffsetContext.getScnFromOffsetMapByKey(committedOffset, SourceInfo.SCN_KEY).compareTo(snapshotScn) >= 0
+                        && !committedOffset.containsKey(OracleOffsetContext.SNAPSHOT_PENDING_TRANSACTIONS_KEY);
+            });
+        }
+        finally {
+            stopConnector();
+            TestHelper.dropTable(connection, "dbz2779");
+        }
+    }
+
+    /**
+     * Consumes records until the record for the given identifier arrives on the topic.
+     *
+     * @return the records consumed from the topic, ignoring other topics such as heartbeats
+     */
+    private List<SourceRecord> consumeRecordsUntilId(String topicName, int id) throws InterruptedException {
+        final SourceRecords records = consumeRecordsByTopicUntil((count, record) -> topicName.equals(record.topic())
+                && ((Struct) record.value()).getStruct(AFTER) != null
+                && ((Struct) record.value()).getStruct(AFTER).getInt32("ID") == id);
+        final List<SourceRecord> topicRecords = records.recordsForTopic(topicName);
+        return topicRecords == null ? List.of() : topicRecords;
+    }
+
+    @Test
     @FixFor("DBZ-4842")
     @SkipWhenAdapterNameIsNot(value = SkipWhenAdapterNameIsNot.AdapterName.ANY_LOGMINER, reason = "Only applies to LogMiner")
     @SkipWhenLogMiningStrategyIs(value = SkipWhenLogMiningStrategyIs.Strategy.HYBRID, reason = "Hybrid strategy now detects and handles this use case")
