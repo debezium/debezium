@@ -30,7 +30,6 @@ import io.debezium.connector.common.DebeziumTaskState;
 import io.debezium.connector.mongodb.connection.client.MongoDbClient;
 import io.debezium.connector.mongodb.sink.eventhandler.relational.RelationalEventHandler;
 import io.debezium.dlq.ErrorReporter;
-import io.debezium.dlq.ErrorReporters;
 import io.debezium.metadata.CollectionId;
 import io.debezium.openlineage.ConnectorContext;
 import io.debezium.openlineage.DebeziumOpenLineageEmitter;
@@ -44,7 +43,6 @@ final class MongoDbChangeEventSink extends AbstractChangeEventSink implements Ch
 
     private final MongoDbSinkConnectorConfig sinkConfig;
     private final MongoDbClient mongoClient;
-    private final ErrorReporter errorReporter;
 
     private final MongoDbWriter mongoDbWriter;
 
@@ -55,7 +53,6 @@ final class MongoDbChangeEventSink extends AbstractChangeEventSink implements Ch
         super(sinkConfig, errorReporter, connectorContext);
         this.sinkConfig = sinkConfig;
         this.mongoClient = mongoClient;
-        this.errorReporter = errorReporter;
         this.mongoDbWriter = new MongoDbWriter(mongoClient);
     }
 
@@ -77,13 +74,9 @@ final class MongoDbChangeEventSink extends AbstractChangeEventSink implements Ch
             MongoDbSinkRecord record = (MongoDbSinkRecord) batchRecord.record();
 
             if (record.getConversionException() != null) {
-                if (!ErrorReporters.isEnabled(errorReporter)) {
-                    throw new DebeziumDataException(
-                            "Failed to convert record from topic '" + record.topicName() + "'",
-                            record.getConversionException());
-                }
-                errorReporter.report(record, record.getConversionException());
-                continue;
+                throw new DebeziumDataException(
+                        "Failed to convert record from topic '" + record.topicName() + "'",
+                        record.getConversionException());
             }
 
             String collectionName = batchRecord.collectionId().identifier();

@@ -6,12 +6,16 @@
 package io.debezium.connector.jdbc;
 
 import static io.debezium.config.ConfigurationNames.TASK_ID_PROPERTY_NAME;
+import static io.debezium.openlineage.dataset.DatasetMetadata.STREAM_DATASET_TYPE;
+import static io.debezium.openlineage.dataset.DatasetMetadata.DataStore.KAFKA;
+import static io.debezium.openlineage.dataset.DatasetMetadata.DatasetKind.INPUT;
 
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicReference;
@@ -43,6 +47,8 @@ import io.debezium.dlq.ErrorReporter;
 import io.debezium.dlq.ErrorReporters;
 import io.debezium.openlineage.ConnectorContext;
 import io.debezium.openlineage.DebeziumOpenLineageEmitter;
+import io.debezium.openlineage.dataset.DatasetDataExtractor;
+import io.debezium.openlineage.dataset.DatasetMetadata;
 import io.debezium.sink.spi.SinkProgressListener;
 import io.debezium.util.Stopwatch;
 import io.debezium.util.Strings;
@@ -58,7 +64,9 @@ public class JdbcSinkConnectorTask extends SinkTask {
     private static final Logger LOGGER = LoggerFactory.getLogger(JdbcSinkConnectorTask.class);
 
     private static final Class[] EMPTY_CLASS_ARRAY = new Class[0];
+    private static final DatasetDataExtractor DATASET_DATA_EXTRACTOR = new DatasetDataExtractor();
 
+    private JdbcSinkConnectorConfig config;
     private SessionFactory sessionFactory;
     private ConnectorContext connectorContext;
 
@@ -111,7 +119,7 @@ public class JdbcSinkConnectorTask extends SinkTask {
         stateLock.lock();
 
         try {
-            final JdbcSinkConnectorConfig config = new JdbcSinkConnectorConfig(props);
+            config = new JdbcSinkConnectorConfig(props);
             String connectorName = Strings.defaultIfBlank(props.get(ConfigurationNames.CONNECTOR_NAME_PROPERTY), config.getConnectorName());
             String taskId = props.getOrDefault(TASK_ID_PROPERTY_NAME, "0");
             connectorContext = new ConnectorContext(connectorName, Module.name(), taskId, Module.version(), UUIDUtils.generateNewUUID(),
@@ -175,6 +183,12 @@ public class JdbcSinkConnectorTask extends SinkTask {
         }
 
         LOGGER.debug("Received {} changes.", records.size());
+
+        // For legacy mode we emit Openlineage events here; sink framework handles this internally
+        if (!config.isSharedChangeEventSinkEnabled()) {
+            records.forEach(record -> DebeziumOpenLineageEmitter.emit(connectorContext, DebeziumTaskState.RUNNING,
+                    List.of(new DatasetMetadata(record.topic(), INPUT, STREAM_DATASET_TYPE, KAFKA, DATASET_DATA_EXTRACTOR.extract(record)))));
+        }
 
         try {
             executeStopWatch.start();

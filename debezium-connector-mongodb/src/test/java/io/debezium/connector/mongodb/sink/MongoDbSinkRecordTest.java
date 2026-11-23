@@ -64,6 +64,22 @@ class MongoDbSinkRecordTest {
         assertThat(processed.getWriteModel()).isInstanceOf(ReplaceOneModel.class);
     }
 
+    // ─── CONVERSION ERROR ────────────────────────────────────────────────────────
+
+    @ParameterizedTest
+    @ArgumentsSource(SinkRecordFactoryArgumentsProvider.class)
+    void nullKeyWithRecordKeyModeShouldCaptureConversionException(SinkRecordFactory factory) {
+        var config = createConfig("primary.key.mode", "record_key");
+        SinkRecord validRecord = factory.createProduct(TOPIC_PREFIX, 101, "scooter", "test", 1.0).build(0);
+        SinkRecord badRecord = new SinkRecord(validRecord.topic(), 0, null, null,
+                validRecord.valueSchema(), validRecord.value(), 0);
+
+        var processed = new MongoDbSinkRecord(badRecord, config);
+
+        assertThat(processed.getConversionException()).isNotNull();
+        assertThat(processed.getWriteModel()).isNull();
+    }
+
     // ─── DELETE ─────────────────────────────────────────────────────────────────
 
     @ParameterizedTest

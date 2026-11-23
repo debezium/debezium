@@ -189,9 +189,15 @@ public interface SinkConnectorConfig {
     private static int validateDeleteEnabled(Configuration config, Field field, Field.ValidationOutput problems) {
         if (config.getBoolean(field)) {
             final PrimaryKeyMode primaryKeyMode = PrimaryKeyMode.parse(config.getString(PRIMARY_KEY_MODE));
-            if (PrimaryKeyMode.NONE.equals(primaryKeyMode)) {
-                getLogger().error("Cannot enable '{}' when '{}' is set to '{}': deletes require a primary key to identify target rows.",
-                        DELETE_ENABLED_FIELD.name(), PRIMARY_KEY_MODE_FIELD.name(), PrimaryKeyMode.NONE.getValue());
+
+            if (!PrimaryKeyMode.RECORD_KEY.equals(primaryKeyMode)
+                    && !PrimaryKeyMode.RECORD_VALUE.equals(primaryKeyMode)
+                    && !PrimaryKeyMode.RECORD_HEADER.equals(primaryKeyMode)) {
+                getLogger().error(
+                        "Cannot enable '{}' when '{}' is set to '{}': deletes require a primary key to identify target rows. Valid modes are '{}', '{}', or '{}' or disable '{}'.",
+                        DELETE_ENABLED_FIELD.name(), PRIMARY_KEY_MODE_FIELD.name(), primaryKeyMode,
+                        PrimaryKeyMode.RECORD_KEY.getValue(), PrimaryKeyMode.RECORD_VALUE.getValue(), PrimaryKeyMode.RECORD_HEADER.getValue(),
+                        DELETE_ENABLED_FIELD.name());
                 return 1;
             }
         }
