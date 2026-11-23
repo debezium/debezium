@@ -258,7 +258,6 @@
         -->
         <skipITs>true</skipITs>
 
-        <it.test>MemoryStreamingChangeEventSourceIT,EhcacheStreamingChangeEventSourceIT,EmbeddedInfinispanStreamingChangeEventSourceIT,OracleBlobDataTypesIT,OracleClobDataTypeIT,OracleJsonDataTypeIT,OracleXmlDataTypesIT,OraclePrimaryKeyLobReselectIT</it.test>
 
         <!--
         Specify properties used for setting up the Oracle DB container instance/s for integration tests.
