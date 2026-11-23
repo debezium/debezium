@@ -1199,10 +1199,6 @@ The actual delay is multiplied by the attempt number (linear backoff).
 |`60000`
 |Specifies the maximum time, in milliseconds, that the connector waits for the connection check to complete when Kafka Connect validates the connector configuration.
 
-|[[cockroachdb-property-connection-validation-timeout]]<<cockroachdb-property-connection-validation-timeout, `+connection.validation.timeout.seconds+`>>
-|`5`
-|Timeout in seconds for validating that an existing JDBC connection is still usable.
-
 |===
 
 
