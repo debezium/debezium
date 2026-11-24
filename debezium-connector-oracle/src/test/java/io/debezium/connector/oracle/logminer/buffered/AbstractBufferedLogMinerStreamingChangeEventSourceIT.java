@@ -14,9 +14,12 @@ import java.util.concurrent.TimeUnit;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceRecord;
 import org.awaitility.Awaitility;
+import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.slf4j.LoggerFactory;
 
 import io.debezium.config.Configuration;
 import io.debezium.connector.oracle.OracleConnection;
@@ -33,6 +36,12 @@ import io.debezium.embedded.async.AbstractAsyncEngineConnectorTest;
 import io.debezium.junit.logging.LogInterceptor;
 import io.debezium.util.Testing;
 
+import ch.qos.logback.classic.Level;
+import ch.qos.logback.classic.LoggerContext;
+import ch.qos.logback.classic.encoder.PatternLayoutEncoder;
+import ch.qos.logback.classic.spi.ILoggingEvent;
+import ch.qos.logback.core.ConsoleAppender;
+
 /**
  * An abstract class for integration tests for {@link BufferedLogMinerStreamingChangeEventSource}.
  *
@@ -40,7 +49,50 @@ import io.debezium.util.Testing;
  */
 public abstract class AbstractBufferedLogMinerStreamingChangeEventSourceIT extends AbstractAsyncEngineConnectorTest {
 
+    private static final String TRACE_LOGGER_NAME = "io.debezium.connector.oracle";
+
+    private static ConsoleAppender<ILoggingEvent> traceAppender;
+
     private OracleConnection connection;
+
+    /**
+     * Logs the Oracle connector at TRACE while these tests run. The shared console appender drops events below INFO,
+     * so a dedicated console appender without that filter is attached for the duration of the test class, with
+     * additivity turned off so INFO events are not printed twice. The logger level is restored by
+     * {@link io.debezium.junit.logging.LogInterceptorCleanupExtension} after the class.
+     */
+    @BeforeAll
+    static void enableTraceLogging() {
+        final var context = (LoggerContext) LoggerFactory.getILoggerFactory();
+
+        final var encoder = new PatternLayoutEncoder();
+        encoder.setContext(context);
+        encoder.setPattern("%d{ISO8601} %-5p  %X{dbz.connectorType}|%X{dbz.connectorName}|%X{dbz.connectorContext}  %m   [%c]%n");
+        encoder.start();
+
+        final var appender = new ConsoleAppender<ILoggingEvent>();
+        appender.setContext(context);
+        appender.setName("ORACLE_TRACE");
+        appender.setEncoder(encoder);
+        appender.start();
+
+        LogInterceptor.changeLoggerLevel(TRACE_LOGGER_NAME, Level.TRACE);
+        final var logger = context.getLogger(TRACE_LOGGER_NAME);
+        logger.setAdditive(false);
+        logger.addAppender(appender);
+        traceAppender = appender;
+    }
+
+    @AfterAll
+    static void disableTraceLogging() {
+        final var logger = ((LoggerContext) LoggerFactory.getILoggerFactory()).getLogger(TRACE_LOGGER_NAME);
+        if (traceAppender != null) {
+            logger.detachAppender(traceAppender);
+            traceAppender.stop();
+            traceAppender = null;
+        }
+        logger.setAdditive(true);
+    }
 
     @BeforeEach
     void before() throws Exception {
