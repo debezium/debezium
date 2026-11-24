@@ -1301,6 +1301,8 @@ A changefeed that the connector reuses keeps the options that it was created wit
 The connector does not accept a property for an option that is reserved for the connector, such as `envelope`, `cursor`, `initial_scan`, or `resolved`.
 If you set such a property, the connector fails at startup.
 If a connector property sets the option, the error message names that property.
+The connector also does not accept a property for the `split_column_families` option.
+For more information, see xref:cockroachdb-limitations[Limitations].
 
 |[[cockroachdb-property-sink-options]]<<cockroachdb-property-sink-options, `+cockroachdb.changefeed.sink.options+`>>
 |No default value
@@ -1310,6 +1312,9 @@ The connector adds the list to the `WITH` clause of the `CREATE CHANGEFEED` stat
 Enclose option values in single quotes where CockroachDB requires it, for example, `min_checkpoint_frequency = '10s'`.
 If the list contains an option that the connector sets itself, such as `envelope`, `cursor`, `initial_scan`, or `resolved`, the value that the connector sets takes effect.
 If an option is in the list and also has a `cockroachdb.changefeed.option.*` property, the value of the property takes effect.
+The connector does not pass the `split_column_families` option on to CockroachDB.
+If the list contains that option, the connector leaves it out and logs a warning.
+For more information, see xref:cockroachdb-limitations[Limitations].
 
 |[[cockroachdb-property-sink-tls-ca-cert-file]]<<cockroachdb-property-sink-tls-ca-cert-file, `+cockroachdb.changefeed.sink.tls.ca.cert.file+`>>
 |No default
@@ -1625,6 +1630,13 @@ The connector supports two changefeed delivery modes.
 Configure the connector to use the default `kafka` mode if you want CockroachDB to push changefeed events to an intermediate Kafka sink and have the connector consume events from that sink. 
 Or configure the `sinkless` mode if you want the database to stream change events directly to {prodname} over the connector's SQL connection.
 Support for webhook, Pub/Sub, and cloud storage sinks is planned (see link:https://github.com/debezium/dbz/issues/1632[debezium/dbz#1632]).
+
+Tables with more than one column family:: The connector cannot capture a table that has more than one column family.
+CockroachDB creates a changefeed for such a table only if the changefeed uses the `split_column_families` option.
+With that option, CockroachDB emits one event for each column family, and each event contains only the columns of that family.
+The connector requires events that contain the complete row.
+As a result, the connector does not pass the `split_column_families` option on to CockroachDB.
+For a table that has one column family, the option has no effect.
 
 Before state in updates:: By default, CockroachDB changefeeds do not include the previous row state.
 To include the `before` field in update events, set `cockroachdb.changefeed.include.diff=true` to enable the `diff` changefeed option.
