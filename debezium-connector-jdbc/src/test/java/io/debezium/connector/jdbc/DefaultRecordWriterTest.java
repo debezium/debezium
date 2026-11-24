@@ -20,6 +20,7 @@ import static org.mockito.Mockito.when;
 import java.sql.Connection;
 import java.sql.SQLException;
 import java.sql.Types;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
@@ -37,8 +38,11 @@ import org.junit.jupiter.api.Test;
 import io.debezium.connector.jdbc.JdbcSinkConnectorConfig.SchemaEvolutionMode;
 import io.debezium.connector.jdbc.dialect.DatabaseDialect;
 import io.debezium.connector.jdbc.relational.TableDescriptor;
+import io.debezium.connector.jdbc.util.DebeziumSinkRecordFactory;
 import io.debezium.doc.FixFor;
 import io.debezium.metadata.CollectionId;
+import io.debezium.sink.batch.Batch;
+import io.debezium.sink.batch.BatchRecord;
 import io.debezium.sink.column.ColumnDescriptor;
 import io.debezium.sink.field.FieldDescriptor;
 import io.debezium.sink.spi.SinkProgressListener;
@@ -180,6 +184,30 @@ class DefaultRecordWriterTest extends AbstractBaseJdbcSinkTest {
                 .satisfies(e -> assertThat(e.getSuppressed()).contains(alterFailure));
 
         verify(alterQuery, times(2)).executeUpdate();
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2916")
+    void resolveBatchByTableShouldSkipTombstonesForMissingTable() throws SQLException {
+        final JdbcSinkConnectorConfig config = getConfig(Map.of(
+                JdbcSinkConnectorConfig.DELETE_ENABLED, "true",
+                JdbcSinkConnectorConfig.PRIMARY_KEY_MODE, "record_key"));
+        final SinkProgressListener progressListener = mock(SinkProgressListener.class);
+        final DefaultRecordWriter batchWriter = new DefaultRecordWriter(session, new QueryBinderResolver(), config, dialect, progressListener);
+        when(dialect.tableExists(any(), eq(collectionId))).thenReturn(false);
+
+        final var factory = new DebeziumSinkRecordFactory();
+        final Batch batch = new Batch(List.of(
+                new BatchRecord(collectionId, factory.tombstoneRecord("database.schema.table", config)),
+                new BatchRecord(collectionId, factory.tombstoneRecord("database.schema.table", config))));
+
+        assertThat(batchWriter.resolveBatchByTable(batch)).isEmpty();
+
+        // The table must not be created from a tombstone, which has no value to derive the columns from
+        verify(session, never()).createNativeQuery(anyString(), eq(Object.class));
+        // The existence of the table is checked only once per batch
+        verify(dialect).tableExists(any(), eq(collectionId));
+        verify(progressListener, times(2)).filtered();
     }
 
     private static LockAcquisitionException deadlock() {
