@@ -1661,8 +1661,7 @@ index_partitioning_clause
     ;
 
 index_partitioning_values_list
-    : literal (',' literal)*
-    | TIMESTAMP literal (',' TIMESTAMP literal)*
+    : partition_value (',' partition_value)*
     ;
 
 local_partitioned_index
@@ -1830,7 +1829,7 @@ drop_index_partition
     ;
 
 split_index_partition
-    : SPLIT PARTITION partition_name_old AT '(' literal (',' literal)* ')' (
+    : SPLIT PARTITION partition_name_old AT '(' partition_value (',' partition_value)* ')' (
         INTO '(' index_partition_description ',' index_partition_description ')'
     )? parallel_clause?
     ;
@@ -3773,19 +3772,25 @@ range_values_clause
     ;
 
 range_values_list
-    : literal (',' literal)*
-    | TIMESTAMP literal (',' TIMESTAMP literal)*
+    : partition_value (',' partition_value)*
     ;
 
 list_values_clause
     : VALUES '(' (
-        (literal (',' literal)* | TIMESTAMP literal (',' TIMESTAMP literal)* | DEFAULT)
+        (partition_value (',' partition_value)* | DEFAULT)
         | list_values_tuple (',' list_values_tuple)*
     ) ')'
     ;
 
 list_values_tuple
-    : '(' (literal (',' literal)* | TIMESTAMP literal (',' TIMESTAMP literal)* | DEFAULT) ')'
+    : '(' (partition_value (',' partition_value)* | DEFAULT) ')'
+    ;
+
+partition_value
+    : literal
+    | NULL_
+    | DATE quoted_string
+    | TIMESTAMP literal
     ;
 
 table_partition_description
@@ -5062,7 +5067,7 @@ modify_table_partition
 
 split_table_partition
     : SPLIT partition_extended_names (
-        AT '(' literal (',' literal)* ')' INTO '(' range_partition_desc (',' range_partition_desc)* ')'
+        AT '(' partition_value (',' partition_value)* ')' INTO '(' range_partition_desc (',' range_partition_desc)* ')'
         | INTO '(' (
             range_partition_desc (',' range_partition_desc)*
             | list_partition_desc (',' list_partition_desc)*
