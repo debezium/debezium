@@ -179,12 +179,12 @@ public abstract class RelationalChangeRecordEmitter<P extends Partition>
         headers.add(PK_UPDATE_NEWKEY_FIELD, newKey, tableSchema.keySchema());
 
         Struct envelope = tableSchema.getEnvelopeSchema().delete(oldValue, sourceInfo, getClock().currentTimeAsInstant());
-        receiver.changeRecord(getPartition(), tableSchema, Operation.DELETE, oldKey, envelope, offset, headers);
+        receiver.changeRecord(getPartition(), tableSchema, Operation.DELETE, oldKey, envelope, offset, headers, false);
 
         headers = new ConnectHeaders();
         headers.add(PK_UPDATE_OLDKEY_FIELD, oldKey, tableSchema.keySchema());
 
         envelope = tableSchema.getEnvelopeSchema().create(newValue, sourceInfo, getClock().currentTimeAsInstant());
-        receiver.changeRecord(getPartition(), tableSchema, Operation.CREATE, newKey, envelope, offset, headers);
+        receiver.changeRecord(getPartition(), tableSchema, Operation.CREATE, newKey, envelope, offset, headers, true);
     }
 }

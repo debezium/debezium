@@ -234,7 +234,7 @@ public class MongoDbOffsetContext extends CommonOffsetContext<SourceInfo> {
 
             return new MongoDbOffsetContext(
                     sourceInfo,
-                    new TransactionContext(),
+                    TransactionContext.load(offset),
                     MongoDbIncrementalSnapshotContext.load(offset, false));
         }
 

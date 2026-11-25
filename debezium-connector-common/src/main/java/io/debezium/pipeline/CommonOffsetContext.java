@@ -5,6 +5,9 @@
  */
 package io.debezium.pipeline;
 
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Optional;
 
 import org.apache.kafka.connect.data.Struct;
@@ -44,6 +47,11 @@ public abstract class CommonOffsetContext<T extends BaseSourceInfo> implements O
      */
     protected boolean snapshotCompleted;
 
+    /**
+     * The offset of the last record emitted with the current offset, which belongs to a record that may still be queued
+     */
+    private Map<String, ?> lastEmittedOffset;
+
     public CommonOffsetContext(T sourceInfo) {
         this.sourceInfo = sourceInfo;
     }
@@ -51,6 +59,23 @@ public abstract class CommonOffsetContext<T extends BaseSourceInfo> implements O
     public CommonOffsetContext(T sourceInfo, boolean snapshotCompleted) {
         this.sourceInfo = sourceInfo;
         this.snapshotCompleted = snapshotCompleted;
+    }
+
+    @Override
+    public void markOffsetEmitted(Map<String, ?> offset) {
+        lastEmittedOffset = offset;
+    }
+
+    @Override
+    public Map<String, ?> getOffsetForIncompleteEvent() {
+        return lastEmittedOffset == null ? getOffset() : Collections.unmodifiableMap(lastEmittedOffset);
+    }
+
+    @Override
+    public void updateTransactionContextForIncompleteEvent() {
+        if (lastEmittedOffset != null) {
+            lastEmittedOffset = getTransactionContext().store(new HashMap<>(lastEmittedOffset));
+        }
     }
 
     @Override

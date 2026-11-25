@@ -131,18 +131,20 @@ public class HeartbeatImpl implements Heartbeat.ScheduledHeartbeat, Heartbeat {
             throw new IllegalArgumentException("new heartbeat API should be used with the recommended constructor");
         }
         LOGGER.debug("Generating heartbeat event");
-        if (offset == null || offset.getOffset() == null || offset.getOffset().isEmpty()) {
+        final Map<String, ?> sourceOffset = offset == null ? null : offset.getOffset();
+        if (sourceOffset == null || sourceOffset.isEmpty()) {
             return;
         }
 
         this.queue.enqueue(new DataChangeEvent(new SourceRecord(partition,
-                offset.getOffset(),
+                sourceOffset,
                 topicName,
                 0,
                 keySchema,
                 serverNameKey,
                 valueSchema,
                 messageValue())));
+        offset.markOffsetEmitted(sourceOffset);
     }
 
     @Override
