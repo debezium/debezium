@@ -199,6 +199,21 @@ After the connector completes its initial snapshot, the PostgreSQL connector con
 This ensures that the connector does not miss any updates.
 If the connector stops again for any reason, after it restarts, it continues streaming changes from where it previously left off.
 
+[id="postgresql-snapshots-table-inheritance"]
+.Snapshots of tables that use inheritance
+When a captured table is the parent of other tables through PostgreSQL link:https://www.postgresql.org/docs/current/ddl-inherit.html[table inheritance], a query on the parent table also returns the rows that are stored in its child tables.
+Because the connector streams each change from the table that physically stores the row, it reads tables with the `ONLY` keyword during initial, blocking, and incremental snapshots.
+As a result, the snapshot of a parent table contains only the rows that are stored in the parent table itself.
+Rows that are stored in child tables are emitted to the topics of the child tables, if the connector captures them.
+
+Partitioned tables, that is, tables that are created with a `PARTITION BY` clause, have no storage of their own, and are not affected by this behavior.
+The snapshot of a partitioned table contains the rows of all of its partitions.
+To control whether streamed changes from partitions are emitted to the topic of the partitioned table, set the xref:postgresql-property-publish-via-partition-root[`publish.via.partition.root`] property.
+
+ifdef::community[]
+If you implement a custom snapshot query by using the xref:connector-custom-snapshot[custom snapshotter SPI], the table reference that the connector passes to the query includes the `ONLY` keyword for all tables, except for partitioned tables.
+endif::community[]
+
 [id="postgresql-connector-snapshot-mode-options"]
 .Options for the `snapshot.mode` connector configuration property
 [cols="20%a,80%a",options="header"]
