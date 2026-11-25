@@ -605,6 +605,12 @@ public abstract class AbstractLogMinerStreamingChangeEventSource
      * @throws InterruptedException if the thread is interrupted
      */
     protected void processEvent(LogMinerEventRow event) throws SQLException, InterruptedException {
+        if (event.getTableName() != null && event.getTableName().startsWith("DBZ1960_")) {
+            // [ci] dbz1960 diagnostic: row metadata only, no column values
+            LOGGER.info("[dbz1960-diag] row txn={} scn={} type={} op={} seq={} ssn={} rsId={} rowId={} rollback={} table={} status={}",
+                    event.getTransactionId(), event.getScn(), event.getEventType(), event.getOperation(), event.getTransactionSequence(),
+                    event.getSsn(), event.getRsId(), event.getRowId(), event.isRollbackFlag(), event.getTableName(), event.getStatus());
+        }
         if (!hasEventBeenProcessed(event)) {
             if (!isEventSkipped(event)) {
                 preProcessEvent(event);
