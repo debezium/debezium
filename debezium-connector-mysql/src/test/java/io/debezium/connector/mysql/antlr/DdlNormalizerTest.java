@@ -715,6 +715,7 @@ public class DdlNormalizerTest {
 
     @DisplayName("Given CHECK constraint with a long JSON schema literal When normalize on a 1 MB stack Then no StackOverflowError")
     @Test
+    @FixFor("debezium/dbz#3183")
     public void testLongJsonSchemaInCheckConstraint() throws Exception {
         String input = """
                 CREATE TABLE `book` (
@@ -789,21 +790,27 @@ public class DdlNormalizerTest {
 
     @DisplayName("Given very long literals made of escapes and doubled quotes When normalize on a 1 MB stack Then no StackOverflowError")
     @Test
+    @FixFor("debezium/dbz#3183")
     public void testVeryLongLiterals() throws Exception {
-        String input = "CREATE TABLE t (a varchar(10) DEFAULT '" + "''".repeat(50_000) + "', "
-                + "b varchar(10) DEFAULT 'x" + "\\\\'".repeat(50_000) + "', "
-                + "c varchar(10) COMMENT '" + "y".repeat(100_000) + "')";
+        String columns = "a varchar(10) DEFAULT '" + "''".repeat(50_000) + "', "
+                + "b varchar(10) DEFAULT 'x" + "\\'".repeat(50_000) + "', "
+                + "c varchar(10) COMMENT '" + "y".repeat(100_000) + "', ";
+        String input = "CREATE TABLE t (" + columns + "d varchar(10) DEFAULT \"z\")";
+        String expected = "CREATE TABLE t (" + columns + "d varchar(10) DEFAULT 'z')";
 
-        assertThat(normalizeOnSmallStack(input, false)).isEqualTo(input);
+        assertThat(normalizeOnSmallStack(input, false)).isEqualTo(expected);
     }
 
     @DisplayName("Given very long literals with NO_BACKSLASH_ESCAPES When normalize on a 1 MB stack Then no StackOverflowError")
     @Test
+    @FixFor("debezium/dbz#3183")
     public void testVeryLongLiteralsWithNoBackslashEscapes() throws Exception {
-        String input = "CREATE TABLE t (a varchar(10) DEFAULT '" + "''".repeat(50_000) + "', "
-                + "b varchar(10) COMMENT '" + "y".repeat(100_000) + "')";
+        String columns = "a varchar(10) DEFAULT '" + "''".repeat(50_000) + "', "
+                + "b varchar(10) COMMENT '" + "y".repeat(100_000) + "', ";
+        String input = "CREATE TABLE t (" + columns + "c varchar(10) DEFAULT \"z\")";
+        String expected = "CREATE TABLE t (" + columns + "c varchar(10) DEFAULT 'z')";
 
-        assertThat(normalizeOnSmallStack(input, true)).isEqualTo(input);
+        assertThat(normalizeOnSmallStack(input, true)).isEqualTo(expected);
     }
 
     // The binlog reader thread gets the default 1 MB stack, the thread running the tests usually has more
