@@ -43,6 +43,11 @@ public abstract class BinlogCompactTemporalDefaultValueIT<C extends SourceConnec
             new DefaultColumn("DATETIME", "'20260928123456'", "'2000-01-01 00:00:00'"),
             new DefaultColumn("DATETIME", "260928", "'2000-01-01 00:00:00'"),
             new DefaultColumn("DATETIME(3)", "20260928123456.789", "'2000-01-01 00:00:00'"),
+            new DefaultColumn("DATE", "123", "'2000-01-01'"),
+            new DefaultColumn("DATE", "20260928", "'2000-01-01'"),
+            new DefaultColumn("DATE", "'260928'", "'2000-01-01'"),
+            new DefaultColumn("DATETIME", "123", "'2000-01-01 00:00:00'"),
+            new DefaultColumn("DATETIME", "101123456", "'2000-01-01 00:00:00'"),
             new DefaultColumn("TIME", "123456", "'00:00:00'"),
             new DefaultColumn("TIME", "3456", "'00:00:00'"),
             new DefaultColumn("TIME", "-123456", "'00:00:00'"),
@@ -74,7 +79,7 @@ public abstract class BinlogCompactTemporalDefaultValueIT<C extends SourceConnec
 
     @ParameterizedTest
     @ValueSource(strings = { "create-table", "add-column", "modify-column", "alter-default" })
-    @FixFor("debezium/dbz#2767")
+    @FixFor({ "debezium/dbz#2767", "debezium/dbz#459" })
     void shouldMatchStoredValuesOfTemporalDefaultsWithoutDelimiters(String action) throws Exception {
         executeStatements(database.getDatabaseName(), createTable(), "INSERT INTO " + TABLE + " (id) VALUES (1)");
         start(getConnectorClass(), database.defaultConfig()
