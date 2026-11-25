@@ -13,6 +13,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import java.lang.reflect.Proxy;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
@@ -23,13 +24,20 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.OptionalLong;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 
+import org.apache.kafka.connect.data.Schema;
+import org.apache.kafka.connect.data.Struct;
+import org.apache.kafka.connect.header.ConnectHeaders;
 import org.junit.jupiter.api.Test;
 
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
 import io.debezium.config.EnumeratedValue;
+import io.debezium.connector.SnapshotRecord;
 import io.debezium.connector.SourceInfoStructMaker;
+import io.debezium.data.Envelope.Operation;
 import io.debezium.doc.FixFor;
 import io.debezium.jdbc.JdbcConfiguration;
 import io.debezium.jdbc.JdbcConnection;
@@ -45,8 +53,11 @@ import io.debezium.pipeline.source.spi.ChangeEventSource.ChangeEventSourceContex
 import io.debezium.pipeline.source.spi.SnapshotProgressListener;
 import io.debezium.pipeline.spi.OffsetContext;
 import io.debezium.pipeline.spi.Partition;
+import io.debezium.pipeline.txmetadata.TransactionContext;
+import io.debezium.schema.DataCollectionSchema;
 import io.debezium.schema.SchemaChangeEvent;
 import io.debezium.snapshot.SnapshotterService;
+import io.debezium.spi.schema.DataCollectionId;
 import io.debezium.util.Clock;
 
 /**
@@ -105,6 +116,152 @@ public class RelationalSnapshotChangeEventSourceTest {
         // The chunk statement must carry the configured snapshot.fetch.size, like the legacy
         // and incremental snapshot paths do.
         verify(statement).setFetchSize(CONFIGURED_FETCH_SIZE);
+    }
+
+    @Test
+    @FixFor("debezium/dbz#1886")
+    public void shouldCompleteSnapshotWhenConnectionIsClosedAndReplacedBeforeCleanup() throws Exception {
+        final AtomicBoolean originalClosed = new AtomicBoolean();
+        final AtomicBoolean replacementClosed = new AtomicBoolean();
+        final AtomicInteger rollbackCalls = new AtomicInteger();
+        final AtomicInteger connectionFactoryCalls = new AtomicInteger();
+        final Connection originalConnection = connection(originalClosed, rollbackCalls, false);
+        final Connection replacementConnection = connection(replacementClosed, rollbackCalls, false);
+        final JdbcConnection jdbcConnection = new JdbcConnection(JdbcConfiguration.empty(),
+                config -> connectionFactoryCalls.getAndIncrement() == 0 ? originalConnection : replacementConnection, "\"", "\"");
+        jdbcConnection.connect();
+
+        final TestRelationalSnapshotSource source = new TestRelationalSnapshotSource(config(Configuration.empty()), jdbcConnection,
+                originalConnection);
+        final RelationalSnapshotChangeEventSource.RelationalSnapshotContext<Partition, OffsetContext> snapshotContext = snapshotContext();
+        final SnapshottingTask snapshottingTask = new SnapshottingTask(false, true, List.of(), Map.of(), false);
+
+        final var result = source.doExecute(null, null, snapshotContext, snapshottingTask);
+
+        assertThat(result.isCompleted()).isTrue();
+        assertThat(originalClosed.get()).isTrue();
+        assertThat(rollbackCalls.get()).isZero();
+        assertThat(connectionFactoryCalls.get()).isEqualTo(2);
+        assertThat(jdbcConnection.connection()).isSameAs(replacementConnection);
+        assertThat(replacementClosed.get()).isFalse();
+
+        jdbcConnection.close();
+
+        assertThat(replacementClosed.get()).isTrue();
+    }
+
+    @Test
+    @FixFor("debezium/dbz#1886")
+    public void shouldSurfaceRollbackFailureForOpenConnection() throws Exception {
+        final AtomicBoolean connectionClosed = new AtomicBoolean();
+        final AtomicInteger rollbackCalls = new AtomicInteger();
+        final Connection connection = connection(connectionClosed, rollbackCalls, true);
+        final JdbcConnection jdbcConnection = new JdbcConnection(JdbcConfiguration.empty(), config -> connection, "\"", "\"");
+        jdbcConnection.connect();
+        final TestRelationalSnapshotSource source = new TestRelationalSnapshotSource(config(Configuration.empty()), jdbcConnection, null);
+
+        assertThatThrownBy(() -> source.doExecute(null, null, snapshotContext(),
+                new SnapshottingTask(false, true, List.of(), Map.of(), false)))
+                .isInstanceOf(RuntimeException.class)
+                .hasCauseInstanceOf(SQLException.class);
+
+        assertThat(rollbackCalls.get()).isEqualTo(1);
+        jdbcConnection.close();
+    }
+
+    private static RelationalSnapshotChangeEventSource.RelationalSnapshotContext<Partition, OffsetContext> snapshotContext() {
+        final Partition partition = Map::of;
+        final RelationalSnapshotChangeEventSource.RelationalSnapshotContext<Partition, OffsetContext> snapshotContext = new RelationalSnapshotChangeEventSource.RelationalSnapshotContext<>(
+                partition, "db1", true);
+        snapshotContext.offset = new TestOffsetContext();
+        return snapshotContext;
+    }
+
+    private static Connection connection(AtomicBoolean closed, AtomicInteger rollbackCalls, boolean failRollback) {
+        return (Connection) Proxy.newProxyInstance(RelationalSnapshotChangeEventSourceTest.class.getClassLoader(),
+                new Class<?>[]{ Connection.class }, (proxy, method, args) -> switch (method.getName()) {
+                    case "isClosed" -> closed.get();
+                    case "isValid" -> !closed.get();
+                    case "setAutoCommit" -> null;
+                    case "close" -> {
+                        closed.set(true);
+                        yield null;
+                    }
+                    case "rollback" -> {
+                        rollbackCalls.incrementAndGet();
+                        if (closed.get() || failRollback) {
+                            throw new SQLException(closed.get() ? "connection is closed" : "rollback failed");
+                        }
+                        yield null;
+                    }
+                    case "toString" -> "snapshot test connection";
+                    case "hashCode" -> System.identityHashCode(proxy);
+                    case "equals" -> proxy == args[0];
+                    default -> throw new UnsupportedOperationException(method.getName());
+                });
+    }
+
+    @SuppressWarnings("unchecked")
+    private static EventDispatcher<Partition, TableId> eventDispatcher() {
+        final EventDispatcher<Partition, TableId> dispatcher = mock(EventDispatcher.class);
+        when(dispatcher.getSnapshotChangeEventReceiver()).thenReturn(new SnapshotReceiver<Partition>() {
+            @Override
+            public void changeRecord(Partition partition, DataCollectionSchema schema, Operation operation, Object key,
+                                     Struct value, OffsetContext offset, ConnectHeaders headers) {
+            }
+
+            @Override
+            public void completeSnapshot() {
+            }
+        });
+        return dispatcher;
+    }
+
+    private static class TestOffsetContext implements OffsetContext {
+        @Override
+        public Map<String, ?> getOffset() {
+            return Map.of();
+        }
+
+        @Override
+        public Schema getSourceInfoSchema() {
+            return null;
+        }
+
+        @Override
+        public Struct getSourceInfo() {
+            return null;
+        }
+
+        @Override
+        public boolean isInitialSnapshotRunning() {
+            return false;
+        }
+
+        @Override
+        public void markSnapshotRecord(SnapshotRecord record) {
+        }
+
+        @Override
+        public void preSnapshotStart(boolean onDemand) {
+        }
+
+        @Override
+        public void preSnapshotCompletion() {
+        }
+
+        @Override
+        public void postSnapshotCompletion() {
+        }
+
+        @Override
+        public void event(DataCollectionId collectionId, Instant timestamp) {
+        }
+
+        @Override
+        public TransactionContext getTransactionContext() {
+            return null;
+        }
     }
 
     @Test
@@ -189,11 +346,22 @@ public class RelationalSnapshotChangeEventSourceTest {
      */
     private static class TestRelationalSnapshotSource extends RelationalSnapshotChangeEventSource<Partition, OffsetContext> {
 
+        private final JdbcConnection jdbcConnection;
+        private final Connection connectionToCloseAfterSnapshot;
+
         @SuppressWarnings("unchecked")
         TestRelationalSnapshotSource(RelationalDatabaseConnectorConfig connectorConfig, JdbcConnection jdbcConnection) {
-            super(connectorConfig, connectionFactory(jdbcConnection), null, mock(EventDispatcher.class), Clock.SYSTEM,
+            this(connectorConfig, jdbcConnection, null);
+        }
+
+        @SuppressWarnings("unchecked")
+        TestRelationalSnapshotSource(RelationalDatabaseConnectorConfig connectorConfig, JdbcConnection jdbcConnection,
+                                     Connection connectionToCloseAfterSnapshot) {
+            super(connectorConfig, connectionFactory(jdbcConnection), null, eventDispatcher(), Clock.SYSTEM,
                     mock(SnapshotProgressListener.class), mock(NotificationService.class, RETURNS_DEEP_STUBS),
                     mock(SnapshotterService.class));
+            this.jdbcConnection = jdbcConnection;
+            this.connectionToCloseAfterSnapshot = connectionToCloseAfterSnapshot;
         }
 
         @SuppressWarnings("unchecked")
@@ -240,6 +408,19 @@ public class RelationalSnapshotChangeEventSourceTest {
         @Override
         protected OffsetContext copyOffset(RelationalSnapshotContext<Partition, OffsetContext> snapshotContext) {
             return null;
+        }
+
+        @Override
+        protected void postSnapshot() {
+            if (connectionToCloseAfterSnapshot != null) {
+                try {
+                    connectionToCloseAfterSnapshot.close();
+                    jdbcConnection.reconnect();
+                }
+                catch (SQLException e) {
+                    throw new RuntimeException(e);
+                }
+            }
         }
 
         @Override

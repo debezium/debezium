@@ -1270,7 +1270,9 @@ public abstract class RelationalSnapshotChangeEventSource<P extends Partition, O
     private void rollbackTransaction(Connection connection) {
         if (connection != null) {
             try {
-                connection.rollback();
+                if (!connection.isClosed()) {
+                    connection.rollback();
+                }
             }
             catch (SQLException e) {
                 throw new RuntimeException(e);
