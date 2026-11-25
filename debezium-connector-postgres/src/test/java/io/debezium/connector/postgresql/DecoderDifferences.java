@@ -6,9 +6,14 @@
 
 package io.debezium.connector.postgresql;
 
+import java.math.BigDecimal;
 import java.util.List;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
+
+import org.apache.kafka.connect.data.Struct;
+
+import io.debezium.data.VariableScaleDecimal;
 
 /**
  * A class that contains assertions or expected values tailored to the behaviour of a concrete decoder plugin
@@ -42,17 +47,37 @@ public class DecoderDifferences {
     }
 
     public static List<Integer> toastedValueIntPlaceholder() {
-        return Stream.of(TOASTED_VALUE_NUMBER_STRING.split(","))
-                .map(String::trim)
-                .map(Integer::parseInt)
-                .collect(Collectors.toList());
+        return toastedValueNumbers().map(Integer::parseInt).collect(Collectors.toList());
     }
 
     public static List<Long> toastedValueBigintPlaceholder() {
-        return Stream.of(TOASTED_VALUE_NUMBER_STRING.split(","))
-                .map(String::trim)
-                .map(Long::parseLong)
+        return toastedValueNumbers().map(Long::parseLong).collect(Collectors.toList());
+    }
+
+    public static List<Double> toastedValueDoublePlaceholder() {
+        return toastedValueNumbers().map(Double::parseDouble).collect(Collectors.toList());
+    }
+
+    public static List<Float> toastedValueFloatPlaceholder() {
+        return toastedValueNumbers().map(Float::parseFloat).collect(Collectors.toList());
+    }
+
+    public static List<Short> toastedValueSmallintPlaceholder() {
+        return toastedValueNumbers().map(Short::parseShort).collect(Collectors.toList());
+    }
+
+    public static List<BigDecimal> toastedValueDecimalPlaceholder(int scale) {
+        return toastedValueNumbers().map(number -> new BigDecimal(number).setScale(scale)).collect(Collectors.toList());
+    }
+
+    public static List<Struct> toastedValueVariableScaleDecimalPlaceholder() {
+        return toastedValueNumbers()
+                .map(number -> VariableScaleDecimal.fromLogical(VariableScaleDecimal.optionalSchema(), new BigDecimal(number)))
                 .collect(Collectors.toList());
+    }
+
+    private static Stream<String> toastedValueNumbers() {
+        return Stream.of(TOASTED_VALUE_NUMBER_STRING.split(",")).map(String::trim);
     }
 
     public static boolean areDefaultValuesRefreshedEagerly() {
