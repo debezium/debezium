@@ -7,6 +7,8 @@ package io.debezium.connector.mysql.antlr;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import java.util.concurrent.FutureTask;
+
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
@@ -709,5 +711,105 @@ public class DdlNormalizerTest {
         String input = "CREATE TABLE t (url VARCHAR(700), PRIMARY KEY (url))";
         String expected = "CREATE TABLE t (`url` VARCHAR(700), PRIMARY KEY (`url`))";
         assertThat(DdlNormalizer.normalize(input)).isEqualTo(expected);
+    }
+
+    @DisplayName("Given CHECK constraint with a long JSON schema literal When normalize on a 1 MB stack Then no StackOverflowError")
+    @Test
+    public void testLongJsonSchemaInCheckConstraint() throws Exception {
+        String input = """
+                CREATE TABLE `book` (
+                  `id` int NOT NULL AUTO_INCREMENT,
+                  `title` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_as_cs NOT NULL,
+                  `shelf_code` varchar(20) NOT NULL,
+                  `added_on` date NOT NULL,
+                  `metadata` json DEFAULT NULL,
+                  PRIMARY KEY (`id`),
+                  UNIQUE KEY `uq_book_shelf` (`shelf_code`,`title`),
+                  CONSTRAINT `book_chk_1` CHECK (json_schema_valid(_utf8mb3'{\\
+                  "$schema": "http://json-schema.org/draft-07/schema#",\\
+                  "title": "Book Metadata",\\
+                  "description": "Bibliographic details for a catalogue entry. Identifiers use the ISBN-13 form (e.g., `978-0-00-000000-0`), and each edition lists its format, page count, and the languages it was published in.",\\
+                  "type": "object",\\
+                  "properties": {\\
+                    "isbn": {\\
+                      "type": "string",\\
+                      "description": "ISBN-13 with hyphens between the prefix, group, publisher, title and check digit.",\\
+                      "pattern": "^97[89]-[0-9]{1,5}-[0-9]{1,7}-[0-9]{1,7}-[0-9X]$"\\
+                    },\\
+                    "subtitle": {\\
+                      "type": ["string","null"],\\
+                      "description": "Optional subtitle shown after a colon on the title page. Leave null when the book has none.",\\
+                      "maxLength": 300\\
+                    },\\
+                    "authors": {\\
+                      "type": "array",\\
+                      "minItems": 1,\\
+                      "items": {\\
+                        "type": "object",\\
+                        "properties": {\\
+                          "name": { "type": "string", "minLength": 1 },\\
+                          "role": { "enum": ["author", "editor", "translator", "illustrator"] }\\
+                        },\\
+                        "required": ["name", "role"],\\
+                        "additionalProperties": false\\
+                      }\\
+                    },\\
+                    "editions": {\\
+                      "type": "array",\\
+                      "description": "Known editions. For `hardcover` and `paperback` the page count is required. For `ebook` it is optional because it depends on the reader.",\\
+                      "items": {\\
+                        "type": "object",\\
+                        "properties": {\\
+                          "format": { "enum": ["hardcover", "paperback", "ebook", "audio"] },\\
+                          "pages": { "type": "integer", "minimum": 1 },\\
+                          "languages": {\\
+                            "type": "array",\\
+                            "items": { "type": "string", "pattern": "^[a-z]{2}(-[A-Z]{2})?$" }\\
+                          }\\
+                        },\\
+                        "required": ["format"]\\
+                      }\\
+                    }\\
+                  },\\
+                  "required": ["isbn", "authors"],\\
+                  "additionalProperties": false,\\
+                  "examples": [\\
+                    {\\
+                      "isbn": "978-0-00-000000-2",\\
+                      "subtitle": null,\\
+                      "authors": [ { "name": "A. Writer", "role": "author" } ],\\
+                      "editions": [ { "format": "paperback", "pages": 320, "languages": ["en", "fr-CA"] } ]\\
+                    }\\
+                  ]\\
+                }',`metadata`))
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_as_cs""";
+
+        assertThat(normalizeOnSmallStack(input, false)).isEqualTo(input);
+    }
+
+    @DisplayName("Given very long literals made of escapes and doubled quotes When normalize on a 1 MB stack Then no StackOverflowError")
+    @Test
+    public void testVeryLongLiterals() throws Exception {
+        String input = "CREATE TABLE t (a varchar(10) DEFAULT '" + "''".repeat(50_000) + "', "
+                + "b varchar(10) DEFAULT 'x" + "\\\\'".repeat(50_000) + "', "
+                + "c varchar(10) COMMENT '" + "y".repeat(100_000) + "')";
+
+        assertThat(normalizeOnSmallStack(input, false)).isEqualTo(input);
+    }
+
+    @DisplayName("Given very long literals with NO_BACKSLASH_ESCAPES When normalize on a 1 MB stack Then no StackOverflowError")
+    @Test
+    public void testVeryLongLiteralsWithNoBackslashEscapes() throws Exception {
+        String input = "CREATE TABLE t (a varchar(10) DEFAULT '" + "''".repeat(50_000) + "', "
+                + "b varchar(10) COMMENT '" + "y".repeat(100_000) + "')";
+
+        assertThat(normalizeOnSmallStack(input, true)).isEqualTo(input);
+    }
+
+    // The binlog reader thread gets the default 1 MB stack, the thread running the tests usually has more
+    private static String normalizeOnSmallStack(String ddl, boolean noBackslashEscapes) throws Exception {
+        FutureTask<String> task = new FutureTask<>(() -> DdlNormalizer.normalize(ddl, false, noBackslashEscapes));
+        new Thread(null, task, "small-stack", 1024 * 1024).start();
+        return task.get();
     }
 }
