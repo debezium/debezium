@@ -42,16 +42,16 @@ public class DdlNormalizer {
      */
     private static final Pattern QUOTED_LITERAL_PATTERN = Pattern.compile("""
             (--[^\\n]*|#[^\\n]*|/\\*(?!!).*?\\*/)\
-            |('(?:''|[^'\\\\]|\\\\.)*')\
-            |"((?:[^"\\\\]|\\\\.|"")*)"\
-            |(`(?:``|[^`])*`)""",
+            |('(?:''|[^'\\\\]|\\\\.)*+')\
+            |"((?:[^"\\\\]|\\\\.|"")*+)"\
+            |(`(?:``|[^`])*+`)""",
             Pattern.DOTALL);
 
     private static final Pattern QUOTED_LITERAL_NO_BACKSLASH_ESCAPES_PATTERN = Pattern.compile("""
             (--[^\\n]*|#[^\\n]*|/\\*(?!!).*?\\*/)\
-            |('(?:''|[^'])*')\
-            |"((?:[^"]|"")*)"\
-            |(`(?:``|[^`])*`)""",
+            |('(?:''|[^'])*+')\
+            |"((?:[^"]|"")*+)"\
+            |(`(?:``|[^`])*+`)""",
             Pattern.DOTALL);
 
     /**
