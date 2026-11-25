@@ -234,10 +234,7 @@ public abstract class BinlogValueConverters extends JdbcValueConverters {
                     return SpecialValueDecimal.builder(DecimalMode.PRECISE, 20, 0);
             }
         }
-        if ((matches(typeName, "FLOAT")
-                || matches(typeName, "FLOAT UNSIGNED")
-                || matches(typeName, "FLOAT UNSIGNED ZEROFILL"))
-                && column.scale().isEmpty() && column.length() <= 24) {
+        if (column.jdbcType() == Types.FLOAT && isSinglePrecisionFloat(column)) {
             return SchemaBuilder.float32();
         }
         if (matches(typeName, "VECTOR")) {
@@ -406,10 +403,14 @@ public abstract class BinlogValueConverters extends JdbcValueConverters {
      */
     @Override
     protected Object convertFloat(Column column, Field fieldDefn, Object data) {
-        if (column.scale().isEmpty() && column.length() <= 24) {
+        if (isSinglePrecisionFloat(column)) {
             return super.convertReal(column, fieldDefn, data);
         }
         return super.convertFloat(column, fieldDefn, data);
+    }
+
+    private static boolean isSinglePrecisionFloat(Column column) {
+        return column.scale().isEmpty() && column.length() <= 24;
     }
 
     @Override
