@@ -10,8 +10,11 @@ import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.regex.Pattern;
 
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.errors.ConnectException;
@@ -132,11 +135,7 @@ public class PostgresSchema extends RelationalDatabaseSchema {
 
         var updatedTable = temp.forTable(tableId);
         if (removeGeneratedColumns) {
-            var editor = updatedTable.edit();
-            final var notGeneratedColumns = updatedTable.filterColumns(x -> !x.isGenerated());
-            LOGGER.debug("Removing generated columns, the new column list is '{}'", notGeneratedColumns);
-            editor.setColumns(notGeneratedColumns);
-            updatedTable = editor.create();
+            updatedTable = withoutGeneratedColumns(updatedTable);
         }
 
         // overwrite (add or update) or views of the tables
@@ -171,6 +170,61 @@ public class PostgresSchema extends RelationalDatabaseSchema {
      */
     protected void refreshFromIncrementalSnapshot(PostgresConnection connection, TableId tableId) throws SQLException {
         refresh(connection, tableId, true, connectorConfig.plugin() == LogicalDecoder.PGOUTPUT);
+    }
+
+    /**
+     * Loads the schema of the captured tables that match the data collections of an incremental snapshot
+     * and that are not loaded yet, which can be the case when the initial schema load is skipped
+     * (see {@link PostgresConnectorConfig#SCHEMA_REFRESH_ON_STREAMING_START}).
+     *
+     * @param connection a {@link JdbcConnection} instance, never {@code null}
+     * @param dataCollections the data collections of the incremental snapshot, table identifiers or regular expressions
+     * @throws SQLException if there is a problem reading the schema from the database server
+     */
+    protected void loadTablesForIncrementalSnapshot(PostgresConnection connection, List<String> dataCollections) throws SQLException {
+        if (connectorConfig.refreshSchemaOnStreamingStart()) {
+            // all captured tables were loaded when streaming started
+            return;
+        }
+        // a data collection matches as a regular expression or, like in the incremental snapshot context, as a table identifier
+        final List<Pattern> patterns = dataCollections.stream().map(Pattern::compile).toList();
+        final Set<TableId> tableIds = new HashSet<>();
+        for (String dataCollection : dataCollections) {
+            try {
+                final TableId tableId = TableId.parse(dataCollection, false);
+                if (tableId != null) {
+                    tableIds.add(tableId);
+                }
+            }
+            catch (Exception e) {
+                // not a table identifier
+            }
+        }
+        final Tables loaded = new Tables();
+        connection.readSchema(loaded, null, null,
+                tableId -> !isFilteredOut(tableId) && tableFor(tableId) == null
+                        && (tableIds.contains(tableId) || patterns.stream().anyMatch(pattern -> pattern.matcher(tableId.identifier()).matches())),
+                null, true);
+        for (TableId tableId : loaded.tableIds()) {
+            if (tableFor(tableId) != null) {
+                // loaded from the replication stream in the meantime
+                continue;
+            }
+            LOGGER.debug("Loaded the schema of table '{}' for incremental snapshot", tableId);
+            final Table table = loaded.forTable(tableId);
+            refresh(connectorConfig.plugin() == LogicalDecoder.PGOUTPUT ? withoutGeneratedColumns(table) : table);
+            if (readToastableColumns) {
+                refreshToastableColumnsMap(connection, tableId);
+            }
+        }
+    }
+
+    private Table withoutGeneratedColumns(Table table) {
+        final var editor = table.edit();
+        final var notGeneratedColumns = table.filterColumns(x -> !x.isGenerated());
+        LOGGER.debug("Removing generated columns, the new column list is '{}'", notGeneratedColumns);
+        editor.setColumns(notGeneratedColumns);
+        return editor.create();
     }
 
     protected boolean isFilteredOut(TableId id) {
