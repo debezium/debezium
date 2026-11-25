@@ -7,8 +7,14 @@ package io.debezium.connector.oracle.logminer.buffered;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import java.sql.SQLException;
 import java.time.Duration;
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.TimeUnit;
 
 import org.apache.kafka.connect.data.Struct;
@@ -1501,12 +1507,130 @@ public abstract class AbstractBufferedLogMinerStreamingChangeEventSourceIT exten
 
             waitForStreamingRunning(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
 
-            connection.execute(statements);
+            // [ci] dbz1960 diagnostic: capture the session statistics and SCN window around the statements
+            final String sid = connection.queryAndMap("SELECT SYS_CONTEXT('USERENV','SID') FROM DUAL", rs -> rs.next() ? rs.getString(1) : null);
+            final Map<String, Long> statsBefore = sessionStatistics(sid);
+            final Scn startScn = currentScn();
+            try {
+                connection.execute(statements);
 
-            return consumeRecordsByTopic(numRecords).recordsForTopic("server1.DEBEZIUM." + tableName);
+                return consumeRecordsByTopic(numRecords).recordsForTopic("server1.DEBEZIUM." + tableName);
+            }
+            finally {
+                dumpDiagnostics(tableName, sid, statsBefore, startScn);
+            }
         }
         finally {
             TestHelper.dropTable(connection, tableName);
+        }
+    }
+
+    // [ci] dbz1960 diagnostic helpers: an unfiltered LogMiner read of the test transaction plus session statistic deltas
+
+    private static final org.slf4j.Logger DIAG_LOGGER = LoggerFactory.getLogger(AbstractBufferedLogMinerStreamingChangeEventSourceIT.class);
+
+    private static final String DIAG_COLUMNS = "SCN, RAWTOHEX(XID) AS XID, OPERATION, OPERATION_CODE, SEQUENCE#, RS_ID, SSN, CSF, ROW_ID, ROLLBACK, "
+            + "SEG_OWNER, SEG_NAME, SEG_TYPE_NAME, TABLE_NAME, INFO, STATUS, RBASQN, RBABLK, RBABYTE, UBAFIL, UBABLK, UBAREC, UBASQN, "
+            + "SUBSTR(SQL_REDO, 1, 160) AS SQL_REDO, SUBSTR(SQL_UNDO, 1, 160) AS SQL_UNDO";
+
+    private static final String DIAG_HEADER = "SCN,XID,OPERATION,OPERATION_CODE,SEQUENCE#,RS_ID,SSN,CSF,ROW_ID,ROLLBACK,SEG_OWNER,SEG_NAME,SEG_TYPE_NAME,"
+            + "TABLE_NAME,INFO,STATUS,RBASQN,RBABLK,RBABYTE,UBAFIL,UBABLK,UBAREC,UBASQN,SQL_REDO,SQL_UNDO";
+
+    private static Scn currentScn() throws SQLException {
+        try (OracleConnection admin = TestHelper.adminConnection(true)) {
+            return admin.getCurrentScn();
+        }
+    }
+
+    private static Map<String, Long> sessionStatistics(String sid) throws SQLException {
+        final Map<String, Long> stats = new LinkedHashMap<>();
+        if (sid == null) {
+            return stats;
+        }
+        try (OracleConnection admin = TestHelper.adminConnection()) {
+            admin.query("SELECT n.NAME, s.VALUE FROM V$SESSTAT s JOIN V$STATNAME n ON n.STATISTIC# = s.STATISTIC# WHERE s.SID = " + Long.parseLong(sid),
+                    rs -> {
+                        while (rs.next()) {
+                            stats.put(rs.getString(1), rs.getLong(2));
+                        }
+                    });
+        }
+        return stats;
+    }
+
+    private static void dumpDiagnostics(String tableName, String sid, Map<String, Long> statsBefore, Scn startScn) {
+        try {
+            final Map<String, Long> statsAfter = sessionStatistics(sid);
+            final StringBuilder deltas = new StringBuilder();
+            for (Map.Entry<String, Long> entry : statsAfter.entrySet()) {
+                final long delta = entry.getValue() - statsBefore.getOrDefault(entry.getKey(), 0L);
+                if (delta != 0) {
+                    deltas.append("\n  ").append(entry.getKey()).append(" = ").append(delta);
+                }
+            }
+            DIAG_LOGGER.info("[dbz1960-lmdump] session statistics delta for table {} (sid {}):{}", tableName, sid, deltas);
+        }
+        catch (Exception e) {
+            DIAG_LOGGER.warn("[dbz1960-lmdump] failed to read session statistics for table {}", tableName, e);
+        }
+
+        try (OracleConnection admin = TestHelper.adminConnection(true)) {
+            final Scn endScn = admin.getCurrentScn();
+            final List<String> files = new ArrayList<>();
+            final Set<Long> sequences = new HashSet<>();
+            admin.query("SELECT l.SEQUENCE#, MIN(f.MEMBER) FROM V$LOG l JOIN V$LOGFILE f ON f.GROUP# = l.GROUP# "
+                    + "WHERE l.FIRST_CHANGE# <= " + endScn + " AND l.NEXT_CHANGE# > " + startScn + " GROUP BY l.SEQUENCE#",
+                    rs -> {
+                        while (rs.next()) {
+                            sequences.add(rs.getLong(1));
+                            files.add(rs.getString(2));
+                        }
+                    });
+            admin.query("SELECT SEQUENCE#, MIN(NAME) FROM V$ARCHIVED_LOG WHERE NAME IS NOT NULL AND FIRST_CHANGE# <= " + endScn
+                    + " AND NEXT_CHANGE# > " + startScn + " GROUP BY SEQUENCE#",
+                    rs -> {
+                        while (rs.next()) {
+                            if (sequences.add(rs.getLong(1))) {
+                                files.add(rs.getString(2));
+                            }
+                        }
+                    });
+            boolean first = true;
+            for (String file : files) {
+                admin.executeWithoutCommitting("BEGIN DBMS_LOGMNR.ADD_LOGFILE(LOGFILENAME => '" + file + "', OPTIONS => "
+                        + (first ? "DBMS_LOGMNR.NEW" : "DBMS_LOGMNR.ADDFILE") + "); END;");
+                first = false;
+            }
+            admin.executeWithoutCommitting("BEGIN DBMS_LOGMNR.START_LOGMNR(STARTSCN => " + startScn + ", ENDSCN => " + endScn
+                    + ", OPTIONS => DBMS_LOGMNR.DICT_FROM_ONLINE_CATALOG); END;");
+            try {
+                final StringBuilder csv = new StringBuilder("\n").append(DIAG_HEADER);
+                admin.query("SELECT " + DIAG_COLUMNS + " FROM V$LOGMNR_CONTENTS WHERE XID IN (SELECT XID FROM V$LOGMNR_CONTENTS "
+                        + "WHERE SEG_OWNER = 'DEBEZIUM' AND TABLE_NAME = '" + tableName + "')",
+                        rs -> {
+                            final int columns = rs.getMetaData().getColumnCount();
+                            while (rs.next()) {
+                                csv.append("\n");
+                                for (int i = 1; i <= columns; i++) {
+                                    if (i > 1) {
+                                        csv.append(',');
+                                    }
+                                    final String value = rs.getString(i);
+                                    if (value != null) {
+                                        csv.append('"').append(value.replace("\"", "\"\"").replace('\n', ' ')).append('"');
+                                    }
+                                }
+                            }
+                        });
+                DIAG_LOGGER.info("[dbz1960-lmdump] unfiltered LogMiner rows for table {} between SCN {} and {} from {}:{}", tableName, startScn,
+                        endScn, files, csv);
+            }
+            finally {
+                admin.executeWithoutCommitting("BEGIN DBMS_LOGMNR.END_LOGMNR(); END;");
+            }
+        }
+        catch (Exception e) {
+            DIAG_LOGGER.warn("[dbz1960-lmdump] failed to dump LogMiner rows for table {}", tableName, e);
         }
     }
 }
