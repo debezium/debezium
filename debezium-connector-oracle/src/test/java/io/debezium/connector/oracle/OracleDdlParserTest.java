@@ -686,6 +686,40 @@ public class OracleDdlParserTest {
     }
 
     @Test
+    @FixFor("debezium/dbz#3179")
+    void shouldParsePartitionValuesWithNullDateAndMixedTypeLiterals() {
+        parser.setCurrentDatabase(PDB_NAME);
+        parser.setCurrentSchema("DEBEZIUM");
+
+        parser.parse("CREATE TABLE T_LIST_NULL (ID NUMBER, D DATE) "
+                + "PARTITION BY LIST (ID) ("
+                + "PARTITION P1 VALUES (1), "
+                + "PARTITION P_NULL VALUES (NULL))", tables);
+
+        parser.parse("CREATE TABLE T_LIST_DATE (ID NUMBER, D DATE) "
+                + "PARTITION BY LIST (D) ("
+                + "PARTITION P1 VALUES (DATE '2020-01-01', DATE '2020-02-01'), "
+                + "PARTITION P2 VALUES (DEFAULT))", tables);
+
+        parser.parse("CREATE TABLE T_LIST_MIXED (ID NUMBER, D DATE) "
+                + "PARTITION BY LIST (ID, D) ("
+                + "PARTITION P1 VALUES ((1, NULL), (2, DATE '2020-01-01')), "
+                + "PARTITION P2 VALUES ((3, TIMESTAMP '2020-01-01 00:00:00')))", tables);
+
+        parser.parse("CREATE TABLE T_RANGE_MIXED (ID NUMBER, D DATE) "
+                + "PARTITION BY RANGE (ID, D) ("
+                + "PARTITION P1 VALUES LESS THAN (1, TIMESTAMP '2020-01-01 00:00:00'), "
+                + "PARTITION P2 VALUES LESS THAN (2, DATE '2021-01-01'), "
+                + "PARTITION P3 VALUES LESS THAN (MAXVALUE, MAXVALUE))", tables);
+
+        for (String tableName : List.of("T_LIST_NULL", "T_LIST_DATE", "T_LIST_MIXED", "T_RANGE_MIXED")) {
+            final Table table = tables.forTable(new TableId(PDB_NAME, "DEBEZIUM", tableName));
+            assertThat(table).as(tableName).isNotNull();
+            assertThat(table.retrieveColumnNames()).as(tableName).containsExactly("ID", "D");
+        }
+    }
+
+    @Test
     @FixFor("debezium/dbz#2794")
     void shouldResolveOctetLengthFromLengthSemanticsAndCharacterSets() {
         useParserWithConverters(CharacterSet.AL32UTF8_CHARSET, CharacterSet.AL16UTF16_CHARSET, true);
