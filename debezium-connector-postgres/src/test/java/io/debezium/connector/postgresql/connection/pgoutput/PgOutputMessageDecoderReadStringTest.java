@@ -33,7 +33,7 @@ public class PgOutputMessageDecoderReadStringTest {
     }
 
     private static String invokeReadColumnValueAsString(final ByteBuffer buffer) throws Exception {
-        Method method = PgOutputMessageDecoder.class.getDeclaredMethod("readColumnValueAsString", ByteBuffer.class);
+        final Method method = AbstractAttributeDecoder.class.getDeclaredMethod("decodeString", ByteBuffer.class);
         method.setAccessible(true);
         return (String) method.invoke(null, buffer);
     }

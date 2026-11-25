@@ -31,6 +31,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.HexFormat;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -469,16 +470,36 @@ public abstract class AbstractRecordsProducerTest extends AbstractAsyncEngineCon
         return Arrays.asList(new SchemaAndValueField("tsq", Schema.OPTIONAL_BYTES_SCHEMA, ByteBuffer.wrap("'fat' <-> 'cat'".getBytes(StandardCharsets.UTF_8))));
     }
 
+    protected List<SchemaAndValueField> schemaAndValueForUnknownColumnBytesPgOutputBinMode() {
+        return List.of(new SchemaAndValueField("tsq", Schema.OPTIONAL_BYTES_SCHEMA,
+                ByteBuffer.wrap(HexFormat.of().parseHex("00000003020400010100006361740001000066617400"))));
+    }
+
     protected List<SchemaAndValueField> schemaAndValueForUnknownColumnBase64() {
         return Arrays.asList(new SchemaAndValueField("tsq", Schema.OPTIONAL_STRING_SCHEMA, "J2ZhdCcgPC0+ICdjYXQn"));
+    }
+
+    protected List<SchemaAndValueField> schemaAndValueForUnknownColumnBase64PgOutputBinMode() {
+        // SELECT encode(tsquerysend('fat <-> cat'::tsquery), 'BASE64');
+        return List.of(new SchemaAndValueField("tsq", Schema.OPTIONAL_STRING_SCHEMA, "AAAAAwIEAAEBAABjYXQAAQAAZmF0AA=="));
     }
 
     protected List<SchemaAndValueField> schemaAndValueForUnknownColumnBase64UrlSafe() {
         return Arrays.asList(new SchemaAndValueField("tsq", Schema.OPTIONAL_STRING_SCHEMA, "J2ZhdCcgPC0-ICdjYXQn"));
     }
 
+    protected List<SchemaAndValueField> schemaAndValueForUnknownColumnBase64UrlSafePgOutputBinMode() {
+        return List.of(new SchemaAndValueField("tsq", Schema.OPTIONAL_STRING_SCHEMA, "AAAAAwIEAAEBAABjYXQAAQAAZmF0AA=="));
+    }
+
     protected List<SchemaAndValueField> schemaAndValueForUnknownColumnHex() {
         return Arrays.asList(new SchemaAndValueField("tsq", Schema.OPTIONAL_STRING_SCHEMA, "2766617427203c2d3e202763617427"));
+    }
+
+    protected List<SchemaAndValueField> schemaAndValueForUnknownColumnHexPgOutputBinMode() {
+        // SELECT encode(tsquerysend('fat <-> cat'::tsquery), 'hex');
+        return List.of(new SchemaAndValueField("tsq", Schema.OPTIONAL_STRING_SCHEMA,
+                "00000003020400010100006361740001000066617400"));
     }
 
     protected List<SchemaAndValueField> schemasAndValuesForStringTypesWithSourceColumnTypeInfo() {
