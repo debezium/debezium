@@ -150,10 +150,16 @@ MicroProfile configuration is a standard for supplying configuration values to J
 [NOTE]
 ====
 Configuration properties that contain the `$` character are normally interpreted by Quarkus for property expansion.
-If a property value includes a `$` character as a prefix, such as `++${my.property}++`, the Microprofile configuration parser determines that the value is a https://quarkus.io/guides/config-reference#property-expressions[property expression] and attempts to expand it.
+If a property value includes a `$` character as a prefix, such as `++${my.property}++`, the MicroProfile configuration parser determines that the value is a https://quarkus.io/guides/config-reference#property-expressions[property expression] and attempts to expand it.
+An expression can refer to a property from any configuration source, for example, an environment variable or a Kubernetes secret.
 
-To prevent the parser from attempting to expand values that use this syntax, escape the `$` prefix with a second `$` character; that is, provide the value as `++$${my.property}++`.
+To prevent the parser from expanding a value that uses this syntax, escape the `$` prefix with a backslash (`\`).
 The value of the property is then passed to {prodname} as `++${my.property}++`.
+
+* In the _application.properties_ file, the backslash is also the escape character of the file format, thus you must enter two backslashes, for example, `++\\${my.property}++`.
+* In an environment variable or a system property, enter one backslash, for example, `++\${my.property}++`.
+
+The escape with a second `$` character, `++$${my.property}++`, continues to work, but it is deprecated and will be removed in a future release.
 ====
 
 The main configuration file is _config/application.properties_.
