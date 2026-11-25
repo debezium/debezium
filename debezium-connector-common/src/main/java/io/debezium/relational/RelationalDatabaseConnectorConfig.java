@@ -62,6 +62,9 @@ public abstract class RelationalDatabaseConnectorConfig extends CommonConnectorC
     public static final String COLUMN_INCLUDE_LIST_ALREADY_SPECIFIED_ERROR_MSG = "\"column.include.list\" is already specified";
 
     public static final long DEFAULT_SNAPSHOT_LOCK_TIMEOUT_MILLIS = TimeUnit.SECONDS.toMillis(10);
+    public static final int DEFAULT_SNAPSHOT_RETRY_MAX = 0;
+    public static final int DEFAULT_SNAPSHOT_RETRY_TOTAL_MAX = 0;
+    public static final long DEFAULT_SNAPSHOT_RETRY_DELAY_MILLIS = TimeUnit.SECONDS.toMillis(10);
     public static final String DEFAULT_UNAVAILABLE_VALUE_PLACEHOLDER = "__debezium_unavailable_value";
     public static final Pattern HOSTNAME_PATTERN = Pattern.compile("^[a-zA-Z0-9-_.]+$");
 
@@ -444,6 +447,51 @@ public abstract class RelationalDatabaseConnectorConfig extends CommonConnectorC
             .withDescription("The maximum number of millis to wait for table locks at the beginning of a snapshot. If locks cannot be acquired in this " +
                     "time frame, the snapshot will be aborted. Defaults to 10 seconds");
 
+    public static final Field SNAPSHOT_RETRY_MAX = Field.create("snapshot.retry.max")
+            .withDisplayName("Snapshot retry maximum")
+            .withType(Type.INT)
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR_SNAPSHOT))
+            .withWidth(Width.SHORT)
+            .withImportance(Importance.LOW)
+            .withDefault(DEFAULT_SNAPSHOT_RETRY_MAX)
+            .withValidation(Field::isNonNegativeInteger)
+            .withDescription("The number of times a transient read failure of a single table or chunk may be retried during the initial "
+                    + "snapshot. The budget is per retriable unit: each table or chunk is retried up to this many times for its own "
+                    + "failures, independently of the other units, so one persistently failing unit cannot exhaust the retries available "
+                    + "to the rest of the snapshot. Only failures the connector classifies as retriable are retried; a retried table or "
+                    + "chunk resumes from the last emitted key where possible so that rows are not emitted twice. Defaults to 0, meaning a "
+                    + "failed table or chunk read fails the snapshot immediately. Note: on a connector whose snapshot consistency is bound "
+                    + "to a transaction or connection (for example SQL Server, or MySQL without the global read lock), a retry reconnects "
+                    + "and resumes against a fresh read view, so snapshot retries there are eventually consistent — the same guarantee "
+                    + "those connectors already provide for a multi-threaded snapshot without a global lock (snapshot.max.threads > 1). "
+                    + "Enabling retry also makes each non-chunked table scan resumable by ordering it by the key columns, which can add "
+                    + "a sort and make the snapshot heavier when those columns are not suitably indexed.");
+
+    public static final Field SNAPSHOT_RETRY_TOTAL_MAX = Field.create("snapshot.retry.total.max")
+            .withDisplayName("Snapshot retry total maximum")
+            .withType(Type.INT)
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR_SNAPSHOT))
+            .withWidth(Width.SHORT)
+            .withImportance(Importance.LOW)
+            .withDefault(DEFAULT_SNAPSHOT_RETRY_TOTAL_MAX)
+            .withValidation(Field::isNonNegativeInteger)
+            .withDescription("An optional ceiling on the total number of retries across all tables and chunks during a single initial "
+                    + "snapshot. Defaults to 0, meaning there is no overall ceiling and the per-unit snapshot.retry.max budget governs on "
+                    + "its own. When set above 0, the snapshot fails fast once the total number of retries across all units exceeds this "
+                    + "value, even if individual units still have per-unit budget remaining, so that a snapshot which is failing pervasively "
+                    + "stops instead of continuing to retry.");
+
+    public static final Field SNAPSHOT_RETRY_DELAY_MS = Field.create("snapshot.retry.delay.ms")
+            .withDisplayName("Snapshot retry delay (ms)")
+            .withType(Type.LONG)
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR_SNAPSHOT))
+            .withWidth(Width.SHORT)
+            .withImportance(Importance.LOW)
+            .withDefault(DEFAULT_SNAPSHOT_RETRY_DELAY_MILLIS)
+            .withValidation(Field::isNonNegativeLong)
+            .withDescription("The number of milliseconds to wait before retrying a table or chunk read that failed with "
+                    + "a retriable error during the initial snapshot. Defaults to 10000 milliseconds, or 10 seconds.");
+
     // TODO - belongs to HistorizedRelationalDatabaseConnectorConfig but should be move there
     // after MySQL rewrite
     public static final Field INCLUDE_SCHEMA_CHANGES = Field.create("include.schema.changes")
@@ -575,7 +623,7 @@ public abstract class RelationalDatabaseConnectorConfig extends CommonConnectorC
             .group(Field.Group.CONNECTOR_ADVANCED, MSG_KEY_COLUMNS, MASK_COLUMN_WITH_HASH, MASK_COLUMN, TRUNCATE_COLUMN, PROPAGATE_COLUMN_SOURCE_TYPE,
                     PROPAGATE_DATATYPE_SOURCE_TYPE, SCHEMA_STORAGE_CLASS, TABLE_STORAGE_CLASS)
             .group(Field.Group.CONNECTOR_SNAPSHOT, SNAPSHOT_LOCK_TIMEOUT_MS, SNAPSHOT_SELECT_STATEMENT_OVERRIDES_BY_TABLE, SNAPSHOT_FULL_COLUMN_SCAN_FORCE,
-                    SNAPSHOT_TABLES_ORDER_BY_ROW_COUNT)
+                    SNAPSHOT_TABLES_ORDER_BY_ROW_COUNT, SNAPSHOT_RETRY_MAX, SNAPSHOT_RETRY_TOTAL_MAX, SNAPSHOT_RETRY_DELAY_MS)
             .group(Field.Group.ADVANCED_HEARTBEAT, DatabaseHeartbeatImpl.HEARTBEAT_ACTION_QUERY)
             .create();
 
@@ -674,6 +722,31 @@ public abstract class RelationalDatabaseConnectorConfig extends CommonConnectorC
 
     public Duration snapshotLockTimeout() {
         return Duration.ofMillis(getConfig().getLong(SNAPSHOT_LOCK_TIMEOUT_MS));
+    }
+
+    /**
+     * Returns the number of times a retriable read failure of a single table or chunk may be retried during the
+     * initial snapshot. The budget is per retriable unit: each table or chunk is retried up to this many times for
+     * its own failures, independently of the other units. {@code 0} disables snapshot retries.
+     */
+    public int snapshotRetryMax() {
+        return getConfig().getInteger(SNAPSHOT_RETRY_MAX);
+    }
+
+    /**
+     * Returns the optional ceiling on the total number of retries across all tables and chunks during a single
+     * initial snapshot. {@code 0} (the default) means no overall ceiling, so {@link #snapshotRetryMax()} governs on
+     * its own; a positive value fails the snapshot once the total number of retries across all units exceeds it.
+     */
+    public int snapshotRetryTotalMax() {
+        return getConfig().getInteger(SNAPSHOT_RETRY_TOTAL_MAX);
+    }
+
+    /**
+     * Returns the delay to wait between snapshot retry attempts.
+     */
+    public Duration snapshotRetryDelay() {
+        return Duration.ofMillis(getConfig().getLong(SNAPSHOT_RETRY_DELAY_MS));
     }
 
     public String schemaExcludeList() {

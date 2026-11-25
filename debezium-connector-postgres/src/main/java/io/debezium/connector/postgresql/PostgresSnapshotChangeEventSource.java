@@ -130,6 +130,16 @@ public class PostgresSnapshotChangeEventSource extends RelationalSnapshotChangeE
     }
 
     @Override
+    protected boolean isSnapshotErrorRetriable(SQLException exception) {
+        if (super.isSnapshotErrorRetriable(exception)) {
+            return true;
+        }
+        final String sqlState = exception.getSQLState();
+        // 57P01 = admin_shutdown, sent by pg_terminate_backend and server restarts
+        return "57P01".equals(sqlState);
+    }
+
+    @Override
     protected Set<TableId> getAllTableIds(RelationalSnapshotContext<PostgresPartition, PostgresOffsetContext> ctx)
             throws Exception {
         return jdbcConnection.getAllTableIds(ctx.catalogName);
