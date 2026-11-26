@@ -1196,6 +1196,10 @@ The actual delay is multiplied by the attempt number (linear backoff).
 |`3`
 |Maximum number of times that the connector retries the connection before it abandons the attempt.
 
+|[[cockroachdb-property-connection-validation-timeout-ms]]<<cockroachdb-property-connection-validation-timeout-ms, `+connection.validation.timeout.ms+`>>
+|`60000`
+|Specifies the maximum time, in milliseconds, that the connector waits for the connection check to complete when Kafka Connect validates the connector configuration.
+
 |[[cockroachdb-property-connection-validation-timeout]]<<cockroachdb-property-connection-validation-timeout, `+connection.validation.timeout.seconds+`>>
 |`5`
 |Timeout in seconds for validating that an existing JDBC connection is still usable.
@@ -1456,6 +1460,12 @@ The rest of this section describes how {prodname} handles various kinds of fault
 
 [id="cockroachdb-connector-configuration-and-startup-errors"]
 === Configuration and startup errors
+
+When you create a connector or change its configuration, Kafka Connect asks the connector to validate the configuration before it applies it.
+The connector checks the values of its properties, and then it connects to CockroachDB.
+If a property value is not valid, or if the connector cannot connect to CockroachDB by using the specified connection parameters, Kafka Connect rejects the request and returns the reason.
+For this check, the connector makes one attempt to connect, regardless of the value of the xref:cockroachdb-property-connection-max-retries[`connection.max.retries`] property.
+The connector waits for the check to complete for the time that the xref:cockroachdb-property-connection-validation-timeout-ms[`connection.validation.timeout.ms`] property specifies.
 
 In the following situations, the connector fails when trying to start, reports an error or exception in the log, and then stops running:
 
