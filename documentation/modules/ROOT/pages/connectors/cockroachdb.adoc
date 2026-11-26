@@ -215,6 +215,8 @@ When offsets fail to advance, monitoring systems might report that the connector
 
 To enable {prodname} heartbeat records on the `__debezium-heartbeat.<topic.prefix>` Kafka topic, set `heartbeat.interval.ms` to a value greater than `0` (in milliseconds).
 The `cockroachdb.changefeed.resolved.interval` property controls how frequently CockroachDB emits resolved timestamps (default: `10s`).
+CockroachDB does not emit resolved timestamps more often than its `min_checkpoint_frequency` changefeed option allows, which is `30s` by default.
+To receive resolved timestamps more often, also set that option with a xref:cockroachdb-property-changefeed-option[`cockroachdb.changefeed.option.*`] property, for example, `cockroachdb.changefeed.option.min_checkpoint_frequency=10s`.
 
 [[cockroachdb-schema-evolution]]
 === Schema evolution
@@ -1218,6 +1220,8 @@ The following properties configure the CockroachDB changefeed behavior.
 |The interval for resolved timestamp messages.
 Format: `10s`, `1m`, and so on.
 Resolved timestamps are used for offset tracking.
+CockroachDB does not emit them more often than its `min_checkpoint_frequency` changefeed option allows, which is `30s` by default.
+You can set that option with a xref:cockroachdb-property-changefeed-option[`cockroachdb.changefeed.option.*`] property.
 
 |[[cockroachdb-property-include-updated]]<<cockroachdb-property-include-updated, `+cockroachdb.changefeed.include.updated+`>>
 |`false`
@@ -1284,9 +1288,28 @@ Split captured tables into multiple changefeeds if CockroachDB returns a warning
 Smaller values reduce coupling but create more changefeed jobs.
 Specify a value that optimizes performance while honoring CockroachDB recommendations for limiting the number of changefeed jobs per cluster.
 
+|[[cockroachdb-property-changefeed-option]]<<cockroachdb-property-changefeed-option, `+cockroachdb.changefeed.option.*+`>>
+|No default value
+|Adds a CockroachDB changefeed option to the `WITH` clause of the `CREATE CHANGEFEED` statement.
+Specify one property for each option.
+The part of the property name that follows the prefix is the name of the option, and the property value is the value of the option.
+For example, `cockroachdb.changefeed.option.min_checkpoint_frequency=10s` adds the option `min_checkpoint_frequency = '10s'`.
+The connector encloses the value in single quotes.
+To add an option that takes no value, such as `protect_data_from_gc_on_pause`, leave the property value empty.
+The options take effect when the connector creates a changefeed.
+A changefeed that the connector reuses keeps the options that it was created with.
+The connector does not accept a property for an option that is reserved for the connector, such as `envelope`, `cursor`, `initial_scan`, or `resolved`.
+If you set such a property, the connector fails at startup.
+If a connector property sets the option, the error message names that property.
+
 |[[cockroachdb-property-sink-options]]<<cockroachdb-property-sink-options, `+cockroachdb.changefeed.sink.options+`>>
 |No default value
-|A comma-separated list of additional options for the sink in `key=value` format.
+|**Deprecated.** Use the xref:cockroachdb-property-changefeed-option[`cockroachdb.changefeed.option.*`] properties instead.
+A comma-separated list of additional CockroachDB changefeed options.
+The connector adds the list to the `WITH` clause of the `CREATE CHANGEFEED` statement without changing it.
+Enclose option values in single quotes where CockroachDB requires it, for example, `min_checkpoint_frequency = '10s'`.
+If the list contains an option that the connector sets itself, such as `envelope`, `cursor`, `initial_scan`, or `resolved`, the value that the connector sets takes effect.
+If an option is in the list and also has a `cockroachdb.changefeed.option.*` property, the value of the property takes effect.
 
 |[[cockroachdb-property-sink-tls-ca-cert-file]]<<cockroachdb-property-sink-tls-ca-cert-file, `+cockroachdb.changefeed.sink.tls.ca.cert.file+`>>
 |No default
