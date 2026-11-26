@@ -1,0 +1,14 @@
+{
+  "model": "jev-latest",
+  "state": "I was charged twice",
+  "questions": {
+    "tone": {
+      "type": "choice",
+      "instructions": "What is the tone of the message?",
+      "criteria": {
+        "angry": "The customer is upset",
+        "neutral": ""
+      }
+    }
+  }
+}

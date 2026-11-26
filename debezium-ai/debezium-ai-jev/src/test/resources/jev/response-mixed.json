@@ -1,0 +1,38 @@
+{
+  "model": "jev-1.13.0",
+  "answers": {
+    "category": {
+      "type": "choice",
+      "choice": "SAFETY",
+      "confidence": 0.91,
+      "probabilities": {
+        "MARKETING": 0.02,
+        "SAFETY": 0.95,
+        "SHIPPING": 0.03
+      }
+    },
+    "severity": {
+      "type": "score",
+      "score": 1.23,
+      "confidence": 0.8,
+      "legend": {
+        "0": "Cosmetic",
+        "1": "Needs attention",
+        "2": "Dangerous"
+      },
+      "probabilities": {
+        "0": 0.2,
+        "1": 0.37,
+        "2": 0.43
+      }
+    },
+    "emergency": {
+      "type": "noul",
+      "noul": 0.12
+    }
+  },
+  "usage": {
+    "input_tokens": 120,
+    "output_tokens": 6
+  }
+}

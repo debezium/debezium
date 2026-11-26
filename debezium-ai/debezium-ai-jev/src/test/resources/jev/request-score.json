@@ -1,0 +1,15 @@
+{
+  "model": "jev-latest",
+  "state": ["first", "second"],
+  "questions": {
+    "urgency": {
+      "type": "score",
+      "instructions": "How urgent is the request?",
+      "criteria": [
+        "Not urgent",
+        "Somewhat urgent",
+        "Very urgent"
+      ]
+    }
+  }
+}

@@ -85,6 +85,8 @@
 ** xref:ai/debezium-ai-python.adoc[PyDebeziumAI]
 ** xref:ai/embeddings.adoc[Embeddings Transformation]
 ** xref:ai/docling.adoc[Docling Transformation]
+** xref:ai/decision.adoc[Decision Transformation]
+
 * Standalone Debezium
 ** xref:operations/debezium-server.adoc[Debezium Server]
 ** xref:operations/debezium-operator.adoc[Debezium Operator]

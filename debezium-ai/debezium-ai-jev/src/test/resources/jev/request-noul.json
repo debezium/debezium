@@ -1,0 +1,16 @@
+{
+  "model": "jev-latest",
+  "state": {
+    "message": "I was charged twice, please refund"
+  },
+  "questions": {
+    "billing": {
+      "type": "noul",
+      "instructions": "Is this a billing problem?",
+      "criteria": {
+        "true": "A payment is involved",
+        "false": "No payment is involved"
+      }
+    }
+  }
+}

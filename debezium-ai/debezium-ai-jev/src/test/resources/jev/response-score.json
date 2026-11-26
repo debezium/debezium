@@ -1,0 +1,24 @@
+{
+  "model": "jev-1.13.0",
+  "answers": {
+    "urgency": {
+      "type": "score",
+      "score": 1.43,
+      "confidence": 0.65,
+      "legend": {
+        "0": "Not urgent",
+        "1": "Somewhat urgent",
+        "2": "Very urgent"
+      },
+      "probabilities": {
+        "0": 0.1,
+        "1": 0.36,
+        "2": 0.54
+      }
+    }
+  },
+  "usage": {
+    "input_tokens": 40,
+    "output_tokens": 2
+  }
+}

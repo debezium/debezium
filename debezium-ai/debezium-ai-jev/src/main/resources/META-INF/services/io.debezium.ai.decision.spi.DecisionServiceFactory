@@ -1,0 +1,2 @@
+io.debezium.ai.decision.jev.JevDecisionServiceFactory
+io.debezium.ai.decision.kev.KevDecisionServiceFactory
