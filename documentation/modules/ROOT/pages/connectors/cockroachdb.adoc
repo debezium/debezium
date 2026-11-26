@@ -89,9 +89,27 @@ The {prodname} CockroachDB connector maps its `snapshot.mode` configuration to t
 During the initial scan phase, the connector marks the rows that the scan returns as `op=r` to designate a read operation, which distinguishes snapshot events from ongoing change events.
 In snapshot modes that continue to stream changes after the scan, the initial scan phase ends when the connector receives the first resolved timestamp from the changefeed.
 CockroachDB can send that timestamp some time after the scan finishes.
-If a row is updated or deleted in the meantime, the connector emits the change with its own operation type (`u` or `d`).
-If a row is inserted in the meantime, the connector emits the change as `op=r`, because CockroachDB reports rows from the scan and inserted rows in the same way.
+If a row is inserted, updated, or deleted in the meantime, the connector emits the change with its own operation type (`c`, `u`, or `d`).
 After the initial scan phase ends, events are marked with the appropriate operation type (`c` for create, `u` for update, `d` for delete).
+
+CockroachDB reports rows from the scan and rows that are inserted after the scan in the same way.
+To distinguish them, in snapshot modes that continue to stream changes after the scan, the connector creates a changefeed that starts with an initial scan with the following options:
+
+`cursor`:: The timestamp as of which the scan reads the tables.
+If no stored offset exists, the connector uses the current cluster timestamp.
+`updated`:: Adds a timestamp to each changefeed message.
+A row from the scan carries the timestamp of the scan, and a row that is inserted after the scan carries a later timestamp.
+The connector sets this option even if xref:cockroachdb-property-include-updated[`cockroachdb.changefeed.include.updated`] is set to `false`.
+In that case, the connector uses the timestamp only to identify rows from the scan, and does not add it to the events that it emits.
+
+The connector reads the timestamp from the `source` property of the enriched envelope.
+In the following cases, the connector cannot distinguish rows from the scan from rows that are inserted before the first resolved timestamp:
+
+* The connector xref:cockroachdb-reusing-an-existing-changefeed[reuses an existing changefeed] that was created without a `cursor` or without the `updated` option.
+* The value of xref:cockroachdb-property-enriched-properties[`cockroachdb.changefeed.enriched.properties`] does not include `source`.
+
+In these cases, the connector emits a row that is inserted before the first resolved timestamp as `op=r`.
+The connector does not act on a signal if it emits the row from the signaling table as `op=r`.
 
 The following table shows how each `snapshot.mode` maps to the CockroachDB `initial_scan` option:
 
@@ -180,6 +198,10 @@ The specified prefix must include a trailing dot (`.`).
 The default value,  `source` ensures that intermediate topics include origin and commit-time metadata.
 `format='json'`:: Required. The connector consumes JSON-encoded changefeed messages.
 `diff`, `updated`, `resolved`:: Set these to match the connector configuration so that before-images, update markers, and resolved timestamps are available.
+`cursor`:: Recommended for a changefeed that starts with an initial scan (`initial_scan='yes'`).
+Set the cursor to a decimal timestamp, for example, the value that `SELECT cluster_logical_timestamp()` returns, and also set the `updated` option.
+The connector then distinguishes rows from the scan from rows that are inserted before the first resolved timestamp, as described in xref:cockroachdb-snapshots[Snapshots].
+The `enriched_properties` option must include `source`, because that property contains the timestamp that the `updated` option adds.
 
 If any of these conditions is not met, the connector does not recognize the existing changefeed and creates its own.
 A changefeed created with a different `topic_prefix` or without `full_table_name` is not recognized as a match, and the connector creates its own. 
@@ -1221,7 +1243,10 @@ Resolved timestamps are used for offset tracking.
 
 |[[cockroachdb-property-include-updated]]<<cockroachdb-property-include-updated, `+cockroachdb.changefeed.include.updated+`>>
 |`false`
-|Specifies whether UPDATE events include information about which columns were updated.
+|Specifies whether the connector creates the changefeed with the CockroachDB `updated` option, which adds a timestamp to each changefeed message.
+The timestamp is the commit timestamp of the change, or, for a row from an initial scan, the timestamp of the scan.
+The connector always sets the `updated` option for a changefeed that it creates with an initial scan, regardless of the value of this property.
+For more information, see xref:cockroachdb-snapshots[Snapshots].
 
 |[[cockroachdb-property-include-diff]]<<cockroachdb-property-include-diff, `+cockroachdb.changefeed.include.diff+`>>
 |`false`
@@ -1237,6 +1262,8 @@ The connector derives the schema of each event from the table metadata that it d
 The connector does not read the `schema` block, which duplicates information that it already has; `schema` is accepted and passed through for other consumers of the intermediate topics, but it is not used by the connector.
 The default value is `source` because that block identifies the originating database, schema, table, and commit timestamp.
 This information is useful when you inspect the intermediate topics or when other tools also consume them.
+The connector also reads the timestamp in the `source` block to distinguish rows from an initial scan from rows that are inserted after the scan.
+For more information, see xref:cockroachdb-snapshots[Snapshots].
 
 |[[cockroachdb-property-cursor]]<<cockroachdb-property-cursor, `+cockroachdb.changefeed.cursor+`>>
 |`now`
