@@ -10,6 +10,7 @@ import org.testcontainers.containers.Network;
 import org.testcontainers.utility.DockerImageName;
 
 import io.debezium.connector.jdbc.junit.TestHelper;
+import io.debezium.testing.testcontainers.ImageNames;
 
 /**
  * An implementation of {@link AbstractSinkDatabaseContextProvider} for MySQL.
@@ -18,7 +19,7 @@ import io.debezium.connector.jdbc.junit.TestHelper;
  */
 public class MySqlSinkDatabaseContextProvider extends AbstractSinkDatabaseContextProvider {
 
-    private static final DockerImageName IMAGE_NAME = DockerImageName.parse("container-registry.oracle.com/mysql/community-server:9.0")
+    private static final DockerImageName IMAGE_NAME = ImageNames.MYSQL_9_IMAGE_NAME
             .asCompatibleSubstituteFor("mysql");
 
     @SuppressWarnings("resource")
