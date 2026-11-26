@@ -18,7 +18,7 @@ import io.debezium.connector.jdbc.junit.TestHelper;
  */
 public class Db2SinkDatabaseContextProvider extends AbstractSinkDatabaseContextProvider {
 
-    private static final DockerImageName IMAGE_NAME = DockerImageName.parse("icr.io/db2_community/db2:11.5.9.0");
+    private static final DockerImageName IMAGE_NAME = DockerImageName.parse("icr.io/db2_community/db2:12.1.5.0");
 
     @SuppressWarnings("resource")
     public Db2SinkDatabaseContextProvider() {
