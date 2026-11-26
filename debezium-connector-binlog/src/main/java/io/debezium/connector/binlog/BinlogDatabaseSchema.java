@@ -51,6 +51,7 @@ import io.debezium.spi.topic.TopicNamingStrategy;
 import io.debezium.text.MultipleParsingExceptions;
 import io.debezium.text.ParsingException;
 import io.debezium.util.Collect;
+import io.debezium.util.Loggings;
 import io.debezium.util.Strings;
 
 /**
@@ -559,7 +560,7 @@ public abstract class BinlogDatabaseSchema<P extends BinlogPartition, O extends 
         }
         catch (ParsingException | MultipleParsingExceptions e) {
             if (skipUnparseableDdlStatements()) {
-                LOGGER.warn("Ignoring unparseable DDL statement '{}'", ddlStatements, e);
+                LOGGER.warn("Ignoring unparseable DDL statement '{}': {}", Loggings.maybeRedactSensitiveData(ddlStatements), e.toString());
                 if (connectorConfig.isBinlogMetadataBasedSchema()) {
                     // The affected tables are unknown, so conservatively mark everything dirty; each table is
                     // rebuilt from its next TABLE_MAP event.

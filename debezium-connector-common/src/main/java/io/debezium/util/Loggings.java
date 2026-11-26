@@ -76,6 +76,14 @@ public class Loggings {
     }
 
     /**
+     * Whether sensitive data may be logged, i.e. TRACE logging is enabled for this class.
+     * @return true if sensitive logging is enabled, otherwise false
+     */
+    public static boolean isSensitiveDataLoggingEnabled() {
+        return LOGGER.isTraceEnabled();
+    }
+
+    /**
      * Redact sensitive data in the log entry if sensitive logging is not enabled.
      * @param value the value to be redacted
      * @return the redacted value if sensitive logging is not enabled, otherwise the original value
