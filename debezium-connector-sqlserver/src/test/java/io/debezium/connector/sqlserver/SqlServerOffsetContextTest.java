@@ -7,6 +7,7 @@ package io.debezium.connector.sqlserver;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import java.time.Instant;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -16,6 +17,7 @@ import org.junit.jupiter.api.Test;
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
 import io.debezium.doc.FixFor;
+import io.debezium.relational.TableId;
 
 /**
  * Unit tests for how {@code __$command_id} is written to and read back from the connector's offsets.
@@ -127,6 +129,50 @@ public class SqlServerOffsetContextTest {
 
         assertThat(loader.load(withInteger).getChangePosition().getCommandId()).isEqualTo(9);
         assertThat(loader.load(withLong).getChangePosition().getCommandId()).isEqualTo(9);
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2995")
+    void shouldRoundTripSourceTimeThroughTheOffset() {
+        Instant sourceTime = Instant.ofEpochMilli(1_800_000_000_123L);
+        SqlServerOffsetContext offsetContext = offsetContextWithCommandId(7);
+        offsetContext.event(new TableId("db", "dbo", "table"), sourceTime);
+
+        assertThat(offsetContext.getOffset().get(SourceInfo.TIMESTAMP_KEY)).isEqualTo(sourceTime.toEpochMilli());
+
+        SqlServerOffsetContext loaded = new SqlServerOffsetContext.Loader(connectorConfig).load(offsetContext.getOffset());
+
+        assertThat(loaded.getSourceTime()).isEqualTo(sourceTime);
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2995")
+    void shouldNotStoreSourceTimeBeforeTheFirstEvent() {
+        assertThat(offsetContextWithCommandId(7).getOffset()).doesNotContainKey(SourceInfo.TIMESTAMP_KEY);
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2995")
+    void shouldLeaveSourceTimeUnknownWhenAbsentFromOffset() {
+        Map<String, Object> legacyOffset = baseOffset();
+        assertThat(legacyOffset).doesNotContainKey(SourceInfo.TIMESTAMP_KEY);
+
+        assertThat(new SqlServerOffsetContext.Loader(connectorConfig).load(legacyOffset).getSourceTime()).isNull();
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2995")
+    void shouldLoadSourceTimeWhateverNumericTypeTheOffsetStoreReturns() {
+        Map<String, Object> withInteger = baseOffset();
+        withInteger.put(SourceInfo.TIMESTAMP_KEY, Integer.valueOf(1_000));
+
+        Map<String, Object> withLong = baseOffset();
+        withLong.put(SourceInfo.TIMESTAMP_KEY, Long.valueOf(1_000L));
+
+        SqlServerOffsetContext.Loader loader = new SqlServerOffsetContext.Loader(connectorConfig);
+
+        assertThat(loader.load(withInteger).getSourceTime()).isEqualTo(Instant.ofEpochMilli(1_000L));
+        assertThat(loader.load(withLong).getSourceTime()).isEqualTo(Instant.ofEpochMilli(1_000L));
     }
 
     // event_serial_no logic (setChangePosition / shouldUpdateEventSerialNo). The starting serial is 1.

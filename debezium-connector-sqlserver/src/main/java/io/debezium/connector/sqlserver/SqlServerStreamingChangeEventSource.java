@@ -669,6 +669,11 @@ public class SqlServerStreamingChangeEventSource implements StreamingChangeEvent
     }
 
     private void endTransaction(SqlServerPartition partition, Instant sourceTime) {
+        // An offset written before the source time was stored restores an open transaction without it;
+        // the next change ends that transaction with its own source time
+        if (sourceTime == null && getOffsetContext().getTransactionContext().isTransactionInProgress()) {
+            return;
+        }
         if (endTransactionTimer != null && endTransactionTimer.hasElapsed() && metadataConnection.didTransactionEnd()) {
             try {
                 dispatcher.dispatchTransactionCommittedEvent(partition, getOffsetContext(), sourceTime);
