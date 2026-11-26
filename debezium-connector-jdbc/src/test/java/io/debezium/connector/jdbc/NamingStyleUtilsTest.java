@@ -13,6 +13,7 @@ import org.junit.jupiter.api.Test;
 import io.debezium.DebeziumException;
 import io.debezium.connector.jdbc.util.NamingStyle;
 import io.debezium.connector.jdbc.util.NamingStyleUtils;
+import io.debezium.doc.FixFor;
 
 /**
  * Unit tests for the {@link NamingStyleUtils} class.
@@ -29,6 +30,18 @@ class NamingStyleUtilsTest {
         assertEquals("snake_case_1", NamingStyleUtils.applyNamingStyle("SnakeCase1", NamingStyle.SNAKE_CASE));
         assertEquals("123_numbers", NamingStyleUtils.applyNamingStyle("123Numbers", NamingStyle.SNAKE_CASE));
         assertEquals("123_numbers_example", NamingStyleUtils.applyNamingStyle("123NumbersExample", NamingStyle.SNAKE_CASE));
+    }
+
+    @Test
+    @FixFor("debezium/dbz#3194")
+    void testSnakeCaseWithSingleDigitBetweenLetters() {
+        assertEquals("line_1_address", NamingStyleUtils.applyNamingStyle("line1Address", NamingStyle.SNAKE_CASE));
+        assertEquals("address_2_city", NamingStyleUtils.applyNamingStyle("address2City", NamingStyle.SNAKE_CASE));
+        assertEquals("v_1_b", NamingStyleUtils.applyNamingStyle("v1b", NamingStyle.SNAKE_CASE));
+        assertEquals("1_a_b", NamingStyleUtils.applyNamingStyle("1aB", NamingStyle.SNAKE_CASE));
+        assertEquals("a_b_1", NamingStyleUtils.applyNamingStyle("aB1", NamingStyle.SNAKE_CASE));
+        assertEquals("sha_256_hash", NamingStyleUtils.applyNamingStyle("sha256Hash", NamingStyle.SNAKE_CASE));
+        assertEquals("public_line_1_address", NamingStyleUtils.applyNamingStyle("public.line1Address", NamingStyle.SNAKE_CASE));
     }
 
     @Test
