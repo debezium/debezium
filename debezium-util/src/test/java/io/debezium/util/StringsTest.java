@@ -724,4 +724,17 @@ public class StringsTest {
         assertThat(Strings.asNumber(null, () -> 42)).isEqualTo(42);
         assertThat(Strings.asNumber("invalid", () -> 42)).isEqualTo(42);
     }
+
+    @Test
+    @FixFor("debezium/dbz#3194")
+    public void toSnakeCaseShouldSeparateSingleDigitBetweenLetters() {
+        assertThat(Strings.toSnakeCase("line1Address")).isEqualTo("line_1_address");
+        assertThat(Strings.toSnakeCase("v1b")).isEqualTo("v_1_b");
+        assertThat(Strings.toSnakeCase("1aB")).isEqualTo("1_a_b");
+        assertThat(Strings.toSnakeCase("aB1")).isEqualTo("a_b_1");
+        assertThat(Strings.toSnakeCase("sha256Hash")).isEqualTo("sha_256_hash");
+        assertThat(Strings.toSnakeCase("dotted.name")).isEqualTo("dotted_name");
+        assertThat(Strings.toSnakeCase("CamelCaseName")).isEqualTo("camel_case_name");
+        assertThat(Strings.toSnakeCase(null)).isNull();
+    }
 }

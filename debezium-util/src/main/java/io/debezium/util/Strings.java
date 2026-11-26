@@ -1446,8 +1446,9 @@ public final class Strings {
         if (name == null) {
             return null;
         }
-        // Combine all rules into a single regular expression
-        return name.replaceAll("([a-z])([A-Z])|([a-zA-Z])([0-9])|([0-9])([a-zA-Z])|\\.", "$1$3$5_$2$4$6")
+        // Combine all rules into a single regular expression; the boundaries are zero-width lookarounds
+        // so a character shared by two boundaries (e.g. the "1" in "line1Address") is not consumed by the first one
+        return name.replaceAll("(?<=[a-z])(?=[A-Z])|(?<=[a-zA-Z])(?=[0-9])|(?<=[0-9])(?=[a-zA-Z])|\\.", "_")
                 .toLowerCase(Locale.ROOT);
     }
 
