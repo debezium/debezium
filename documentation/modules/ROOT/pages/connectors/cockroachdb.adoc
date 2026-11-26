@@ -219,6 +219,8 @@ If a running changefeed matches the connector's topic prefix and tables, but it 
 The connector then fails to start and returns an error stating that you must recreate that changefeed with `envelope='enriched'` or else use a different topic prefix.
 In `initial_only` snapshot mode, the matching changefeed must have been created with `initial_scan='only'`, because a changefeed that keeps streaming never completes the snapshot.
 Otherwise, the connector fails to start and returns an error that names the changefeed job.
+If the matching changefeed was created with the `split_column_families` option, the connector logs a warning.
+For a table that has more than one column family, CockroachDB writes such a changefeed to one topic for each column family, and the connector receives no events for that table.
 
 A changefeed that an earlier version of the connector created might not use the `updated` option.
 The connector reuses such a changefeed, and logs the ID of its job.
@@ -1382,6 +1384,9 @@ Specify a value that optimizes performance while honoring CockroachDB recommenda
 The connector adds the list to the `WITH` clause of the `CREATE CHANGEFEED` statement without changing it.
 Enclose option values in single quotes where CockroachDB requires it, for example, `min_checkpoint_frequency = '10s'`.
 If the list contains an option that the connector sets itself, such as `envelope`, `cursor`, `initial_scan`, or `resolved`, the value that the connector sets takes effect.
+The connector does not pass the `split_column_families` option on to CockroachDB.
+If the list contains that option, the connector leaves it out and logs a warning.
+For more information, see xref:cockroachdb-limitations[Limitations].
 
 |[[cockroachdb-property-sink-tls-ca-cert-file]]<<cockroachdb-property-sink-tls-ca-cert-file, `+cockroachdb.changefeed.sink.tls.ca.cert.file+`>>
 |No default
@@ -1591,6 +1596,8 @@ The connector recognizes the following errors by their text, and stops:
 * A changefeed option that does not exist.
 * A parameter of the sink URI that does not exist.
 * A sink type that does not exist.
+* A captured table that has more than one column family, or that gets its second column family while the connector runs.
+The error message says that the connector cannot capture such a table.
 * For a sinkless changefeed, a stored offset that is older than the garbage collection threshold, unless `snapshot.mode` is `when_needed`.
 The error message names that snapshot mode.
 With `when_needed`, the connector starts again with an initial scan, also when CockroachDB reports the error after the changefeed has delivered events.
@@ -1746,6 +1753,14 @@ The connector supports two changefeed delivery modes.
 Configure the connector to use the default `kafka` mode if you want CockroachDB to push changefeed events to an intermediate Kafka sink and have the connector consume events from that sink. 
 Or configure the `sinkless` mode if you want the database to stream change events directly to {prodname} over the connector's SQL connection.
 Support for webhook, Pub/Sub, and cloud storage sinks is planned (see link:https://github.com/debezium/dbz/issues/1632[debezium/dbz#1632]).
+
+Tables with more than one column family:: The connector cannot capture a table that has more than one column family.
+CockroachDB creates a changefeed for such a table only if the changefeed uses the `split_column_families` option.
+With that option, CockroachDB emits one event for each column family, and each event contains only the columns of that family.
+The connector requires events that contain the complete row.
+As a result, the connector does not pass the `split_column_families` option on to CockroachDB.
+For a table that has one column family, the option has no effect.
+If a captured table has more than one column family, or gets its second column family while the connector runs, the connector fails with an error that says that it cannot capture such a table.
 
 Before state in updates:: By default, CockroachDB changefeeds do not include the previous row state.
 To include the `before` field in update events, set `cockroachdb.changefeed.include.diff=true` to enable the `diff` changefeed option.
