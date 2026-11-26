@@ -278,6 +278,10 @@ public abstract class AbstractSnapshotTest<T extends SourceConnector> extends Ab
         return "pk";
     }
 
+    protected String signalExcludingColumnIncludeList() {
+        return tableName() + "\\." + pkFieldName() + "," + tableName() + "\\." + valueFieldName();
+    }
+
     protected void startConnector(DebeziumEngine.CompletionCallback callback) {
         startConnector(Function.identity(), callback, true);
     }

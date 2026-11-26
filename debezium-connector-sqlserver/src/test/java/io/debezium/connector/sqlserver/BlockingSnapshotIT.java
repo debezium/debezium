@@ -89,6 +89,11 @@ public class BlockingSnapshotIT extends AbstractBlockingSnapshotTest {
     }
 
     @Override
+    protected String signalExcludingColumnIncludeList() {
+        return "dbo.a.pk,dbo.a.aa";
+    }
+
+    @Override
     protected String escapedTableDataCollectionId() {
         return "\\\"testDB1\\\".\\\"dbo\\\".\\\"a\\\"";
     }
