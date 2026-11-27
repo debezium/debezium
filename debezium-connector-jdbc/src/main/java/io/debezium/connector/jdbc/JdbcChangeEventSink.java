@@ -11,6 +11,7 @@ import static io.debezium.openlineage.dataset.DatasetMetadata.DatasetKind.OUTPUT
 
 import java.sql.SQLException;
 import java.util.Collection;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -94,6 +95,7 @@ public class JdbcChangeEventSink extends AbstractChangeEventSink implements Chan
             return;
         }
 
+        final Set<CollectionId> missingTables = new HashSet<>();
         for (SinkRecord kafkaSinkRecord : records) {
             JdbcSinkRecord record = new JdbcKafkaSinkRecord(kafkaSinkRecord, config);
             LOGGER.trace("Processing {}", record);
@@ -151,6 +153,17 @@ public class JdbcChangeEventSink extends AbstractChangeEventSink implements Chan
                     }
                 }
 
+                if (record.getPayload() == null && !upsertBufferByTable.containsKey(collectionId) && !deleteBufferByTable.containsKey(collectionId)
+                        && (missingTables.contains(collectionId) || !tableExists(collectionId))) {
+                    // A delete without payload, e.g. a tombstone, carries no columns the missing table could be
+                    // created from, and there is nothing to delete in a table that does not exist.
+                    LOGGER.debug("Delete without payload skipped for topic '{}' because table '{}' does not exist.", record.topicName(),
+                            collectionId.toFullIdentiferString());
+                    missingTables.add(collectionId);
+                    progressListener.filtered();
+                    continue;
+                }
+
                 final Buffer upsertBufferToFlush = upsertBufferByTable.get(collectionId);
                 if (upsertBufferToFlush != null && !upsertBufferToFlush.isEmpty()) {
                     // When a delete event arrives, update buffer must be flushed to avoid losing the delete
@@ -184,6 +197,11 @@ public class JdbcChangeEventSink extends AbstractChangeEventSink implements Chan
 
         flushBuffers(upsertBufferByTable);
         flushBuffers(deleteBufferByTable);
+    }
+
+    private boolean tableExists(CollectionId collectionId) {
+        return recordWriter.executeWithRetries("check for existence of table",
+                () -> session.doReturningWork(connection -> dialect.tableExists(connection, collectionId)));
     }
 
     private BufferFlushRecords getRecordsToFlush(Map<CollectionId, Buffer> bufferMap, CollectionId collectionId, JdbcSinkRecord record) {

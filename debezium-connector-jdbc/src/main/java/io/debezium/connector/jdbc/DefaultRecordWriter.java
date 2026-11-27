@@ -13,6 +13,7 @@ import java.sql.Statement;
 import java.time.Duration;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -426,10 +427,22 @@ public class DefaultRecordWriter implements RecordWriter {
         Map<CollectionId, TableDescriptor> tablesInBatch = new LinkedHashMap<>();
         Map<CollectionId, List<JdbcSinkRecord>> inserts = new LinkedHashMap<>();
         Map<CollectionId, List<JdbcSinkRecord>> deletes = new LinkedHashMap<>();
+        Set<CollectionId> missingTables = new HashSet<>();
 
         for (BatchRecord batchRecord : batch) {
             var record = (JdbcKafkaSinkRecord) batchRecord.record();
             var collectionId = batchRecord.collectionId();
+
+            if ((record.isDelete() || record.isTombstone()) && record.getPayload() == null
+                    && !tablesInBatch.containsKey(collectionId) && !tablesRegistry.containsKey(collectionId)
+                    && (missingTables.contains(collectionId) || !hasTable(collectionId))) {
+                // A delete without payload, e.g. a tombstone, carries no columns the missing table could be
+                // created from, and there is nothing to delete in a table that does not exist.
+                LOGGER.debug("Delete without payload skipped because table '{}' does not exist.", collectionId.toFullIdentiferString());
+                missingTables.add(collectionId);
+                progressListener().filtered();
+                continue;
+            }
 
             tablesInBatch.put(collectionId, tableFromRecord(batchRecord));
 
