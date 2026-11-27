@@ -156,6 +156,8 @@ public abstract class BinlogStreamingChangeEventSource<P extends BinlogPartition
     private final Predicate<String> gtidDmlSourceFilter;
     private final boolean isGtidModeEnabled;
     private final boolean isBinlogRowImageNoblob;
+    // The number of columns of each table in the binlog, by table number, to recognize row images that omit columns
+    private final Map<Long, Integer> columnCountByTableNumber = new HashMap<>();
     private final AtomicLong totalRecordCounter = new AtomicLong();
     private final Map<String, Thread> binaryLogClientThreads = new ConcurrentHashMap<>(4);
     private final EnumMap<EventType, BlockingConsumer<Event>> eventHandlers = new EnumMap<>(EventType.class);
@@ -801,6 +803,7 @@ public abstract class BinlogStreamingChangeEventSource<P extends BinlogPartition
         RotateEventData command = unwrapData(event);
         assert command != null;
         schema.clearTableMappings();
+        columnCountByTableNumber.clear();
     }
 
     /**
@@ -1009,6 +1012,7 @@ public abstract class BinlogStreamingChangeEventSource<P extends BinlogPartition
     protected void handleUpdateTableMetadata(P partition, O offsetContext, Event event) throws InterruptedException {
         TableMapEventData metadata = unwrapData(event);
         long tableNumber = metadata.getTableId();
+        columnCountByTableNumber.put(tableNumber, metadata.getColumnTypes().length);
         String databaseName = metadata.getDatabase();
         String tableName = metadata.getTable();
         TableId tableId = new TableId(databaseName, null, tableName);
@@ -1061,6 +1065,7 @@ public abstract class BinlogStreamingChangeEventSource<P extends BinlogPartition
                 x -> schema.getTableId(x.getTableId()),
                 x -> {
                     final Table table = tableForEvent(x.getTableId());
+                    validateRowImage(table, x.getTableId(), x.getIncludedColumns(), "INSERT");
                     final List<Serializable[]> rows = new ArrayList<>(x.getRows().size());
                     for (Serializable[] row : x.getRows()) {
                         rows.add(alignRowToTable(table, x.getIncludedColumns(), row));
@@ -1084,6 +1089,8 @@ public abstract class BinlogStreamingChangeEventSource<P extends BinlogPartition
                 x -> schema.getTableId(x.getTableId()),
                 x -> {
                     final Table table = tableForEvent(x.getTableId());
+                    validateRowImage(table, x.getTableId(), x.getIncludedColumnsBeforeUpdate(), "UPDATE before");
+                    validateRowImage(table, x.getTableId(), x.getIncludedColumns(), "UPDATE after");
                     final List<Map.Entry<Serializable[], Serializable[]>> rows = new ArrayList<>(x.getRows().size());
                     for (Map.Entry<Serializable[], Serializable[]> row : x.getRows()) {
                         rows.add(new AbstractMap.SimpleEntry<>(
@@ -1110,6 +1117,7 @@ public abstract class BinlogStreamingChangeEventSource<P extends BinlogPartition
                 x -> schema.getTableId(x.getTableId()),
                 x -> {
                     final Table table = tableForEvent(x.getTableId());
+                    validateRowImage(table, x.getTableId(), x.getIncludedColumns(), "DELETE");
                     final List<Serializable[]> rows = new ArrayList<>(x.getRows().size());
                     for (Serializable[] row : x.getRows()) {
                         rows.add(alignRowToTable(table, x.getIncludedColumns(), row));
@@ -1343,6 +1351,43 @@ public abstract class BinlogStreamingChangeEventSource<P extends BinlogPartition
             }
         }
         return aligned;
+    }
+
+    /**
+     * Fails for a row image that omits columns of the table, as the binlog contains when a client sets
+     * {@code binlog_row_image} to {@code MINIMAL} or {@code NOBLOB}, or MariaDB's {@code FULL_NODUP}, for its session, or
+     * when MariaDB writes an update or a delete of a table with generated columns. The connector checks the variable of the
+     * server when it starts, but cannot represent the omitted columns. Only when the server uses {@code NOBLOB} may BLOB and
+     * TEXT columns be omitted, as they are emitted with the unavailable value placeholder.
+     *
+     * @param table the table the rows belong to; may be null
+     * @param tableNumber the number of the table in the binlog
+     * @param includedColumns the bitmap of the columns in the row image; may be null
+     * @param image the kind of the row image, such as {@code UPDATE before}
+     */
+    private void validateRowImage(Table table, long tableNumber, BitSet includedColumns, String image) {
+        final Integer columnCount = columnCountByTableNumber.get(tableNumber);
+        if (table == null || includedColumns == null || columnCount == null || columnCount != table.columns().size()) {
+            // A row of another width is validated against the schema of the table
+            return;
+        }
+        int omittedColumns = 0;
+        boolean onlyBlobOrTextColumnsOmitted = true;
+        for (int i = 0; i < columnCount; i++) {
+            if (!includedColumns.get(i)) {
+                omittedColumns++;
+                onlyBlobOrTextColumnsOmitted &= RowImageUtils.isBlobOrTextColumn(table.columns().get(i));
+            }
+        }
+        if (omittedColumns == 0 || (isBinlogRowImageNoblob && onlyBlobOrTextColumnsOmitted)) {
+            return;
+        }
+        final String message = "Incomplete row image (" + image + ") for table " + table.id() + ": it contains " + (columnCount - omittedColumns)
+                + " of its " + columnCount + " columns. The connector requires binlog_row_image=FULL, or NOBLOB on the database server. "
+                + "A client may have set binlog_row_image=MINIMAL or NOBLOB, or FULL_NODUP on MariaDB, for its session, "
+                + "or MariaDB may omit generated columns from updates and deletes.";
+        LOGGER.error(message);
+        throw new DebeziumException(message);
     }
 
     private void validateChangeEventWithTable(Table table, Object[] before, Object[] after) {
