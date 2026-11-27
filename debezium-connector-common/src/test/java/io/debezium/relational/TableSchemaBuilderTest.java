@@ -12,7 +12,10 @@ import static org.junit.jupiter.api.Assertions.fail;
 import java.math.BigDecimal;
 import java.nio.ByteBuffer;
 import java.sql.Types;
+import java.time.LocalDate;
+import java.time.ZoneOffset;
 import java.util.Collections;
+import java.util.Optional;
 import java.util.Properties;
 
 import org.apache.kafka.connect.data.Decimal;
@@ -28,6 +31,7 @@ import io.debezium.config.Configuration;
 import io.debezium.data.VerifyRecord;
 import io.debezium.doc.FixFor;
 import io.debezium.jdbc.JdbcValueConverters;
+import io.debezium.jdbc.TemporalPrecisionMode;
 import io.debezium.junit.logging.LogInterceptor;
 import io.debezium.junit.relational.TestRelationalDatabaseConfig;
 import io.debezium.relational.Key.CustomKeyMapper;
@@ -42,6 +46,7 @@ import io.debezium.schema.SchemaTopicNamingStrategy;
 import io.debezium.spi.common.ReplacementFunction;
 import io.debezium.spi.topic.TopicNamingStrategy;
 import io.debezium.time.Date;
+import io.debezium.time.StructuredDate;
 
 public class TableSchemaBuilderTest {
 
@@ -781,5 +786,43 @@ public class TableSchemaBuilderTest {
         assertThat(logInterceptor.containsErrorMessage(errorMessage)).isFalse();
         assertThat(logInterceptor.containsWarnMessage(errorMessage)).isFalse();
         logInterceptor.clear();
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2821")
+    public void shouldNotSetStructDefaultValue() {
+        final var logInterceptor = new LogInterceptor(TableSchemaBuilder.class);
+        final var structuredTable = Table.editor()
+                .tableId(id)
+                .addColumns(Column.editor().name("ID")
+                        .type("INTEGER").jdbcType(Types.INTEGER)
+                        .optional(false)
+                        .create(),
+                        Column.editor().name("D")
+                                .type("DATE").jdbcType(Types.DATE)
+                                .optional(false)
+                                .defaultValueExpression("2020-01-02")
+                                .create(),
+                        Column.editor().name("N")
+                                .type("INTEGER").jdbcType(Types.INTEGER)
+                                .optional(false)
+                                .defaultValueExpression("7")
+                                .create())
+                .setPrimaryKeyNames("ID")
+                .create();
+        final DefaultValueConverter defaultValueConverter = (column, expression) -> Optional.of(
+                column.jdbcType() == Types.DATE ? StructuredDate.from(LocalDate.parse(expression)) : Integer.valueOf(expression));
+        final var converters = new JdbcValueConverters(null, TemporalPrecisionMode.STRUCTURED, ZoneOffset.UTC,
+                null, null, null);
+
+        schema = new TableSchemaBuilder(converters, defaultValueConverter, adjuster, customConverterRegistry,
+                SchemaBuilder.struct().build(), defaultFieldNamer, false, EventConvertingFailureHandlingMode.FAIL)
+                .create(topicNamingStrategy, structuredTable, null, null, null);
+
+        final var dateSchema = schema.valueSchema().field("D").schema();
+        assertThat(dateSchema.name()).isEqualTo(StructuredDate.SCHEMA_NAME);
+        assertThat(dateSchema.defaultValue()).isNull();
+        assertThat(schema.valueSchema().field("N").schema().defaultValue()).isEqualTo(7);
+        assertThat(logInterceptor.containsWarnMessage("Struct can't be used as default value for column 'catalog.schema.table.D'")).isTrue();
     }
 }
