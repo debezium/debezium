@@ -94,6 +94,11 @@ public abstract class BinlogConnectionConfiguration implements ConnectionConfigu
 
     public abstract String getUrlPattern();
 
+    @Override
+    public String connectionTimeZone() {
+        return jdbcConfig.getString(getConnectionTimeZonePropertyName());
+    }
+
     protected Configuration.Builder getDatabaseConfiguration(Configuration configuration) {
         return configuration.edit().withDefault(BinlogConnectorConfig.PORT, BinlogConnectorConfig.PORT.defaultValue());
     }

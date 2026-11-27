@@ -314,8 +314,11 @@ public abstract class BinlogSnapshotChangeEventSource<P extends BinlogPartition,
         final Set<String> databases = tablesToRead.keySet();
 
         if (!snapshottingTask.isOnDemand()) {
-            // Record default charset
-            addSchemaEvent(snapshotContext, "", connection.setStatementFor(connection.readCharsetSystemVariables()));
+            // Record default charset, and the time zone in which TIMESTAMP defaults of SHOW CREATE TABLE are written,
+            // quoted as a SET statement needs time zones such as +09:00 and SYSTEM as strings
+            final Map<String, String> variables = new HashMap<>(connection.readCharsetSystemVariables());
+            connection.readTimeZoneSystemVariable().forEach((name, value) -> variables.put(name, "'" + value + "'"));
+            addSchemaEvent(snapshotContext, "", connection.setStatementFor(variables));
             // Set sql_mode directly so DDL parser knows whether ANSI_QUOTES is active
             databaseSchema.setSystemVariables(BinlogSystemVariables.BinlogScope.GLOBAL, connection.readSqlModeSystemVariable());
         }

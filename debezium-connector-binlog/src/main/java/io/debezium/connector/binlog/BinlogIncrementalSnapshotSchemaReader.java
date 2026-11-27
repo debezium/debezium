@@ -54,6 +54,7 @@ final class BinlogIncrementalSnapshotSchemaReader {
 
         final Map<String, String> systemVariables = new HashMap<>(connection.readCharsetSystemVariables());
         systemVariables.putAll(connection.readSqlModeSystemVariable());
+        systemVariables.putAll(connection.readTimeZoneSystemVariable());
         final Table table = schema.parseTableDefinition(tableId, createTableDdl, systemVariables);
         if (table == null) {
             throw new DebeziumException("Failed to parse the definition of table '" + tableId + "'");
