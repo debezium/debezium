@@ -79,7 +79,8 @@ public class MicroDuration {
         }
         double numberOfDays = ((years * 12) + months) * daysPerMonthAvg + days;
         double numberOfSeconds = (((numberOfDays * 24 + hours) * 60) + minutes) * 60 + seconds;
-        return (long) (numberOfSeconds * 1e6 + micros);
+        // Round instead of truncating, as fractional seconds such as 0.000249 are not exact in double
+        return Math.round(numberOfSeconds * 1e6 + micros);
     }
 
     /**

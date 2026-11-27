@@ -30,6 +30,7 @@ import org.apache.kafka.connect.data.SchemaBuilder;
 import org.junit.jupiter.api.Test;
 import org.postgresql.PGStatement;
 import org.postgresql.core.Oid;
+import org.postgresql.util.PGInterval;
 
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
@@ -39,6 +40,7 @@ import io.debezium.relational.Column;
 import io.debezium.relational.RelationalDatabaseConnectorConfig;
 import io.debezium.relational.ValueConverter;
 import io.debezium.time.Conversions;
+import io.debezium.time.MicroDuration;
 
 class PostgresValueConverterTest {
 
@@ -252,5 +254,22 @@ class PostgresValueConverterTest {
                 .isEqualTo(Long.MAX_VALUE);
         assertThat(converter.convertTimestampToEpochNanos(null, null, PostgresValueConverter.NEGATIVE_INFINITY_LOCAL_DATE_TIME))
                 .isEqualTo(Long.MIN_VALUE);
+    }
+
+    @Test
+    @FixFor("debezium/dbz#3199")
+    public void shouldNotLoseMicrosecondWhenConvertingIntervalToMicroDuration() throws SQLException {
+        final Column column = Column.editor()
+                .name("i")
+                .type("interval")
+                .jdbcType(Types.OTHER)
+                .nativeType(Oid.INTERVAL)
+                .optional(true)
+                .create();
+        final Field field = new Field("i", 0, MicroDuration.builder().optional().build());
+
+        assertThat(converter.convertInterval(column, field, new PGInterval("00:00:00.000249"))).isEqualTo(249L);
+        assertThat(converter.convertInterval(column, field, new PGInterval("-00:00:00.000489"))).isEqualTo(-489L);
+        assertThat(converter.convertInterval(column, field, new PGInterval("1 day 00:00:00.000249"))).isEqualTo(86_400_000_249L);
     }
 }
