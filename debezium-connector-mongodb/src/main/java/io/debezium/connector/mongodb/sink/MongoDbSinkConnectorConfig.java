@@ -10,6 +10,7 @@ import java.util.function.Consumer;
 
 import org.apache.kafka.common.config.ConfigDef;
 import org.apache.kafka.connect.errors.ConnectException;
+import org.bson.BsonDocument;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -63,7 +64,15 @@ public class MongoDbSinkConnectorConfig implements SharedMongoDbConnectorConfig,
                     COLLECTION_NAMING_STRATEGY_FIELD,
                     COLLECTION_NAME_FORMAT_FIELD,
                     COLUMN_NAMING_STRATEGY_FIELD,
-                    BATCH_SIZE_FIELD)
+                    PRIMARY_KEY_MODE_FIELD,
+                    PRIMARY_KEY_FIELDS_FIELD,
+                    BATCH_SIZE_FIELD,
+                    BUFFER_MODE_FIELD,
+                    TRUNCATE_ENABLED_FIELD,
+                    DELETE_ENABLED_FIELD,
+                    FIELD_INCLUDE_LIST_FIELD,
+                    FIELD_EXCLUDE_LIST_FIELD,
+                    CLOUDEVENTS_SCHEMA_NAME_PATTERN_FIELD)
             .create();
 
     /**
@@ -71,12 +80,10 @@ public class MongoDbSinkConnectorConfig implements SharedMongoDbConnectorConfig,
      */
     public static Field.Set ALL_FIELDS = Field.setOf(CONFIG_DEFINITION.all());
 
-    public WriteModelStrategy getWriteModelStrategy() {
-        return new DefaultWriteModelStrategy();
-    }
+    private final DeleteDefaultStrategy defaultDeleteStrategy;
 
     public WriteModelStrategy getDeleteWriteModelStrategy() {
-        return new DeleteDefaultStrategy();
+        return defaultDeleteStrategy;
     }
 
     private final Configuration config;
@@ -87,10 +94,13 @@ public class MongoDbSinkConnectorConfig implements SharedMongoDbConnectorConfig,
     private final String collectionNameFormat;
     private final CollectionNamingStrategy collectionNamingStrategy;
     private final ColumnNamingStrategy columnNamingStrategy;
-    private FieldFilterFactory.FieldNameFilter fieldsFilter;
+    private final PrimaryKeyMode primaryKeyMode;
+    private final Set<String> primaryKeyFields;
+    private final FieldFilterFactory.FieldNameFilter fieldsFilter;
     private final int batchSize;
     private final boolean truncateEnabled;
     private final boolean deleteEnabled;
+    private final BufferMode bufferMode;
     private final String cloudEventsSchemaNamePattern;
 
     public MongoDbSinkConnectorConfig(Configuration config) {
@@ -102,12 +112,27 @@ public class MongoDbSinkConnectorConfig implements SharedMongoDbConnectorConfig,
         this.collectionNamingStrategy = config.getInstance(COLLECTION_NAMING_STRATEGY_FIELD, CollectionNamingStrategy.class);
         this.columnNamingStrategy = config.getInstance(COLUMN_NAMING_STRATEGY_FIELD, ColumnNamingStrategy.class);
 
+        defaultDeleteStrategy = new DeleteDefaultStrategy((doc, orig) -> {
+            BsonDocument kd = doc.getKeyDoc().get();
+            BsonDocument remapped = new BsonDocument();
+            for (String fieldName : kd.keySet()) {
+                remapped.put(getColumnNamingStrategy().resolveColumnName(fieldName), kd.get(fieldName));
+            }
+            if (remapped.size() == 1 && remapped.containsKey(ID_FIELD)) {
+                return remapped.get(ID_FIELD);
+            }
+            return remapped;
+        });
+
+        this.primaryKeyMode = PrimaryKeyMode.parse(config.getString(PRIMARY_KEY_MODE_FIELD));
+        this.primaryKeyFields = Strings.setOf(config.getString(PRIMARY_KEY_FIELDS_FIELD), String::new);
         String fieldExcludeList = config.getString(FIELD_EXCLUDE_LIST);
         String fieldIncludeList = config.getString(FIELD_INCLUDE_LIST);
         this.fieldsFilter = FieldFilterFactory.createFieldFilter(fieldIncludeList, fieldExcludeList);
         this.truncateEnabled = config.getBoolean(SinkConnectorConfig.TRUNCATE_ENABLED_FIELD);
         this.deleteEnabled = config.getBoolean(DELETE_ENABLED_FIELD);
         this.batchSize = config.getInteger(BATCH_SIZE_FIELD);
+        this.bufferMode = BufferMode.parse(config.getString(BUFFER_MODE_FIELD));
         this.cloudEventsSchemaNamePattern = config.getString(CLOUDEVENTS_SCHEMA_NAME_PATTERN_FIELD);
     }
 
@@ -123,11 +148,11 @@ public class MongoDbSinkConnectorConfig implements SharedMongoDbConnectorConfig,
             });
         }
 
-        String columnExcludeList = config.getString(FIELD_EXCLUDE_LIST);
-        String columnIncludeList = config.getString(FIELD_INCLUDE_LIST);
+        String fieldExcludeList = config.getString(FIELD_EXCLUDE_LIST);
+        String fieldIncludeList = config.getString(FIELD_INCLUDE_LIST);
 
-        if (!Strings.isNullOrEmpty(columnExcludeList) && !Strings.isNullOrEmpty(columnIncludeList)) {
-            throw new ConnectException("Cannot define both column.exclude.list and column.include.list. Please specify only one.");
+        if (!Strings.isNullOrEmpty(fieldExcludeList) && !Strings.isNullOrEmpty(fieldIncludeList)) {
+            throw new ConnectException("Cannot define both field.exclude.list and field.include.list. Please specify only one.");
         }
     }
 
@@ -181,12 +206,12 @@ public class MongoDbSinkConnectorConfig implements SharedMongoDbConnectorConfig,
 
     @Override
     public PrimaryKeyMode getPrimaryKeyMode() {
-        return null;
+        return primaryKeyMode;
     }
 
     @Override
     public Set<String> getPrimaryKeyFields() {
-        return Set.of();
+        return primaryKeyFields;
     }
 
     @Override
@@ -206,16 +231,12 @@ public class MongoDbSinkConnectorConfig implements SharedMongoDbConnectorConfig,
 
     @Override
     public BufferMode getBufferMode() {
-        return null;
+        return bufferMode;
     }
 
     @Override
     public String cloudEventsSchemaNamePattern() {
         return cloudEventsSchemaNamePattern;
-    }
-
-    public boolean isSharedChangeEventSinkEnabled() {
-        return false;
     }
 
 }

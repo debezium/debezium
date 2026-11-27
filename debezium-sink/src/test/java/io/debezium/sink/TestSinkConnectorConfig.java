@@ -128,4 +128,5 @@ public class TestSinkConnectorConfig implements SinkConnectorConfig {
     public String cloudEventsSchemaNamePattern() {
         return cloudEventsSchemaNamePattern;
     }
+
 }

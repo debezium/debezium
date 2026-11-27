@@ -66,6 +66,7 @@ public class JdbcSinkConnectorTask extends SinkTask {
     private static final Class[] EMPTY_CLASS_ARRAY = new Class[0];
     private static final DatasetDataExtractor DATASET_DATA_EXTRACTOR = new DatasetDataExtractor();
 
+    private JdbcSinkConnectorConfig config;
     private SessionFactory sessionFactory;
     private ConnectorContext connectorContext;
 
@@ -118,7 +119,7 @@ public class JdbcSinkConnectorTask extends SinkTask {
         stateLock.lock();
 
         try {
-            final JdbcSinkConnectorConfig config = new JdbcSinkConnectorConfig(props);
+            config = new JdbcSinkConnectorConfig(props);
             String connectorName = Strings.defaultIfBlank(props.get(ConfigurationNames.CONNECTOR_NAME_PROPERTY), config.getConnectorName());
             String taskId = props.getOrDefault(TASK_ID_PROPERTY_NAME, "0");
             connectorContext = new ConnectorContext(connectorName, Module.name(), taskId, Module.version(), UUIDUtils.generateNewUUID(),
@@ -183,8 +184,11 @@ public class JdbcSinkConnectorTask extends SinkTask {
 
         LOGGER.debug("Received {} changes.", records.size());
 
-        records.forEach(record -> DebeziumOpenLineageEmitter.emit(connectorContext, DebeziumTaskState.RUNNING,
-                List.of(new DatasetMetadata(record.topic(), INPUT, STREAM_DATASET_TYPE, KAFKA, DATASET_DATA_EXTRACTOR.extract(record)))));
+        // For legacy mode we emit Openlineage events here; sink framework handles this internally
+        if (!config.isSharedChangeEventSinkEnabled()) {
+            records.forEach(record -> DebeziumOpenLineageEmitter.emit(connectorContext, DebeziumTaskState.RUNNING,
+                    List.of(new DatasetMetadata(record.topic(), INPUT, STREAM_DATASET_TYPE, KAFKA, DATASET_DATA_EXTRACTOR.extract(record)))));
+        }
 
         try {
             executeStopWatch.start();

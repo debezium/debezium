@@ -5,7 +5,10 @@
  */
 package io.debezium.connector.mongodb.sink.junit;
 
+import java.time.Duration;
+
 import org.testcontainers.containers.Network;
+import org.testcontainers.images.PullPolicy;
 
 import io.debezium.testing.testcontainers.MongoDbReplicaSet;
 import io.debezium.testing.testcontainers.MongoDbShardedCluster;
@@ -38,6 +41,7 @@ public final class NetworkIsolatedMongoDbDatabaseProvider {
         var replicaSize = Integer.parseInt(System.getProperty(MONGO_REPLICA_SIZE, "1"));
 
         var builder = MongoDbReplicaSet.replicaSet()
+                .withImagePullPolicy(PullPolicy.ageBased(Duration.ofHours(8)))
                 .memberCount(replicaSize)
                 .portResolver(portResolver);
         if (network != null) {
@@ -76,6 +80,7 @@ public final class NetworkIsolatedMongoDbDatabaseProvider {
         var replicaSize = Integer.parseInt(System.getProperty(MONGO_SHARD_REPLICA_SIZE, "1"));
 
         var builder = MongoDbShardedCluster.shardedCluster()
+                .withImagePullPolicy(PullPolicy.ageBased(Duration.ofHours(8)))
                 .shardCount(shardSize)
                 .replicaCount(replicaSize)
                 .routerCount(1)

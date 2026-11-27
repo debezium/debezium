@@ -28,7 +28,6 @@ import io.debezium.connector.common.DebeziumTaskState;
 import io.debezium.connector.jdbc.dialect.DatabaseDialect;
 import io.debezium.connector.jdbc.relational.TableDescriptor;
 import io.debezium.dlq.ErrorReporter;
-import io.debezium.dlq.ErrorReporters;
 import io.debezium.metadata.CollectionId;
 import io.debezium.openlineage.ConnectorContext;
 import io.debezium.openlineage.DebeziumOpenLineageEmitter;
@@ -56,25 +55,18 @@ public class JdbcChangeEventSink extends AbstractChangeEventSink implements Chan
     private final StatelessSession session;
 
     private final RecordWriter recordWriter;
-    private final ConnectorContext connectorContext;
     private final SinkProgressListener progressListener;
 
     final Map<CollectionId, Buffer> upsertBufferByTable = new LinkedHashMap<>();
     final Map<CollectionId, Buffer> deleteBufferByTable = new LinkedHashMap<>();
 
     public JdbcChangeEventSink(JdbcSinkConnectorConfig config, StatelessSession session, DatabaseDialect dialect, RecordWriter recordWriter,
-                               ConnectorContext connectorContext, SinkProgressListener progressListener) {
-        this(config, session, dialect, recordWriter, connectorContext, progressListener, ErrorReporters.nop());
-    }
-
-    public JdbcChangeEventSink(JdbcSinkConnectorConfig config, StatelessSession session, DatabaseDialect dialect, RecordWriter recordWriter,
                                ConnectorContext connectorContext, SinkProgressListener progressListener, ErrorReporter errorReporter) {
-        super(config, errorReporter);
+        super(config, errorReporter, connectorContext);
         this.config = config;
         this.dialect = dialect;
         this.session = session;
         this.recordWriter = recordWriter;
-        this.connectorContext = connectorContext;
         this.progressListener = progressListener;
 
         final DatabaseVersion version = this.dialect.getVersion();
@@ -86,6 +78,7 @@ public class JdbcChangeEventSink extends AbstractChangeEventSink implements Chan
         return new JdbcKafkaSinkRecord(kafkaSinkRecord, config);
     }
 
+    @Override
     public void execute(Collection<SinkRecord> records) {
         if (config.isSharedChangeEventSinkEnabled()) {
             for (Batch batch : put(records)) {
@@ -272,7 +265,7 @@ public class JdbcChangeEventSink extends AbstractChangeEventSink implements Chan
             recordWriter.write(table, toFlush);
             flushBufferStopwatch.stop();
 
-            DebeziumOpenLineageEmitter.emit(connectorContext, DebeziumTaskState.RUNNING, List.of(extractDatasetMetadata(table)));
+            DebeziumOpenLineageEmitter.emit(connectorContext(), DebeziumTaskState.RUNNING, List.of(extractDatasetMetadata(table)));
 
             LOGGER.trace("[PERF] Flush buffer execution time {}", flushBufferStopwatch.durations());
             LOGGER.trace("[PERF] Table changes execution time {}", tableChangesStopwatch.durations());
@@ -303,7 +296,7 @@ public class JdbcChangeEventSink extends AbstractChangeEventSink implements Chan
                     try {
                         TableDescriptor table = session.doReturningWork(conn -> dialect.readTable(conn, collectionId));
                         if (table != null) {
-                            DebeziumOpenLineageEmitter.emit(connectorContext, DebeziumTaskState.RUNNING, List.of(extractDatasetMetadata(table)));
+                            DebeziumOpenLineageEmitter.emit(connectorContext(), DebeziumTaskState.RUNNING, List.of(extractDatasetMetadata(table)));
                         }
                     }
                     catch (Exception e) {
