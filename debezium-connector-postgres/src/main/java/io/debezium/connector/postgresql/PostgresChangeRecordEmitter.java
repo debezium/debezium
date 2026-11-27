@@ -7,6 +7,7 @@ package io.debezium.connector.postgresql;
 
 import java.sql.SQLException;
 import java.util.ArrayList;
+import java.util.BitSet;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
@@ -53,6 +54,8 @@ public class PostgresChangeRecordEmitter extends RelationalChangeRecordEmitter<P
     private final PostgresConnection connection;
     private final TableId tableId;
     private final Map<String, Object> cachedOldToastedValues = new HashMap<>();
+    private BitSet unavailableOldPositions;
+    private BitSet unavailableNewPositions;
 
     public PostgresChangeRecordEmitter(PostgresPartition partition, OffsetContext offset, Clock clock, PostgresConnectorConfig connectorConfig, PostgresSchema schema,
                                        PostgresConnection connection, TableId tableId,
@@ -211,6 +214,7 @@ public class PostgresChangeRecordEmitter extends RelationalChangeRecordEmitter<P
         }
         // JSON does not deliver a list of all columns for REPLICA IDENTITY DEFAULT
         Object[] values = new Object[Math.max(schemaColumns.size(), columnsWithoutToasted)];
+        BitSet unavailablePositions = null;
 
         for (ReplicationMessage.Column column : columns) {
             // Decoders deliver the name unquoted; unquoting again mangles names that look quoted
@@ -233,16 +237,28 @@ public class PostgresChangeRecordEmitter extends RelationalChangeRecordEmitter<P
                             // Best case: we have the real value from the old tuple; use it.
                             value = cachedOldValue;
                         }
-                        else if (isNullOnToastedColumn) {
-                            // No cache hit — use the type-specific sentinel for this column so that
-                            // converters produce the correct placeholder format (string, array, hstore, etc.)
-                            value = new UnchangedToastedReplicationMessageColumn(column.getName(), column.getType(),
-                                    column.getType().getName(), column.isOptional()).getValue(null, false);
+                        else {
+                            if (isNullOnToastedColumn) {
+                                // No cache hit — use the type-specific sentinel for this column so that
+                                // converters produce the correct placeholder format (string, array, hstore, etc.)
+                                value = new UnchangedToastedReplicationMessageColumn(column.getName(), column.getType(),
+                                        column.getType().getName(), column.isOptional()).getValue(null, false);
+                            }
+                            if (unavailablePositions == null) {
+                                unavailablePositions = new BitSet(values.length);
+                            }
+                            unavailablePositions.set(position);
                         }
                     }
                 }
                 values[position] = value;
             }
+        }
+        if (oldValues) {
+            unavailableOldPositions = unavailablePositions;
+        }
+        else {
+            unavailableNewPositions = unavailablePositions;
         }
         return values;
     }
@@ -431,6 +447,16 @@ public class PostgresChangeRecordEmitter extends RelationalChangeRecordEmitter<P
     @Override
     protected boolean skipEmptyMessages() {
         return true;
+    }
+
+    @Override
+    protected BitSet getUnavailableOldColumnPositions() {
+        return unavailableOldPositions;
+    }
+
+    @Override
+    protected BitSet getUnavailableNewColumnPositions() {
+        return unavailableNewPositions;
     }
 
 }

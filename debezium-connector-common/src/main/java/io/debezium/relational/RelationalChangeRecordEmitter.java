@@ -5,8 +5,12 @@
  */
 package io.debezium.relational;
 
+import java.util.BitSet;
+import java.util.List;
 import java.util.Objects;
 
+import org.apache.kafka.connect.data.Schema;
+import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.header.ConnectHeaders;
 import org.slf4j.Logger;
@@ -32,6 +36,13 @@ public abstract class RelationalChangeRecordEmitter<P extends Partition>
 
     public static final String PK_UPDATE_OLDKEY_FIELD = "__debezium.oldkey";
     public static final String PK_UPDATE_NEWKEY_FIELD = "__debezium.newkey";
+    public static final String UNAVAILABLE_BEFORE_HEADER = "__debezium.unavailable.before";
+    public static final String UNAVAILABLE_AFTER_HEADER = "__debezium.unavailable.after";
+
+    private static final Schema UNAVAILABLE_HEADER_SCHEMA = SchemaBuilder.array(Schema.STRING_SCHEMA).build();
+
+    private List<String> primaryKeyChangeUnavailableBefore = List.of();
+    private List<String> primaryKeyChangeUnavailableAfter = List.of();
 
     public RelationalChangeRecordEmitter(P partition, OffsetContext offsetContext, Clock clock, RelationalDatabaseConnectorConfig connectorConfig) {
         super(partition, offsetContext, clock, connectorConfig);
@@ -76,7 +87,8 @@ public abstract class RelationalChangeRecordEmitter<P extends Partition>
             LOGGER.debug("no new values found for table '{}' from create message at '{}'; skipping record", tableSchema, getOffset().getSourceInfo());
             return;
         }
-        receiver.changeRecord(getPartition(), tableSchema, Operation.CREATE, newKey, envelope, getOffset(), null);
+        receiver.changeRecord(getPartition(), tableSchema, Operation.CREATE, newKey, envelope, getOffset(),
+                addUnavailableHeader(null, UNAVAILABLE_AFTER_HEADER, tableSchema.valueFieldNames(getUnavailableNewColumnPositions())));
     }
 
     @Override
@@ -122,10 +134,14 @@ public abstract class RelationalChangeRecordEmitter<P extends Partition>
         // in this case we handle all updates as regular ones
         if (oldKey == null || Objects.equals(oldKey, newKey)) {
             Struct envelope = tableSchema.getEnvelopeSchema().update(oldValue, newValue, getOffset().getSourceInfo(), getClock().currentTimeAsInstant());
-            receiver.changeRecord(getPartition(), tableSchema, Operation.UPDATE, newKey, envelope, getOffset(), null);
+            ConnectHeaders headers = addUnavailableHeader(null, UNAVAILABLE_BEFORE_HEADER, tableSchema.valueFieldNames(getUnavailableOldColumnPositions()));
+            headers = addUnavailableHeader(headers, UNAVAILABLE_AFTER_HEADER, tableSchema.valueFieldNames(getUnavailableNewColumnPositions()));
+            receiver.changeRecord(getPartition(), tableSchema, Operation.UPDATE, newKey, envelope, getOffset(), headers);
         }
         // PK update -> emit as delete and re-insert with new key
         else {
+            primaryKeyChangeUnavailableBefore = tableSchema.valueFieldNames(getUnavailableOldColumnPositions());
+            primaryKeyChangeUnavailableAfter = tableSchema.valueFieldNames(getUnavailableNewColumnPositions());
             emitUpdateAsPrimaryKeyChangeRecord(receiver, tableSchema, oldKey, newKey, oldValue, newValue);
         }
     }
@@ -142,7 +158,8 @@ public abstract class RelationalChangeRecordEmitter<P extends Partition>
         }
 
         Struct envelope = tableSchema.getEnvelopeSchema().delete(oldValue, getOffset().getSourceInfo(), getClock().currentTimeAsInstant());
-        receiver.changeRecord(getPartition(), tableSchema, Operation.DELETE, oldKey, envelope, getOffset(), null);
+        receiver.changeRecord(getPartition(), tableSchema, Operation.DELETE, oldKey, envelope, getOffset(),
+                addUnavailableHeader(null, UNAVAILABLE_BEFORE_HEADER, tableSchema.valueFieldNames(getUnavailableOldColumnPositions())));
     }
 
     protected void emitTruncateRecord(Receiver<P> receiver, TableSchema schema) throws InterruptedException {
@@ -158,6 +175,35 @@ public abstract class RelationalChangeRecordEmitter<P extends Partition>
      * Returns the new row state in case of a CREATE or READ.
      */
     protected abstract Object[] getNewColumnValues();
+
+    /**
+     * Returns the positions within {@link #getOldColumnValues()} of the values that are not available in the change
+     * event, e.g. an unchanged TOAST column; {@code null} if there are none.
+     * Called after {@link #getOldColumnValues()}.
+     */
+    protected BitSet getUnavailableOldColumnPositions() {
+        return null;
+    }
+
+    /**
+     * Returns the positions within {@link #getNewColumnValues()} of the values that are not available in the change
+     * event; {@code null} if there are none.
+     * Called after {@link #getNewColumnValues()}.
+     */
+    protected BitSet getUnavailableNewColumnPositions() {
+        return null;
+    }
+
+    private ConnectHeaders addUnavailableHeader(ConnectHeaders headers, String name, List<String> fieldNames) {
+        if (fieldNames.isEmpty()) {
+            return headers;
+        }
+        if (headers == null) {
+            headers = new ConnectHeaders();
+        }
+        headers.add(name, fieldNames, UNAVAILABLE_HEADER_SCHEMA);
+        return headers;
+    }
 
     /**
      * Whether empty data messages should be ignored.
@@ -177,12 +223,14 @@ public abstract class RelationalChangeRecordEmitter<P extends Partition>
 
         ConnectHeaders headers = new ConnectHeaders();
         headers.add(PK_UPDATE_NEWKEY_FIELD, newKey, tableSchema.keySchema());
+        addUnavailableHeader(headers, UNAVAILABLE_BEFORE_HEADER, primaryKeyChangeUnavailableBefore);
 
         Struct envelope = tableSchema.getEnvelopeSchema().delete(oldValue, sourceInfo, getClock().currentTimeAsInstant());
         receiver.changeRecord(getPartition(), tableSchema, Operation.DELETE, oldKey, envelope, offset, headers);
 
         headers = new ConnectHeaders();
         headers.add(PK_UPDATE_OLDKEY_FIELD, oldKey, tableSchema.keySchema());
+        addUnavailableHeader(headers, UNAVAILABLE_AFTER_HEADER, primaryKeyChangeUnavailableAfter);
 
         envelope = tableSchema.getEnvelopeSchema().create(newValue, sourceInfo, getClock().currentTimeAsInstant());
         receiver.changeRecord(getPartition(), tableSchema, Operation.CREATE, newKey, envelope, offset, headers);
