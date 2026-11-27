@@ -8,15 +8,20 @@ package io.debezium.connector.sqlserver;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.entry;
 
+import java.lang.reflect.Field;
 import java.sql.SQLException;
 import java.time.Duration;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.Semaphore;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Function;
 
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceRecord;
+import org.awaitility.Awaitility;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -25,6 +30,7 @@ import org.junit.jupiter.api.Test;
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
 import io.debezium.config.Configuration.Builder;
+import io.debezium.connector.common.BaseSourceTask;
 import io.debezium.connector.sqlserver.SqlServerConnectorConfig.SnapshotMode;
 import io.debezium.connector.sqlserver.util.TestHelper;
 import io.debezium.data.Envelope;
@@ -32,10 +38,13 @@ import io.debezium.doc.FixFor;
 import io.debezium.jdbc.JdbcConnection;
 import io.debezium.junit.Flaky;
 import io.debezium.junit.logging.LogInterceptor;
+import io.debezium.pipeline.signal.SignalProcessor;
 import io.debezium.pipeline.source.snapshot.incremental.AbstractIncrementalSnapshotWithSchemaChangesSupportTest;
 import io.debezium.relational.RelationalDatabaseConnectorConfig;
 import io.debezium.relational.history.SchemaHistory;
 import io.debezium.util.Testing;
+
+import ch.qos.logback.classic.Level;
 
 public class IncrementalSnapshotIT extends AbstractIncrementalSnapshotWithSchemaChangesSupportTest<SqlServerConnector> {
     private static final int POLLING_INTERVAL = 1;
@@ -249,6 +258,71 @@ public class IncrementalSnapshotIT extends AbstractIncrementalSnapshotWithSchema
         }
     }
 
+    /**
+     * A signalling event that the streaming thread cannot process, because the signal processor permit is held elsewhere,
+     * must not be lost. The signal processor holds it and the streaming thread executes it at the next point where it
+     * processes source signals, so the incremental snapshot completes with all of its rows.
+     */
+    @Test
+    @FixFor("debezium/dbz#2908")
+    public void shouldCompleteTheIncrementalSnapshotWhenTheSignallingEventCouldNotBeProcessed() throws Exception {
+
+        final LogInterceptor logInterceptor = new LogInterceptor(SignalProcessor.class);
+        // The streaming thread reports that it could not take the permit at the debug level, because the pending
+        // signal is only delayed and not lost.
+        logInterceptor.setLoggerLevel(SignalProcessor.class, Level.DEBUG);
+
+        try {
+            final int expectedRecordCount = 10;
+            populateTable(expectedRecordCount);
+            TestHelper.enableTableCdc(connection, "a");
+
+            // Wait for the CDC capture job to publish the LSN mapping, the way dbz#2985 does it.
+            TestHelper.waitForMaxLsnAvailable(connection, TestHelper.TEST_DATABASE_1);
+
+            final Configuration config = TestHelper.defaultConfig()
+                    .with(SqlServerConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NO_DATA)
+                    .with(SqlServerConnectorConfig.SIGNAL_DATA_COLLECTION, TestHelper.TEST_DATABASE_1 + ".dbo.debezium_signal")
+                    .with(SqlServerConnectorConfig.INCREMENTAL_SNAPSHOT_CHUNK_SIZE, 5)
+                    .with(CommonConnectorConfig.SIGNAL_PROCESSOR_SEMAPHORE_WAIT_MS, 1L)
+                    .build();
+
+            start(SqlServerConnector.class, config);
+            assertConnectorIsRunning();
+            TestHelper.waitForStreamingStarted();
+
+            // The permit of the signal processor is held, so the streaming thread cannot process the signalling event.
+            final Semaphore semaphore = signalProcessorSemaphore();
+            semaphore.acquire();
+            try {
+                connection.execute(String.format(
+                        "INSERT INTO debezium_signal VALUES ('signal-1', 'execute-snapshot', " +
+                                "'{\"data-collections\": [\"%s.dbo.a\"]}')",
+                        TestHelper.TEST_DATABASE_1));
+
+                // The streaming thread picked the signalling event up but could not take the permit, so the signal
+                // stayed pending.
+                Awaitility.await()
+                        .atMost(60, TimeUnit.SECONDS)
+                        .untilAsserted(() -> assertThat(logInterceptor.containsMessage(
+                                "Could not acquire the signal processing semaphore")).isTrue());
+            }
+            finally {
+                semaphore.release();
+            }
+
+            // The streaming thread executes the signalling event at its next tick and the incremental snapshot completes.
+            final Map<Integer, Integer> dbChanges = consumeMixedWithIncrementalSnapshot(expectedRecordCount);
+            for (int i = 0; i < expectedRecordCount; i++) {
+                assertThat(dbChanges).contains(entry(i + 1, i));
+            }
+        }
+        finally {
+            // Restore the inherited level in case the test raised it to DEBUG
+            logInterceptor.setLoggerLevel(SignalProcessor.class, null);
+        }
+    }
+
     @Test
     public void snapshotWithMultipleDatabases() throws Exception {
         // Testing.Print.enable();
@@ -389,5 +463,46 @@ public class IncrementalSnapshotIT extends AbstractIncrementalSnapshotWithSchema
                 Function.identity(),
                 topicName,
                 null);
+    }
+
+    /**
+     * Returns the semaphore of the signal processor of the running connector task, so that the test can hold its
+     * permit while the streaming thread picks up a signalling event.
+     */
+    private Semaphore signalProcessorSemaphore() {
+        final AtomicReference<Semaphore> semaphore = new AtomicReference<>();
+        Awaitility.await()
+                .atMost(60, TimeUnit.SECONDS)
+                .untilAsserted(() -> {
+                    engine.runWithTask(task -> semaphore.set(taskSignalProcessorSemaphore((BaseSourceTask<?, ?>) task)));
+                    assertThat(semaphore.get()).isNotNull();
+                });
+        return semaphore.get();
+    }
+
+    private static Semaphore taskSignalProcessorSemaphore(BaseSourceTask<?, ?> task) {
+        final Object coordinator = fieldValue(task, "coordinator");
+        final Object signalProcessor = fieldValue(coordinator, "signalProcessor");
+        return (Semaphore) fieldValue(signalProcessor, "semaphore");
+    }
+
+    private static Object fieldValue(Object target, String name) {
+        if (target == null) {
+            return null;
+        }
+        for (Class<?> type = target.getClass(); type != null; type = type.getSuperclass()) {
+            try {
+                final Field field = type.getDeclaredField(name);
+                field.setAccessible(true);
+                return field.get(target);
+            }
+            catch (NoSuchFieldException e) {
+                // The field may be declared by a superclass.
+            }
+            catch (IllegalAccessException e) {
+                throw new IllegalStateException(e);
+            }
+        }
+        return null;
     }
 }
