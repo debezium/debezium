@@ -86,6 +86,54 @@ public abstract class AbstractLogMinerTransactionCache<T extends Transaction> im
     }
 
     protected LogMinerEventEntryRange findRolledBackRange(String transactionId, Iterator<LogMinerEventEntry> iterator) {
+        // [ci] dbz1960 diagnostic: record every entry the backward scan visits and log it with the chosen range
+        final java.util.List<LogMinerEventEntry> visited = new java.util.ArrayList<>();
+        final Iterator<LogMinerEventEntry> recording = new Iterator<>() {
+            @Override
+            public boolean hasNext() {
+                return iterator.hasNext();
+            }
+
+            @Override
+            public LogMinerEventEntry next() {
+                final LogMinerEventEntry entry = iterator.next();
+                visited.add(entry);
+                return entry;
+            }
+        };
+        final LogMinerEventEntryRange range = findRolledBackRangeInternal(transactionId, recording);
+        if (!visited.isEmpty() && isDiagnosticTable(visited.get(0).event().getTableId())) {
+            final StringBuilder sb = new StringBuilder();
+            for (int i = 0; i < visited.size(); i++) {
+                final LogMinerEventEntry entry = visited.get(i);
+                final LogMinerEvent event = entry.event();
+                sb.append("\n  [").append(i).append("] id=").append(entry.eventId())
+                        .append(" type=").append(event.getEventType())
+                        .append(" scn=").append(event.getScn())
+                        .append(" rsId=").append(event.getRsId())
+                        .append(" rowId=").append(event.getRowIdAsString())
+                        .append(" table=").append(event.getTableId() == null ? null : event.getTableId().table());
+                if (event instanceof XmlBeginEvent xmlBegin) {
+                    sb.append(" seq=").append(xmlBegin.getTransactionSequence());
+                }
+                else if (event instanceof XmlEndEvent xmlEnd) {
+                    sb.append(" seq=").append(xmlEnd.getTransactionSequence());
+                }
+                if (range != null && entry == range.start()) {
+                    sb.append("  <== range start");
+                }
+            }
+            LOGGER.info("[dbz1960-diag] undo scan in transaction '{}': range={} visited (newest first):{}", transactionId,
+                    range == null ? "none" : range.start().eventId() + ".." + range.end().eventId(), sb);
+        }
+        return range;
+    }
+
+    private static boolean isDiagnosticTable(io.debezium.relational.TableId tableId) {
+        return tableId != null && tableId.table() != null && tableId.table().startsWith("DBZ1960_");
+    }
+
+    private LogMinerEventEntryRange findRolledBackRangeInternal(String transactionId, Iterator<LogMinerEventEntry> iterator) {
         // INSERT/UPDATE statements containing LOB/XML columns are stored in the cache as a sequence:
         // 1. (optional) INSERT or UPDATE with an empty ROW_ID, containing regular column values and initial LOB/XML column values
         // 2. (optional) LOB operation groups with an empty ROW_ID, one group per out-of-line LOB value:

@@ -7,16 +7,25 @@ package io.debezium.connector.oracle.logminer.buffered;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import java.sql.SQLException;
 import java.time.Duration;
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.TimeUnit;
 
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceRecord;
 import org.awaitility.Awaitility;
+import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.slf4j.LoggerFactory;
 
 import io.debezium.config.Configuration;
 import io.debezium.connector.oracle.OracleConnection;
@@ -33,6 +42,12 @@ import io.debezium.embedded.async.AbstractAsyncEngineConnectorTest;
 import io.debezium.junit.logging.LogInterceptor;
 import io.debezium.util.Testing;
 
+import ch.qos.logback.classic.Level;
+import ch.qos.logback.classic.LoggerContext;
+import ch.qos.logback.classic.encoder.PatternLayoutEncoder;
+import ch.qos.logback.classic.spi.ILoggingEvent;
+import ch.qos.logback.core.ConsoleAppender;
+
 /**
  * An abstract class for integration tests for {@link BufferedLogMinerStreamingChangeEventSource}.
  *
@@ -40,7 +55,50 @@ import io.debezium.util.Testing;
  */
 public abstract class AbstractBufferedLogMinerStreamingChangeEventSourceIT extends AbstractAsyncEngineConnectorTest {
 
+    private static final String TRACE_LOGGER_NAME = "io.debezium.connector.oracle";
+
+    private static ConsoleAppender<ILoggingEvent> traceAppender;
+
     private OracleConnection connection;
+
+    /**
+     * Logs the Oracle connector at TRACE while these tests run. The shared console appender drops events below INFO,
+     * so a dedicated console appender without that filter is attached for the duration of the test class, with
+     * additivity turned off so INFO events are not printed twice. The logger level is restored by
+     * {@link io.debezium.junit.logging.LogInterceptorCleanupExtension} after the class.
+     */
+    @BeforeAll
+    static void enableTraceLogging() {
+        final var context = (LoggerContext) LoggerFactory.getILoggerFactory();
+
+        final var encoder = new PatternLayoutEncoder();
+        encoder.setContext(context);
+        encoder.setPattern("%d{ISO8601} %-5p  %X{dbz.connectorType}|%X{dbz.connectorName}|%X{dbz.connectorContext}  %m   [%c]%n");
+        encoder.start();
+
+        final var appender = new ConsoleAppender<ILoggingEvent>();
+        appender.setContext(context);
+        appender.setName("ORACLE_TRACE");
+        appender.setEncoder(encoder);
+        appender.start();
+
+        LogInterceptor.changeLoggerLevel(TRACE_LOGGER_NAME, Level.TRACE);
+        final var logger = context.getLogger(TRACE_LOGGER_NAME);
+        logger.setAdditive(false);
+        logger.addAppender(appender);
+        traceAppender = appender;
+    }
+
+    @AfterAll
+    static void disableTraceLogging() {
+        final var logger = ((LoggerContext) LoggerFactory.getILoggerFactory()).getLogger(TRACE_LOGGER_NAME);
+        if (traceAppender != null) {
+            logger.detachAppender(traceAppender);
+            traceAppender.stop();
+            traceAppender = null;
+        }
+        logger.setAdditive(true);
+    }
 
     @BeforeEach
     void before() throws Exception {
@@ -1449,12 +1507,173 @@ public abstract class AbstractBufferedLogMinerStreamingChangeEventSourceIT exten
 
             waitForStreamingRunning(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
 
-            connection.execute(statements);
+            // [ci] dbz1960 diagnostic: capture the session statistics and SCN window around the statements
+            final String sid = connection.queryAndMap("SELECT SYS_CONTEXT('USERENV','SID') FROM DUAL", rs -> rs.next() ? rs.getString(1) : null);
+            final Map<String, Long> statsBefore = sessionStatistics(sid);
+            final Scn startScn = currentScn();
+            try {
+                connection.execute(statements);
 
-            return consumeRecordsByTopic(numRecords).recordsForTopic("server1.DEBEZIUM." + tableName);
+                return consumeRecordsByTopic(numRecords).recordsForTopic("server1.DEBEZIUM." + tableName);
+            }
+            finally {
+                dumpDiagnostics(tableName, sid, statsBefore, startScn);
+            }
         }
         finally {
             TestHelper.dropTable(connection, tableName);
+        }
+    }
+
+    // [ci] dbz1960 diagnostic helpers: an unfiltered LogMiner read of the test transaction plus session statistic deltas
+
+    private static final org.slf4j.Logger DIAG_LOGGER = LoggerFactory.getLogger(AbstractBufferedLogMinerStreamingChangeEventSourceIT.class);
+
+    private static final String DIAG_COLUMNS = "SCN, RAWTOHEX(XID) AS XID, OPERATION, OPERATION_CODE, SEQUENCE#, RS_ID, SSN, CSF, ROW_ID, ROLLBACK, "
+            + "SEG_OWNER, SEG_NAME, SEG_TYPE_NAME, TABLE_NAME, INFO, STATUS, RBASQN, RBABLK, RBABYTE, UBAFIL, UBABLK, UBAREC, UBASQN, "
+            + "SUBSTR(SQL_REDO, 1, 160) AS SQL_REDO, SUBSTR(SQL_UNDO, 1, 160) AS SQL_UNDO";
+
+    private static final String DIAG_HEADER = "SCN,XID,OPERATION,OPERATION_CODE,SEQUENCE#,RS_ID,SSN,CSF,ROW_ID,ROLLBACK,SEG_OWNER,SEG_NAME,SEG_TYPE_NAME,"
+            + "TABLE_NAME,INFO,STATUS,RBASQN,RBABLK,RBABYTE,UBAFIL,UBABLK,UBAREC,UBASQN,SQL_REDO,SQL_UNDO";
+
+    private static Scn currentScn() throws SQLException {
+        try (OracleConnection admin = TestHelper.adminConnection(true)) {
+            return admin.getCurrentScn();
+        }
+    }
+
+    private static Map<String, Long> sessionStatistics(String sid) throws SQLException {
+        final Map<String, Long> stats = new LinkedHashMap<>();
+        if (sid == null) {
+            return stats;
+        }
+        try (OracleConnection admin = TestHelper.adminConnection()) {
+            admin.query("SELECT n.NAME, s.VALUE FROM V$SESSTAT s JOIN V$STATNAME n ON n.STATISTIC# = s.STATISTIC# WHERE s.SID = " + Long.parseLong(sid),
+                    rs -> {
+                        while (rs.next()) {
+                            stats.put(rs.getString(1), rs.getLong(2));
+                        }
+                    });
+        }
+        return stats;
+    }
+
+    private static void dumpDiagnostics(String tableName, String sid, Map<String, Long> statsBefore, Scn startScn) {
+        try {
+            final Map<String, Long> statsAfter = sessionStatistics(sid);
+            final StringBuilder deltas = new StringBuilder();
+            for (Map.Entry<String, Long> entry : statsAfter.entrySet()) {
+                final long delta = entry.getValue() - statsBefore.getOrDefault(entry.getKey(), 0L);
+                if (delta != 0) {
+                    deltas.append("\n  ").append(entry.getKey()).append(" = ").append(delta);
+                }
+            }
+            DIAG_LOGGER.info("[dbz1960-lmdump] session statistics delta for table {} (sid {}):{}", tableName, sid, deltas);
+        }
+        catch (Exception e) {
+            DIAG_LOGGER.warn("[dbz1960-lmdump] failed to read session statistics for table {}", tableName, e);
+        }
+
+        try (OracleConnection admin = TestHelper.adminConnection(true)) {
+            final Scn endScn = admin.getCurrentScn();
+            final List<String> files = new ArrayList<>();
+            final Set<Long> sequences = new HashSet<>();
+            admin.query("SELECT l.SEQUENCE#, MIN(f.MEMBER) FROM V$LOG l JOIN V$LOGFILE f ON f.GROUP# = l.GROUP# "
+                    + "WHERE l.FIRST_CHANGE# <= " + endScn + " AND l.NEXT_CHANGE# > " + startScn + " GROUP BY l.SEQUENCE#",
+                    rs -> {
+                        while (rs.next()) {
+                            sequences.add(rs.getLong(1));
+                            files.add(rs.getString(2));
+                        }
+                    });
+            admin.query("SELECT SEQUENCE#, MIN(NAME) FROM V$ARCHIVED_LOG WHERE NAME IS NOT NULL AND FIRST_CHANGE# <= " + endScn
+                    + " AND NEXT_CHANGE# > " + startScn + " GROUP BY SEQUENCE#",
+                    rs -> {
+                        while (rs.next()) {
+                            if (sequences.add(rs.getLong(1))) {
+                                files.add(rs.getString(2));
+                            }
+                        }
+                    });
+            boolean first = true;
+            for (String file : files) {
+                admin.executeWithoutCommitting("BEGIN DBMS_LOGMNR.ADD_LOGFILE(LOGFILENAME => '" + file + "', OPTIONS => "
+                        + (first ? "DBMS_LOGMNR.NEW" : "DBMS_LOGMNR.ADDFILE") + "); END;");
+                first = false;
+            }
+            admin.executeWithoutCommitting("BEGIN DBMS_LOGMNR.START_LOGMNR(STARTSCN => " + startScn + ", ENDSCN => " + endScn
+                    + ", OPTIONS => DBMS_LOGMNR.DICT_FROM_ONLINE_CATALOG); END;");
+            final boolean[] restartSeen = { Boolean.getBoolean("dbz1960.force.redodump") };
+            try {
+                final StringBuilder csv = new StringBuilder("\n").append(DIAG_HEADER);
+                admin.query("SELECT " + DIAG_COLUMNS + " FROM V$LOGMNR_CONTENTS WHERE XID IN (SELECT XID FROM V$LOGMNR_CONTENTS "
+                        + "WHERE SEG_OWNER = 'DEBEZIUM' AND TABLE_NAME = '" + tableName + "')",
+                        rs -> {
+                            final int columns = rs.getMetaData().getColumnCount();
+                            while (rs.next()) {
+                                // OPERATION_CODE 118, or an INTERNAL row with ROLLBACK=1, marks a statement that Oracle rolled back and re-ran
+                                final int operationCode = rs.getInt(4);
+                                if (operationCode == 118 || (operationCode == 0 && rs.getInt(10) == 1)) {
+                                    restartSeen[0] = true;
+                                }
+                                csv.append("\n");
+                                for (int i = 1; i <= columns; i++) {
+                                    if (i > 1) {
+                                        csv.append(',');
+                                    }
+                                    final String value = rs.getString(i);
+                                    if (value != null) {
+                                        csv.append('"').append(value.replace("\"", "\"\"").replace('\n', ' ')).append('"');
+                                    }
+                                }
+                            }
+                        });
+                DIAG_LOGGER.info("[dbz1960-lmdump] unfiltered LogMiner rows for table {} between SCN {} and {} from {}:{}", tableName, startScn,
+                        endScn, files, csv);
+            }
+            finally {
+                admin.executeWithoutCommitting("BEGIN DBMS_LOGMNR.END_LOGMNR(); END;");
+            }
+            if (restartSeen[0]) {
+                dumpRedo(admin, tableName, startScn, endScn, files);
+            }
+        }
+        catch (Exception e) {
+            DIAG_LOGGER.warn("[dbz1960-lmdump] failed to dump LogMiner rows for table {}", tableName, e);
+        }
+    }
+
+    /**
+     * Writes a redo log dump of the SCN window to this session's trace file and logs the trace contents, so that a
+     * statement restart can be examined at change-vector level on CI where the database is not reachable afterwards.
+     */
+    private static void dumpRedo(OracleConnection admin, String tableName, Scn startScn, Scn endScn, List<String> files) {
+        try {
+            for (String file : files) {
+                admin.executeWithoutCommitting("ALTER SYSTEM DUMP LOGFILE '" + file + "' SCN MIN " + startScn + " SCN MAX " + endScn);
+            }
+            final String trace = admin.queryAndMap("SELECT VALUE FROM V$DIAG_INFO WHERE NAME = 'Default Trace File'",
+                    rs -> rs.next() ? rs.getString(1) : null);
+            if (trace == null) {
+                DIAG_LOGGER.warn("[dbz1960-redodump] no trace file for table {}", tableName);
+                return;
+            }
+            final String traceName = trace.substring(trace.lastIndexOf('/') + 1);
+            final StringBuilder contents = new StringBuilder();
+            admin.query("SELECT PAYLOAD FROM V$DIAG_TRACE_FILE_CONTENTS WHERE TRACE_FILENAME = '" + traceName + "' ORDER BY LINE_NUMBER",
+                    rs -> {
+                        while (rs.next()) {
+                            final String line = rs.getString(1);
+                            if (line != null) {
+                                contents.append(line.endsWith("\n") ? line : line + "\n");
+                            }
+                        }
+                    });
+            DIAG_LOGGER.info("[dbz1960-redodump] redo dump for table {} between SCN {} and {} from {} ({}):\n{}[dbz1960-redodump] end", tableName,
+                    startScn, endScn, files, trace, contents);
+        }
+        catch (Exception e) {
+            DIAG_LOGGER.warn("[dbz1960-redodump] failed to dump redo for table {}", tableName, e);
         }
     }
 }
