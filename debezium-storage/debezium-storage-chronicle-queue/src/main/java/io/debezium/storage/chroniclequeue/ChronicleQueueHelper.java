@@ -99,6 +99,8 @@ class ChronicleQueueHelper implements AutoCloseable {
     @Override
     public void close() {
         chronicleQueue.close();
+        // Chronicle releases the queue files asynchronously, so on Windows they can still be in use
+        // right after close(). Remove once https://github.com/OpenHFT/Chronicle-Queue/issues/1841 is fixed.
         BackgroundResourceReleaser.releasePendingResources();
         if (ownsDirectory) {
             deleteDirectory(queuePath);
