@@ -6,12 +6,14 @@
 package io.debezium.connector.mongodb.transforms;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.util.EnumSet;
 import java.util.List;
 import java.util.Map;
 
+import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.errors.DataException;
 import org.bson.BsonDocument;
@@ -29,6 +31,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 import io.debezium.connector.mongodb.transforms.MongoToRelationalMapper.JsonOutputMode;
+import io.debezium.connector.mongodb.transforms.MongoToRelationalMapper.StringUnsupportedTypeHandlingMode;
 import io.debezium.doc.FixFor;
 
 class MongoDocumentMappingJsonTest {
@@ -39,6 +42,12 @@ class MongoDocumentMappingJsonTest {
              "selected":{"path":"/v","type":"io.debezium.data.Json"},
              "alias":{"path":"/v","type":"io.debezium.data.Json"}}
             """;
+    private static final String STRING_MAPPING = """
+            {"document":{"path":"","type":"string"},
+             "selected":{"path":"/v","type":"string"},
+             "json":{"path":"/v","type":"io.debezium.data.Json"}}
+            """;
+    private static final String SELECTED_STRING_MAPPING = "{\"selected\":{\"path\":\"/v\",\"type\":\"string\"}}";
 
     @ParameterizedTest
     @ValueSource(strings = {
@@ -206,6 +215,91 @@ class MongoDocumentMappingJsonTest {
                 .isInstanceOf(DataException.class)
                 .hasMessageContaining("selected")
                 .hasRootCauseMessage("Unexpected trailing content in the incoming MongoDB document JSON");
+    }
+
+    @ParameterizedTest
+    @EnumSource(value = JsonMode.class, names = { "STRICT", "RELAXED", "EXTENDED" })
+    @FixFor("debezium/dbz#3019")
+    void shouldWriteUnsupportedStringValuesAsJson(JsonMode inputMode) {
+        final var settings = JsonWriterSettings.builder().outputMode(inputMode).build();
+        for (var entry : MongoBsonTypeTestData.values().entrySet()) {
+            final var json = new BsonDocument("v", entry.getValue()).toJson(settings);
+            final var parsed = BsonDocument.parse(json);
+            for (JsonOutputMode outputMode : JsonOutputMode.values()) {
+                final var mapping = new MongoDocumentMapping("shop.orders", STRING_MAPPING, outputMode, StringUnsupportedTypeHandlingMode.JSON);
+                final var result = convert(mapping, json);
+                final var description = inputMode + " / " + outputMode + " / " + entry.getKey();
+                // The root pointer selects a document, so it uses the same representation as a root-pointer JSON field.
+                assertThat(result.getString("document")).as(description).isEqualTo(outputMode == JsonOutputMode.INPUT ? json : parsed.toJson(CANONICAL));
+                final var selected = parsed.get("v");
+                if (selected.isNull()) {
+                    assertThat(result.get("selected")).as(description).isNull();
+                }
+                else if (MongoMappingType.isStringConvertible(selected)) {
+                    final var unchanged = convert(new MongoDocumentMapping("shop.orders", SELECTED_STRING_MAPPING, outputMode), json);
+                    assertThat(result.getString("selected")).as(description).isEqualTo(unchanged.getString("selected"));
+                }
+                else {
+                    assertThat(result.getString("selected")).as(description).isEqualTo(result.getString("json"));
+                }
+                assertThat(mapping.schema().field("selected").schema()).isEqualTo(Schema.OPTIONAL_STRING_SCHEMA);
+            }
+        }
+    }
+
+    @Test
+    @FixFor("debezium/dbz#3019")
+    void shouldRejectUnsupportedStringValuesByDefault() {
+        final var mapping = new MongoDocumentMapping("shop.orders", SELECTED_STRING_MAPPING);
+        for (var entry : MongoBsonTypeTestData.values().entrySet()) {
+            final var value = entry.getValue();
+            final var json = new BsonDocument("v", value).toJson(CANONICAL);
+            if (value.isNull() || MongoMappingType.isStringConvertible(value)) {
+                assertThatCode(() -> convert(mapping, json)).as(entry.getKey()).doesNotThrowAnyException();
+            }
+            else {
+                assertThatThrownBy(() -> convert(mapping, json)).as(entry.getKey())
+                        .isInstanceOf(DataException.class)
+                        .hasMessageContaining("selected")
+                        .rootCause().hasMessageContaining("string.unsupported.type.handling.mode");
+            }
+        }
+    }
+
+    @ParameterizedTest
+    @EnumSource(JsonOutputMode.class)
+    @FixFor("debezium/dbz#3019")
+    void shouldKeepStringMappingWorkingWhenFieldChangesType(JsonOutputMode mode) {
+        final var mapping = new MongoDocumentMapping("shop.orders", """
+                {"tags":{"path":"/tags","type":"string"},"first":{"path":"/tags/0","type":"string"}}
+                """, mode, StringUnsupportedTypeHandlingMode.JSON);
+        final boolean input = mode == JsonOutputMode.INPUT;
+        assertThat(convert(mapping, "{\"tags\":\"red\"}").getString("tags")).isEqualTo("red");
+        final var array = convert(mapping, "{\"tags\":[\"red\",{\"$numberLong\":\"2\"}]}");
+        assertThat(array.getString("tags")).isEqualTo(input ? "[\"red\",{\"$numberLong\":\"2\"}]" : "[\"red\", {\"$numberLong\": \"2\"}]");
+        assertThat(array.getString("first")).isEqualTo("red");
+        final var nested = convert(mapping, "{\"tags\":[[1],{\"color\":\"red\"}]}");
+        assertThat(nested.getString("tags")).isEqualTo(input ? "[[1],{\"color\":\"red\"}]" : "[[{\"$numberInt\": \"1\"}], {\"color\": \"red\"}]");
+        assertThat(nested.getString("first")).isEqualTo(input ? "[1]" : "[{\"$numberInt\": \"1\"}]");
+        final var document = convert(mapping, "{\"tags\":{\"color\":\"red\"}}");
+        assertThat(document.getString("tags")).isEqualTo(input ? "{\"color\":\"red\"}" : "{\"color\": \"red\"}");
+        assertThat(document.get("first")).isNull();
+        assertThat(convert(mapping, "{\"tags\":[]}").getString("tags")).isEqualTo("[]");
+        assertThat(convert(mapping, "{\"tags\":{}}").getString("tags")).isEqualTo("{}");
+        assertThat(convert(mapping, "{\"tags\":null}").get("tags")).isNull();
+        assertThat(convert(mapping, "{}").get("tags")).isNull();
+    }
+
+    @Test
+    @FixFor("debezium/dbz#3019")
+    void shouldNotApplyStringJsonFallbackToOtherTypes() {
+        for (String type : List.of("io.debezium.data.Uuid", "io.debezium.time.ZonedTimestamp", "int64", "bytes")) {
+            final var mapping = new MongoDocumentMapping("shop.orders", "{\"selected\":{\"path\":\"/v\",\"type\":\"" + type + "\"}}",
+                    JsonOutputMode.CANONICAL, StringUnsupportedTypeHandlingMode.JSON);
+            assertThatThrownBy(() -> convert(mapping, "{\"v\":[1]}")).as(type)
+                    .isInstanceOf(DataException.class)
+                    .hasMessageContaining("selected");
+        }
     }
 
     private static Struct convert(MongoDocumentMapping mapping, String json) {

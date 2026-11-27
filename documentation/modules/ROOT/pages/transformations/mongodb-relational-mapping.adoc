@@ -142,6 +142,7 @@ transforms.map.json.output.mode=canonical
 In this mode, `{"age":30}` becomes `{"age":{"$numberInt":"30"}}`.
 The whole-document field no longer preserves the original string.
 The setting does not change explicitly mapped scalar types, inferred schemas, keys, headers, or other envelope metadata.
+The only exception is the JSON text that a `string` field writes for an unsupported BSON value, as described in the next section.
 It is independent of the Kafka converter and does not change the Kafka wire format.
 
 Canonical output describes the BSON types parsed from the incoming JSON; it cannot recover type information already lost during source serialization.
@@ -150,6 +151,44 @@ If preserving source BSON types is required, configure the MongoDB source connec
 
 The `input` mode also preserves bare `NaN` and `Infinity` values that the source connector can emit in legacy mode.
 Consumers that require strict JSON might reject these values; `canonical` represents them using Extended JSON type wrappers.
+
+== Writing unsupported values in string fields
+
+By default, a `string` field accepts only BSON strings, ObjectIds, numbers, booleans, and dates.
+Any other selected value raises a conversion error.
+To write such values as JSON text in the same field instead, configure:
+
+[source,properties]
+----
+transforms.map.string.unsupported.type.handling.mode=json
+----
+
+The `string.unsupported.type.handling.mode` option has `MEDIUM` importance and accepts the following values:
+
+[cols="1,3",options="header"]
+|===
+|Value |Behavior
+|`fail` (default) |Raises a conversion error for BSON values that `string` does not support.
+|`json` |Converts supported values as before. Writes every other non-null BSON value, such as an array, a document, binary data, a BSON timestamp, or a regular expression, as JSON text.
+|===
+
+The JSON text follows `json.output.mode`, as it does for `io.debezium.data.Json` fields.
+The `input` mode writes the selected incoming JSON fragment, or the original document string for an empty pointer.
+The `canonical` mode writes MongoDB Extended JSON v2 canonical.
+For example, with `json.output.mode=canonical`, a `string` field that selects `[1, 2]` contains `[{"$numberInt": "1"}, {"$numberInt": "2"}]`, while a selected string `abc` remains `abc`.
+
+The field keeps the plain Connect `string` schema, without the `io.debezium.data.Json` logical type.
+Missing paths and explicit BSON nulls still produce a Connect null.
+The option affects only BSON types that `string` does not support; it does not change other output types, inferred schemas, or other conversion errors.
+
+This keeps a `string` field usable when its source values change type, for example when an application starts storing arrays in a field that previously held strings.
+If every value of a field should use a JSON representation, map the field to `io.debezium.data.Json` instead.
+That type also writes supported scalar values as JSON, so the string `abc` becomes `"abc"`.
+
+The output does not record the BSON type.
+A string that contains JSON text and a non-string value can produce the same text.
+For example, in `input` mode, the string `"[1,2]"` and an array serialized as `[1,2]` both produce `[1,2]`.
+If consumers need to distinguish them, retain the complete document with a root-pointer `io.debezium.data.Json` field.
 
 == Path syntax and document changes
 
@@ -188,7 +227,7 @@ Its representation follows `json.output.mode` for both empty and non-empty point
 
 If a selected leaf exists but cannot be converted to its declared type, the SMT raises a conversion error.
 It does not replace conversion errors with null or silently omit the field.
-For example, selecting `/customer/name` yields null after `customer` becomes a string; selecting `/customer` as `string` fails while `customer` is a document.
+For example, selecting `/customer/name` yields null after `customer` becomes a string; selecting `/customer` as `string` fails while `customer` is a document, unless `string.unsupported.type.handling.mode` is `json`.
 
 == Output types
 
@@ -201,7 +240,7 @@ All output schemas are optional.
 |`int8`, `int16`, `int32`, `int64` |BSON numbers or numeric strings, with exact integral conversion and range checks.
 |`float32`, `float64` |BSON numbers or numeric strings. Floating-point rounding applies; non-finite results and underflow to zero are rejected.
 |`boolean` |BSON boolean or a case-insensitive `true`/`false` string.
-|`string` |BSON string, ObjectId, numeric, boolean, or date value. Documents and arrays require `io.debezium.data.Json`.
+|`string` |BSON string, ObjectId, numeric, boolean, or date value. Documents and arrays require `io.debezium.data.Json`, unless `string.unsupported.type.handling.mode` is `json`.
 |`bytes` |BSON binary data, without the binary subtype.
 |`org.apache.kafka.connect.data.Decimal` |Exact decimal conversion. Requires non-negative `scale`; optional positive `precision` must be at least scale. Rounding and precision overflow are rejected.
 |`io.debezium.data.VariableScaleDecimal` |Exact decimal value with its own scale.
