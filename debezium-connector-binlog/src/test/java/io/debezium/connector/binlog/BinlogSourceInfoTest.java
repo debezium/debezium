@@ -338,6 +338,33 @@ public abstract class BinlogSourceInfoTest<S extends BinlogSourceInfo, O extends
         handleTransactionCommit(760, 4);
     }
 
+    @Test
+    @FixFor("debezium/dbz#2508")
+    void shouldPreservePartialTransactionOffsetsBeyondFourGiB() {
+        final long transactionStart = (1L << 32) + 150;
+        sourceWith(offset(transactionStart - 50, 0));
+        handleTransactionBegin(transactionStart, 20);
+        handleNextEvent(transactionStart + 20, 30, withRowCount(3));
+
+        offsetContext.setEventPosition(transactionStart + 50, 40);
+        offsetContext.setRowNumber(1, 4);
+        final Map<String, ?> offset = offsetContext.getOffset();
+
+        assertThat(offset.get(BinlogSourceInfo.BINLOG_POSITION_OFFSET_KEY)).isEqualTo(transactionStart);
+        assertThat(offset.get(BinlogOffsetContext.EVENTS_TO_SKIP_OFFSET_KEY)).isEqualTo(1L);
+        assertThat(offset.get(BinlogSourceInfo.BINLOG_ROW_IN_EVENT_OFFSET_KEY)).isEqualTo(2L);
+        assertThat(source.struct().getInt64(BinlogSourceInfo.BINLOG_POSITION_OFFSET_KEY)).isEqualTo(transactionStart + 50);
+
+        final O restored = loadOffsetContext(Configuration.create()
+                .with(CommonConnectorConfig.TOPIC_PREFIX, SERVER_NAME)
+                .build(), offset);
+        assertThat(restored.getSource().binlogPosition()).isEqualTo(transactionStart);
+        assertThat(restored.eventsToSkipUponRestart()).isEqualTo(1);
+        assertThat(restored.rowsToSkipUponRestart()).isEqualTo(2);
+
+        handleTransactionCommit(transactionStart + 90, 10);
+    }
+
     // -------------------------------------------------------------------------------------
     // Utility methods
     // -------------------------------------------------------------------------------------
