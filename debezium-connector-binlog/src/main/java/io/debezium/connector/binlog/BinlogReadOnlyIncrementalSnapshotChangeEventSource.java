@@ -48,8 +48,10 @@ public abstract class BinlogReadOnlyIncrementalSnapshotChangeEventSource<P exten
                                                               Clock clock,
                                                               SnapshotProgressListener<P> progressListener,
                                                               DataChangeEventListener<P> dataChangeEventListener,
-                                                              NotificationService<P, O> notificationService) {
-        super(connectorConfig, jdbcConnection, dispatcher, databaseSchema, clock, progressListener, dataChangeEventListener, notificationService);
+                                                              NotificationService<P, O> notificationService,
+                                                              UndefinedColumnClassifier undefinedColumnClassifier) {
+        super(connectorConfig, jdbcConnection, dispatcher, databaseSchema, clock, progressListener, dataChangeEventListener, notificationService,
+                undefinedColumnClassifier);
         this.gtidSetFactory = connectorConfig.getGtidSetFactory();
         this.binlogDatabaseSchema = databaseSchema;
         this.binlogConnectorConnection = jdbcConnection;
@@ -171,6 +173,11 @@ public abstract class BinlogReadOnlyIncrementalSnapshotChangeEventSource<P exten
             getContext().closeWindow();
             sendWindowEvents(partition, offsetContext);
             readChunk(partition, offsetContext);
+            if (isChunkDeferred()) {
+                // The DDL that made the cached schema stale is still queued in the binlog behind this
+                // event: re-reading now would hit the same stale schema until the deferrals are exhausted
+                return;
+            }
             if (currentGtid == null && getContext().watermarksChanged()) {
                 return;
             }

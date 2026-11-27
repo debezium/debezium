@@ -7,12 +7,15 @@ package io.debezium.connector.sqlserver;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.entry;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.sql.SQLException;
 import java.time.Duration;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
 
 import org.apache.kafka.connect.data.Struct;
@@ -32,6 +35,7 @@ import io.debezium.doc.FixFor;
 import io.debezium.jdbc.JdbcConnection;
 import io.debezium.junit.Flaky;
 import io.debezium.junit.logging.LogInterceptor;
+import io.debezium.pipeline.source.snapshot.incremental.AbstractIncrementalSnapshotChangeEventSource;
 import io.debezium.pipeline.source.snapshot.incremental.AbstractIncrementalSnapshotWithSchemaChangesSupportTest;
 import io.debezium.relational.RelationalDatabaseConnectorConfig;
 import io.debezium.relational.history.SchemaHistory;
@@ -389,5 +393,47 @@ public class IncrementalSnapshotIT extends AbstractIncrementalSnapshotWithSchema
                 Function.identity(),
                 topicName,
                 null);
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2452")
+    public void skipsTableWhenStaleSchemaIsNeverRefreshed() throws Exception {
+        // Testing.Print.enable();
+
+        // The capture instance teaches the connector a column that is then dropped without a new
+        // capture instance: the cached schema stays behind the database, every chunk query fails on
+        // the missing column, and once the deferrals are exhausted the table is skipped while the
+        // snapshot moves on to the next one.
+        populateTables();
+        connection.execute("ALTER TABLE a ADD c int");
+        TestHelper.enableTableCdc(connection, "a", "a_c", Arrays.asList("pk", "aa", "c"));
+        Thread.sleep(Duration.ofSeconds(TestHelper.waitTimeForLsnTimeMapping()).toMillis());
+
+        final var logInterceptor = new LogInterceptor(AbstractIncrementalSnapshotChangeEventSource.class);
+        startConnector(x -> x.with(RelationalDatabaseConnectorConfig.COLUMN_EXCLUDE_LIST, "no_such_schema\\.no_such_table\\.no_such_column"));
+        waitForConnectorToStart();
+        waitForAvailableRecords(1, TimeUnit.SECONDS);
+        assertNoRecordsToConsume();
+
+        connection.execute("ALTER TABLE a DROP COLUMN c");
+        sendAdHocSnapshotSignal(tableDataCollectionIds().toArray(new String[0]));
+
+        final Map<Integer, SourceRecord> dbChanges = consumeIncrementalSnapshotReads(ROW_COUNT, topicNames().get(1));
+        for (int i = 0; i < ROW_COUNT; i++) {
+            assertThat(dbChanges).containsKey(i + 1);
+        }
+        assertEquals(3, logInterceptor.countOccurrences("re-reading the chunk in the next window"),
+                "the chunk should have been deferred exactly up to the bound");
+        assertTrue(logInterceptor.containsMessage("is still stale against the database after 3 chunk deferrals"),
+                "the deferral bound should have been exhausted on the table whose schema never catches up");
+        assertTrue(logInterceptor.containsMessage("skipping the table and continuing streaming"),
+                "the stale table should have been skipped with a warning");
+    }
+
+    @Override
+    protected boolean expectsStaleSchemaDeferral() {
+        // Schema changes reach the connector through the CDC capture instances with a lag: the
+        // window typically closes against the old schema and the deferral is never needed.
+        return false;
     }
 }
