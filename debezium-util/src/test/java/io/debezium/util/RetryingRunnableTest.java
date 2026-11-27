@@ -337,6 +337,22 @@ public class RetryingRunnableTest {
         Assertions.assertThat(heals.get()).isEqualTo(0);
     }
 
+    @Test
+    void shouldKeepItsActionWhenBuilderIsReusedAfterBuild() throws InterruptedException, SQLException {
+        final var otherRuns = new AtomicInteger();
+        final var builder = RetryingRunnable.<SQLException> builder().doRun(runs::incrementAndGet);
+        final var first = builder.build();
+        final var second = builder.doRun(otherRuns::incrementAndGet).build();
+
+        first.run();
+        assertThat(runs.get()).isEqualTo(1);
+        assertThat(otherRuns.get()).isEqualTo(0);
+
+        second.run();
+        assertThat(runs.get()).isEqualTo(1);
+        assertThat(otherRuns.get()).isEqualTo(1);
+    }
+
     private RetryingRunnable<SQLException> getNeverFailing(int retries) {
         return RetryingRunnable.<SQLException> builder()
                 .retries(retries)

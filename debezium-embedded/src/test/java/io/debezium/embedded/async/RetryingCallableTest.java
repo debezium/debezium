@@ -6,6 +6,7 @@
 package io.debezium.embedded.async;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.time.Duration;
 import java.util.concurrent.ExecutionException;
@@ -46,21 +47,21 @@ public class RetryingCallableTest {
     void shouldExecuteNeverFailing() throws InterruptedException, ExecutionException {
         final LogInterceptor interceptor = new LogInterceptor(RetryingCallable.class);
         Assertions.assertThat(execService.submit(new NeverFailing(0)).get()).isEqualTo(1);
-        assertThat(interceptor.containsMessage("Failed with retriable exception")).isFalse();
+        assertThat(interceptor.containsMessage("failed with retriable exception, will retry later")).isFalse();
     }
 
     @Test
     void shouldNotRetryWhenCallableDoesNotFail() throws InterruptedException, ExecutionException {
         final LogInterceptor interceptor = new LogInterceptor(RetryingCallable.class);
         Assertions.assertThat(execService.submit(new NeverFailing(10)).get()).isEqualTo(1);
-        assertThat(interceptor.containsMessage("Failed with retriable exception")).isFalse();
+        assertThat(interceptor.containsMessage("failed with retriable exception, will retry later")).isFalse();
     }
 
     @Test
     void shouldIgnoreInfiniteRetryWhenCallableDoesNotFail() throws InterruptedException, ExecutionException {
         final LogInterceptor interceptor = new LogInterceptor(RetryingCallable.class);
         Assertions.assertThat(execService.submit(new NeverFailing(EmbeddedEngineConfig.DEFAULT_ERROR_MAX_RETRIES)).get()).isEqualTo(1);
-        assertThat(interceptor.containsMessage("Failed with retriable exception")).isFalse();
+        assertThat(interceptor.containsMessage("failed with retriable exception, will retry later")).isFalse();
     }
 
     @Test
@@ -78,7 +79,7 @@ public class RetryingCallableTest {
 
         // Callable should fail 2 times and 3rh time it should succeed.
         assertThat(failing.calls).isEqualTo(3);
-        assertThat(interceptor.countOccurrences("Failed with retriable exception")).isEqualTo(2);
+        assertThat(interceptor.countOccurrences("failed with retriable exception, will retry later")).isEqualTo(2);
     }
 
     @Test
@@ -98,7 +99,7 @@ public class RetryingCallableTest {
         assertThat(failing.calls).isEqualTo(6);
         // But we should see only 5 exception as the call was retried 5 times and on the 6th call failed, which is
         // not logged but thrown up to the stack.
-        assertThat(interceptor.countOccurrences("Failed with retriable exception")).isEqualTo(5);
+        assertThat(interceptor.countOccurrences("failed with retriable exception, will retry later")).isEqualTo(5);
     }
 
     @Test
@@ -118,7 +119,7 @@ public class RetryingCallableTest {
         // Should be called only 1 time.
         assertThat(failing.calls).isEqualTo(1);
         // And there shouldn't be any call in retry loop.
-        assertThat(interceptor.containsMessage("Failed with retriable exception")).isFalse();
+        assertThat(interceptor.containsMessage("failed with retriable exception, will retry later")).isFalse();
     }
 
     @Test
@@ -135,7 +136,35 @@ public class RetryingCallableTest {
 
         // Wait between the calls is 100 ms, so we should have at least 5 calls during 3 seconds sleep.
         assertThat(failing.calls).isGreaterThan(5);
-        assertThat(interceptor.countOccurrences("Failed with retriable exception")).isGreaterThan(5);
+        assertThat(interceptor.countOccurrences("failed with retriable exception, will retry later")).isGreaterThan(5);
+    }
+
+    @Test
+    void shouldNotRetryWhenRetriableExceptionIsOnlyTheCause() throws InterruptedException {
+        final LogInterceptor interceptor = new LogInterceptor(RetryingCallable.class);
+        LoggingContext.forConnector(getClass().getSimpleName(), "", "callable");
+
+        final var failing = new AlwaysFailingWithRetriableCause(10);
+        assertThatThrownBy(() -> execService.submit(failing).get())
+                .isInstanceOf(ExecutionException.class)
+                .hasCauseExactlyInstanceOf(RuntimeException.class)
+                .hasRootCauseInstanceOf(RetriableException.class);
+
+        // Only the thrown exception is examined, so the nested retriable exception must not trigger a retry.
+        assertThat(failing.calls).isEqualTo(1);
+        assertThat(interceptor.containsMessage("failed with retriable exception, will retry later")).isFalse();
+    }
+
+    @Test
+    void shouldRetryWhenRetriableExceptionIsThrownDirectly() throws InterruptedException, ExecutionException {
+        final LogInterceptor interceptor = new LogInterceptor(RetryingCallable.class);
+        LoggingContext.forConnector(getClass().getSimpleName(), "", "callable");
+
+        final var failing = new TwoTimesFailing(10);
+        assertThat(execService.submit(failing).get()).isEqualTo(3);
+
+        assertThat(failing.calls).isEqualTo(3);
+        assertThat(interceptor.countOccurrences("failed with retriable exception, will retry later")).isEqualTo(2);
     }
 
     private static class NeverFailing extends RetryingCallable<Integer> {
@@ -166,6 +195,17 @@ public class RetryingCallableTest {
         public Integer doCall() throws Exception {
             super.doCall();
             throw new RetriableException("Good try, but I always fail");
+        }
+    }
+
+    private static class AlwaysFailingWithRetriableCause extends NeverFailing {
+        AlwaysFailingWithRetriableCause(final int retries) {
+            super(retries);
+        }
+
+        public Integer doCall() throws Exception {
+            super.doCall();
+            throw new RuntimeException(new RetriableException("Nested, so I must not be retried"));
         }
     }
 
