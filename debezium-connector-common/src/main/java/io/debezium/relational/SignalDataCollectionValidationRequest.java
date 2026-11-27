@@ -5,11 +5,14 @@
  */
 package io.debezium.relational;
 
+import java.sql.SQLException;
 import java.util.List;
+import java.util.Set;
 import java.util.function.Function;
 import java.util.function.Predicate;
 
 import io.debezium.config.CommonConnectorConfig.WatermarkStrategy;
+import io.debezium.data.Envelope.Operation;
 import io.debezium.jdbc.JdbcConnection;
 import io.debezium.pipeline.signal.channels.SourceSignalChannel;
 import io.debezium.relational.Tables.ColumnNameFilter;
@@ -29,9 +32,11 @@ public final class SignalDataCollectionValidationRequest {
     private final boolean streamingCapable;
     private final boolean sourceChannelEnabled;
     private final boolean insertDeleteWatermarking;
+    private final Set<Operation> skippedSignalOperations;
     private final Function<String, JdbcConnection> connectionResolver;
     private final Predicate<TableId> isSignalDataCollection;
     private final ColumnNameFilter columnFilter;
+    private final ConnectorValidator connectorCheck;
 
     /**
      * @param rawValues the configured signal.data.collection values
@@ -39,22 +44,28 @@ public final class SignalDataCollectionValidationRequest {
      * @param streamingCapable whether the connector will actually reach a mode that reads signals
      * @param sourceChannelEnabled whether the source signal channel is enabled
      * @param insertDeleteWatermarking whether the insert_delete watermarking strategy is in use, which requires an 'id' column
+     * @param skippedSignalOperations the skipped operations that signals rely on and the connector drops before reading them
      * @param connectionResolver resolves the connection to probe with for a given raw value
      * @param isSignalDataCollection matches a resolved table against the connector's actual signal data collection
      * @param columnFilter the connector's effective column filter
+     * @param connectorCheck connector-specific checks of the resolved signal data collection
      */
     public SignalDataCollectionValidationRequest(List<String> rawValues, boolean validationEnabled, boolean streamingCapable,
                                                  boolean sourceChannelEnabled, boolean insertDeleteWatermarking,
+                                                 Set<Operation> skippedSignalOperations,
                                                  Function<String, JdbcConnection> connectionResolver,
-                                                 Predicate<TableId> isSignalDataCollection, ColumnNameFilter columnFilter) {
+                                                 Predicate<TableId> isSignalDataCollection, ColumnNameFilter columnFilter,
+                                                 ConnectorValidator connectorCheck) {
         this.rawValues = rawValues;
         this.validationEnabled = validationEnabled;
         this.streamingCapable = streamingCapable;
         this.sourceChannelEnabled = sourceChannelEnabled;
         this.insertDeleteWatermarking = insertDeleteWatermarking;
+        this.skippedSignalOperations = skippedSignalOperations;
         this.connectionResolver = connectionResolver;
         this.isSignalDataCollection = isSignalDataCollection;
         this.columnFilter = columnFilter;
+        this.connectorCheck = connectorCheck;
     }
 
     /**
@@ -62,15 +73,18 @@ public final class SignalDataCollectionValidationRequest {
      *
      * @param connectorConfig the connector configuration
      * @param connectionResolver resolves the connection to probe with for a given raw value
+     * @param connectorCheck connector-specific checks of the resolved signal data collection
      */
     public static SignalDataCollectionValidationRequest forConnector(RelationalDatabaseConnectorConfig connectorConfig,
-                                                                     Function<String, JdbcConnection> connectionResolver) {
+                                                                     Function<String, JdbcConnection> connectionResolver,
+                                                                     ConnectorValidator connectorCheck) {
         return new SignalDataCollectionValidationRequest(connectorConfig.getSignalingDataCollectionIds(),
                 connectorConfig.isSignalDataCollectionValidationEnabled(),
                 !INITIAL_ONLY_SNAPSHOT_MODE.equals(connectorConfig.getSnapshotMode().getValue()),
                 connectorConfig.getEnabledChannels().contains(SourceSignalChannel.CHANNEL_NAME),
                 WatermarkStrategy.INSERT_DELETE == connectorConfig.getIncrementalSnapshotWatermarkingStrategy(),
-                connectionResolver, connectorConfig::isSignalDataCollection, connectorConfig.getColumnFilter());
+                connectorConfig.getSkippedSignalOperations(), connectionResolver, connectorConfig::isSignalDataCollection,
+                connectorConfig.getColumnFilter(), connectorCheck);
     }
 
     public List<String> rawValues() {
@@ -93,6 +107,10 @@ public final class SignalDataCollectionValidationRequest {
         return insertDeleteWatermarking;
     }
 
+    public Set<Operation> skippedSignalOperations() {
+        return skippedSignalOperations;
+    }
+
     public Function<String, JdbcConnection> connectionResolver() {
         return connectionResolver;
     }
@@ -103,5 +121,25 @@ public final class SignalDataCollectionValidationRequest {
 
     public ColumnNameFilter columnFilter() {
         return columnFilter;
+    }
+
+    public ConnectorValidator connectorCheck() {
+        return connectorCheck;
+    }
+
+    /**
+     * Connector-specific check of a signal data collection that exists and matches the configured name.
+     */
+    @FunctionalInterface
+    public interface ConnectorValidator {
+
+        ConnectorValidator NONE = (signalDataCollection, errors) -> {
+        };
+
+        /**
+         * @param signalDataCollection the resolved signal data collection
+         * @param errors the list to add problems that prevent signals from being read to
+         */
+        void check(TableId signalDataCollection, List<String> errors) throws SQLException;
     }
 }

@@ -1128,6 +1128,31 @@ public class JdbcConnection implements AutoCloseable {
     }
 
     /**
+     * Get the identifiers of the tables whose schema and table names match the given table identifier, ignoring case.
+     * Names are passed unescaped and the results are filtered, because drivers treat them as LIKE patterns and not
+     * every server honors the reported escape (e.g. MySQL with {@code NO_BACKSLASH_ESCAPES}).
+     *
+     * @param tableId the table identifier to match
+     * @return the set of {@link TableId}s; never null but possibly empty
+     * @throws SQLException if an error occurs while accessing the database metadata
+     */
+    public Set<TableId> readTableNames(TableId tableId) throws SQLException {
+        return readTableNames(tableId.catalog(), tableId.schema(), tableId.table(), getCapturableTableTypes()).stream()
+                .filter(match -> match.table().equalsIgnoreCase(tableId.table()))
+                .filter(match -> tableId.schema() == null || match.schema() == null || match.schema().equalsIgnoreCase(tableId.schema()))
+                .collect(Collectors.toSet());
+    }
+
+    /**
+     * Returns the table types that can be captured, used to exclude views and other objects that emit no change events.
+     *
+     * @return the table types passed to {@link DatabaseMetaData#getTables}
+     */
+    protected String[] getCapturableTableTypes() {
+        return new String[]{ "TABLE" };
+    }
+
+    /**
      * Returns the given table's columns mapped to their declared sizes, in ordinal order, for use by
      * signal.data.collection validation.
      *
@@ -1136,14 +1161,21 @@ public class JdbcConnection implements AutoCloseable {
      * @throws SQLException if an error occurs while accessing the database metadata
      */
     public Map<String, Integer> getColumnSizes(TableId tableId) throws SQLException {
-        DatabaseMetaData metadata = connection().getMetaData();
-        try (ResultSet rs = metadata.getColumns(tableId.catalog(), tableId.schema(), tableId.table(), null)) {
+        try (ResultSet rs = connection().getMetaData().getColumns(tableId.catalog(), tableId.schema(), tableId.table(), null)) {
             Map<String, Integer> columnSizes = new LinkedHashMap<>();
             while (rs.next()) {
-                columnSizes.put(rs.getString(4), rs.getInt(7));
+                if (isSameName(tableId.catalog(), rs.getString(1)) && isSameName(tableId.schema(), rs.getString(2))
+                        && tableId.table().equals(rs.getString(3))) {
+                    columnSizes.put(rs.getString(4), rs.getInt(7));
+                }
             }
             return columnSizes;
         }
+    }
+
+    /** Compares a table name part, treating a part the identifier or the driver does not report as matching. */
+    private static boolean isSameName(String expected, String actual) {
+        return expected == null || actual == null || expected.equals(actual);
     }
 
     /**

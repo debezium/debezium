@@ -5,10 +5,13 @@
  */
 package io.debezium.jdbc;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.entry;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 
@@ -21,6 +24,7 @@ import java.sql.DatabaseMetaData;
 import java.sql.DriverManager;
 import java.sql.NClob;
 import java.sql.PreparedStatement;
+import java.sql.ResultSet;
 import java.sql.SQLClientInfoException;
 import java.sql.SQLException;
 import java.sql.SQLWarning;
@@ -32,6 +36,7 @@ import java.util.Map;
 import java.util.Properties;
 import java.util.concurrent.Executor;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Supplier;
 
 import org.junit.jupiter.api.Test;
@@ -139,6 +144,42 @@ class JdbcConnectionTest {
         assertSame(initializationException, thrown);
         assertEquals(1, thrown.getSuppressed().length);
         assertSame(resourceReleasingException, thrown.getSuppressed()[0]);
+    }
+
+    @Test
+    @FixFor("debezium/dbz#3041")
+    public void shouldKeepOnlyExactMatchesWhenLookingUpTableById() throws SQLException {
+        // Names are passed unescaped, so the driver's LIKE matching also returns look-alikes that must be dropped.
+        final DatabaseMetaData metadata = Mockito.mock(DatabaseMetaData.class);
+        final Connection jdbcConnection = Mockito.mock(Connection.class);
+        Mockito.when(jdbcConnection.getMetaData()).thenReturn(metadata);
+        final TableId tableId = new TableId("db", "tenant_1", "debezium_signal");
+        final ResultSet tables = rows(
+                new Object[]{ "db", "tenant_1", "debezium_signal" },
+                new Object[]{ "db", "TENANT_1", "Debezium_Signal" },
+                new Object[]{ "db", "tenant11", "debezium_signal" },
+                new Object[]{ "db", "tenant_1", "debeziumXsignal" });
+        final ResultSet columns = rows(
+                new Object[]{ "db", "tenant_1", "debezium_signal", "id", null, null, 42 },
+                new Object[]{ "db", "tenant11", "debezium_signal", "extra", null, null, 10 },
+                new Object[]{ "db", "tenant_1", "debeziumXsignal", "data", null, null, 100 },
+                new Object[]{ "db", "tenant_1", "debezium_signal", "data", null, null, 2048 });
+        Mockito.when(metadata.getTables("db", "tenant_1", "debezium_signal", new String[]{ "TABLE" })).thenReturn(tables);
+        Mockito.when(metadata.getColumns("db", "tenant_1", "debezium_signal", null)).thenReturn(columns);
+        final JdbcConnection connection = new JdbcConnection(JdbcConfiguration.empty(), config -> jdbcConnection, "\"", "\"");
+
+        assertThat(connection.readTableNames(tableId)).containsExactlyInAnyOrder(tableId, new TableId("db", "TENANT_1", "Debezium_Signal"));
+        assertThat(connection.getColumnSizes(tableId)).containsExactly(entry("id", 42), entry("data", 2048));
+    }
+
+    /** Returns a result set over the given rows, read by 1-based column index. */
+    private static ResultSet rows(Object[]... rows) throws SQLException {
+        final ResultSet rs = Mockito.mock(ResultSet.class);
+        final AtomicInteger row = new AtomicInteger(-1);
+        Mockito.when(rs.next()).thenAnswer(invocation -> row.incrementAndGet() < rows.length);
+        Mockito.when(rs.getString(anyInt())).thenAnswer(invocation -> rows[row.get()][invocation.<Integer> getArgument(0) - 1]);
+        Mockito.when(rs.getInt(anyInt())).thenAnswer(invocation -> rows[row.get()][invocation.<Integer> getArgument(0) - 1]);
+        return rs;
     }
 
     private static class TestJdbcConnection extends JdbcConnection {

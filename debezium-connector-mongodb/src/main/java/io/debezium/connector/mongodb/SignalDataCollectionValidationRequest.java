@@ -6,7 +6,9 @@
 package io.debezium.connector.mongodb;
 
 import java.util.List;
+import java.util.Set;
 
+import io.debezium.data.Envelope.Operation;
 import io.debezium.pipeline.signal.channels.SourceSignalChannel;
 
 /**
@@ -15,15 +17,20 @@ import io.debezium.pipeline.signal.channels.SourceSignalChannel;
  *
  * @param rawValues the configured signal.data.collection values
  * @param validationEnabled whether validation should run at all
+ * @param streamingCapable whether the connector will actually reach a mode that reads signals
  * @param sourceChannelEnabled whether the source signal channel is enabled
+ * @param skippedSignalOperations the skipped operations that signals rely on and the connector drops before reading them
  *
  * @author Debezium Authors
  */
-public record SignalDataCollectionValidationRequest(List<String> rawValues, boolean validationEnabled, boolean sourceChannelEnabled) {
+public record SignalDataCollectionValidationRequest(List<String> rawValues, boolean validationEnabled, boolean streamingCapable, boolean sourceChannelEnabled,
+        Set<Operation> skippedSignalOperations) {
 
     public static SignalDataCollectionValidationRequest forConnector(MongoDbConnectorConfig connectorConfig) {
         return new SignalDataCollectionValidationRequest(connectorConfig.getSignalingDataCollectionIds(),
                 connectorConfig.isSignalDataCollectionValidationEnabled(),
-                connectorConfig.getEnabledChannels().contains(SourceSignalChannel.CHANNEL_NAME));
+                connectorConfig.getSnapshotMode() != MongoDbConnectorConfig.SnapshotMode.INITIAL_ONLY,
+                connectorConfig.getEnabledChannels().contains(SourceSignalChannel.CHANNEL_NAME),
+                connectorConfig.getSkippedSignalOperations());
     }
 }

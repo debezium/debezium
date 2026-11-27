@@ -10,19 +10,23 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import io.debezium.data.Envelope.Operation;
 import io.debezium.jdbc.JdbcConnection;
 import io.debezium.relational.Tables.ColumnNameFilter;
 import io.debezium.util.Strings;
 
 /**
  * Validates {@code signal.data.collection}: existence, accepted FQN shape, effective column count, column naming,
- * and sizing. Existence, shape, and an effective count other than 3 are errors; a first column not named
- * {@code id} is an error under insert_delete watermarking and otherwise a warning, as are the remaining names and
- * any undersized column, since those only risk truncating signal payloads.
+ * and sizing, plus that {@code skipped.operations} and any connector-specific requirements let signals be read.
+ * Existence, shape, skipped signal operations, connector-specific problems, and an effective count other than 3
+ * are errors; a first column not named {@code id} is an error under insert_delete watermarking and otherwise a
+ * warning, as are the remaining names and any undersized column, since those only risk truncating signal payloads.
  *
  * @author Debezium Authors
  */
@@ -62,11 +66,15 @@ public class SignalDataCollectionValidator {
 
     private static void checkSignalDataCollection(SignalDataCollectionValidationRequest request, String rawValue, List<String> errors, List<String> warnings)
             throws SQLException {
+        checkSkippedSignalOperations(rawValue, request.skippedSignalOperations(), errors);
+
         JdbcConnection connection = request.connectionResolver().apply(rawValue);
         TableId parsed = TableId.parse(rawValue, false);
-        Set<TableId> matches = connection.readTableNames(parsed.catalog(), parsed.schema(), parsed.table(), null);
+        Set<TableId> matches = connection.readTableNames(parsed).stream()
+                .filter(match -> isInConfiguredNamespace(parsed, match))
+                .collect(Collectors.toSet());
         if (matches.isEmpty()) {
-            errors.add(String.format("Signal data collection '%s' does not exist.", rawValue));
+            errors.add(String.format("Signal data collection '%s' does not exist or is not visible to the connector user.", rawValue));
             return;
         }
 
@@ -76,14 +84,16 @@ public class SignalDataCollectionValidator {
                 .orElse(null);
         if (resolved == null) {
             if (matches.size() == 1) {
-                errors.add(String.format("signal.data.collection must be '%s', not '%s'.", matches.iterator().next(), rawValue));
+                errors.add(String.format("signal.data.collection must be '%s', not '%s'.", suggestedName(matches.iterator().next()), rawValue));
             }
             else {
-                List<String> candidates = matches.stream().map(TableId::toString).sorted().toList();
+                List<String> candidates = matches.stream().map(SignalDataCollectionValidator::suggestedName).sorted().toList();
                 errors.add(String.format("signal.data.collection must be one of %s, not '%s'.", candidates, rawValue));
             }
             return;
         }
+
+        request.connectorCheck().check(resolved, errors);
 
         List<Map.Entry<String, Integer>> effectiveColumns = effectiveColumns(connection, request.columnFilter(), resolved);
         if (effectiveColumns.size() != REQUIRED_COLUMN_COUNT) {
@@ -95,6 +105,47 @@ public class SignalDataCollectionValidator {
 
         checkColumnNames(request.insertDeleteWatermarking(), rawValue, effectiveColumns, errors, warnings);
         checkColumnSizes(rawValue, effectiveColumns, warnings);
+    }
+
+    /** Flags skipped operations dropped before signals are read: 'c' loses every signal, and 'd' under insert_delete leaves incremental snapshot windows open. */
+    private static void checkSkippedSignalOperations(String rawValue, Set<Operation> skippedSignalOperations, List<String> errors) {
+        if (skippedSignalOperations.contains(Operation.CREATE)) {
+            errors.add(String.format("Signal data collection '%s' will never receive signals because skipped.operations includes 'c'.", rawValue));
+        }
+        if (skippedSignalOperations.contains(Operation.DELETE)) {
+            errors.add(String.format("Signal data collection '%s' cannot close incremental snapshot windows because skipped.operations "
+                    + "includes 'd', which the insert_delete watermarking strategy requires.", rawValue));
+        }
+    }
+
+    /** Drops tables outside the configured schema (or database, for databases without schemas), which some drivers do not filter on. */
+    private static boolean isInConfiguredNamespace(TableId parsed, TableId match) {
+        if (parsed.catalog() != null || parsed.schema() == null) {
+            return true;
+        }
+        String namespace = match.schema() != null ? match.schema() : match.catalog();
+        return parsed.schema().equalsIgnoreCase(namespace);
+    }
+
+    /**
+     * Returns the table name to suggest: plain when it parses back to the same table, otherwise double-quoted, and the
+     * raw name parts when neither form parses back, e.g. a name that is itself wrapped in quotes.
+     */
+    private static String suggestedName(TableId table) {
+        List<String> parts = Stream.of(table.catalog(), table.schema(), table.table()).filter(part -> !Strings.isNullOrEmpty(part)).toList();
+        return Stream.of(table.toString(), table.toDoubleQuotedString())
+                .filter(candidate -> parsesTo(candidate, parts))
+                .findFirst()
+                .orElse(parts.toString());
+    }
+
+    private static boolean parsesTo(String candidate, List<String> parts) {
+        try {
+            return TableIdParser.parse(candidate).equals(parts);
+        }
+        catch (IllegalArgumentException e) {
+            return false;
+        }
     }
 
     /** Returns the columns surviving the connector's {@link ColumnNameFilter}, so the count matches what reaches Debezium's schema. */

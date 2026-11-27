@@ -13,6 +13,7 @@ import static org.mockito.Mockito.when;
 
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.EnumSet;
 import java.util.List;
 
 import org.junit.jupiter.api.BeforeEach;
@@ -25,11 +26,12 @@ import com.mongodb.client.ListCollectionNamesIterable;
 import com.mongodb.client.MongoClient;
 import com.mongodb.client.MongoDatabase;
 
+import io.debezium.data.Envelope.Operation;
 import io.debezium.junit.logging.LogInterceptor;
 
 /**
- * Unit tests for {@link SignalDataCollectionValidator}: the enablement/gating checks, namespace-shape and existence
- * validation, and the exception-swallowing guarantee. {@link MongoClient} is mocked so no live MongoDB deployment is
+ * Unit tests for {@link SignalDataCollectionValidator}: the enablement/gating checks, skipped signal operations,
+ * namespace-shape and existence validation, and the exception-swallowing guarantee. {@link MongoClient} is mocked so no live MongoDB deployment is
  * required.
  */
 @ExtendWith(MockitoExtension.class)
@@ -48,7 +50,7 @@ public class SignalDataCollectionValidatorTest {
     }
 
     private SignalDataCollectionValidationRequest enabledRequest(String... rawValues) {
-        return new SignalDataCollectionValidationRequest(Arrays.asList(rawValues), true, true);
+        return new SignalDataCollectionValidationRequest(Arrays.asList(rawValues), true, true, true, EnumSet.noneOf(Operation.class));
     }
 
     private void stubDatabaseCollections(String dbName, String... collectionNames) {
@@ -58,6 +60,7 @@ public class SignalDataCollectionValidatorTest {
             target.addAll(List.of(collectionNames));
             return target;
         }).when(iterable).into(any());
+        when(iterable.filter(any())).thenReturn(iterable);
 
         MongoDatabase database = mock(MongoDatabase.class);
         when(database.listCollectionNames()).thenReturn(iterable);
@@ -67,7 +70,15 @@ public class SignalDataCollectionValidatorTest {
     @Test
     public void shouldDoNothingWhenValidationDisabled() {
         SignalDataCollectionValidationResult result = SignalDataCollectionValidator.validate(client,
-                new SignalDataCollectionValidationRequest(List.of(RAW_VALUE), false, true));
+                new SignalDataCollectionValidationRequest(List.of(RAW_VALUE), false, true, true, EnumSet.noneOf(Operation.class)));
+
+        assertThat(result.isValid()).isTrue();
+    }
+
+    @Test
+    public void shouldDoNothingWhenNotStreamingCapable() {
+        SignalDataCollectionValidationResult result = SignalDataCollectionValidator.validate(client,
+                new SignalDataCollectionValidationRequest(List.of(RAW_VALUE), true, false, true, EnumSet.noneOf(Operation.class)));
 
         assertThat(result.isValid()).isTrue();
     }
@@ -75,7 +86,7 @@ public class SignalDataCollectionValidatorTest {
     @Test
     public void shouldDoNothingWhenSourceChannelDisabled() {
         SignalDataCollectionValidationResult result = SignalDataCollectionValidator.validate(client,
-                new SignalDataCollectionValidationRequest(List.of(RAW_VALUE), true, false));
+                new SignalDataCollectionValidationRequest(List.of(RAW_VALUE), true, true, false, EnumSet.noneOf(Operation.class)));
 
         assertThat(result.isValid()).isTrue();
     }
@@ -102,7 +113,7 @@ public class SignalDataCollectionValidatorTest {
 
         SignalDataCollectionValidationResult result = SignalDataCollectionValidator.validate(client, enabledRequest(RAW_VALUE));
 
-        assertThat(result.errors()).containsExactly("Signal data collection '" + RAW_VALUE + "' does not exist.");
+        assertThat(result.errors()).containsExactly("Signal data collection '" + RAW_VALUE + "' does not exist or is not visible to the connector user.");
     }
 
     @Test
@@ -113,6 +124,18 @@ public class SignalDataCollectionValidatorTest {
     }
 
     @Test
+    public void shouldFailWhenSkippedOperationsDropSignals() {
+        // The change stream pipeline filters skipped operations server-side, so signal inserts never reach the connector.
+        stubDatabaseCollections("inventory", "debezium_signal");
+
+        SignalDataCollectionValidationResult result = SignalDataCollectionValidator.validate(client,
+                new SignalDataCollectionValidationRequest(List.of(RAW_VALUE), true, true, true, EnumSet.of(Operation.CREATE)));
+
+        assertThat(result.errors()).containsExactly(
+                "Signal data collection '" + RAW_VALUE + "' will never receive signals because skipped.operations includes 'c'.");
+    }
+
+    @Test
     public void shouldValidateEveryConfiguredSignalDataCollection() {
         // Each configured signal.data.collection is checked independently; a problem in one must not skip the other.
         String secondRawValue = "inventory.other_signal";
@@ -120,7 +143,7 @@ public class SignalDataCollectionValidatorTest {
 
         SignalDataCollectionValidationResult result = SignalDataCollectionValidator.validate(client, enabledRequest(RAW_VALUE, secondRawValue));
 
-        assertThat(result.errors()).containsExactly("Signal data collection '" + secondRawValue + "' does not exist.");
+        assertThat(result.errors()).containsExactly("Signal data collection '" + secondRawValue + "' does not exist or is not visible to the connector user.");
     }
 
     @Test

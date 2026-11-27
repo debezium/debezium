@@ -3371,10 +3371,13 @@ For more information about the support scope of Red{nbsp}Hat Technology Preview 
 |Specifies whether the connector validates the configured `signal.data.collection` when the connector starts.
 When set to `true`, the connector reports a problem and fails to start if any of the following checks do not pass:
 
-* The signal data collection exists.
+* The signal data collection exists as a table and is visible to the connector user.
 * The value uses the expected fully-qualified format.
 * The collection has exactly three columns after `column.include.list` or `column.exclude.list` filtering is applied.
 * When the `insert_delete` incremental snapshot watermarking strategy is used, the first column is named `id`.
+* The signal table is in one of the databases in `database.names` and has CDC enabled.
+
+The connector also logs a warning when a column is not named `id`, `type`, or `data`, or is smaller than recommended.
 
 Because enabling this option can prevent a connector from starting even if its signal table worked previously, for example, a table that has an extra column that is not excluded by filtering, review your signal table configuration before you set the value to `true`.
 
