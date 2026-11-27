@@ -239,6 +239,12 @@ public class DefaultRecordWriter implements RecordWriter {
                         collectionId.toFullIdentiferString());
                 return recheckedTable;
             }
+            if (isLockConflict(alterFailure) || isRetriable(alterFailure)) {
+                // A lock conflict means a concurrent task is likely still altering the table, so an immediate
+                // re-ALTER would race with it and could fail because the column now exists, hiding the lock
+                // conflict. Let the lock conflict retries wait and re-evaluate the table state instead.
+                throw alterFailure;
+            }
             try {
                 return alterTableIfNeeded(collectionId, record, false);
             }
