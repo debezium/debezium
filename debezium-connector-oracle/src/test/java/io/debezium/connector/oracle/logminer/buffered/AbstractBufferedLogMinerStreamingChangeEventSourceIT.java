@@ -1603,6 +1603,7 @@ public abstract class AbstractBufferedLogMinerStreamingChangeEventSourceIT exten
             }
             admin.executeWithoutCommitting("BEGIN DBMS_LOGMNR.START_LOGMNR(STARTSCN => " + startScn + ", ENDSCN => " + endScn
                     + ", OPTIONS => DBMS_LOGMNR.DICT_FROM_ONLINE_CATALOG); END;");
+            final boolean[] restartSeen = { Boolean.getBoolean("dbz1960.force.redodump") };
             try {
                 final StringBuilder csv = new StringBuilder("\n").append(DIAG_HEADER);
                 admin.query("SELECT " + DIAG_COLUMNS + " FROM V$LOGMNR_CONTENTS WHERE XID IN (SELECT XID FROM V$LOGMNR_CONTENTS "
@@ -1610,6 +1611,11 @@ public abstract class AbstractBufferedLogMinerStreamingChangeEventSourceIT exten
                         rs -> {
                             final int columns = rs.getMetaData().getColumnCount();
                             while (rs.next()) {
+                                // OPERATION_CODE 118, or an INTERNAL row with ROLLBACK=1, marks a statement that Oracle rolled back and re-ran
+                                final int operationCode = rs.getInt(4);
+                                if (operationCode == 118 || (operationCode == 0 && rs.getInt(10) == 1)) {
+                                    restartSeen[0] = true;
+                                }
                                 csv.append("\n");
                                 for (int i = 1; i <= columns; i++) {
                                     if (i > 1) {
@@ -1628,9 +1634,46 @@ public abstract class AbstractBufferedLogMinerStreamingChangeEventSourceIT exten
             finally {
                 admin.executeWithoutCommitting("BEGIN DBMS_LOGMNR.END_LOGMNR(); END;");
             }
+            if (restartSeen[0]) {
+                dumpRedo(admin, tableName, startScn, endScn, files);
+            }
         }
         catch (Exception e) {
             DIAG_LOGGER.warn("[dbz1960-lmdump] failed to dump LogMiner rows for table {}", tableName, e);
+        }
+    }
+
+    /**
+     * Writes a redo log dump of the SCN window to this session's trace file and logs the trace contents, so that a
+     * statement restart can be examined at change-vector level on CI where the database is not reachable afterwards.
+     */
+    private static void dumpRedo(OracleConnection admin, String tableName, Scn startScn, Scn endScn, List<String> files) {
+        try {
+            for (String file : files) {
+                admin.executeWithoutCommitting("ALTER SYSTEM DUMP LOGFILE '" + file + "' SCN MIN " + startScn + " SCN MAX " + endScn);
+            }
+            final String trace = admin.queryAndMap("SELECT VALUE FROM V$DIAG_INFO WHERE NAME = 'Default Trace File'",
+                    rs -> rs.next() ? rs.getString(1) : null);
+            if (trace == null) {
+                DIAG_LOGGER.warn("[dbz1960-redodump] no trace file for table {}", tableName);
+                return;
+            }
+            final String traceName = trace.substring(trace.lastIndexOf('/') + 1);
+            final StringBuilder contents = new StringBuilder();
+            admin.query("SELECT PAYLOAD FROM V$DIAG_TRACE_FILE_CONTENTS WHERE TRACE_FILENAME = '" + traceName + "' ORDER BY LINE_NUMBER",
+                    rs -> {
+                        while (rs.next()) {
+                            final String line = rs.getString(1);
+                            if (line != null) {
+                                contents.append(line.endsWith("\n") ? line : line + "\n");
+                            }
+                        }
+                    });
+            DIAG_LOGGER.info("[dbz1960-redodump] redo dump for table {} between SCN {} and {} from {} ({}):\n{}[dbz1960-redodump] end", tableName,
+                    startScn, endScn, files, trace, contents);
+        }
+        catch (Exception e) {
+            DIAG_LOGGER.warn("[dbz1960-redodump] failed to dump redo for table {}", tableName, e);
         }
     }
 }
