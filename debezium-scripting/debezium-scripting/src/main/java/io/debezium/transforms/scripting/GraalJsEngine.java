@@ -8,6 +8,7 @@ package io.debezium.transforms.scripting;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Predicate;
 
 import javax.script.Bindings;
 import javax.script.ScriptContext;
@@ -34,6 +35,7 @@ public class GraalJsEngine extends Jsr223Engine {
     protected void configureEngine() {
         final Bindings bindings = engine.getBindings(ScriptContext.ENGINE_SCOPE);
         bindings.put("polyglot.js.allowHostAccess", true);
+        bindings.put("polyglot.js.allowHostClassLookup", (Predicate) s -> true);
     }
 
     @Override
@@ -63,7 +65,7 @@ public class GraalJsEngine extends Jsr223Engine {
      * Exposes the given struct as a {@link ProxyObject}, allowing for simplified
      * property references, also providing any write access.
      */
-    private ProxyObject asProxyObject(Struct struct) {
+    public Object asProxyObject(Struct struct) {
         return new ProxyObject() {
 
             @Override

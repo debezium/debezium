@@ -6,6 +6,7 @@
 package io.debezium.transforms.scripting;
 
 import org.apache.kafka.connect.connector.ConnectRecord;
+import org.apache.kafka.connect.data.Struct;
 
 /**
  * The interface serves as an abstraction of expression language engine.
@@ -29,4 +30,8 @@ public interface Engine {
      * @return result of calculation
      */
     <T> T eval(ConnectRecord<?> record, Class<T> type);
+
+    default Object asProxyObject(Struct struct) {
+        return struct;
+    }
 }
