@@ -42,7 +42,7 @@ public class MariaDbConnector extends BinlogConnector<MariaDbConnectorConfig> im
 
     @Override
     public ConfigDef config() {
-        return MariaDbConnectorConfig.configDef();
+        return enrichConfigDef(MariaDbConnectorConfig.configDef());
     }
 
     @Override
