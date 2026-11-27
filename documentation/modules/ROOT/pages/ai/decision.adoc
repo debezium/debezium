@@ -1,0 +1,485 @@
+// Category: debezium-using
+// Type: assembly
+// ModuleID: decision-transformation
+// Title: Decision Transformation
+[id="decision-transformation"]
+= Decision Transformation
+ifdef::community[]
+:toc:
+:toc-placement: macro
+:linkattrs:
+:icons: font
+:source-highlighter: highlight.js
+
+toc::[]
+endif::community[]
+
+Change events often carry free text, such as a product description or a support message, that downstream consumers need to classify before they can act on it.
+Typical examples are deciding which team should handle a change, how severe a reported issue is, or whether a message requires immediate attention.
+
+{prodname} offers a built-in feature to enrich events with such decisions made by an AI model.
+The decision transformation sends selected fields of an event to a decision service together with a set of questions, and writes the answers to the headers of the record.
+The record value, key, and schemas are not modified.
+
+{prodname} can use a link:{link-kafka-docs}/#connect_transforms[single message transformation] (SMT) to perform the decisions.
+The transformation is provider neutral.
+The decision service is selected by the `decision.provider` option, and {prodname} provides the `jev` provider for the hosted link:https://docs.typesafe.ai/concepts/system-one[Jev (TypeSafe System One)] API and the `kev` provider for a self-hosted link:https://github.com/jaredpalmer/kev[Kev] server.
+
+[IMPORTANT]
+====
+Decision transformation requires Java 21 or higher.
+====
+
+[WARNING]
+====
+The state built from the configured fields of every event is transmitted to the external decision service.
+Make sure that you are allowed to share the data with the service provider and select only the fields that are needed to answer the questions.
+====
+
+== Behavior
+
+The transformation processes only change events with the {prodname} envelope.
+Tombstone events and records without an envelope are passed through unchanged.
+
+For every event the transformation executes the following steps:
+
+. Reads the fields listed in `state.fields` from the event value, for example `after.name` and `after.description`.
+Fields that are `null`, or that do not exist because the nested structure is `null`, are ignored.
+If all fields are missing, for example for a delete event when only `after.*` fields are configured, the record is passed through unchanged and no remote call is made.
+. Sends a single request to the decision service that carries the state and *all* configured questions.
+All questions are answered independently over the same state.
+The cost and the latency of one event therefore do not depend on the number of questions.
+. Validates the answers.
+Every question must have exactly one answer of the matching kind, a chosen option must be one of the configured options, and a score must be within the configured levels.
+Choice and score answers must include a probability for each configured option or level.
+. Writes the answers to a copy of the record headers.
+Existing headers with the same names are replaced, all other headers are preserved.
+
+=== Question types
+
+Each question has a unique name, a type, instructions, and optional criteria that describe the possible answers.
+
+[cols="20%a,40%a,40%a",options="header"]
+|===
+|Type
+|Criteria
+|Answer
+
+|`choice`
+|One option per criterion.
+The key is the option name and the value is its description.
+The description can be empty.
+|The most probable option, the confidence of the decision, and the probability of every option.
+
+|`score`
+|Ordered levels with zero-based indexes `0`, `1`, `2`, and so on.
+At least two levels are needed.
+|The expected score that can be fractional (for example `1.43`), the confidence of the decision, and the probability of every level.
+
+|`yesno` (alias `noul`)
+|Optional descriptions of the `true` and `false` answers.
+|The probability that the answer is yes in the range 0 to 1.
+This type has no confidence.
+|===
+
+=== Record headers
+
+The decision results are written to headers in the `+__debezium.ai.decision.+` namespace.
+Header values use the native Kafka Connect `STRING` and `FLOAT64` types, so they can be used directly in {link-prefix}:{link-content-based-routing}#content-based-routing[content-based routing] and {link-prefix}:{link-filtering}#message-filtering[filtering] expressions without any conversion.
+
+[cols="40%a,15%a,45%a",options="header"]
+|===
+|Header
+|Type
+|Value
+
+|`+__debezium.ai.decision.status+`
+|`STRING`
+|`SUCCESS` when the decision completed.
+`ERROR` when the evaluation failed and `decision.error.mode` is `header`.
+
+|`+__debezium.ai.decision.model+`
+|`STRING`
+|The identifier of the model that produced the answers, for example `jev-1.13.0`.
+This is the model actually used, not the configured alias.
+
+|`+__debezium.ai.decision.error+`
+|`STRING`
+|The error description.
+Written only when `decision.error.mode` is `header` and the evaluation failed.
+
+|`+__debezium.ai.decision.<question>+`
+|`STRING` for `choice`, `FLOAT64` for `score` and `yesno`
+|The chosen option, the expected score, or the probability of the yes answer.
+
+|`+__debezium.ai.decision.<question>.confidence+`
+|`FLOAT64`
+|The confidence of the decision in the range 0 to 1.
+Written for `choice` and `score` questions when `headers.details` is `true`.
+
+|`+__debezium.ai.decision.<question>.probabilities+`
+|`STRING`
+|A JSON object with the probabilities, for example `{"MARKETING":0.02,"SAFETY":0.95,"SHIPPING":0.03}`.
+The keys are option names in the configured order for `choice` questions, and level indexes for `score` questions.
+Written for `choice` and `score` questions when `headers.details` is `true`.
+|===
+
+The names `model`, `status`, and `error` cannot be used as question names.
+
+The probabilities are written as a JSON string rather than a map so that any header converter can carry them.
+
+=== Using the headers in routing and filtering
+
+The headers are available to the {prodname} scripting transformations in the `header` variable.
+Each entry has a `value` property.
+
+The following Groovy expression of the content-based router sends the events to topics according to the `category` question:
+
+[source,groovy]
+----
+header['__debezium.ai.decision.category']?.value == 'SAFETY' ? 'products.safety' :
+header['__debezium.ai.decision.category']?.value == 'SHIPPING' ? 'products.shipping' :
+header['__debezium.ai.decision.category']?.value == 'MARKETING' ? 'products.marketing' : null
+----
+
+The following Groovy expression of a filter keeps only the events where the probability of the `emergency` question is at least 90 percent:
+
+[source,groovy]
+----
+(header['__debezium.ai.decision.emergency']?.value ?: 0.0) >= 0.90
+----
+
+When `decision.error.mode` is `header`, check the status header first:
+
+[source,groovy]
+----
+header['__debezium.ai.decision.status']?.value == 'SUCCESS' && header['__debezium.ai.decision.category']?.value == 'SAFETY' ? 'products.safety' : null
+----
+
+== Configuration
+
+To configure a connector to use the decision transformation, add the following lines to your connector configuration:
+
+[source]
+----
+transforms=decision
+transforms.decision.type=io.debezium.ai.decision.DecisionToHeaders
+transforms.decision.decision.provider=jev
+transforms.decision.jev.api.key=${file:/secrets/jev.properties:api.key}
+transforms.decision.state.fields=after.name,after.description
+transforms.decision.questions=category
+transforms.decision.questions.category.type=choice
+transforms.decision.questions.category.instructions=Which team should handle this product change?
+transforms.decision.questions.category.criteria.MARKETING=Promotion and positioning
+transforms.decision.questions.category.criteria.SHIPPING=Logistics and delivery
+transforms.decision.questions.category.criteria.SAFETY=Hazards and recalls
+----
+
+[TIP]
+====
+Do not put the API key directly into the connector configuration.
+Use a Kafka Connect `ConfigProvider` or another secret management mechanism.
+====
+
+=== Defining questions
+
+The questions are listed in the `questions` option and each of them is described by options with the `questions.<name>.` prefix.
+The criteria are flattened into sub-keys so that the whole configuration stays a flat map of strings.
+
+[source]
+----
+questions=category,severity,emergency
+
+questions.category.type=choice
+questions.category.instructions=Which team should handle this product change?
+questions.category.criteria.MARKETING=Promotion and positioning
+questions.category.criteria.SAFETY=Hazards and recalls
+
+questions.severity.type=score
+questions.severity.instructions=How severe is the issue described by the product?
+questions.severity.criteria.0=Cosmetic
+questions.severity.criteria.1=Needs attention
+questions.severity.criteria.2=Dangerous
+
+questions.emergency.type=yesno
+questions.emergency.instructions=Does the product require immediate intervention?
+questions.emergency.criteria.true=Immediate intervention is required
+questions.emergency.criteria.false=No intervention is required
+----
+
+The following rules are validated when the connector starts:
+
+* Question names are unique and match `[A-Za-z][A-Za-z0-9_-]{0,63}`.
+* Every question has a type and non-blank instructions.
+* A `choice` question has at least one option and option names match `[A-Za-z0-9_-]+`.
+* A `score` question has at least two levels with contiguous indexes starting from zero.
+* A `yesno` question accepts only the `true` and `false` criteria.
+* Unknown `questions.<name>.*` options, and options of questions that are not listed in `questions`, are rejected so that typos are not silent.
+
+=== Configuration options
+
+.Descriptions of decision SMT configuration options
+[cols="30%a,25%a,45%a",subs="+attributes",options="header"]
+|===
+|Option
+|Default
+|Description
+
+|[[decision-provider]]xref:decision-provider[`decision.provider`]
+|`jev`
+|The name of the decision service provider, either `jev` or `kev`.
+An unknown value fails the startup and the message lists the available providers.
+
+|[[decision-state-fields]]xref:decision-state-fields[`state.fields`]
+|No default value
+|A comma-separated list of paths of the fields of the record value that form the state sent to the decision service.
+Nested fields are separated by a dot, for example `after.name,after.description` or `before.description,after.description`.
+
+|[[decision-state-format]]xref:decision-state-format[`state.format`]
+|`json`
+|The format of the state.
+Valid values: +
+`json` - the state is an object keyed by the configured field paths. +
+`text` - the non-null values are converted to strings and joined by a new line.
+
+|[[decision-questions]]xref:decision-questions[`questions`]
+|No default value
+|A comma-separated list of question names.
+See <<Defining questions>>.
+
+|[[decision-headers-details]]xref:decision-headers-details[`headers.details`]
+|`true`
+|Specifies whether the `.confidence` and `.probabilities` headers are written in addition to the main header of each question.
+
+|[[decision-error-mode]]xref:decision-error-mode[`decision.error.mode`]
+|`fail`
+|Specifies how a failed evaluation is handled.
+Valid values: +
+`fail` - the transformation throws an exception and the task fails. +
+`skip` - a warning is logged and the record is passed through unchanged. +
+`header` - a warning is logged, the `status` header is set to `ERROR`, the `error` header is set to the error description, and the record is passed through without question headers.
+|===
+
+=== Jev provider options
+
+The `jev` provider uses the link:https://docs.typesafe.ai/concepts/system-one[Jev (TypeSafe System One)] API.
+It sends one `POST /v1/systemone` request per event with all questions.
+The `jev` provider has the following limits: a `choice` question has at most 255 options and a `score` question has between 2 and 10 levels.
+The limits are checked when the connector starts.
+
+Requests are retried with an exponential backoff on throttling (HTTP 429), overload (HTTP 529), server errors, and network errors.
+Other errors, such as an invalid API key or an invalid request, are not retried.
+The API key is never written to logs or error messages.
+
+.Descriptions of Jev provider configuration options
+[cols="30%a,25%a,45%a",subs="+attributes",options="header"]
+|===
+|Option
+|Default
+|Description
+
+|[[decision-jev-api-key]]xref:decision-jev-api-key[`jev.api.key`]
+|No default value
+|The API key of the Jev API.
+The option is mandatory when the `jev` provider is used and the connector fails to start without it.
+
+|[[decision-jev-base-url]]xref:decision-jev-base-url[`jev.base.url`]
+|`https://api.typesafe.ai`
+|The base URL of the Jev API.
+Only the HTTP and HTTPS protocols are allowed for security reasons.
+The base URL must be free of queries and fragments.
+
+|[[decision-jev-model]]xref:decision-jev-model[`jev.model`]
+|`jev-latest`
+|The model or the model alias used for the decisions.
+
+|[[decision-jev-long-context]]xref:decision-jev-long-context[`jev.long.context`]
+|`false`
+|Specifies whether the long context is enabled.
+With the long context, the Jev API accepts 262,000 tokens per request instead of 64,000.
+
+|[[decision-jev-request-timeout-ms]]xref:decision-jev-request-timeout-ms[`jev.request.timeout.ms`]
+|`10000`
+|The time in milliseconds to wait for a single attempt of an API call.
+Must be at least 1.
+
+|[[decision-jev-connect-timeout-ms]]xref:decision-jev-connect-timeout-ms[`jev.connect.timeout.ms`]
+|`5000`
+|The time in milliseconds to wait for the connection to the API to be established.
+Must be at least 1.
+
+|[[decision-jev-retry-max-attempts]]xref:decision-jev-retry-max-attempts[`jev.retry.max.attempts`]
+|`3`
+|The total number of attempts of an API call including the first one.
+Must be at least 1.
+
+|[[decision-jev-retry-initial-delay-ms]]xref:decision-jev-retry-initial-delay-ms[`jev.retry.initial.delay.ms`]
+|`500`
+|The time in milliseconds before the first retry.
+The delay is doubled for every further retry.
+
+|[[decision-jev-retry-max-delay-ms]]xref:decision-jev-retry-max-delay-ms[`jev.retry.max.delay.ms`]
+|`10000`
+|The upper bound in milliseconds of the delay between two attempts.
+|===
+
+=== Using a self-hosted Kev server
+
+Kev support is included in the `debezium-ai-jev` plug-in.
+Start a link:https://github.com/jaredpalmer/kev[Kev server] that the Kafka Connect worker can reach.
+The following connector configuration sends the product description to Kev and writes Kev’s estimated probability that a recall is needed to the `__debezium.ai.decision.recall` header.
+
+[source,properties]
+----
+transforms=decision
+transforms.decision.type=io.debezium.ai.decision.DecisionToHeaders
+transforms.decision.decision.provider=kev
+transforms.decision.kev.base.url=http://127.0.0.1:8009
+transforms.decision.state.fields=after.description
+transforms.decision.questions=recall
+transforms.decision.questions.recall.type=yesno
+transforms.decision.questions.recall.instructions=Does this product description indicate that a recall is needed?
+----
+
+If the server requires authentication, add `transforms.decision.kev.api.key`.
+Use a Kafka Connect `ConfigProvider` to supply the key.
+
+Kev receives all configured questions in one `POST /v1/systemone` request per evaluated record.
+Choice questions support up to 255 options, and score questions support 2 to 255 levels.
+
+.Descriptions of Kev provider configuration options
+[cols="30%a,25%a,45%a",options="header"]
+|===
+|Option
+|Default
+|Description
+
+|`kev.base.url`
+|`http://127.0.0.1:8009`
+|The base URL as seen from the Kafka Connect worker. The transformation appends `/v1/systemone`.
+The base URL must be free of queries and fragments.
+Use a reachable server address if Kev and Kafka Connect run on different hosts or in different containers.
+
+|`kev.model`
+|`kev-latest`
+|The model or model alias served by Kev.
+
+|`kev.api.key`
+|No default value
+|Optional bearer token. Set it if the Kev server requires authentication.
+
+|`kev.request.timeout.ms`
+|`10000`
+|Maximum time in milliseconds to wait for one request attempt.
+
+|`kev.connect.timeout.ms`
+|`5000`
+|Maximum time in milliseconds to wait for a connection to be established.
+
+|`kev.retry.max.attempts`
+|`3`
+|Total number of attempts, including the initial request.
+
+|`kev.retry.initial.delay.ms`
+|`500`
+|Delay in milliseconds before the first retry. The delay doubles for each subsequent retry up to the configured maximum.
+
+|`kev.retry.max.delay.ms`
+|`10000`
+|Maximum delay in milliseconds between attempts.
+|===
+
+==== Testing against a local Kev server
+
+From the root of the {prodname} source checkout, run the integration test against a running Kev server.
+Set `KEV_BASE_URL` to the base URL and set `KEV_API_KEY` if the server requires authentication.
+The test is skipped when `KEV_BASE_URL` is unset.
+
+[source,bash]
+----
+KEV_BASE_URL=http://127.0.0.1:8009 ./mvnw \
+  -pl debezium-ai/debezium-ai-jev -Dit.test=DecisionToHeadersKevIT verify
+----
+
+== Cost and performance
+
+Every event that contains at least one configured field triggers one HTTP call to the decision service.
+All questions share this call, so adding a question increases the number of consumed tokens but not the number of calls.
+
+The call is synchronous and the connector task waits for the answer, so the latency of the decision service directly limits the throughput of the connector.
+Tune the selected provider’s request timeout and maximum retry attempts according to the latency of the service and the tolerated delay.
+Select only the fields needed for the decision to keep the requests small.
+
+== Example use cases
+
+=== Product categorization and routing
+
+The {prodname} tutorial uses the `inventory.products` table.
+The following configuration classifies every change of a product by its name and description, and the content-based router dispatches the events to the `products.marketing`, `products.shipping`, and `products.safety` topics.
+
+[source]
+----
+transforms=decision,route
+transforms.decision.type=io.debezium.ai.decision.DecisionToHeaders
+transforms.decision.jev.api.key=${file:/secrets/jev.properties:api.key}
+transforms.decision.state.fields=after.name,after.description
+transforms.decision.questions=category
+transforms.decision.questions.category.type=choice
+transforms.decision.questions.category.instructions=Which team should handle this product change?
+transforms.decision.questions.category.criteria.MARKETING=Promotion and positioning
+transforms.decision.questions.category.criteria.SHIPPING=Logistics and delivery
+transforms.decision.questions.category.criteria.SAFETY=Hazards and recalls
+
+transforms.route.type=io.debezium.transforms.ContentBasedRouter
+transforms.route.language=jsr223.groovy
+transforms.route.topic.expression=header['__debezium.ai.decision.category']?.value == 'SAFETY' ? 'products.safety' : header['__debezium.ai.decision.category']?.value == 'SHIPPING' ? 'products.shipping' : header['__debezium.ai.decision.category']?.value == 'MARKETING' ? 'products.marketing' : null
+----
+
+=== Multi-question triage
+
+Combine a `choice` question for the category, a `yesno` question for the urgency, and a `score` question for the severity in a single request:
+
+[source]
+----
+transforms=decision
+transforms.decision.type=io.debezium.ai.decision.DecisionToHeaders
+transforms.decision.jev.api.key=${file:/secrets/jev.properties:api.key}
+transforms.decision.state.fields=after.name,after.description
+transforms.decision.questions=category,emergency,severity
+
+transforms.decision.questions.category.type=choice
+transforms.decision.questions.category.instructions=Which team should handle this product change?
+transforms.decision.questions.category.criteria.MARKETING=Promotion and positioning
+transforms.decision.questions.category.criteria.SHIPPING=Logistics and delivery
+transforms.decision.questions.category.criteria.SAFETY=Hazards and recalls
+
+transforms.decision.questions.emergency.type=yesno
+transforms.decision.questions.emergency.instructions=Does the product require immediate intervention?
+
+transforms.decision.questions.severity.type=score
+transforms.decision.questions.severity.instructions=How severe is the issue described by the product?
+transforms.decision.questions.severity.criteria.0=Cosmetic
+transforms.decision.questions.severity.criteria.1=Needs attention
+transforms.decision.questions.severity.criteria.2=Dangerous
+----
+
+=== Resilient pipeline with the error header
+
+When the decision service is temporarily unavailable, you may not want to stop the connector.
+Set `decision.error.mode` to `header` and check the status header downstream:
+
+[source]
+----
+transforms=decision
+transforms.decision.type=io.debezium.ai.decision.DecisionToHeaders
+transforms.decision.jev.api.key=${file:/secrets/jev.properties:api.key}
+transforms.decision.state.fields=after.name,after.description
+transforms.decision.questions=category
+transforms.decision.questions.category.type=choice
+transforms.decision.questions.category.instructions=Which team should handle this product change?
+transforms.decision.questions.category.criteria.MARKETING=Promotion and positioning
+transforms.decision.questions.category.criteria.SAFETY=Hazards and recalls
+transforms.decision.decision.error.mode=header
+----
+
+Events whose evaluation failed carry `+__debezium.ai.decision.status=ERROR+` and the error description in `+__debezium.ai.decision.error+`, so a downstream consumer or router can handle them separately.

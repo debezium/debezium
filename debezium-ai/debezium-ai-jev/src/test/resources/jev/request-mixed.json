@@ -1,0 +1,31 @@
+{
+  "model": "jev-latest",
+  "state": {
+    "after.name": "Space heater",
+    "after.description": "Heats a room, may overheat"
+  },
+  "questions": {
+    "category": {
+      "type": "choice",
+      "instructions": "Which team should handle this product change?",
+      "criteria": {
+        "MARKETING": "Promotion and positioning",
+        "SAFETY": "Hazards and recalls",
+        "SHIPPING": "Logistics and delivery"
+      }
+    },
+    "severity": {
+      "type": "score",
+      "instructions": "How severe is the issue described by the product?",
+      "criteria": [
+        "Cosmetic",
+        "Needs attention",
+        "Dangerous"
+      ]
+    },
+    "emergency": {
+      "type": "noul",
+      "instructions": "Does the product require immediate intervention?"
+    }
+  }
+}

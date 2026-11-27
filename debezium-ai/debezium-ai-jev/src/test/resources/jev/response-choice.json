@@ -1,0 +1,19 @@
+{
+  "model": "jev-1.13.0",
+  "answers": {
+    "tone": {
+      "type": "choice",
+      "choice": "angry",
+      "confidence": 0.7,
+      "probabilities": {
+        "angry": 0.8,
+        "neutral": 0.2
+      },
+      "unknownField": "ignored"
+    }
+  },
+  "usage": {
+    "input_tokens": 54,
+    "output_tokens": 1
+  }
+}
