@@ -226,6 +226,7 @@ public abstract class BinlogStreamingChangeEventSource<P extends BinlogPartition
         if (!skippedOperations.contains(Envelope.Operation.UPDATE)) {
             eventHandlers.put(EventType.UPDATE_ROWS, (event) -> handleUpdate(partition, effectiveOffsetContext, event));
             eventHandlers.put(EventType.EXT_UPDATE_ROWS, (event) -> handleUpdate(partition, effectiveOffsetContext, event));
+            eventHandlers.put(EventType.PARTIAL_UPDATE_ROWS_EVENT, (event) -> handleUpdate(partition, effectiveOffsetContext, event));
         }
 
         if (!skippedOperations.contains(Envelope.Operation.DELETE)) {
@@ -598,6 +599,8 @@ public abstract class BinlogStreamingChangeEventSource<P extends BinlogPartition
         eventDeserializer.setEventDataDeserializer(EventType.EXT_UPDATE_ROWS,
                 new RowDeserializers.UpdateRowsDeserializer(
                         tableMapEventByTableId, eventDeserializationFailureHandlingMode, preserveInvalidTemporalValues).setMayContainExtraInformation(true));
+        eventDeserializer.setEventDataDeserializer(EventType.PARTIAL_UPDATE_ROWS_EVENT,
+                new RowDeserializers.PartialUpdateRowsDeserializer(tableMapEventByTableId, eventDeserializationFailureHandlingMode, preserveInvalidTemporalValues));
         eventDeserializer.setEventDataDeserializer(EventType.EXT_DELETE_ROWS,
                 new RowDeserializers.DeleteRowsDeserializer(
                         tableMapEventByTableId, eventDeserializationFailureHandlingMode, preserveInvalidTemporalValues).setMayContainExtraInformation(true));
