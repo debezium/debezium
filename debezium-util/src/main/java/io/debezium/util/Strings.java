@@ -1378,6 +1378,7 @@ public final class Strings {
 
     /**
      * Converts a string with separators (e.g., dots, underscores) into camelCase format using Stream API.
+     * Existing camel case within a word is kept, while words written entirely in upper case are lowercased first.
      *
      * @param input the input string containing separators such as dots or underscores
      * @return the converted string in camelCase format, or an empty string if the input is null or empty
@@ -1396,13 +1397,13 @@ public final class Strings {
 
         return java.util.stream.IntStream.range(0, words.length)
                 .mapToObj(i -> i == 0
-                        ? words[i].toLowerCase(Locale.ROOT) // Ensure the first word starts with lowercase
-                        : capitalizeFirstLetter(words[i])) // Capitalize the first letter of subsequent words
+                        ? lowerCaseFirstLetter(lowerCaseIfAllUpperCase(words[i])) // Ensure the first word starts with lowercase
+                        : capitalizeFirstLetter(lowerCaseIfAllUpperCase(words[i]))) // Capitalize the first letter of subsequent words
                 .collect(java.util.stream.Collectors.joining());
     }
 
     /**
-     * Capitalizes the first letter of a word and converts the rest to lowercase.
+     * Capitalizes the first letter of a word and keeps the rest unchanged.
      *
      * @param word the word to capitalize
      * @return the word with the first letter capitalized
@@ -1411,7 +1412,30 @@ public final class Strings {
         if (word.isEmpty()) {
             return "";
         }
-        return Character.toUpperCase(word.charAt(0)) + word.substring(1).toLowerCase(Locale.ROOT);
+        return Character.toUpperCase(word.charAt(0)) + word.substring(1);
+    }
+
+    /**
+     * Converts the first letter of a word to lowercase and keeps the rest unchanged.
+     *
+     * @param word the word to convert
+     * @return the word with the first letter in lowercase
+     */
+    private static String lowerCaseFirstLetter(String word) {
+        if (word.isEmpty()) {
+            return "";
+        }
+        return Character.toLowerCase(word.charAt(0)) + word.substring(1);
+    }
+
+    /**
+     * Converts a word written entirely in upper case (e.g. {@code ID}) to lowercase, other words are returned unchanged.
+     *
+     * @param word the word to convert
+     * @return the lowercased word if it has no lowercase characters, otherwise the word itself
+     */
+    private static String lowerCaseIfAllUpperCase(String word) {
+        return word.equals(word.toUpperCase(Locale.ROOT)) ? word.toLowerCase(Locale.ROOT) : word;
     }
 
     /**
