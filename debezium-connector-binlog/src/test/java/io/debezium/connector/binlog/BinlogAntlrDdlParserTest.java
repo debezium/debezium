@@ -1002,6 +1002,27 @@ public abstract class BinlogAntlrDdlParserTest<V extends BinlogValueConverters, 
     }
 
     @Test
+    @FixFor("debezium/dbz#2762")
+    public void shouldKeepFloat4DefaultAsFloat32AfterAlter() {
+        parser.parse("CREATE TABLE mytable (id INT PRIMARY KEY, v FLOAT DEFAULT 1, f8 FLOAT8 DEFAULT 1);", tables);
+
+        final Table initialTable = tables.forTable(null, null, "mytable");
+        final Schema initialSchema = getColumnSchema(initialTable, "v");
+        assertThat(initialSchema.type()).isEqualTo(Schema.Type.FLOAT32);
+        assertThat(initialSchema.defaultValue()).isEqualTo(1.0f);
+        assertThat(getColumnSchema(initialTable, "f8").type()).isEqualTo(Schema.Type.FLOAT64);
+
+        parser.parse("ALTER TABLE mytable MODIFY COLUMN v FLOAT4 DEFAULT 1;", tables);
+        assertThat(parser.getParsingExceptionsFromWalker()).isEmpty();
+
+        final Table alteredTable = tables.forTable(null, null, "mytable");
+        final Schema alteredSchema = getColumnSchema(alteredTable, "v");
+        assertThat(alteredSchema.type()).isEqualTo(Schema.Type.FLOAT32);
+        assertThat(alteredSchema.defaultValue()).isEqualTo(1.0f);
+        assertThat(getColumnSchema(alteredTable, "f8").type()).isEqualTo(Schema.Type.FLOAT64);
+    }
+
+    @Test
     @FixFor("DBZ-3984")
     public void shouldParseDecimalVariants() {
         String ddl = "CREATE TABLE foo (c1 decimal(19), c2 decimal(19.5), c3 decimal(0.0), c4 decimal(0.2), c5 decimal(19,2));";

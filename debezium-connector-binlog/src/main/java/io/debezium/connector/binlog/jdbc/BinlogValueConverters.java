@@ -234,10 +234,7 @@ public abstract class BinlogValueConverters extends JdbcValueConverters {
                     return SpecialValueDecimal.builder(DecimalMode.PRECISE, 20, 0);
             }
         }
-        if ((matches(typeName, "FLOAT")
-                || matches(typeName, "FLOAT UNSIGNED")
-                || matches(typeName, "FLOAT UNSIGNED ZEROFILL"))
-                && column.scale().isEmpty() && column.length() <= 24) {
+        if (column.jdbcType() == Types.FLOAT && column.scale().isEmpty() && column.length() <= 24) {
             return SchemaBuilder.float32();
         }
         if (matches(typeName, "VECTOR")) {
