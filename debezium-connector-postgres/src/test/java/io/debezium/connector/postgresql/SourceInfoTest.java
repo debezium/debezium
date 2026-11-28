@@ -78,6 +78,7 @@ public class SourceInfoTest {
                 .field("table", Schema.STRING_SCHEMA)
                 .field("txId", Schema.OPTIONAL_INT64_SCHEMA)
                 .field("lsn", Schema.OPTIONAL_INT64_SCHEMA)
+                .field("commit_lsn", Schema.OPTIONAL_INT64_SCHEMA)
                 .field("xmin", Schema.OPTIONAL_INT64_SCHEMA)
                 .field("origin", Schema.OPTIONAL_STRING_SCHEMA)
                 .field("origin_lsn", Schema.OPTIONAL_INT64_SCHEMA)
@@ -118,5 +119,43 @@ public class SourceInfoTest {
         String str = source.toString();
         assertThat(str).contains("origin=replica_server");
         assertThat(str).contains("originLsn=12345");
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2353")
+    void commitLsnIsNullByDefault() {
+        // The commit LSN field is optional and must be present in the schema but absent from the
+        // struct until a transaction commit LSN has been set for the current transaction.
+        assertThat(source.commitLsn()).isNull();
+        assertThat(source.struct().schema().field(SourceInfo.COMMIT_LSN_KEY)).isNotNull();
+        assertThat(source.struct().getInt64(SourceInfo.COMMIT_LSN_KEY)).isNull();
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2353")
+    void commitLsnCanBeSetAndCleared() {
+        // Set the transaction commit LSN (pgoutput Begin.final_lsn) and verify it surfaces on the struct.
+        source.updateCommitLsn(Lsn.valueOf(5005117783192L));
+
+        assertThat(source.commitLsn()).isEqualTo(Lsn.valueOf(5005117783192L));
+        assertThat(source.struct().getInt64(SourceInfo.COMMIT_LSN_KEY)).isEqualTo(5005117783192L);
+
+        // Clearing (simulating a COMMIT) removes it from the emitted struct again.
+        source.updateCommitLsn(null);
+
+        assertThat(source.commitLsn()).isNull();
+        assertThat(source.struct().getInt64(SourceInfo.COMMIT_LSN_KEY)).isNull();
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2353")
+    void commitLsnIsDistinctFromPerRowLsn() {
+        // source.lsn is the per-row WAL position; source.commit_lsn is the transaction's commit
+        // position. They are independent fields and must not be conflated.
+        source.update(Lsn.valueOf(5005117782080L), null, null, null, null, null);
+        source.updateCommitLsn(Lsn.valueOf(5005117783192L));
+
+        assertThat(source.struct().getInt64(SourceInfo.LSN_KEY)).isEqualTo(5005117782080L);
+        assertThat(source.struct().getInt64(SourceInfo.COMMIT_LSN_KEY)).isEqualTo(5005117783192L);
     }
 }
