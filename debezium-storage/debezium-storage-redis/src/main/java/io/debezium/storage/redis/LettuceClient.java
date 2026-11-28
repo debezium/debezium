@@ -24,7 +24,6 @@ import org.slf4j.LoggerFactory;
 import io.debezium.DebeziumException;
 import io.debezium.util.Strings;
 import io.lettuce.core.ClientOptions;
-import io.lettuce.core.LettuceFutures;
 import io.lettuce.core.Range;
 import io.lettuce.core.RedisCommandExecutionException;
 import io.lettuce.core.RedisCommandTimeoutException;
@@ -131,7 +130,14 @@ public class LettuceClient implements RedisClient {
             uriBuilder.withPassword(conn.password.toCharArray());
         }
 
+        // Auto-reconnect is disabled because a silent reconnect between a write and the WAIT that follows it
+        // would run the WAIT on a new physical connection, whose own write offset is not the one of that
+        // write, and report the write as replicated when it may not be. With auto-reconnect disabled, Lettuce
+        // fails the in-flight commands and rejects new ones once the connection drops, so the caller gets a
+        // RedisClientConnectionException and redoes the write together with its WAIT on a fresh client.
+        // Jedis behaves the same way, since it never reconnects a connection on its own.
         ClientOptions.Builder optionsBuilder = ClientOptions.builder()
+                .autoReconnect(false)
                 .socketOptions(SocketOptions.builder().connectTimeout(Duration.ofMillis(conn.connectionTimeout)).build());
 
         if (conn.sslEnabled && (!Strings.isNullOrEmpty(conn.truststorePath) || !Strings.isNullOrEmpty(conn.keystorePath))) {
@@ -204,25 +210,12 @@ public class LettuceClient implements RedisClient {
             // Write all buffered commands to the transport in a single batch
             async.flushCommands();
 
-            long batchTimeoutMs = batchTimeoutMs(commandTimeoutMs, hashes.size());
-
-            // awaitAll neither cancels the futures nor throws on timeout, and futures produced by the async
-            // API carry no timeout of their own, so reading them back after a timeout would block forever.
-            if (!LettuceFutures.awaitAll(batchTimeoutMs, TimeUnit.MILLISECONDS, futures.toArray(new RedisFuture[0]))) {
-                throw new RedisCommandTimeoutException(
-                        "Pipelined XADD of " + hashes.size() + " entries did not complete within " + batchTimeoutMs + " ms");
-            }
-
-            List<String> ids = new ArrayList<>(futures.size());
-            for (RedisFuture<String> future : futures) {
-                ids.add(future.get());
-            }
-            return ids;
+            return awaitInOrder(futures, commandTimeoutMs);
         }
         catch (RedisCommandExecutionException e) {
             // When Redis is starting, an error with this message is returned. We will retry communicating
             // with the target DB as once Redis is available, this message will be gone.
-            // awaitAll unwraps command failures, so they surface here rather than as an ExecutionException.
+            // awaitInOrder unwraps command failures, so they surface here rather than as an ExecutionException.
             if (e.getMessage() != null && e.getMessage().contains(LOADING_MESSAGE)) {
                 LOGGER.error("Redis is starting", e);
                 return Collections.emptyList();
@@ -232,10 +225,6 @@ public class LettuceClient implements RedisClient {
         }
         catch (RedisException e) {
             throw new RedisClientConnectionException(e);
-        }
-        catch (ExecutionException e) {
-            LOGGER.error("Unexpected error during pipelined xadd", e);
-            throw new DebeziumException(e);
         }
         catch (InterruptedException e) {
             Thread.currentThread().interrupt();
@@ -273,19 +262,42 @@ public class LettuceClient implements RedisClient {
     }
 
     /**
-     * {@code awaitAll} spends a single budget across the whole batch, whereas the Jedis socket timeout that
-     * {@code commandTimeoutMs} comes from applies to each response read. Scaling by the batch size keeps the
-     * two drivers comparable; without it a batch of more than a handful of entries would time out well
-     * before Jedis would have.
+     * Collects the results of pipelined commands, failing as soon as the responses stop arriving.
+     * <p>
+     * Redis answers a pipeline in order over a single connection, so each response is given
+     * {@code stallTimeoutMs} counted from the arrival of the previous one. This mirrors the Jedis pipeline,
+     * where the socket timeout applies to each response read: a stalled server is detected within one
+     * timeout, however large the batch, while a batch that keeps making progress is never cut short.
+     * Futures produced by the async API carry no timeout of their own, so an unbounded wait here would
+     * block forever on a stalled server.
      *
-     * @param commandTimeoutMs the per-command timeout, i.e. {@code redis.socket.timeout.ms}
-     * @param batchSize the number of pipelined commands
-     * @return the budget for the whole batch, never smaller than a single command's timeout
+     * @param futures the pending results, in the order the commands were written
+     * @param stallTimeoutMs how long to wait for each response, i.e. {@code redis.socket.timeout.ms}
+     * @return the results, in the order of {@code futures}
+     * @throws RedisCommandTimeoutException if a response does not arrive in time
+     * @throws RedisException the failure of a command, unwrapped, such as a server error or a lost connection
      */
-    static long batchTimeoutMs(long commandTimeoutMs, int batchSize) {
-        // Math.max keeps a pathological configuration from overflowing into a negative (immediately
-        // exhausted) budget, and also covers the empty batch.
-        return Math.max(commandTimeoutMs, commandTimeoutMs * Math.max(1, batchSize));
+    static <T> List<T> awaitInOrder(List<? extends RedisFuture<T>> futures, long stallTimeoutMs) throws InterruptedException {
+        final List<T> results = new ArrayList<>(futures.size());
+        for (int i = 0; i < futures.size(); i++) {
+            final RedisFuture<T> future = futures.get(i);
+            if (!future.await(stallTimeoutMs, TimeUnit.MILLISECONDS)) {
+                throw new RedisCommandTimeoutException("No response to pipelined command " + (i + 1) + " of " + futures.size()
+                        + " within " + stallTimeoutMs + " ms of the previous one");
+            }
+            try {
+                results.add(future.get());
+            }
+            catch (ExecutionException e) {
+                // Rethrow driver failures unwrapped, so that server errors and connection failures keep
+                // their distinct handling in the caller.
+                if (e.getCause() instanceof RedisException) {
+                    throw (RedisException) e.getCause();
+                }
+                throw new DebeziumException(e.getCause());
+            }
+        }
+        return results;
     }
 
     private static String utf8(byte[] bytes) {

@@ -725,7 +725,7 @@ If a data packet is not transferred with the specified interval, {prodname} clos
 |If you configure {prodname} Server to store schema history in Redis, set this property to specify whether to use Redis Cluster mode.
 Set the value to `true` to configure {prodname} to use a https://redis.io/docs/latest/develop/clients/jedis/connect/#connect-to-a-redis-cluster[JedisCluster client] to route history data to Redis nodes.
 
-|[[schema-history-internal-redis-client-library]]<<schema-history-internal-redis-client-library, `schema.history.internal.storage.redis.client.library`>>
+|[[schema-history-internal-redis-client-library]]<<schema-history-internal-redis-client-library, `schema.history.internal.redis.client.library`>>
 |jedis
 |Specifies the Redis client driver library that {prodname} uses to store schema history data.
 Set the value to `jedis` (default) or `lettuce`.

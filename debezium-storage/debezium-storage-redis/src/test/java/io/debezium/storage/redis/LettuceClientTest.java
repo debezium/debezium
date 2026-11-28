@@ -9,8 +9,13 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -18,6 +23,13 @@ import org.junit.jupiter.api.Test;
 import io.debezium.DebeziumException;
 import io.debezium.config.Configuration;
 import io.debezium.storage.redis.offset.RedisOffsetBackingStoreConfig;
+import io.lettuce.core.RedisCommandExecutionException;
+import io.lettuce.core.RedisCommandTimeoutException;
+import io.lettuce.core.codec.StringCodec;
+import io.lettuce.core.output.StatusOutput;
+import io.lettuce.core.protocol.AsyncCommand;
+import io.lettuce.core.protocol.Command;
+import io.lettuce.core.protocol.CommandType;
 
 /**
  * Unit tests for the parts of the Lettuce client that need no running Redis.
@@ -27,26 +39,66 @@ class LettuceClientTest {
     private static final String PROP_PREFIX = "offset.storage.redis.";
 
     @Test
-    @DisplayName("the pipelined batch budget scales with the batch size, matching the per-response Jedis timeout")
-    public void batchTimeoutShouldScaleWithTheBatchSize() {
-        assertEquals(2000L, LettuceClient.batchTimeoutMs(2000L, 1));
-        assertEquals(20_000L, LettuceClient.batchTimeoutMs(2000L, 10));
-        assertEquals(2_000_000L, LettuceClient.batchTimeoutMs(2000L, 1000));
+    @DisplayName("a stalled pipeline fails within one response timeout, not one timeout per command")
+    public void stalledPipelineShouldFailWithinASingleResponseTimeout() {
+        // Only the first of 500 responses ever arrives. A budget scaled by the batch size would keep the
+        // caller waiting for 500 x 200 ms = 100 s before reconnecting.
+        final List<AsyncCommand<String, String, String>> futures = pendingXadds(500);
+        futures.get(0).complete("1-0");
+
+        final long started = System.nanoTime();
+        final RedisCommandTimeoutException thrown = assertThrows(RedisCommandTimeoutException.class,
+                () -> LettuceClient.awaitInOrder(futures, 200));
+        final long elapsedMs = TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - started);
+
+        assertTrue(elapsedMs < 5_000, "expected the stall to be detected after about 200 ms but it took " + elapsedMs + " ms");
+        assertTrue(thrown.getMessage().contains("command 2 of 500"), "the error should name the stalled command, but was: " + thrown.getMessage());
     }
 
     @Test
-    @DisplayName("an empty batch still gets a usable budget")
-    public void batchTimeoutShouldFallBackToASingleCommandTimeout() {
-        assertEquals(2000L, LettuceClient.batchTimeoutMs(2000L, 0));
+    @DisplayName("a pipeline that keeps making progress is not cut short by the response timeout")
+    public void progressingPipelineShouldOutlastASingleResponseTimeout() throws Exception {
+        // Every response arrives 150 ms after the previous one, so the whole batch takes about three times
+        // longer than the 300 ms response timeout without ever stalling for that long.
+        final List<AsyncCommand<String, String, String>> futures = pendingXadds(6);
+        final ScheduledExecutorService executor = Executors.newSingleThreadScheduledExecutor();
+        try {
+            for (int i = 0; i < futures.size(); i++) {
+                final AsyncCommand<String, String, String> future = futures.get(i);
+                final String id = (i + 1) + "-0";
+                executor.schedule(() -> future.complete(id), 150L * (i + 1), TimeUnit.MILLISECONDS);
+            }
+
+            assertEquals(List.of("1-0", "2-0", "3-0", "4-0", "5-0", "6-0"), LettuceClient.awaitInOrder(futures, 300));
+        }
+        finally {
+            executor.shutdownNow();
+        }
     }
 
     @Test
-    @DisplayName("a batch large enough to overflow the budget falls back instead of going negative")
-    public void batchTimeoutShouldNotOverflowIntoANegativeBudget() {
-        // A negative budget would make awaitAll give up immediately, turning a configuration mistake into
-        // an instant failure of every batch.
-        long overflowing = LettuceClient.batchTimeoutMs(Long.MAX_VALUE / 2, 1000);
-        assertTrue(overflowing > 0, "expected a positive budget but got " + overflowing);
+    @DisplayName("a failed pipelined command surfaces unwrapped, so server errors stay distinct from connection failures")
+    public void failedPipelinedCommandShouldSurfaceUnwrapped() {
+        final List<AsyncCommand<String, String, String>> futures = pendingXadds(2);
+        futures.get(0).complete("1-0");
+        futures.get(1).completeExceptionally(new RedisCommandExecutionException("LOADING Redis is loading the dataset in memory"));
+
+        final RedisCommandExecutionException thrown = assertThrows(RedisCommandExecutionException.class,
+                () -> LettuceClient.awaitInOrder(futures, 1_000));
+
+        assertTrue(thrown.getMessage().startsWith("LOADING"), "expected the server error itself but got: " + thrown.getMessage());
+    }
+
+    /**
+     * Real, unsent Lettuce commands: they stay pending until a test completes them, just as they would while
+     * waiting for Redis to answer.
+     */
+    private static List<AsyncCommand<String, String, String>> pendingXadds(int count) {
+        final List<AsyncCommand<String, String, String>> futures = new ArrayList<>(count);
+        for (int i = 0; i < count; i++) {
+            futures.add(new AsyncCommand<>(new Command<>(CommandType.XADD, new StatusOutput<>(StringCodec.UTF8))));
+        }
+        return futures;
     }
 
     @Test

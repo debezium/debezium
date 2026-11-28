@@ -195,7 +195,30 @@ class LettuceWaitReplicasIT {
                 () -> client.hset("dbz:offsets".getBytes(), "field".getBytes(), "value".getBytes()));
     }
 
+    @ParameterizedTest(name = "{0}")
+    @EnumSource(RedisClientLibrary.class)
+    public void waitAfterALostConnectionShouldFailInsteadOfCoveringAnotherConnection(RedisClientLibrary library) {
+        // Without the wrapper, so that the connection can be dropped between the write and its WAIT.
+        client = newClient(library, false, WAIT_TIMEOUT_MS);
+
+        pauseReplica();
+        client.hset("test:offsets".getBytes(), "key".getBytes(), "value".getBytes());
+
+        // The write is acknowledged but cannot have reached the frozen replica. Drop the connection that
+        // carried it; SKIPME (on by default) spares the redis-cli connection issuing the kill.
+        execInMaster("redis-cli", "client", "kill", "type", "normal");
+
+        // A driver that silently reconnected would issue this WAIT on a new connection, whose write offset
+        // is zero, and the frozen replica would satisfy it at once: the write would count as replicated.
+        assertThrows(RedisClientConnectionException.class, () -> client.waitReplicas(1, WAIT_TIMEOUT_MS),
+                "the WAIT must not run on a connection other than the one that carried the write");
+    }
+
     private RedisClient newClient(RedisClientLibrary library, long waitTimeoutMs) {
+        return newClient(library, true, waitTimeoutMs);
+    }
+
+    private RedisClient newClient(RedisClientLibrary library, boolean waitEnabled, long waitTimeoutMs) {
         Map<String, String> props = new HashMap<>();
         props.put(PROP_PREFIX + "address", master.getHost() + ":" + master.getFirstMappedPort());
         props.put(PROP_PREFIX + "client.library", library.getValue());
@@ -203,7 +226,7 @@ class LettuceWaitReplicasIT {
         RedisOffsetBackingStoreConfig config = new RedisOffsetBackingStoreConfig(Configuration.from(props));
 
         return RedisConnection.getInstance(config)
-                .getRedisClient(RedisConnection.DEBEZIUM_OFFSETS_CLIENT_NAME, true, waitTimeoutMs, false, 0);
+                .getRedisClient(RedisConnection.DEBEZIUM_OFFSETS_CLIENT_NAME, waitEnabled, waitTimeoutMs, false, 0);
     }
 
     private long timeOf(Runnable action) {
