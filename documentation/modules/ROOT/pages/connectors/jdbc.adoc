@@ -1226,6 +1226,7 @@ You can configure naming transformations to use one of the following naming styl
 `camel_case`::
 Removes all period (`.`) and underscore (`+_+`) characters, and converts the immediate next character to uppercase.
 For example, the value `inventory.customers` is changed to `inventoryCustomers`.
+Existing camel case is preserved, so `inventory.customerOrders` becomes `inventoryCustomerOrders`, while words that are written entirely in uppercase are converted to lowercase first, so `ORDER_ID` becomes `orderId`.
 `snake_case`::
 Removes all period (`.`) characters and replaces them with underscore (`+_+`) characters.
 Additionally, all numeric sequences are prefixed with an underscore (`+_+`), and all uppercase characters are converted to lowercase and then prefixed with an underscore (`+_+`) character.

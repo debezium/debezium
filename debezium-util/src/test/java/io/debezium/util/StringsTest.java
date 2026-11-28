@@ -532,6 +532,23 @@ public class StringsTest {
     }
 
     @Test
+    @FixFor("debezium/dbz#3200")
+    public void convertDotAndUnderscoreStringToCamelCaseShouldKeepExistingCamelCase() {
+        assertThat(Strings.convertDotAndUnderscoreStringToCamelCase("firstName"))
+                .isEqualTo("firstName");
+        assertThat(Strings.convertDotAndUnderscoreStringToCamelCase("inventory.customerOrders"))
+                .isEqualTo("inventoryCustomerOrders");
+        assertThat(Strings.convertDotAndUnderscoreStringToCamelCase("order_lineItem"))
+                .isEqualTo("orderLineItem");
+        assertThat(Strings.convertDotAndUnderscoreStringToCamelCase("public.orderItems.unitPrice"))
+                .isEqualTo("publicOrderItemsUnitPrice");
+        assertThat(Strings.convertDotAndUnderscoreStringToCamelCase("FirstName"))
+                .isEqualTo("firstName");
+        assertThat(Strings.convertDotAndUnderscoreStringToCamelCase("order_ID"))
+                .isEqualTo("orderId");
+    }
+
+    @Test
     @FixFor("debezium/dbz#2725")
     public void convertDotAndUnderscoreStringToCamelCaseShouldHandleLeadingAndTrailingSeparators() {
         assertThat(Strings.convertDotAndUnderscoreStringToCamelCase("_hello_world"))

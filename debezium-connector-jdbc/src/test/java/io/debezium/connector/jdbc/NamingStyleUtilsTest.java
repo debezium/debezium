@@ -48,6 +48,8 @@ class NamingStyleUtilsTest {
     void testCamelCase() {
         assertEquals("camelCaseName", NamingStyleUtils.applyNamingStyle("camel_case_name", NamingStyle.CAMEL_CASE));
         assertEquals("nameWithNumbers123", NamingStyleUtils.applyNamingStyle("name_with_numbers_123", NamingStyle.CAMEL_CASE));
+        assertEquals("inventoryCustomerOrders", NamingStyleUtils.applyNamingStyle("inventory.customerOrders", NamingStyle.CAMEL_CASE));
+        assertEquals("firstName", NamingStyleUtils.applyNamingStyle("firstName", NamingStyle.CAMEL_CASE));
     }
 
     @Test
