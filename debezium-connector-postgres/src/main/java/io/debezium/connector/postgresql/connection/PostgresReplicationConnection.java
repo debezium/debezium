@@ -500,9 +500,10 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
         return options.isEmpty() ? "" : " WITH (" + String.join(", ", options) + ")";
     }
 
-    private String buildAlterPublishClause() {
+    private String buildAlterPublishStatement() {
         String publishValue = buildPublishOptionValue();
-        return publishValue != null ? String.format(" WITH (publish = '%s')", publishValue) : "";
+        // ALTER PUBLICATION has no WITH clause; publication parameters are changed by a separate SET (...) statement
+        return publishValue != null ? String.format(" ALTER PUBLICATION %s SET (publish = '%s');", publicationName, publishValue) : "";
     }
 
     private void createOrUpdatePublicationModeFiltered(Statement stmt, boolean isUpdate) {
@@ -515,8 +516,8 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
                 throw new DebeziumException(String.format("No table filters found for filtered publication %s", publicationName));
             }
             if (isUpdate) {
-                createOrUpdatePublicationStmt = String.format("ALTER PUBLICATION %s SET TABLE %s%s;",
-                        publicationName, tableFilterString, buildAlterPublishClause());
+                createOrUpdatePublicationStmt = String.format("ALTER PUBLICATION %s SET TABLE %s;%s",
+                        publicationName, tableFilterString, buildAlterPublishStatement());
             }
             else {
                 createOrUpdatePublicationStmt = String.format("CREATE PUBLICATION %s FOR TABLE %s%s;",

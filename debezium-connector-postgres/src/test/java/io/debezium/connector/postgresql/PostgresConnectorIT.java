@@ -3198,8 +3198,29 @@ public class PostgresConnectorIT extends AbstractAsyncEngineConnectorTest {
 
         stopConnector(value -> assertTrue(
                 logInterceptor.containsMessage(String.format(
-                        "Updating Publication with statement 'ALTER PUBLICATION cdc SET TABLE \"s1\".\"a\", \"s2\".\"a\" WITH (publish = '%s');'",
+                        "Updating Publication with statement 'ALTER PUBLICATION cdc SET TABLE \"s1\".\"a\", \"s2\".\"a\"; ALTER PUBLICATION cdc SET (publish = '%s');'",
                         expectedPublish))));
+
+        // The statement is logged before it is executed, so check that the publication was really updated
+        try (PostgresConnection connection = TestHelper.create()) {
+            List<String> publishedTables = connection.queryAndMap(
+                    "SELECT schemaname || '.' || tablename FROM pg_catalog.pg_publication_tables WHERE pubname = 'cdc' ORDER BY 1",
+                    rs -> {
+                        List<String> tables = new ArrayList<>();
+                        while (rs.next()) {
+                            tables.add(rs.getString(1));
+                        }
+                        return tables;
+                    });
+            assertThat(publishedTables).containsExactly("s1.a", "s2.a");
+
+            String actualPublish = connection.queryAndMap(
+                    "SELECT concat_ws(',', CASE WHEN pubinsert THEN 'insert' END, CASE WHEN pubupdate THEN 'update' END, "
+                            + "CASE WHEN pubdelete THEN 'delete' END, CASE WHEN pubtruncate THEN 'truncate' END) "
+                            + "FROM pg_catalog.pg_publication WHERE pubname = 'cdc'",
+                    rs -> rs.next() ? rs.getString(1) : null);
+            assertThat(actualPublish).isEqualTo(expectedPublish);
+        }
     }
 
     @Test
