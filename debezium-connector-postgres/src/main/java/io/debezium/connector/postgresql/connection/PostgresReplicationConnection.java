@@ -73,6 +73,8 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
 
     private static Logger LOGGER = LoggerFactory.getLogger(PostgresReplicationConnection.class);
 
+    private static final List<String> ALL_PUBLISHED_OPERATIONS = List.of("insert", "update", "delete", "truncate");
+
     private final String slotName;
     private final String publicationName;
     private final RelationalTableFilters tableFilter;
@@ -390,7 +392,64 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
     }
 
     /**
-     * Checks if the current publication tables match the desired captured tables.
+     * Gets the operations currently published by the publication, as set by its {@code publish} parameter.
+     *
+     * @param stmt the statement to use for the query
+     * @return Optional containing the published operations in the order of {@link #ALL_PUBLISHED_OPERATIONS}, empty if unable to query
+     */
+    private Optional<List<String>> getCurrentPublishedOperations(Statement stmt) {
+        final var getPublishedOperationsQuery = String.format("SELECT pubinsert, pubupdate, pubdelete, pubtruncate FROM pg_publication WHERE pubname = '%s'",
+                publicationName);
+
+        final List<String> publishedOperations = new ArrayList<>();
+        try (var prepStmt = stmt.getConnection().prepareStatement(getPublishedOperationsQuery)) {
+            try (var rs = prepStmt.executeQuery()) {
+                if (!rs.next()) {
+                    return Optional.empty();
+                }
+                for (final String operation : ALL_PUBLISHED_OPERATIONS) {
+                    if (rs.getBoolean("pub" + operation)) {
+                        publishedOperations.add(operation);
+                    }
+                }
+            }
+        }
+        catch (SQLException e) {
+            LOGGER.warn("Unable to query pg_publication for publication '{}'. Publication will be updated to ensure synchronization. Error: {}",
+                    publicationName, e.getMessage());
+            return Optional.empty();
+        }
+        return Optional.of(publishedOperations);
+    }
+
+    /**
+     * Checks if the operations published by the publication match the operations that are not skipped
+     * by the {@code skipped.operations} configuration.
+     *
+     * @param stmt the statement to use for database queries
+     * @return true if the {@code publish} parameter of the publication needs to be updated, false otherwise
+     */
+    private boolean isPublishedOperationsUpdateRequired(Statement stmt) {
+        final var currentPublishedOperations = getCurrentPublishedOperations(stmt);
+        if (currentPublishedOperations.isEmpty()) {
+            LOGGER.info("Unable to determine operations published by '{}', will update publication to ensure synchronization", publicationName);
+            return true;
+        }
+
+        // Both lists are in the order of ALL_PUBLISHED_OPERATIONS
+        final var desiredPublishedOperations = getPublishedOperations();
+        if (currentPublishedOperations.get().equals(desiredPublishedOperations)) {
+            return false;
+        }
+
+        LOGGER.info("Publication '{}' has to be updated. Published operations: {}, desired published operations: {}",
+                publicationName, currentPublishedOperations.get(), desiredPublishedOperations);
+        return true;
+    }
+
+    /**
+     * Checks if the current publication tables match the desired captured tables and if the operations
+     * published by the publication match the {@code skipped.operations} configuration.
      *
      * @param stmt the statement to use for database queries
      * @return true if the publication needs to be updated, false otherwise
@@ -421,7 +480,10 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
 
         Set<TableId> currentTables = currentPublicationTables.get();
         if (currentTables.equals(desiredTables)) {
-            LOGGER.info("Publication '{}' is already up to date with desired tables", publicationName);
+            if (isPublishedOperationsUpdateRequired(stmt)) {
+                return true;
+            }
+            LOGGER.info("Publication '{}' is already up to date with desired tables and published operations", publicationName);
             return false;
         }
 
@@ -464,14 +526,19 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
         }
     }
 
-    private String buildPublishOptionValue() {
-        if (!connectorConfig.getConfig().hasKey(CommonConnectorConfig.SKIPPED_OPERATIONS)) {
-            return null;
+    private boolean hasSkippedOperations() {
+        return connectorConfig.getConfig().hasKey(CommonConnectorConfig.SKIPPED_OPERATIONS) && !connectorConfig.getSkippedOperations().isEmpty();
+    }
+
+    /**
+     * Gets the operations the publication should publish: all operations, which is the PostgreSQL default,
+     * except the ones explicitly skipped by the {@code skipped.operations} configuration.
+     */
+    private List<String> getPublishedOperations() {
+        if (!hasSkippedOperations()) {
+            return ALL_PUBLISHED_OPERATIONS;
         }
         Set<Envelope.Operation> skipped = connectorConfig.getSkippedOperations();
-        if (skipped.isEmpty()) {
-            return null;
-        }
         List<String> ops = new ArrayList<>();
         if (!skipped.contains(Envelope.Operation.CREATE)) {
             ops.add("insert");
@@ -485,7 +552,11 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
         if (!skipped.contains(Envelope.Operation.TRUNCATE)) {
             ops.add("truncate");
         }
-        return String.join(",", ops);
+        return ops;
+    }
+
+    private String buildPublishOptionValue() {
+        return hasSkippedOperations() ? String.join(",", getPublishedOperations()) : null;
     }
 
     private String buildWithClause() {
@@ -500,9 +571,10 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
         return options.isEmpty() ? "" : " WITH (" + String.join(", ", options) + ")";
     }
 
-    private String buildAlterPublishClause() {
-        String publishValue = buildPublishOptionValue();
-        return publishValue != null ? String.format(" WITH (publish = '%s')", publishValue) : "";
+    private String buildAlterPublishStatement() {
+        // ALTER PUBLICATION has no WITH clause; publication parameters are changed by a separate SET (...) statement.
+        // The publish parameter is always set, so that removing skipped operations resets it to all operations.
+        return String.format(" ALTER PUBLICATION %s SET (publish = '%s');", publicationName, String.join(",", getPublishedOperations()));
     }
 
     private void createOrUpdatePublicationModeFiltered(Statement stmt, boolean isUpdate) {
@@ -515,8 +587,8 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
                 throw new DebeziumException(String.format("No table filters found for filtered publication %s", publicationName));
             }
             if (isUpdate) {
-                createOrUpdatePublicationStmt = String.format("ALTER PUBLICATION %s SET TABLE %s%s;",
-                        publicationName, tableFilterString, buildAlterPublishClause());
+                createOrUpdatePublicationStmt = String.format("ALTER PUBLICATION %s SET TABLE %s;%s",
+                        publicationName, tableFilterString, buildAlterPublishStatement());
             }
             else {
                 createOrUpdatePublicationStmt = String.format("CREATE PUBLICATION %s FOR TABLE %s%s;",
