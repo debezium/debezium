@@ -3156,7 +3156,7 @@ public class PostgresConnectorIT extends AbstractAsyncEngineConnectorTest {
 
     @ParameterizedTest(name = "skipped.operations={0}")
     @MethodSource("skippableOperationsForAlter")
-    @FixFor("DBZ-1970")
+    @FixFor({ "DBZ-1970", "debezium/dbz#3201" })
     @SkipWhenDecoderPluginNameIsNot(value = SkipWhenDecoderPluginNameIsNot.DecoderPluginName.PGOUTPUT, reason = "Publication configuration only valid for PGOUTPUT decoder")
     public void shouldPropagateSkippedOperationsWhenUpdatingFilteredPublication(Envelope.Operation skippedOp) throws Exception {
         final LogInterceptor logInterceptor = new LogInterceptor(PostgresReplicationConnection.class);
