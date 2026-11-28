@@ -131,6 +131,12 @@ public class RedisCommonConfig {
             .withDescription("Enable Redis Cluster mode; when true, a JedisCluster client will be created. Single or comma-separated host:port addresses are accepted.")
             .withDefault(DEFAULT_CLUSTER_ENABLED);
 
+    // Client driver library selection
+    private static final Field PROP_CLIENT_LIBRARY = Field.create(CONFIGURATION_FIELD_PREFIX_STRING + "client.library")
+            .withDescription("The Redis client driver library to use; the 'lettuce' driver supports single instance mode only "
+                    + "and requires io.lettuce:lettuce-core on the classpath.")
+            .withEnum(RedisClientLibrary.class, RedisClientLibrary.JEDIS);
+
     private String address;
     private int dbIndex;
     private String user;
@@ -158,6 +164,7 @@ public class RedisCommonConfig {
     private long waitRetryDelay;
 
     private boolean clusterEnabled;
+    private RedisClientLibrary clientLibrary;
 
     public RedisCommonConfig() {
         // Intentionally blank
@@ -183,7 +190,7 @@ public class RedisCommonConfig {
                 PROP_CONNECTION_TIMEOUT, PROP_SOCKET_TIMEOUT,
                 PROP_RETRY_INITIAL_DELAY, PROP_RETRY_MAX_DELAY,
                 PROP_WAIT_ENABLED, PROP_WAIT_TIMEOUT, PROP_WAIT_RETRY_ENABLED, PROP_WAIT_RETRY_DELAY,
-                PROP_CLUSTER_ENABLED);
+                PROP_CLUSTER_ENABLED, PROP_CLIENT_LIBRARY);
     }
 
     protected void init(Configuration config) {
@@ -214,6 +221,8 @@ public class RedisCommonConfig {
         waitRetryDelay = config.getLong(PROP_WAIT_RETRY_DELAY);
 
         clusterEnabled = config.getBoolean(PROP_CLUSTER_ENABLED);
+
+        clientLibrary = RedisClientLibrary.parse(config.getString(PROP_CLIENT_LIBRARY));
     }
 
     public String getPassword() {
@@ -306,5 +315,9 @@ public class RedisCommonConfig {
 
     public boolean isClusterEnabled() {
         return clusterEnabled;
+    }
+
+    public RedisClientLibrary getClientLibrary() {
+        return clientLibrary;
     }
 }
