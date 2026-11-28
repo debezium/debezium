@@ -3213,13 +3213,144 @@ public class PostgresConnectorIT extends AbstractAsyncEngineConnectorTest {
                         return tables;
                     });
             assertThat(publishedTables).containsExactly("s1.a", "s2.a");
+        }
+        assertThat(getPublishedOperations("cdc")).isEqualTo(expectedPublish);
+    }
 
-            String actualPublish = connection.queryAndMap(
+    @ParameterizedTest(name = "skipped.operations={0}")
+    @MethodSource("skippableOperationsForAlter")
+    @FixFor("debezium/dbz#3201")
+    @SkipWhenDecoderPluginNameIsNot(value = SkipWhenDecoderPluginNameIsNot.DecoderPluginName.PGOUTPUT, reason = "Publication configuration only valid for PGOUTPUT decoder")
+    public void shouldUpdateFilteredPublicationWhenOnlySkippedOperationsAreSet(Envelope.Operation skippedOp) throws Exception {
+        final LogInterceptor logInterceptor = new LogInterceptor(PostgresReplicationConnection.class);
+
+        TestHelper.dropAllSchemas();
+        TestHelper.dropPublication("cdc");
+        TestHelper.executeDDL("postgres_create_tables.ddl");
+        TestHelper.execute(SETUP_TABLES_STMT);
+
+        Configuration.Builder initialConfigBuilder = TestHelper.defaultConfig()
+                .with(PostgresConnectorConfig.PUBLICATION_NAME, "cdc")
+                .with(PostgresConnectorConfig.TABLE_INCLUDE_LIST, "s2.a")
+                .with(PostgresConnectorConfig.DROP_SLOT_ON_STOP, Boolean.FALSE)
+                .with(PostgresConnectorConfig.PUBLICATION_AUTOCREATE_MODE, PostgresConnectorConfig.AutoCreateMode.FILTERED.getValue());
+
+        start(PostgresConnector.class, initialConfigBuilder.build());
+        assertConnectorIsRunning();
+        waitForSnapshotToBeCompleted();
+        consumeRecordsByTopic(1);
+        stopConnector();
+
+        assertThat(getPublishedOperations("cdc")).isEqualTo("insert,update,delete,truncate");
+
+        List<String> publishOps = new ArrayList<>(Arrays.asList("insert", "update", "delete", "truncate"));
+        publishOps.remove(skippedOp == Envelope.Operation.CREATE ? "insert"
+                : skippedOp == Envelope.Operation.UPDATE ? "update"
+                        : skippedOp == Envelope.Operation.DELETE ? "delete" : "truncate");
+        String expectedPublish = String.join(",", publishOps);
+
+        // Only skipped.operations changes, the table include list stays the same
+        Configuration.Builder updatedConfigBuilder = initialConfigBuilder
+                .with(PostgresConnectorConfig.SKIPPED_OPERATIONS, skippedOp.code());
+
+        start(PostgresConnector.class, updatedConfigBuilder.build());
+        assertConnectorIsRunning();
+        waitForStreamingRunning();
+
+        stopConnector(value -> assertTrue(
+                logInterceptor.containsMessage(String.format(
+                        "Updating Publication with statement 'ALTER PUBLICATION cdc SET TABLE \"s2\".\"a\"; ALTER PUBLICATION cdc SET (publish = '%s');'",
+                        expectedPublish))));
+
+        assertThat(getPublishedOperations("cdc")).isEqualTo(expectedPublish);
+    }
+
+    @Test
+    @FixFor("debezium/dbz#3201")
+    @SkipWhenDecoderPluginNameIsNot(value = SkipWhenDecoderPluginNameIsNot.DecoderPluginName.PGOUTPUT, reason = "Publication configuration only valid for PGOUTPUT decoder")
+    public void shouldResetPublishedOperationsOfFilteredPublicationWhenSkippedOperationsAreRemoved() throws Exception {
+        final LogInterceptor logInterceptor = new LogInterceptor(PostgresReplicationConnection.class);
+
+        TestHelper.dropAllSchemas();
+        TestHelper.dropPublication("cdc");
+        TestHelper.executeDDL("postgres_create_tables.ddl");
+        TestHelper.execute(SETUP_TABLES_STMT);
+
+        Configuration.Builder initialConfigBuilder = TestHelper.defaultConfig()
+                .with(PostgresConnectorConfig.PUBLICATION_NAME, "cdc")
+                .with(PostgresConnectorConfig.TABLE_INCLUDE_LIST, "s2.a")
+                .with(PostgresConnectorConfig.DROP_SLOT_ON_STOP, Boolean.FALSE)
+                .with(PostgresConnectorConfig.PUBLICATION_AUTOCREATE_MODE, PostgresConnectorConfig.AutoCreateMode.FILTERED.getValue())
+                .with(PostgresConnectorConfig.SKIPPED_OPERATIONS, "d");
+
+        start(PostgresConnector.class, initialConfigBuilder.build());
+        assertConnectorIsRunning();
+        waitForSnapshotToBeCompleted();
+        consumeRecordsByTopic(1);
+        stopConnector();
+
+        assertThat(getPublishedOperations("cdc")).isEqualTo("insert,update,truncate");
+
+        // skipped.operations is removed, the table include list stays the same
+        Configuration.Builder updatedConfigBuilder = TestHelper.defaultConfig()
+                .with(PostgresConnectorConfig.PUBLICATION_NAME, "cdc")
+                .with(PostgresConnectorConfig.TABLE_INCLUDE_LIST, "s2.a")
+                .with(PostgresConnectorConfig.PUBLICATION_AUTOCREATE_MODE, PostgresConnectorConfig.AutoCreateMode.FILTERED.getValue());
+
+        start(PostgresConnector.class, updatedConfigBuilder.build());
+        assertConnectorIsRunning();
+        waitForStreamingRunning();
+
+        stopConnector(value -> assertTrue(logInterceptor.containsMessage(
+                "Updating Publication with statement 'ALTER PUBLICATION cdc SET TABLE \"s2\".\"a\"; ALTER PUBLICATION cdc SET (publish = 'insert,update,delete,truncate');'")));
+
+        assertThat(getPublishedOperations("cdc")).isEqualTo("insert,update,delete,truncate");
+    }
+
+    @Test
+    @FixFor("debezium/dbz#3201")
+    @SkipWhenDecoderPluginNameIsNot(value = SkipWhenDecoderPluginNameIsNot.DecoderPluginName.PGOUTPUT, reason = "Publication configuration only valid for PGOUTPUT decoder")
+    public void shouldNotUpdateFilteredPublicationWhenTablesAndSkippedOperationsAreUnchanged() throws Exception {
+        final LogInterceptor logInterceptor = new LogInterceptor(PostgresReplicationConnection.class);
+
+        TestHelper.dropAllSchemas();
+        TestHelper.dropPublication("cdc");
+        TestHelper.executeDDL("postgres_create_tables.ddl");
+        TestHelper.execute(SETUP_TABLES_STMT);
+
+        Configuration config = TestHelper.defaultConfig()
+                .with(PostgresConnectorConfig.PUBLICATION_NAME, "cdc")
+                .with(PostgresConnectorConfig.TABLE_INCLUDE_LIST, "s2.a")
+                .with(PostgresConnectorConfig.DROP_SLOT_ON_STOP, Boolean.FALSE)
+                .with(PostgresConnectorConfig.PUBLICATION_AUTOCREATE_MODE, PostgresConnectorConfig.AutoCreateMode.FILTERED.getValue())
+                .with(PostgresConnectorConfig.SKIPPED_OPERATIONS, "d")
+                .build();
+
+        start(PostgresConnector.class, config);
+        assertConnectorIsRunning();
+        waitForSnapshotToBeCompleted();
+        consumeRecordsByTopic(1);
+        stopConnector();
+
+        start(PostgresConnector.class, config);
+        assertConnectorIsRunning();
+        waitForStreamingRunning();
+
+        stopConnector(value -> {
+            assertTrue(logInterceptor.containsMessage("Publication 'cdc' is already up to date with desired tables and published operations"));
+            assertFalse(logInterceptor.containsMessage("Updating Publication with statement"));
+        });
+
+        assertThat(getPublishedOperations("cdc")).isEqualTo("insert,update,truncate");
+    }
+
+    private static String getPublishedOperations(String publicationName) throws SQLException {
+        try (PostgresConnection connection = TestHelper.create()) {
+            return connection.queryAndMap(
                     "SELECT concat_ws(',', CASE WHEN pubinsert THEN 'insert' END, CASE WHEN pubupdate THEN 'update' END, "
                             + "CASE WHEN pubdelete THEN 'delete' END, CASE WHEN pubtruncate THEN 'truncate' END) "
-                            + "FROM pg_catalog.pg_publication WHERE pubname = 'cdc'",
+                            + "FROM pg_catalog.pg_publication WHERE pubname = '" + publicationName + "'",
                     rs -> rs.next() ? rs.getString(1) : null);
-            assertThat(actualPublish).isEqualTo(expectedPublish);
         }
     }
 

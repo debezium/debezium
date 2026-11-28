@@ -8,6 +8,7 @@ package io.debezium.connector.postgresql.connection;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.startsWith;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -26,6 +27,7 @@ import org.junit.jupiter.api.Test;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 
+import io.debezium.config.Configuration;
 import io.debezium.connector.postgresql.PostgresConnectorConfig;
 import io.debezium.connector.postgresql.PostgresSchema;
 import io.debezium.connector.postgresql.TypeRegistry;
@@ -66,6 +68,12 @@ public class PostgresPublicationTableComparisonTest {
 
     @Mock
     private ResultSet resultSet;
+
+    @Mock
+    private PreparedStatement publishedOperationsStatement;
+
+    @Mock
+    private ResultSet publishedOperationsResultSet;
 
     private PostgresReplicationConnection replicationConnection;
     private static final String TEST_PUBLICATION_NAME = "test_publication";
@@ -179,6 +187,10 @@ public class PostgresPublicationTableComparisonTest {
         // Mock determineCapturedTables to return same tables
         mockDetermineCapturedTables(currentTables);
 
+        // skipped.operations is not set and the publication publishes all operations
+        when(connectorConfig.getConfig()).thenReturn(Configuration.empty());
+        mockCurrentPublishedOperations("insert", "update", "delete", "truncate");
+
         // Call public method directly
         boolean result = replicationConnection.isPublicationUpdateRequired(statement);
 
@@ -277,6 +289,16 @@ public class PostgresPublicationTableComparisonTest {
             when(resultSet.next()).thenReturn(nextResults[0], Arrays.copyOfRange(nextResults, 1, nextResults.length));
             when(resultSet.getString("schemaname")).thenReturn(schemaNames[0], Arrays.copyOfRange(schemaNames, 1, schemaNames.length));
             when(resultSet.getString("tablename")).thenReturn(tableNames[0], Arrays.copyOfRange(tableNames, 1, tableNames.length));
+        }
+    }
+
+    private void mockCurrentPublishedOperations(String... operations) throws Exception {
+        final Set<String> published = Set.of(operations);
+        when(connection.prepareStatement(startsWith("SELECT pubinsert"))).thenReturn(publishedOperationsStatement);
+        when(publishedOperationsStatement.executeQuery()).thenReturn(publishedOperationsResultSet);
+        when(publishedOperationsResultSet.next()).thenReturn(true, false);
+        for (final String operation : Set.of("insert", "update", "delete", "truncate")) {
+            when(publishedOperationsResultSet.getBoolean("pub" + operation)).thenReturn(published.contains(operation));
         }
     }
 

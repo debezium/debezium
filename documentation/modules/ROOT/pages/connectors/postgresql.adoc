@@ -4632,7 +4632,9 @@ You can configure the connector to skip the following types of operations:
 Set the value to `none` if you do not want the connector to skip any operations.
 
 When you use the `pgoutput` plug-in and the xref:postgresql-publication-autocreate-mode[`publication.autocreate.mode`] property is set to `all_tables` or `filtered`, the connector propagates the configured skipped operations into the PostgreSQL publication by setting the `publish` option accordingly.
-For example, if `skipped.operations=d`, the connector creates or updates the publication with `WITH (publish = 'insert,update,truncate')`, so that PostgreSQL omits the skipped operations from the replication stream entirely, reducing unnecessary WAL traffic.
+For example, if `skipped.operations=d`, the connector creates the publication with `WITH (publish = 'insert,update,truncate')`, so that PostgreSQL omits the skipped operations from the replication stream entirely, reducing unnecessary WAL traffic.
+When `publication.autocreate.mode` is set to `filtered` and the publication already exists, the connector updates the `publish` option of the publication with `ALTER PUBLICATION ... SET (publish = '...')` when the option does not match the configured skipped operations, for example, after you change `skipped.operations` and restart the connector.
+If you remove `skipped.operations` or set it to `none`, the connector resets the `publish` option so that the publication publishes all operations.
 
 |[[postgresql-property-signal-data-collection]]<<postgresql-property-signal-data-collection,`+signal.data.collection+`>>
 |No default value
