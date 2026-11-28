@@ -89,6 +89,18 @@ class LettuceClientTest {
         assertTrue(thrown.getMessage().startsWith("LOADING"), "expected the server error itself but got: " + thrown.getMessage());
     }
 
+    @Test
+    @DisplayName("a write refused at maxmemory keeps its place in the batch, so the caller retries only that entry")
+    public void outOfMemoryResponseShouldKeepItsPlaceInTheBatch() throws Exception {
+        final String oom = "OOM command not allowed when used memory > 'maxmemory'.";
+        final List<AsyncCommand<String, String, String>> futures = pendingXadds(3);
+        futures.get(0).complete("1-0");
+        futures.get(1).completeExceptionally(new RedisCommandExecutionException(oom));
+        futures.get(2).complete("3-0");
+
+        assertEquals(List.of("1-0", oom, "3-0"), LettuceClient.awaitInOrder(futures, 1_000));
+    }
+
     /**
      * Real, unsent Lettuce commands: they stay pending until a test completes them, just as they would while
      * waiting for Redis to answer.

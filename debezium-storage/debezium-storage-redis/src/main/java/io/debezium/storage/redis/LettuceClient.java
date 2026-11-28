@@ -6,7 +6,6 @@
 package io.debezium.storage.redis;
 
 import java.io.File;
-import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.AbstractMap.SimpleEntry;
 import java.util.ArrayList;
@@ -37,6 +36,10 @@ import io.lettuce.core.StreamMessage;
 import io.lettuce.core.api.StatefulRedisConnection;
 import io.lettuce.core.api.async.RedisAsyncCommands;
 import io.lettuce.core.api.sync.RedisCommands;
+import io.lettuce.core.codec.StringCodec;
+import io.lettuce.core.output.IntegerOutput;
+import io.lettuce.core.protocol.CommandArgs;
+import io.lettuce.core.protocol.CommandType;
 
 /**
  * A {@link RedisClient} implementation backed by the <a href="https://github.com/redis/lettuce">Lettuce</a>
@@ -44,8 +47,8 @@ import io.lettuce.core.api.sync.RedisCommands;
  * <p>
  * Lettuce fixes the key/value codec per connection, whereas the {@link RedisClient} contract mixes
  * {@code String}-based commands with a single {@code byte[]}-based {@link #hset(byte[], byte[], byte[])}.
- * This client deliberately uses a <em>single</em> UTF-8 string connection and decodes the {@code hset}
- * arguments, rather than adding a second byte-array connection.
+ * This client deliberately uses a <em>single</em> UTF-8 string connection and sends {@code hset} through
+ * {@code dispatch} with its arguments as raw bytes, rather than adding a second byte-array connection.
  * <p>
  * A second connection would break {@link #waitReplicas(int, long)}: Redis evaluates {@code WAIT} against
  * the write offset of the <em>calling</em> connection, so a {@code WAIT} issued on a different connection
@@ -53,9 +56,9 @@ import io.lettuce.core.api.sync.RedisCommands;
  * only {@code byte[]} command and {@link WaitReplicasRedisClient} pairs it with {@code WAIT}, both must
  * travel over the same connection.
  * <p>
- * Decoding the {@code hset} arguments as UTF-8 introduces no new assumption: {@link #hgetAll(String)}
- * already returns {@code Map<String, String>} for every {@link RedisClient} implementation, so callers
- * such as {@code RedisOffsetBackingStore} already round-trip these values through {@code String}.
+ * The {@code hset} arguments are not decoded as UTF-8 either: decoding would replace invalid sequences
+ * with U+FFFD, so distinct fields could collapse into one, and the original bytes would be lost for good,
+ * even for a later switch back to Jedis, which stores them unchanged.
  * <p>
  * This class is <em>not</em> safe for concurrent use by multiple threads: {@link #xadd(List)} toggles
  * auto-flushing, which is a property of the whole connection, so a concurrent command issued on the same
@@ -70,6 +73,11 @@ public class LettuceClient implements RedisClient {
     private static final Logger LOGGER = LoggerFactory.getLogger(LettuceClient.class);
 
     private static final String LOADING_MESSAGE = "LOADING";
+
+    /**
+     * The error code Redis returns for a write refused because {@code maxmemory} is reached.
+     */
+    private static final String OOM_ERROR_PREFIX = "OOM ";
 
     /**
      * Shutdown quiet period; the Lettuce default of 2 seconds would needlessly delay connector shutdown.
@@ -255,14 +263,15 @@ public class LettuceClient implements RedisClient {
 
     @Override
     public long hset(byte[] key, byte[] field, byte[] value) {
-        // Issued on the same connection as WAIT on purpose; see the class javadoc.
-        // Lettuce returns Boolean (true when a new field was created); the contract expects the
-        // number of added fields, matching Jedis semantics.
-        return tryErrors(() -> Boolean.TRUE.equals(commands.hset(utf8(key), utf8(field), utf8(value))) ? 1L : 0L);
+        // Issued on the same connection as WAIT on purpose, with the arguments passed as raw bytes so that
+        // they reach Redis unchanged whatever the codec of the connection; see the class javadoc.
+        // HSET replies with the number of fields added, which is what the contract expects.
+        final CommandArgs<String, String> args = new CommandArgs<>(StringCodec.UTF8).add(key).add(field).add(value);
+        return tryErrors(() -> commands.dispatch(CommandType.HSET, new IntegerOutput<>(StringCodec.UTF8), args));
     }
 
     /**
-     * Collects the results of pipelined commands, failing as soon as the responses stop arriving.
+     * Collects the results of pipelined {@code XADD} commands, failing as soon as the responses stop arriving.
      * <p>
      * Redis answers a pipeline in order over a single connection, so each response is given
      * {@code stallTimeoutMs} counted from the arrival of the previous one. This mirrors the Jedis pipeline,
@@ -270,17 +279,23 @@ public class LettuceClient implements RedisClient {
      * timeout, however large the batch, while a batch that keeps making progress is never cut short.
      * Futures produced by the async API carry no timeout of their own, so an unbounded wait here would
      * block forever on a stalled server.
+     * <p>
+     * A write refused because Redis reached {@code maxmemory} does not fail the batch: its error message
+     * takes the place of the entry ID, as the Jedis pipeline does. Redis still executes the commands after
+     * it, so callers such as the Debezium Server Redis sink commit the entries that were written and retry
+     * only the refused ones.
      *
      * @param futures the pending results, in the order the commands were written
      * @param stallTimeoutMs how long to wait for each response, i.e. {@code redis.socket.timeout.ms}
-     * @return the results, in the order of {@code futures}
+     * @return the entry IDs, or the out-of-memory error message for refused writes, in the order of {@code futures}
      * @throws RedisCommandTimeoutException if a response does not arrive in time
-     * @throws RedisException the failure of a command, unwrapped, such as a server error or a lost connection
+     * @throws RedisException the failure of a command, unwrapped, such as a server error other than out-of-memory
+     *         or a lost connection
      */
-    static <T> List<T> awaitInOrder(List<? extends RedisFuture<T>> futures, long stallTimeoutMs) throws InterruptedException {
-        final List<T> results = new ArrayList<>(futures.size());
+    static List<String> awaitInOrder(List<? extends RedisFuture<String>> futures, long stallTimeoutMs) throws InterruptedException {
+        final List<String> results = new ArrayList<>(futures.size());
         for (int i = 0; i < futures.size(); i++) {
-            final RedisFuture<T> future = futures.get(i);
+            final RedisFuture<String> future = futures.get(i);
             if (!future.await(stallTimeoutMs, TimeUnit.MILLISECONDS)) {
                 throw new RedisCommandTimeoutException("No response to pipelined command " + (i + 1) + " of " + futures.size()
                         + " within " + stallTimeoutMs + " ms of the previous one");
@@ -289,6 +304,10 @@ public class LettuceClient implements RedisClient {
                 results.add(future.get());
             }
             catch (ExecutionException e) {
+                if (isOutOfMemory(e.getCause())) {
+                    results.add(e.getCause().getMessage());
+                    continue;
+                }
                 // Rethrow driver failures unwrapped, so that server errors and connection failures keep
                 // their distinct handling in the caller.
                 if (e.getCause() instanceof RedisException) {
@@ -300,8 +319,10 @@ public class LettuceClient implements RedisClient {
         return results;
     }
 
-    private static String utf8(byte[] bytes) {
-        return bytes == null ? null : new String(bytes, StandardCharsets.UTF_8);
+    private static boolean isOutOfMemory(Throwable failure) {
+        return failure instanceof RedisCommandExecutionException
+                && failure.getMessage() != null
+                && failure.getMessage().startsWith(OOM_ERROR_PREFIX);
     }
 
     @Override
